@@ -1,5 +1,10 @@
 # Modelo de datos
 
+> **Delta 2026-10-07 (calidad de Novedades; código verificado; esquema aplicado y verificado en local/dev/producción; entrega de código en PR #1452):**
+> `20261007075832_cultural_release_information_quality.sql` añade `synopsis_language`,
+> con grants explícitos, y conserva portada/sinopsis conocidas cuando el proveedor omite metadatos.
+> No cambia la publicación, el mercado, el consentimiento ni la revisión efectiva del lanzamiento. Ver §8quinquies.
+
 > **Delta 2026-10-07 (crónicas activas en dev y producción):** dos migraciones aplicadas, ocho superficies de esquema/ACL verificadas idénticas y cron productivo probado con HTTP 200. Ver §8sexies y el recibo de #1433.
 
 > **Corrección aplicada y verificada en biblioshare-dev y producción 2026-10-06 (Novedades):**
@@ -5171,6 +5176,29 @@ guarda con evidencia y únicamente en modalidad digital. Los vínculos opcionale
 El mercado forma parte de la identidad inmutable del lanzamiento: los anuncios ES e INT
 coexisten bajo la misma obra, con claves de fuente y consentimientos separados. Una fecha
 internacional no se transforma en un estreno español ni hereda automáticamente sus avisos.
+
+**Calidad de información (delta 2026-10-07, esquema aplicado y verificado en local/dev/producción).**
+`synopsis_language` es texto nullable con código de idioma validado; registra el idioma del
+texto y es independiente de `language` (edición/doblaje) y de `market`. NULL significa
+procedencia no registrada, por compatibilidad con anuncios y notificaciones anteriores.
+El sincronizador consulta primero es-ES y completa sólo lo necesario con en-US y las
+imágenes oficiales de TMDB. El título legible español, las fechas y las temporadas
+proceden de la respuesta original; no se convierten fechas internacionales en españolas.
+La nueva columna es legible por anon/authenticated; sólo service_role recibe escritura.
+La RPC conserva su firma de dos argumentos, SECURITY INVOKER y el bloqueo/token del intento.
+Una portada/sinopsis nula o compuesta sólo por espacios conserva la información conocida;
+una sinopsis nueva actualiza también su idioma. Metadatos por sí solos no aumentan revision
+ni disparan avisos. No hay umbral de popularidad, votos o ISBN para admitir un anuncio. En producción,
+la verificación de las 08:57:59 UTC confirma 32 columnas, permisos de lectura públicos
+y escritura sólo de servicio, función idéntica a dev/local tras normalizar CRLF,
+políticas RLS y los 311 anuncios previos intactos. No se insertaron fixtures productivos.
+
+La presentación agrupa las modalidades antes de exigir portada HTTPS segura y sinopsis no
+vacía. Explorar separa las obras limitadas en una lista plegable con motivos; el bloque de
+Inicio filtra completas **antes** del límite de tres obras. Lo que esperas y los enlaces
+al anuncio mantienen todos los lanzamientos y sus acciones. La consulta de datos no crea
+catálogo ni pases. Pruebas: `supabase/tests/release_information_quality.sql` y
+`docs/testing/2026-10-07-novedades-quality.md`.
 
 `date_value` preserva exactamente `YYYY-MM-DD`, `YYYY-MM` o `YYYY`, junto con `date_precision`
 (`day/month/year/unknown`); desconocida exige `NULL`. Un CHECK comprueba el calendario real,

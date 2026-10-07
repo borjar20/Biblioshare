@@ -6818,3 +6818,26 @@ Payload v1 compatible: las crónicas anteriores conservan sus stories y ganan el
 ### 2026-10-07 — Los avances en series forman parte del resumen final (#1446)
 
 La story de avances debe llegar también al cierre, la imagen y las nuevas publicaciones. El resumen público admite contadores de series y episodios; las portadas se completan con series avanzadas, deduplicadas y limitadas a cuatro. No se mezclan episodios vistos con obras terminadas ni se publica metadata privada. Las semanales que ya contienen la story se adaptan al renderizar; antes de publicar una previa, su share se completa con CAS por dueño/periodo/versión, sin recalcular actividad ni cambiar el cooldown. No se reescriben shares existentes. Si una story previa recortó las series, se conoce el número de series pero no todos sus episodios: null y texto sólo de series. El parser del feed acepta el campo opcional validado y conserva compatibilidad con shares anteriores. [Verificación](../testing/2026-10-07-wrap-closing-series.md).
+
+
+## 2026-10-07 — Novedades: calidad de metadatos independiente de fecha y publicación
+
+Se acepta completar primero los campos ausentes con metadatos oficiales de TMDB:
+consulta española inicial, sinopsis inglesa cuando falta y búsqueda de portadas oficiales.
+La sinopsis inglesa queda etiquetada y su idioma se guarda separado del idioma del
+lanzamiento. Se conserva el título legible español y la fecha/mercado/temporada originales.
+Los fallos opcionales no suprimen fechas acreditadas ni borran portada/sinopsis conocidas.
+
+La selección principal de Explorar y «Sale esta semana» exige portada HTTPS segura y
+sinopsis no vacía, sin umbrales de popularidad o votos. Las obras limitadas se conservan
+en una lista secundaria plegable con fecha, fuente y acciones; los libros sin ISBN siguen
+siendo admisibles. Completarlas las devuelve automáticamente a la selección principal.
+La clasificación se hace por obra después de agrupar modalidades y antes del límite
+semanal. Fecha parcial y calidad limitada son dimensiones independientes.
+
+Lo que esperas y los enlaces al anuncio conservan las elecciones personales. Abrir título
+o portada dirige al catálogo existente o al detalle público del anuncio, sin escribir
+catálogo ni pases. No se añade estado de publicación ni una segunda cola de avisos.
+Estado: código/local/dev del 2026-10-07; producción pendiente en #1451 y #1449.
+El rediseño visual Paper acordado se sigue en #1450. Evidencia en
+`docs/testing/2026-10-07-novedades-quality.md`.

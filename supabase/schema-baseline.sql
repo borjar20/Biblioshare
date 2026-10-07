@@ -1639,3 +1639,8 @@ commit;
 begin;
 \ir migrations/20261006120100_wrap_ups_core.sql
 commit;
+
+-- 20261007075832_cultural_release_information_quality
+begin;
+\ir migrations/20261007075832_cultural_release_information_quality.sql
+commit;

@@ -49,7 +49,7 @@ export async function syncTmdbReleases(admin: ServiceClient, now = new Date(), f
       language: row.language ?? "und", date_value: row.date_value, date_precision: row.date_precision,
       status: "published", checked_at: now.toISOString(), title: row.title,
       subtitle: row.season_number ? `Temporada ${row.season_number}` : null,
-      cover_url: row.cover_url, synopsis: row.synopsis, digital_platform: null,
+      cover_url: row.cover_url, synopsis: row.synopsis, synopsis_language: row.synopsis_language ?? (row.synopsis?.trim() ? "es" : null), digital_platform: null,
       source_name: "TMDB", source_url: row.source_url, tmdb_id: Number(row.external_id), movie_id: null, series_id: null,
     }));
     // Bulk rows are bounded to avoid oversized RPC requests; the source input remains server-only.

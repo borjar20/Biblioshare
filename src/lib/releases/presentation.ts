@@ -1,5 +1,6 @@
 import type { CulturalRelease, ReleaseItemType, ReleaseMarket, ReleaseModality } from "./types";
 import { madridDay } from "./precision";
+import { releaseInformationGaps } from "./quality";
 
 export type ReleaseFilters = {
   type?: "all" | ReleaseItemType;
@@ -10,6 +11,7 @@ export type ReleaseFilters = {
   to?: string;
   includeUndated?: boolean;
   limit?: number;
+  completeness?: "complete" | "limited";
 };
 
 export type ReleaseWork = {
@@ -59,6 +61,10 @@ export function groupReleaseWorks(rows: CulturalRelease[], filters: ReleaseFilte
         coverUrl: row.cover_url, catalogId: releaseCatalogId(row), releases: [row] });
     }
   }
-  const result = [...workByKey.values()];
+  const result = [...workByKey.values()].filter((work) => {
+    if (!filters.completeness) return true;
+    const complete = releaseInformationGaps(work.releases).length === 0;
+    return filters.completeness === "complete" ? complete : !complete;
+  });
   return filters.limit === undefined ? result : result.slice(0, Math.max(0, Math.floor(filters.limit)));
 }

@@ -108,14 +108,20 @@ editor de catálogo inline (banner + barra sticky).
    decisiones y la sustitución del reparto «Tú» de 2026-08-21 constan en
    `decisiones.md`.
 
-   **Novedades (2026-10-06, candidato local; navegador R3 6/6 PASS).** Cuelga de
+   **Novedades (base publicada el 2026-10-06; calidad de código y esquema local/dev/producción el 2026-10-07).** Cuelga de
    Buscar y del bloque público «Sale esta semana» de Inicio. Explorar permite
    visitantes; Lo que esperas y las acciones personales requieren sesión.
    España es el filtro inicial y las fechas internacionales tienen su etiqueta
    y selector. Una obra agrupa sus modalidades: Pendiente se elige una vez y
    Avisarme por lanzamiento. Las fechas con día y los anuncios parciales se
    separan conservando la precisión. Fuente y revisión efectiva acompañan cada
-   lanzamiento. La edición administrativa separa Guardar revisión, Publicar,
+   lanzamiento. En el delta de calidad (#1451), el listado principal exige portada y
+   sinopsis; los anuncios incompletos van a una lista plegable compacta, con los motivos
+   visibles. No se confunde información limitada con fecha parcial. Inicio filtra antes
+   de limitar su selección. Lo que esperas y el anuncio abierto conservan sus acciones.
+   Título y portada abren catálogo o detalle público del anuncio (#1449); la sinopsis
+   inglesa se etiqueta. El rediseño visual completo sigue en #1450.
+   La edición administrativa separa Guardar revisión, Publicar,
    Confirmar revisión de la fuente y Cancelar; las tres últimas esperan a que
    no haya cambios de formulario sin guardar.
 10. **Los números de la pantalla no se contradicen.** Estado y progreso mostrados

@@ -5,7 +5,10 @@ import { createTranslator, NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import messages from "../../../messages/es.json";
 import { groupReleaseWorks } from "@/lib/releases/presentation";
-import { releaseFixture } from "@/components/releases/test-fixture";
+import { releaseFixture as baseReleaseFixture } from "@/components/releases/test-fixture";
+function releaseFixture(changes: Parameters<typeof baseReleaseFixture>[0] = {}) {
+  return baseReleaseFixture({ cover_url: "https://images.example/cover.jpg", synopsis: "Una sinopsis disponible", ...changes });
+}
 
 const mocks = vi.hoisted(() => ({ user: vi.fn(), public: vi.fn(), personal: vi.fn(), sources: vi.fn(), state: vi.fn(), byId: vi.fn(), refresh: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({ getCurrentUser: mocks.user }));
@@ -109,5 +112,36 @@ describe("calendario público y frontera privada", () => {
     expect(provider.props.messages.releases).toEqual(messages.releases);
     expect(provider.props.messages.releaseAdmin).toBeUndefined();
     expect(provider.props.messages.nav).toBeDefined();
+  });
+
+  it("moves an incomplete public work into a separate manageable list", async () => {
+    const incomplete = releaseFixture({ title: "Anuncio incompleto", work_key: "limited-work", cover_url: null, synopsis: null });
+    const complete = releaseFixture({ id: "8174f7cd-39ed-40eb-8195-3d3d713a6a02", title: "Anuncio completo", work_key: "complete-work",
+      cover_url: "https://images.example/cover.jpg", synopsis: "Una descripción disponible" });
+    mocks.public.mockResolvedValue(groupReleaseWorks([incomplete, complete], {}, new Date("2026-10-06T12:00:00Z")));
+    await display();
+    const limited = screen.getByText("Anuncios con información limitada").closest("details");
+    expect(limited).toBeTruthy();
+    expect(within(limited!).getByRole("heading", { name: "Anuncio incompleto", hidden: true })).toBeTruthy();
+    const main = screen.getByRole("heading", { name: "Con día confirmado" }).closest("section")!;
+    expect(within(main).queryByRole("heading", { name: "Anuncio incompleto" })).toBeNull();
+    expect(within(main).getByRole("heading", { name: "Anuncio completo" })).toBeTruthy();
+  });
+
+  it("keeps incomplete personal choices visible and direct links manageable", async () => {
+    const incomplete = releaseFixture({ title: "Anuncio propio", cover_url: null, synopsis: "An English description", synopsis_language: "en" });
+    mocks.user.mockResolvedValue({ id: "actor" });
+    mocks.personal.mockResolvedValue(groupReleaseWorks([incomplete], {}, new Date("2026-10-06T12:00:00Z")));
+    mocks.state.mockResolvedValue({ [incomplete.id]: { subscribed: true, inLibrary: true } });
+    await display({ seleccion: "personal" });
+    expect(screen.getByRole("heading", { name: "Anuncio propio" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Retirar aviso" })).toBeTruthy();
+    expect(screen.queryByText("Anuncios con información limitada")).toBeNull();
+    cleanup();
+    mocks.byId.mockResolvedValue(incomplete);
+    await display({ lanzamiento: incomplete.id });
+    expect(screen.getByText("An English description")).toBeTruthy();
+    expect(screen.getByText("Sinopsis en inglés")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Retirar aviso" })).toBeTruthy();
   });
 });

@@ -30,4 +30,21 @@ describe("calendar work grouping and truthful precision", () => {
     expect(groupReleaseWorks([releaseFixture({ date_value: "2025", date_precision: "year" })], {}, now)).toEqual([]);
     expect(groupReleaseWorks([releaseFixture({ status: "draft" })], {}, now)).toEqual([]);
   });
+
+  it("fills weekly slots with complete works before applying the limit", () => {
+    const rows = [
+      releaseFixture({ id: "limited", work_key: "limited", cover_url: null, synopsis: null, date_value: "2026-10-07" }),
+      releaseFixture({ id: "complete-one", work_key: "complete-one", cover_url: "https://images.example/one.jpg", synopsis: "Una sinopsis", date_value: "2026-10-08" }),
+      releaseFixture({ id: "complete-two", work_key: "complete-two", cover_url: "https://images.example/two.jpg", synopsis: "Otra sinopsis", date_value: "2026-10-09" }),
+    ];
+    expect(groupReleaseWorks(rows, { completeness: "complete", limit: 2 }, now).map((work) => work.workKey)).toEqual(["complete-one", "complete-two"]);
+    expect(groupReleaseWorks(rows, { completeness: "limited" }, now).map((work) => work.workKey)).toEqual(["limited"]);
+    expect(groupReleaseWorks(rows, {}, now)).toHaveLength(3);
+  });
+
+  it("does not treat whitespace descriptions or unsafe image URLs as complete metadata", () => {
+    const rows = [releaseFixture({ work_key: "unsafe", cover_url: "javascript:alert(1)", synopsis: "Description" }),
+      releaseFixture({ id: "blank", work_key: "blank", cover_url: "https://images.example/cover.jpg", synopsis: "  " })];
+    expect(groupReleaseWorks(rows, { completeness: "complete" }, now)).toEqual([]);
+  });
 });

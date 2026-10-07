@@ -1,4 +1,5 @@
 import "server-only";
+import { needsEnglish, pickReadable } from "@/lib/catalog/readable-title";
 import type { ReleaseCandidate, TmdbReleaseDates, TmdbScreen } from "./provider-model";
 import { normalizeMovieReleases, normalizeSeriesReleases } from "./tmdb-normalize";
 
@@ -54,6 +55,44 @@ async function discover(kind: "movie" | "tv", parameters: Record<string, string>
   return items;
 }
 
+/** Optional metadata may fail without suppressing an evidenced release date. */
+async function optionalTmdbRequest<T>(path: string, parameters: Record<string, string> = {}): Promise<T | null> {
+  try { return await tmdbRequest<T>(path, parameters); } catch { return null; }
+}
+
+async function completeScreen(kind: "movie" | "tv", screen: TmdbScreen): Promise<{ screen: TmdbScreen; synopsisLanguage: "es" | "en" | null }> {
+  const title = kind === "movie" ? screen.title ?? null : screen.name ?? null;
+  const spanish = { title, synopsis: screen.overview?.trim() || null };
+  let english: TmdbScreen | null = null;
+  if (needsEnglish(spanish)) {
+    const candidate = await optionalTmdbRequest<TmdbScreen>(`${kind}/${screen.id}`, { language: "en-US" });
+    if (candidate?.id === screen.id) english = candidate;
+  }
+  const englishOverview = typeof english?.overview === "string" ? english.overview : null;
+  const readable = pickReadable(spanish, english ? {
+    title: typeof (english.title ?? english.name) === "string" ? english.title ?? english.name : null,
+    overview: englishOverview,
+  } : null);
+  const synopsisLanguage = spanish.synopsis ? "es" : englishOverview?.trim() ? "en" : null;
+  const posterPath = (value: unknown): string | null =>
+    typeof value === "string" && value.startsWith("/") ? value : null;
+  let poster = posterPath(screen.poster_path) ?? posterPath(english?.poster_path);
+  if (!poster) {
+    const images = await optionalTmdbRequest<{ id: number; posters?: unknown[] }>(
+      `${kind}/${screen.id}/images`, { include_image_language: "es,en,null" },
+    );
+    if (images?.id === screen.id && Array.isArray(images.posters)) {
+      for (const image of images.posters) {
+        if (image && typeof image === "object" && "file_path" in image) {
+          poster = posterPath(image.file_path);
+          if (poster) break;
+        }
+      }
+    }
+  }
+  return { screen: { ...screen, ...(kind === "movie" ? { title: readable.title ?? screen.title } : { name: readable.title ?? screen.name }),
+    overview: readable.synopsis ?? undefined, poster_path: poster }, synopsisLanguage };
+}
 export async function getTmdbWorkReleases(work: TrackedTmdbWork): Promise<ReleaseCandidate[]> {
   if (!Number.isSafeInteger(work.tmdb_id) || work.tmdb_id <= 0) throw new ReleaseProviderError("malformed");
   if (work.item_type === "movie") {
@@ -61,11 +100,13 @@ export async function getTmdbWorkReleases(work: TrackedTmdbWork): Promise<Releas
     if (movie.id !== work.tmdb_id || !Array.isArray(movie.release_dates?.results) || movie.release_dates.results.some((r) => !Array.isArray(r.release_dates))) {
       throw new ReleaseProviderError("malformed");
     }
-    return normalizeMovieReleases(movie, movie.release_dates);
+    const completed = await completeScreen("movie", movie);
+    return normalizeMovieReleases(completed.screen, movie.release_dates, completed.synopsisLanguage);
   }
   const series = await tmdbRequest<TmdbScreen>(`tv/${work.tmdb_id}`);
   if (series.id !== work.tmdb_id) throw new ReleaseProviderError("malformed");
-  return normalizeSeriesReleases(series);
+  const completed = await completeScreen("tv", series);
+  return normalizeSeriesReleases(completed.screen, completed.synopsisLanguage);
 }
 
 /** Bounded discovery plus every tracked upcoming work, including those absent from discovery. */

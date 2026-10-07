@@ -32,6 +32,8 @@ export interface CulturalRelease {
   subtitle: string | null;
   cover_url: string | null;
   synopsis: string | null;
+  /** Text language; never the launch/edition language. Absent on legacy notification snapshots. */
+  synopsis_language?: string | null;
   author: string | null;
   publisher: string | null;
   isbn: string | null;
