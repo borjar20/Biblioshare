@@ -95,3 +95,51 @@ claro/oscuro, movimiento reducido y PC a 1280 px. TypeScript y eslint focal
 PASS. La regresión de alineación, tamaño y clic del cierre se añade al E2E
 existente de 320/390/768 px para CI; no se repite aquí la suite autenticada
 completa ni build/start de producción.
+
+## Crónica a ancho completo y tarjetas Paper de Novedades
+
+Petición del 2026-10-07: al abrir los anuncios semanales, la crónica no debe dejar
+media fila vacía; el resumen ha de mostrar el período completo en varias líneas y
+las obras han de compartir el estilo nuevo de `/novedades`. Se integra main
+97bd837e (#1455), conservando la landing pública, sus cuatro slots, el calendario,
+los filtros y el Inicio personal expandible de esta PR.
+
+- RED Chromium: crónica de 170 px dentro de una fila de 350 px tras ampliar.
+- GREEN: misma crónica a todo el ancho; separación de 10 px respecto a
+  Sale esta semana en el estado ampliado final. ResizeObserver reserva su altura flexible al envolver la fecha.
+- Resumen real de HomeWrapUp con período largo: texto completo a 320 px, varias
+  líneas, sin elipsis ni desbordamiento. Revisión visual de ambos estados.
+- Browser probe: slots SSR reales de ThisWeekReleases/StatsRail, componentes reales
+  HomeExpandable/HomeWrapUp y CSS de Next dev más el módulo Paper de producción.
+  El reproductor se sustituye por un stub de abrir/cerrar; no acredita una sesión
+  real de StoryPlayer. Fotogramas 0/160/final y reverso, portadas/barras persistentes,
+  320/390/520/768/1099/1280, claro/oscuro, reduced motion, crónica presente/ausente,
+  estados sin anuncios/error y actividad vacía. PASS. Las portadas crecen de
+  34,085 px visuales a 53,389 px intermedios y 56 px finales a 390 px.
+- ReleaseWorkCard comparte `releases.module.css` con `/novedades`; Home conserva
+  tres imágenes principales y el fondo ambiental emplea la misma URL como CSS.
+  Portada ampliada 56 px hasta 640, 72 px en tablet y 36 px en el lateral de PC.
+- CI: añadidas aserciones de texto completo, crónica a ancho completo y separación;
+  adaptado el extremo del morph al nuevo tamaño. La suite autenticada de CI
+  requiere Supabase local desechable y no se ha repetido en este corte.
+
+Verificación final del corte:
+
+- 55 unitarios en seis archivos PASS: slots compartidos, HomeWrapUp, tarjeta/acciones
+  de Novedades, semana pública, agenda/calendario y ruta `/novedades`.
+- TypeScript y ESLint focal PASS; `diff --check` e integridad del mapa PASS.
+- `next build` PASS; `next start` y Chromium sobre Inicio autenticado a
+  320/390/768/1280 y `/novedades` PASS, sin errores de página. La cuenta persistente
+  de desarrollo no tiene crónica ni lanzamientos esta semana; ese recorrido acredita
+  el estado vacío y el render integrado. Los estados con datos se acreditan con
+  el probe de componentes/slots. Sin semillas ni ediciones explícitas de contenido;
+  no se abrió el reproductor real.
+- El probe se repite contra la CSS compilada de producción, cargando además el
+  módulo de tarjetas después del CSS global. La revisión independiente detectó
+  una colisión de especificidad en PC: se eleva el selector del Home para preservar
+  36 px de portada y 10 px de padding en cualquier orden de chunks. Regresión
+  geométrica añadida al probe y al E2E de PC; revisión final sin hallazgos pendientes.
+- La animación conjunta interpola anchura en ambas direcciones; la separación de
+  10 px descrita arriba corresponde al estado final, no a cada fotograma del recorrido.
+- El aviso incidental de RSC «destination stream closed early» al abandonar una
+  navegación dev conserva su seguimiento previo en #1301; no hubo error de página.

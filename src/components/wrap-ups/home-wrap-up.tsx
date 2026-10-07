@@ -15,6 +15,22 @@ export function HomeWrapUp({ wrapUp, models, available, desktopCover, summary, o
   const pathname = usePathname();
   const previousPath = useRef(pathname);
   const trigger = useRef<HTMLButtonElement>(null);
+  // La fecha puede ocupar varias líneas: Novedades se coloca debajo de la
+  // altura real del resumen, también mientras la crónica ensancha.
+  useEffect(() => {
+    const preview = trigger.current;
+    const personal = preview?.closest<HTMLElement>(".home-personal");
+    if (!preview || !personal) return;
+    const measure = () => {
+      const height = preview.getBoundingClientRect().height;
+      if (height > 0) personal.style.setProperty("--home-wrap-height", `${height}px`);
+      else personal.style.removeProperty("--home-wrap-height");
+    };
+    measure();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(preview);
+    return () => { observer?.disconnect(); personal.style.removeProperty("--home-wrap-height"); };
+  }, []);
   // La selección del servidor puede cambiar tras marcar vista una crónica.
   // La identidad queda fijada hasta cerrar; sus datos sí siguen la respuesta
   // actual del servidor para que publicar/actualizar cambie los controles.

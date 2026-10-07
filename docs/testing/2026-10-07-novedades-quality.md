@@ -123,3 +123,14 @@ no se usa first(), no se ocultan duplicados visibles ni se omiten casos. Las com
 de consentimiento, deduplicación y ausencia de pases se conservan. La CI completa del
 HEAD corregido es el gate de merge; R1 no se presenta como PASS.
 Recibo: https://github.com/borjar20/Biblioshare/actions/runs/37597546064
+
+## Publicación de datos y enlaces — 2026-10-07, 09:27:24 UTC
+
+PR #1452 quedó fusionada a las 09:24:48 UTC (main 9e3d45b5), tras pasar la CI final
+de 13392b22, incluidos 177 E2E. El smoke público posterior confirmó Inicio/Novedades
+HTTP 200, 41 obras con 41 títulos enlazados, una lista limitada y tres obras semanales
+con portada. El anuncio enfocado respondió 200, administración anónima 307 a login y
+cron sin autorización 401. #1449 queda cerrada; #1451 mantiene la observación del
+siguiente enriquecimiento diario. Estos recibos acreditan datos/enlaces, no el diseño
+Paper: el candidato visual posterior tiene su evidencia en
+docs/testing/2026-10-07-novedades-paper.md y sigue en #1450.

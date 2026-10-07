@@ -10,8 +10,8 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { BellIcon, PlusIcon } from "@/components/ui/icons";
 import { invokeReleaseAction, type ReleaseActionResult } from "./action-state";
 
-export function PendingReleaseAction({ releaseId, authenticated, inLibrary, returnPath }: {
-  releaseId: string; authenticated: boolean; inLibrary: boolean; returnPath: string;
+export function PendingReleaseAction({ releaseId, authenticated, inLibrary, returnPath, dense = false }: {
+  releaseId: string; authenticated: boolean; inLibrary: boolean; returnPath: string; dense?: boolean;
 }) {
   const t = useTranslations("releases");
   const router = useRouter();
@@ -21,24 +21,24 @@ export function PendingReleaseAction({ releaseId, authenticated, inLibrary, retu
   if (inLibrary || result?.ok) return <p role="status" className="text-sm text-muted-foreground">
     {result?.ok ? t("pendingSaved") : t("inLibrary")}
   </p>;
-  if (!authenticated) return <Link href={loginHref(safeReturn)} className={buttonVariants("secondary", "min-h-11 px-3 text-xs")}>
-    <PlusIcon className="h-4 w-4" />{t("pending")}
+  if (!authenticated) return <Link href={loginHref(safeReturn)} aria-label={t("pending")} className={buttonVariants("secondary", dense ? "min-h-11 px-2 text-xs" : "min-h-11 px-3 text-xs")}>
+    <PlusIcon className="h-4 w-4" />{t(dense ? "pendingShort" : "pending")}
   </Link>;
   return <div>
-    <Button variant="secondary" className="min-h-11 px-3 text-xs" disabled={pending} aria-busy={pending}
+    <Button variant="secondary" className={dense ? "min-h-11 px-2 text-xs" : "min-h-11 px-3 text-xs"} disabled={pending} aria-busy={pending} aria-label={pending ? t("working") : t("pending")}
       onClick={() => startTransition(async () => {
         const response = await invokeReleaseAction(() => addNoveltyToPending(releaseId));
         setResult(response);
         if (!response.ok && response.error === "auth") router.push(loginHref(safeReturn));
       })}>
-      <PlusIcon className="h-4 w-4" />{pending ? t("working") : t("pending")}
+      <PlusIcon className="h-4 w-4" />{pending ? t("working") : t(dense ? "pendingShort" : "pending")}
     </Button>
     {result && !result.ok && <p role="alert" className="mt-2 text-xs text-status-dropped">{t(`errors.${result.error}`)}</p>}
   </div>;
 }
 
-export function ReleaseNoticeAction({ releaseId, authenticated, subscribed, cancelled, returnPath }: {
-  releaseId: string; authenticated: boolean; subscribed: boolean; cancelled: boolean; returnPath: string;
+export function ReleaseNoticeAction({ releaseId, authenticated, subscribed, cancelled, returnPath, dense = false }: {
+  releaseId: string; authenticated: boolean; subscribed: boolean; cancelled: boolean; returnPath: string; dense?: boolean;
 }) {
   const t = useTranslations("releases");
   const router = useRouter();
@@ -53,11 +53,11 @@ export function ReleaseNoticeAction({ releaseId, authenticated, subscribed, canc
     if (result && !result.ok) return <p role="alert" className="text-xs text-status-dropped">{t(`errors.${result.error}`)}</p>;
     return null;
   }
-  if (!authenticated) return <Link href={loginHref(safeReturn)} className={buttonVariants("ghost", "min-h-11 px-3 text-xs")}>
+  if (!authenticated) return <Link href={loginHref(safeReturn)} className={buttonVariants("ghost", dense ? "min-h-11 px-2 text-xs" : "min-h-11 px-3 text-xs")}>
     <BellIcon className="h-4 w-4" />{t("notify")}
   </Link>;
   return <div className="flex flex-col items-start">
-    <Button variant="ghost" className="min-h-11 px-3 text-xs" disabled={pending} aria-busy={pending}
+    <Button variant="ghost" className={dense ? "min-h-11 px-2 text-xs" : "min-h-11 px-3 text-xs"} disabled={pending} aria-busy={pending}
       aria-pressed={subscribed} onClick={() => startTransition(async () => {
         const enabled = !subscribed;
         const response = await invokeReleaseAction(() => chooseReleaseNotice(releaseId, enabled));

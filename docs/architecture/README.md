@@ -1,5 +1,22 @@
 # Mapa de arquitectura (máquina + humano)
 
+> **[Delta filtros agrupados Paper #1450 · 2026-10-07: panel único para tipos,
+> mercado y vistas con contadores; 69 unitarios focales, 27 recorridos build/start y
+> 548 archivos/5442 unitarios PASS. Diez capturas con metadatos públicos reales.
+> Candidato en PR #1455; publicación pendiente. Evidencia en
+> [el informe del calendario](../testing/2026-10-07-novedades-calendar.md).]**
+
+> **[Delta calendario lateral Paper #1450 · 2026-10-07: 65 unitarios focales y
+> 22 recorridos build/start PASS; agenda mensual/diaria, vistas superiores y URL/historial,
+> conservando tarjetas e Inicio aprobados. Candidato en PR #1455; publicación pendiente.
+> Evidencia en [el informe del calendario](../testing/2026-10-07-novedades-calendar.md).]**
+
+> **[Delta Paper #1450 · 2026-10-07: candidato local verificado con 44 unitarios,
+> 19 casos build/start a 320–1920 px en claro/oscuro y ocho capturas con metadatos
+> públicos reales. Inicio público con abanico/cuatro obras; agenda compacta por día
+> publicado y fuentes plegables. Integración/publicación pendientes. Evidencia en
+> [el informe Paper](../testing/2026-10-07-novedades-paper.md).]**
+
 > **[Delta Novedades · 2026-10-07: calidad por obra, enriquecimiento TMDB opcional,
 > idioma de sinopsis y enlaces públicos contrastados con código, SQL local/dev/producción,
 > build/start y navegador. Primera versión activa en producción desde el 2026-10-06;
@@ -64,7 +81,9 @@ breves y barras de los laterales ocultas. `r-home` incluye HomeExpandable y su
 contexto en el layout: contenido montado, CSS grid0fr/1fr e inert; limpieza de
 Activity/ruta/breakpoint recoge la vista preservando el estado funcional. Los tres
 paneles transforman elementos persistentes: TodayCard, barras de WeeklyStrip y
-portadas de ReleaseWorkCard. Novedades crece debajo de la crónica sin bloquearla;
+portadas de ReleaseWorkCard. Novedades crece debajo de la crónica sin bloquearla; esta ensancha con ella y
+ResizeObserver reserva la altura real de su resumen multilínea; las tarjetas
+comparten el módulo Paper de `/novedades`;
 el gráfico sin datos conserva el guard de móvil/PC. Evidencia focal en
 [portadas y barras](../testing/2026-10-07-inicio-shared.md). HomeRail
 mide su alto real incluyendo el saludo. `c-wrap-ups` conserva HomeWrapUp y el

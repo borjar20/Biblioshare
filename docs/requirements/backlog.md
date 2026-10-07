@@ -22,9 +22,18 @@
 - [x] Implementar recuperación opcional de metadatos y separar anuncios con información limitada
   en código (PR #1452) y esquema local/dev/producción (2026-10-07, #1451); acceso público
   desde título/portada (#1449).
-- [ ] Verificar publicación del código de PR #1452 y observar el enriquecimiento diario (#1451); evidencia en
+- [x] Publicar código de PR #1452: merge 9e3d45b5 y smoke público de rutas/enlaces del 2026-10-07; #1449 cerrada.
+- [ ] Observar el siguiente enriquecimiento diario (#1451); evidencia en
   `docs/testing/2026-10-07-novedades-quality.md`.
-- [ ] Aplicar el rediseño Paper del Inicio público y Novedades acordado en #1450.
+- [x] Implementar y verificar localmente el rediseño Paper de Inicio y Novedades (#1450).
+- [x] Añadir calendario lateral por mes/día, acceso directo a información limitada y
+  anuncios sin mes y Volver arriba móvil, conservando las tarjetas Paper (#1450,
+  candidato en PR #1455).
+- [x] Agrupar tipos, mercado y vistas en un panel Paper plegable, con controles táctiles y
+  navegación/contexto conservados; verificado localmente en PR #1455 (#1450).
+- [ ] Integrar/publicar el candidato visual y verificar las rutas productivas (#1450).
+  Evidencia: `docs/testing/2026-10-07-novedades-paper.md` y
+  `docs/testing/2026-10-07-novedades-calendar.md`.
 - [x] Implementar resúmenes visuales expandibles del Inicio con sesión en móvil y
   compactar solo Sale esta semana en PC, con scroll independiente de laterales
   (#1453/#1454, 2026-10-07; candidato local). Refinado a despliegues dentro de

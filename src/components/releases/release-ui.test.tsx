@@ -40,6 +40,16 @@ describe("tarjeta de obra y elecciones independientes", () => {
     expect(mocks.pending).not.toHaveBeenCalled();
     expect(await screen.findByText("Aviso elegido para este lanzamiento.")).toBeTruthy();
   });
+  it("sitúa Pendiente en el lanzamiento publicado que ejecuta, aunque un cine cancelado vaya primero", async () => {
+    const cancelled = releaseFixture({ status: "cancelled" });
+    const published = releaseFixture({ id: "8174f7cd-39ed-40eb-8195-3d3d713a6a02", modality: "digital", date_value: "2027-03-14" });
+    render(provider(<ReleaseWorkCard releases={[cancelled, published]} authenticated />));
+    const cancelledRow = within(document.querySelector(`[data-release-id="${cancelled.id}"]`) as HTMLElement);
+    const publishedRow = within(document.querySelector(`[data-release-id="${published.id}"]`) as HTMLElement);
+    expect(cancelledRow.queryByRole("button", { name: "Añadir a Pendiente" })).toBeNull();
+    fireEvent.click(publishedRow.getByRole("button", { name: "Añadir a Pendiente" }));
+    await waitFor(() => expect(mocks.pending).toHaveBeenCalledWith(published.id));
+  });
   it("Pendiente no activa avisos y la biblioteca existente no se retrocede", async () => {
     const row = releaseFixture();
     const view = render(provider(<ReleaseWorkCard releases={[row]} authenticated />));

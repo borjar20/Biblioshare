@@ -1,5 +1,7 @@
 # Guía de UI — principios y patrones
 
+> **[Delta filtros agrupados Paper #1450 · 2026-10-07 · candidato de PR #1455; integración/publicación pendientes.]**
+
 > **[Canónico · derivado de las fases 3-4 de la auditoría 2026-08 (2026-08-19);
 > excepción de mascota verificada el 2026-09-09; navegación principal y perfil
 > verificados contra código el 2026-10-03 (local/dev); cabecera y panel de
@@ -101,8 +103,9 @@ editor de catálogo inline (banner + barra sticky).
    en el foco: portada, título y barra se recolocan durante 460 ms, mientras entran
    los datos y acciones. Tu semana conserva sus siete barras: crecen desde la
    miniatura al gráfico. Sale esta semana convierte el mismo abanico de portadas
-   en las tarjetas, creciendo a todo el ancho debajo de la crónica, que permanece
-   visible e interactiva. El cierre de novedades ocupa su propia zona de 44 px,
+   en las tarjetas Paper de `/novedades`, creciendo a todo el ancho debajo de
+   la crónica. Esta ensancha en la misma transición; el período puede ocupar
+   varias líneas y su altura real reserva el espacio de los lanzamientos. El cierre de novedades ocupa su propia zona de 44 px,
    con 12 px de separación respecto al título y «Ver todas las novedades».
    En Tu semana, el cierre se centra verticalmente respecto al título y conserva
    sus 44 px de área de pulsación, también cuando aún no hay actividad.
@@ -150,7 +153,31 @@ editor de catálogo inline (banner + barra sticky).
    visibles. No se confunde información limitada con fecha parcial. Inicio filtra antes
    de limitar su selección. Lo que esperas y el anuncio abierto conservan sus acciones.
    Título y portada abren catálogo o detalle público del anuncio (#1449); la sinopsis
-   inglesa se etiqueta. El rediseño visual completo sigue en #1450.
+   inglesa se etiqueta. El candidato Paper #1450 verificado localmente usa tarjetas
+   horizontales sin altura mínima, portadas de 72 px (56 px en móvil) y título serif de
+   19 px. Agrupa por próximo día publicado sin duplicar la obra ni desplazarla a un aviso
+   histórico. El calendario lateral mantiene estas tarjetas y muestra un mes o día a la vez:
+   las marcas cuentan obras por fecha real (incluidas modalidades del mismo título en
+   meses distintos); no asigna día a fechas parciales. Los anuncios con sólo mes aparecen
+   en ese mes, y los de año/fecha desconocida en «Sin mes confirmado». «Información
+   limitada» está accesible arriba, sin atravesar toda la agenda. En móvil el calendario
+   precede a la lista; en escritorio permanece en el lateral. «Volver arriba» aparece
+   al bajar en móvil, a la derecha y por encima de la barra inferior, con retorno del
+   foco al título; si aparece la mascota, se eleva para mantener ambos accesibles;
+   respeta movimiento reducido. URL/historial conservan
+   mes, día, vista y filtros, también al volver del login. Los filtros
+   se agrupan en un panel Paper: Tipo de obra usa un selector segmentado de dos columnas
+   en móvil y cuatro desde 640 px; Mercado y Aplicar comparten fila. Las vistas y sus
+   contadores quedan al pie del mismo panel, separadas por una línea. El panel está abierto
+   inicialmente y se pliega con Ocultar filtros/Mostrar filtros; cerrado resume tipo y mercado
+   activos. Conserva cambios de mercado sin aplicar, URL y selección al cerrar/abrir.
+   Los controles ocultos quedan fuera del foco y la navegación accesible. Conservan selección,
+   mercado y período; fuente/revisión por modalidad quedan en un
+   desplegable de 44 px. Pendiente aparece en la fila del lanzamiento que ejecuta;
+   Avisarme sigue siendo independiente por lanzamiento. La revisión global queda al
+   pie, sin panel lateral estirado. Inicio público combina abanico real y cuatro tarjetas
+   en dos columnas, una en móvil. Integración/publicación siguen pendientes en #1450;
+   evidencia en `docs/testing/2026-10-07-novedades-paper.md`.
    La edición administrativa separa Guardar revisión, Publicar,
    Confirmar revisión de la fuente y Cancelar; las tres últimas esperan a que
    no haya cambios de formulario sin guardar.

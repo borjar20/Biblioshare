@@ -160,6 +160,11 @@ for (const width of [320, 390, 768]) test(`resúmenes, obra elegida, crónica fi
     await footer.click(); await expect(todayDialog).toBeHidden();
     await expect(trigger).toBeInViewport();
   }
+  const wrapSummary = page.locator(".home-wrap-preview");
+  expect(await wrapSummary.locator(".home-preview-meta").evaluate((text) => {
+    const box = text.getBoundingClientRect(), card = text.closest("button")!.getBoundingClientRect();
+    return getComputedStyle(text).whiteSpace === "normal" && text.scrollHeight <= text.clientHeight && box.bottom <= card.bottom - 10;
+  })).toBe(true);
   const weekPanel = page.locator(".home-releases-morph");
   const weekCovers = await weekPanel.locator(".release-work-cover").elementHandles();
   const weekStart = await weekCovers[0].boundingBox();
@@ -170,13 +175,20 @@ for (const width of [320, 390, 768]) test(`resúmenes, obra elegida, crónica fi
     expect(first!.x).toBeCloseTo(weekStart!.x, 0); expect(first!.y).toBeCloseTo(weekStart!.y, 0);
     await weekPanel.evaluate((panel) => panel.getAnimations({ subtree: true }).forEach((animation) => { animation.currentTime = 160; }));
     const middle = await weekCovers[0].boundingBox();
-    expect(middle!.width).toBeGreaterThan(weekStart!.width); expect(middle!.width).toBeLessThan(64);
+    expect(middle!.width).toBeGreaterThan(weekStart!.width); expect(middle!.width).toBeLessThan(56);
     await weekPanel.evaluate((panel) => panel.getAnimations({ subtree: true }).forEach((animation) => animation.finish()));
     expect(await weekCovers[0].evaluate((cover) => cover === document.querySelector(".home-releases-morph .release-work-cover"))).toBe(true);
   }
   const releasesDialog = page.getByRole("region", { name: "Sale esta semana", exact: true });
   await expect(releasesDialog.getByRole("link", { name: "Ver todas las novedades", exact: true })).toHaveAttribute("href", "/novedades");
   await expect(releasesDialog.locator('[data-release-id]')).toHaveCount(3);
+  await expect.poll(async () => {
+    const wrap = (await wrapSummary.boundingBox())!, personal = (await page.locator(".home-personal").boundingBox())!;
+    return Math.abs(wrap.width - personal.width);
+  }).toBeLessThan(1);
+  const wrapBox = (await wrapSummary.boundingBox())!, weekBox = (await weekPanel.locator(".home-week-focus").boundingBox())!;
+  expect(weekBox.y).toBeGreaterThanOrEqual(wrapBox.y + wrapBox.height + 9);
+  expect((await weekCovers[0].boundingBox())!.width).toBeCloseTo(width <= 640 ? 56 : 72, 0);
   const closeBox = (await weekPanel.locator(".home-focus-collapse").boundingBox())!;
   const calendarBox = (await releasesDialog.getByRole("link", { name: "Ver todas las novedades", exact: true }).boundingBox())!;
   expect(closeBox.x + closeBox.width <= calendarBox.x || calendarBox.x + calendarBox.width <= closeBox.x ||
@@ -220,6 +232,7 @@ for (const width of [320, 390, 768]) test(`resúmenes, obra elegida, crónica fi
 test("PC mantiene contenido y permite bajar el lateral sin mover el feed", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1280, height: 680 }); await login(page);
   await expect(page.locator('.today-card-body')).toBeVisible();
+  await expect.poll(async () => (await page.locator('.home-week-card .release-work-cover').first().boundingBox())!.width).toBeCloseTo(36, 0);
   await expect(page.locator(".home-today-panel .home-panel-trigger")).toBeHidden();
   const feedY = (await page.locator('[data-area="feed"]').boundingBox())!.y;
   const personal = page.locator('[data-area="personal"]');

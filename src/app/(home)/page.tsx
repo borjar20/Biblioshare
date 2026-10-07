@@ -18,11 +18,12 @@ import { TodayBlockSkeleton } from "@/components/stats/today-skeleton";
 import { HomeWrapUpCover, WrapUpCoverSkeleton } from "@/components/wrap-ups/wrap-up-entry";
 // Sin adornos: la marca dice que el carácter lo ponen la serif y el color, no
 // los brillitos — fuera el SparklesIcon que decoraba la landing.
-import { AppLogoIcon } from "@/components/ui/icons";
+import { Skeleton } from "@/components/ui/skeleton";
+import releaseStyles from "@/components/releases/releases.module.css";
 import { SHELL_HOME } from "@/lib/ui/layout";
 import { HomeRail } from "@/components/home/home-rail";
 import { HomeSmallSkeleton } from "@/components/home/home-skeleton";
-import { ThisWeekReleases } from "@/components/releases/this-week-releases";
+import { ThisWeekReleases, PublicReleaseFan } from "@/components/releases/this-week-releases";
 
 // Sin `instant = false` (#476): el boundary de la ruta es `loading.tsx`, que
 // espeja esta estructura — el shell estático es ese esqueleto y todo lo de aquí
@@ -44,16 +45,20 @@ export default async function Home({
 
   if (!user) {
     return (
-      <div className="mx-auto grid w-full max-w-5xl flex-1 gap-10 px-4 py-12 sm:px-6 lg:grid-cols-2 lg:items-start">
-        <div className="flex flex-col items-center justify-center gap-6 text-center lg:py-16">
-          <AppLogoIcon className="h-16 w-16" />
-          <h1 className="font-serif text-4xl font-semibold tracking-tight sm:text-5xl">
-            Biblio<span className="text-accent">share</span>
-          </h1>
-          <p className="max-w-md text-lg text-muted-foreground">{t("home.tagline")}</p>
-          <Link href="/signup" className={buttonVariants("primary", "px-6")}>{t("home.cta")}</Link>
+      <div className="mx-auto w-full max-w-[1200px] flex-1 px-5 py-7 sm:px-8 lg:px-10">
+        <div className={releaseStyles.hero}>
+          <div>
+            <h1 className={releaseStyles.heroTitle}>{t("home.tagline")}</h1>
+            <p className={releaseStyles.heroCopy}>{t("home.publicIntro")}</p>
+            <div className="mt-6 flex flex-wrap items-center gap-4">
+              <Link href="/signup" className={buttonVariants("primary", "px-6")}>{t("home.cta")}</Link>
+              <Link href="/novedades" className="inline-flex min-h-11 items-center text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground">{t("home.exploreReleases")}</Link>
+            </div>
+          </div>
+          <Suspense fallback={<Skeleton className={`${releaseStyles.fanSkeleton} rounded-card`} />}><PublicReleaseFan /></Suspense>
         </div>
-        <Suspense fallback={null}><ThisWeekReleases /></Suspense>
+        <Suspense fallback={<div className="grid gap-3 sm:grid-cols-2"><Skeleton className="h-36 rounded-card" /><Skeleton className="h-36 rounded-card" /><Skeleton className="h-36 rounded-card" /><Skeleton className="h-36 rounded-card" /></div>}><ThisWeekReleases wide /></Suspense>
+        <p className="mt-6 border-t border-border pt-5 text-sm text-muted-foreground">{t("home.publicFootnote")}</p>
       </div>
     );
   }
