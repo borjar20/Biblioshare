@@ -6906,3 +6906,9 @@ también en estados de error/vacío, fuera del Suspense de los datos.
 Estado: candidato local de PR #1455; publicación pendiente en #1450. Tres regresiones
 RED→GREEN, 26 focales de página/calendario, 24 E2E y 548 archivos/5441 unitarios PASS.
 Los dos timeouts iniciales de escaneo y su control aislado se conservan en #1459.
+
+## 2026-10-07 — Volver arriba: lado derecho por preferencia del usuario
+
+El usuario solicita mover el control móvil de izquierda a derecha. Conserva su
+separación de la barra inferior y el safe-area. Si está la compañera flotante, el
+control se eleva para mantener pulsables ambos elementos. No cambia la navegación.

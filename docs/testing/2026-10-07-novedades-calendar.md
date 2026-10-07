@@ -127,7 +127,7 @@ bajo .scratch/novedades-quality/.
 Integración/publicación: #1450 y PR #1455. Enriquecimiento diario: #1451.
 Curación editorial: #1423. Ninguna se cierra por añadir el calendario.
 
-## Extensión móvil — Volver arriba (2026-10-07)
+## Extensión móvil inicial — Volver arriba (2026-10-07)
 
 El usuario pide volver al principio desde la lista móvil. El botón Paper aparece al
 superar 480 px de scroll, sólo bajo 768 px, a la izquierda y por encima de la barra
@@ -175,3 +175,16 @@ mobile-top-green.log, mobile-top-build.log, mobile-top-lint-final.log,
 mobile-top-typecheck.log, mobile-top-e2e.log, mobile-top-desktop-proof.log,
 mobile-top-unit-overlap-red.log, mobile-top-scans-recheck.log,
 mobile-top-unit-final.log y mobile-top-preview-result.json.
+
+## Ajuste posterior — botón a la derecha (2026-10-07)
+
+Por petición del usuario, el control se ancla al borde derecho con margen de 16 px y
+safe-area. La captura y las medidas anteriores documentan la colocación inicial.
+Si está la compañera, se eleva para que los dos controles sigan accesibles.
+
+Comprobación aislada en Chromium con el CSS real: ocho combinaciones de
+320/390/767/1280 px, con/sin una caja representativa de la compañera (93 px,
+altura máxima sobre su base obtenida del manifiesto actual). Se verifica margen
+derecho, altura táctil de 44 px, separación de barra/mascota, recepción del puntero
+por el botón y ocultación desktop. PASS 8/8. No es una nueva prueba del flujo de datos;
+los recibos del ajuste son mobile-top-right-layout.log y mobile-top-right-layout.json.
