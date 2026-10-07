@@ -67,7 +67,7 @@ async function login(page: Page) {
 async function holdMorph(locator: Locator) {
   await locator.evaluate((panel) => {
     const observer = new MutationObserver(() => {
-      panel.getAnimations({ subtree: true }).forEach((animation) => { animation.pause(); animation.currentTime = 0; });
+      (panel.closest(".home-personal") ?? panel).getAnimations({ subtree: true }).forEach((animation) => { animation.pause(); animation.currentTime = 0; });
       observer.disconnect();
     });
     observer.observe(panel, { attributes: true, attributeFilter: ["data-expanded"] });
@@ -86,9 +86,15 @@ for (const width of [320, 390, 768]) test(`resúmenes, obra elegida, crónica fi
   await expect(page.getByRole("heading", { name: "¿Qué has disfrutado hoy?", exact: true })).toBeVisible();
   await expect(page.getByText("Primera crónica social de prueba", { exact: true })).toBeVisible();
   const firstPost = await page.getByText("Primera crónica social de prueba", { exact: true }).locator("xpath=ancestor::article[1]").boundingBox();
-  const headingBox = await page.locator(".home-focus-heading").boundingBox();
-  // Se conserva el presupuesto del feed más la cabecera solicitada, ahora visible.
-  expect(firstPost!.y).toBeLessThan((width === 320 ? 640 : 844) - 70 + headingBox!.height + 10);
+  const headingBox = await page.locator(".home-today-panel .home-focus-heading").boundingBox();
+  const periodSummary = (await page.locator(".home-wrap-preview").boundingBox())!;
+  const weeklySummary = (await page.locator(".home-week-focus").boundingBox())!;
+  const sharedRowHeight = Math.max(periodSummary.height, weeklySummary.height);
+  // El período completo puede añadir hasta dos líneas al resumen base de 96 px.
+  // Se limita esa ampliación y se conserva el presupuesto original del feed.
+  expect(sharedRowHeight).toBeLessThanOrEqual(128);
+  const fullPeriodExtra = Math.max(0, sharedRowHeight - 96);
+  expect(firstPost!.y).toBeLessThan((width === 320 ? 640 : 844) - 70 + headingBox!.height + fullPeriodExtra + 10);
   expect(await seen("week")).toBeNull(); expect(await seen("month")).toBeNull();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath(`home-${width}.png`), fullPage: false });
@@ -160,6 +166,11 @@ for (const width of [320, 390, 768]) test(`resúmenes, obra elegida, crónica fi
     await footer.click(); await expect(todayDialog).toBeHidden();
     await expect(trigger).toBeInViewport();
   }
+  // La vista anterior debe terminar de recogerse antes de fijar el fotograma
+  // de Novedades; sus coordenadas no han de mezclarse con otro morph en curso.
+  await expect.poll(() => page.locator(".home-personal").evaluate((personal) =>
+    personal.getAnimations({ subtree: true }).filter((animation) => animation instanceof CSSTransition && animation.playState !== "finished").length,
+  )).toBe(0);
   const wrapSummary = page.locator(".home-wrap-preview");
   expect(await wrapSummary.locator(".home-preview-meta").evaluate((text) => {
     const box = text.getBoundingClientRect(), card = text.closest("button")!.getBoundingClientRect();
@@ -183,10 +194,10 @@ for (const width of [320, 390, 768]) test(`resúmenes, obra elegida, crónica fi
   if (width === 390) {
     const first = await weekCovers[0].boundingBox();
     expect(first!.x).toBeCloseTo(weekStart!.x, 0); expect(first!.y).toBeCloseTo(weekStart!.y, 0);
-    await weekPanel.evaluate((panel) => panel.getAnimations({ subtree: true }).forEach((animation) => { animation.currentTime = 160; }));
+    await weekPanel.evaluate((panel) => (panel.closest(".home-personal") ?? panel).getAnimations({ subtree: true }).forEach((animation) => { animation.currentTime = 160; }));
     const middle = await weekCovers[0].boundingBox();
     expect(middle!.width).toBeGreaterThan(weekStart!.width); expect(middle!.width).toBeLessThan(56);
-    await weekPanel.evaluate((panel) => panel.getAnimations({ subtree: true }).forEach((animation) => animation.finish()));
+    await weekPanel.evaluate((panel) => (panel.closest(".home-personal") ?? panel).getAnimations({ subtree: true }).forEach((animation) => animation.finish()));
     expect(await weekCovers[0].evaluate((cover) => cover === document.querySelector(".home-releases-morph .release-work-cover"))).toBe(true);
   }
   const releasesDialog = page.getByRole("region", { name: "Sale esta semana", exact: true });

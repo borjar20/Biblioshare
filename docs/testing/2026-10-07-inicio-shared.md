@@ -201,3 +201,34 @@ crónica flexible, pie centrado y pulsable, vacíos/error y actividad sin datos.
 E2E de CI incorpora igualdad de márgenes. ESLint focal y `diff --check` PASS;
 no se repiten unitarios, suite autenticada completa ni build/start por ser un
 ajuste exclusivo de CSS. Los gates anteriores conservan su alcance.
+
+## Corrección de CI de los recorridos de Inicio
+
+Baseline remoto e3c0a203, run 37645359860: quality/CodeQL/preview PASS;
+critical-flows: 199 PASS / 3 FAIL. Los tres fallos eran un selector global de cabecera
+que pasó de una a tres coincidencias al compartir los morphs. Se acota a Hoy,
+sin elegir arbitrariamente la primera cabecera.
+
+La repetición completa nativa con ese selector descubre dos aserciones posteriores:
+
+- 320 px: primer post y=635,046875 frente al límite anterior 623,90625. El período
+ completo solicitado hace crecer el resumen sobre los 96 px iniciales. Se mide
+ el extra real, se limita la fila a 128 px (hasta dos líneas adicionales de 16 px)
+ y se conserva el presupuesto original del feed descontando únicamente ese extra.
+- 390 px: primer fotograma de la portada y=341,707519 frente a una lectura previa
+ y=396,020020. La vista de Hoy aún se recogía cuando se tomaba la referencia,
+ y el test pausaba Novedades sin pausar la crónica que ensancha a su lado.
+ Se espera el final de las transiciones anteriores y se pausa/reanuda el mismo
+ ámbito personal. Se conservan las aserciones de x/y absolutos; no se amplía
+ su tolerancia ni se elimina la comprobación del primer fotograma.
+
+Build de producción con variables de proceso locales PASS. Entorno Supabase CLI
+2.116.0 desechable, preparado desde 306 entradas y activación guardada; `.env.local`
+conservado. Primera tanda nativa: 5 PASS / 2 FAIL; después del ajuste 7/7 PASS en 30,3 s,
+ sin reintentos/skip. Incluye 320/390/768, PC, sesión/resize/navegación, crónica
+ con Novedades y estados de cola/colección/descubrimiento. ESLint y
+`diff --check` PASS. La verificación remota del arreglo se sigue en los checks
+ de PR #1457; no se atribuyen los 199 éxitos del baseline a la corrección.
+
+Se mantienen los avisos incidentales de stream/Gzip, con seguimiento previo
+#1301/#1251/#1263. No se cambian diseño, consultas, esquema ni configuración de CI.
