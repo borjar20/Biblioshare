@@ -10,13 +10,16 @@ import { getTranslations } from "next-intl/server";
 import { getOwnWrapUps, type OwnWrapUp } from "@/lib/wrap-ups/get-own-wrap-ups";
 import { periodLabel } from "@/lib/wrap-ups/view-models";
 import { narratorSheet } from "@/lib/wrap-ups/narrator";
+import { RouteMessages } from "@/components/route-messages";
+import { posterFor, type T } from "@/lib/wrap-ups/view-models";
+import { HomeWrapUp } from "./home-wrap-up";
 import { buttonVariants } from "@/components/ui/button";
 
 const COVER_HEIGHT = 104;
 const THUMB = 48;
 
 export function WrapUpCoverSkeleton() {
-  return <div aria-hidden className="mb-3" style={{ height: COVER_HEIGHT }} />;
+  return <div aria-hidden className="home-wrap-skeleton" />;
 }
 
 /** Primer fotograma de la tira de la narradora, a THUMB px, sin suavizar. */
@@ -57,7 +60,7 @@ export async function HomeWrapUpCover() {
   const label = t("label", { kind: wrap.kind });
   const href = `/wrap/${wrap.kind}`;
 
-  return (
+  const desktopCover = (
     <div className="mb-3" style={{ height: COVER_HEIGHT }}>
       <Link
         href={href}
@@ -87,4 +90,9 @@ export async function HomeWrapUpCover() {
       </Link>
     </div>
   );
+  const panel = await getTranslations("homePanels");
+  const strings = await getTranslations();
+  const available = all.map((entry) => ({ wrapUp: entry, models: (entry.payload.stories ?? []).map((story) => posterFor(story, entry.payload, strings as unknown as T)) }));
+  const models = available.find((entry) => entry.wrapUp.kind === wrap.kind)!.models;
+  return <RouteMessages ns={["wrapUps.ui", "wrapUps.stories.cover"]}><HomeWrapUp wrapUp={wrap} models={models} available={available} desktopCover={desktopCover} openLabel={panel("openWrap")} summary={<><span className="home-preview-name">{panel("wrap")}</span><span className="home-wrap-preview-body"><NarratorThumb variant={wrap.payload.narrator} /><span>{unseenFull && <span className="text-xs text-accent-ink">{panel("new")}</span>}<span className="home-preview-meta">{periodLabel(wrap.payload)}</span></span></span></>} /></RouteMessages>;
 }

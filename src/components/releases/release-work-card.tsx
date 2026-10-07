@@ -12,9 +12,9 @@ import { PendingReleaseAction, ReleaseNoticeAction } from "./release-actions";
 import { releaseReviewDate, releaseWorkHref, safeReleaseUrl, type ReleaseUserState } from "./release-view";
 import styles from "./releases.module.css";
 
-export function ReleaseWorkCard({ releases, authenticated = false, userState = {}, stateAvailable = true, returnPath = "/novedades", compact = false, limited = false, showSynopsis = false, headingLevel = 3 }: {
+export function ReleaseWorkCard({ releases, authenticated = false, userState = {}, stateAvailable = true, returnPath = "/novedades", compact = false, limited = false, showSynopsis = false, headingLevel = 3, homeCompact = false }: {
   releases: CulturalRelease[]; authenticated?: boolean; userState?: ReleaseUserState; stateAvailable?: boolean;
-  returnPath?: string; compact?: boolean; limited?: boolean; showSynopsis?: boolean; headingLevel?: 3 | 4;
+  returnPath?: string; compact?: boolean; limited?: boolean; showSynopsis?: boolean; headingLevel?: 3 | 4; homeCompact?: boolean;
 }) {
   const t = useTranslations("releases");
   const release = releases[0];
@@ -30,24 +30,24 @@ export function ReleaseWorkCard({ releases, authenticated = false, userState = {
   const pendingRelease = releases.find((row) => row.status === "published");
   const pendingAction = !compact && pendingRelease && stateAvailable ? <PendingReleaseAction releaseId={pendingRelease.id} authenticated={authenticated} inLibrary={inLibrary} returnPath={returnPath} dense={!showSynopsis} /> : null;
   return <article id={`lanzamiento-${release.id}`} data-work-key={release.work_key}
-    className={`${styles.card} ${compact ? styles.compact : ""} ${limited ? styles.limited : ""} ${showSynopsis ? styles.detail : ""}`}>
-    {!limited && cover && <div aria-hidden className={styles.ambient}><Image src={cover} alt="" fill unoptimized sizes="220px" className="object-cover" /></div>}
-    {!limited && <Link href={workHref} aria-label={t("viewDetails", { title: release.title })} className={styles.cover}>
+    className={`${styles.card} ${homeCompact ? "home-week-card" : ""} ${compact && !homeCompact ? styles.compact : ""} ${limited ? styles.limited : ""} ${showSynopsis ? styles.detail : ""}`}>
+    {!limited && cover && <div aria-hidden className={`${styles.ambient} ${homeCompact ? "home-release-ambient" : ""}`} style={homeCompact ? { backgroundImage: `url("${cover}")`, backgroundSize: "cover" } : undefined}>{!homeCompact && <Image src={cover} alt="" fill unoptimized sizes="220px" className="object-cover" />}</div>}
+    {!limited && <Link href={workHref} aria-label={t("viewDetails", { title: release.title })} className={`${styles.cover} ${homeCompact ? "release-work-cover" : ""}`}>
       {cover ? <Image src={cover} alt="" fill unoptimized sizes="(max-width:640px) 56px, 72px" className="object-cover" />
         : <div aria-hidden className="flex h-full items-center justify-center px-2 text-center font-serif text-xs text-muted-foreground">{release.title}</div>}
     </Link>}
-    <div className={styles.copy}>
-      <p className={`text-[11px] ${MEDIA_ACCENT[release.item_type].text}`}>{t(`types.${release.item_type}`)}</p>
+    <div className={`${styles.copy} ${homeCompact ? "release-work-info" : ""}`}><div className="release-work-info-inner">
+      <p className={`release-work-type text-[11px] ${MEDIA_ACCENT[release.item_type].text}`}>{t(`types.${release.item_type}`)}</p>
       <Link href={workHref} className="hover:underline"><Heading className={styles.title}>{release.title}</Heading></Link>
-      {(release.author || release.subtitle) && <p className="mb-1 break-words text-xs text-muted-foreground">{release.author || release.subtitle}</p>}
-      {release.publisher && <p className="mb-1 text-xs text-muted-foreground">{release.publisher}</p>}
+      {(release.author || release.subtitle) && <p className="release-work-author mb-1 break-words text-xs text-muted-foreground">{release.author || release.subtitle}</p>}
+      {release.publisher && <p className="release-work-publisher mb-1 text-xs text-muted-foreground">{release.publisher}</p>}
       {!compact && gaps.length > 0 && <div className="mb-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
         {gaps.map((gap) => <span key={gap}>{t(gap === "cover" ? "missingCover" : "missingSynopsis")}</span>)}
       </div>}
       {!compact && synopsis?.synopsis_language === "en" && <p className="mb-1 text-xs text-muted-foreground">{t("synopsisEnglish")}</p>}
       {showSynopsis && synopsis && <p className="my-3 whitespace-pre-line break-words text-sm leading-relaxed text-muted-foreground">{synopsis.synopsis}</p>}
-    </div>
-    <div className={styles.metadata}>
+    </div></div>
+    <div className={`${styles.metadata} ${homeCompact ? "release-work-dates" : ""}`}><div className="release-work-dates-inner">
       <div className={styles.dateRows}>
         {exact.map((row) => <ReleaseDateRow pendingAction={row.id === pendingRelease?.id ? pendingAction : null} key={row.id} release={row} authenticated={authenticated} subscribed={Boolean(userState[row.id]?.subscribed)} stateAvailable={stateAvailable} returnPath={returnPath} compact={compact} />)}
         {announced.length > 0 && <>
@@ -72,7 +72,7 @@ export function ReleaseWorkCard({ releases, authenticated = false, userState = {
         </details>
 
       </div>}
-    </div>
+    </div></div>
   </article>;
 }
 

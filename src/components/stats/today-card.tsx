@@ -19,8 +19,11 @@ export async function TodayCard({
   weekly,
   dailyGoalMinutes,
   nextEpisode,
+  compactSummary,
 }: {
   pass: TodayPass;
+  /** Recuento breve de Inicio, solo visible en el estado resumido móvil. */
+  compactSummary?: string;
   /** Solo para la meta de HOY, que es tuya y no de la obra: minutos de lectura
    *  del día, de todos los libros juntos. La racha y los puntos de la semana
    *  salen del propio pase. */
@@ -82,7 +85,7 @@ export async function TodayCard({
 
   return (
     <article
-      className="relative overflow-hidden rounded-[14px] border border-border bg-surface shadow-card"
+      className="today-card relative overflow-hidden rounded-[14px] border border-border bg-surface shadow-card"
       style={{ ["--acc" as string]: `var(${accent.varName})` }}
     >
       <span aria-hidden className="absolute inset-y-0 left-0 z-1 w-1 bg-[var(--acc)]" />
@@ -97,24 +100,24 @@ export async function TodayCard({
           )}
         </Link>
 
-        <div className="min-w-0 flex-1">
+        <div className="today-card-info min-w-0 flex-1">
           {/* Sin el tipo ("Libro · "): ya lo dicen el verbo —lectura/visionado—
               y el color de la tarjeta, así que repetirlo era ruido.
 
               `rereadCount` cuenta los pases CERRADOS ("leído N veces"), no el
               que tienes abierto ahora: el ordinal de ESTE pase es uno más. Sin
               el +1, una segunda lectura se anunciaba como la primera. */}
-          <p className="today-card-nth font-mono text-[9px] tracking-[0.1em] uppercase text-[var(--acc)]">
+          <div className="home-focus-reveal"><p className="today-card-nth font-mono text-[9px] tracking-[0.1em] uppercase text-[var(--acc)]">
             {tPasses(`nth.${item.itemType}`, { n: item.rereadCount + 1 })}
-          </p>
+          </p></div>
           <Link
             href={itemHref(item.itemType, item.itemId)}
-            className="mt-[3px] block font-serif text-base leading-tight font-semibold text-foreground hover:underline"
+            className="today-card-title mt-[3px] block font-serif text-base leading-tight font-semibold text-foreground hover:underline"
           >
             {item.title}
           </Link>
 
-          <p className="today-card-meta font-mono text-[10.5px] text-muted-foreground">
+          <div className="home-focus-reveal"><p className="today-card-meta font-mono text-[10.5px] text-muted-foreground">
             {[
               pass.dayNumber != null ? t("day", { n: pass.dayNumber }) : null,
               pass.startedOn ? t("since", { date: shortDate(pass.startedOn) }) : null,
@@ -122,7 +125,7 @@ export async function TodayCard({
             ]
               .filter(Boolean)
               .join(" · ")}
-          </p>
+          </p></div>
 
           {/* Una película en el foco es una elección del sorteo «para ver», no
               algo a medias: ni barra de progreso ni meta de lectura (minutos)
@@ -134,21 +137,21 @@ export async function TodayCard({
             <p className="mt-2 font-mono text-[10px] text-muted-foreground">{t("pickToWatch")}</p>
           ) : (
             <>
-              <div className="mt-2">
-                <div className="h-[5px] overflow-hidden rounded-full bg-surface-3">
+              <div className="today-card-progress mt-2">
+                <div className="today-card-progress-bar h-[5px] overflow-hidden rounded-full bg-surface-3">
                   <div
                     className="h-full rounded-full bg-[var(--acc)]"
                     style={{ width: `${percent ?? 0}%` }}
                   />
                 </div>
-                <div className="mt-1.5 flex items-center justify-between font-mono text-[10px] text-muted-foreground">
+                <div className="today-card-progress-label mt-1.5 flex items-center justify-between font-mono text-[10px] text-muted-foreground">
                   <span>{progress ? progressLabel(item.itemType, progress, t) : t("noProgress")}</span>
                   {percent != null && <span>{`${percent}%`}</span>}
                 </div>
               </div>
 
               {dailyGoalMinutes ? (
-                <div className="today-card-goal mt-[9px] flex items-center gap-2">
+                <div className="home-focus-reveal"><div><div className="today-card-goal mt-[9px] flex items-center gap-2">
                   <span className="font-mono text-[9px] tracking-[0.05em] whitespace-nowrap uppercase text-muted-foreground">
                     {t("goalToday")}
                   </span>
@@ -158,7 +161,7 @@ export async function TodayCard({
                   <span className="font-mono text-[10px] font-medium text-gold-ink">
                     {t("goalMinutes", { done: todayMinutes, goal: dailyGoalMinutes })}
                   </span>
-                </div>
+                </div></div></div>
               ) : null}
             </>
           )}
@@ -172,7 +175,7 @@ export async function TodayCard({
               (solo WeekDots, más bajos) no encoja la fila y descuadre el destacado
               al intercambiarlo. */}
           {item.itemType !== "movie" && (
-            <div className="today-card-streak mt-2.5 flex min-h-[22px] flex-wrap items-center gap-2">
+            <div className="home-focus-reveal"><div><div className="today-card-streak mt-2.5 flex min-h-[22px] flex-wrap items-center gap-2">
               {pass.streakDays > 0 && (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-gold/16 px-2.5 py-[3px] font-mono text-[10px] font-medium text-gold-ink">
                   <span aria-hidden className="text-gold">
@@ -182,12 +185,13 @@ export async function TodayCard({
                 </span>
               )}
               <WeekDots days={pass.week} />
-            </div>
+            </div></div></div>
           )}
+          {compactSummary && <p className="today-card-summary-meta">{compactSummary}</p>}
         </div>
       </div>
 
-      {actions}
+      <div className="home-focus-reveal today-card-actions">{actions}</div>
     </article>
   );
 }

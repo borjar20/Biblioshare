@@ -8,6 +8,7 @@ import { addDays, madridDay } from "@/lib/releases/precision";
 import { releaseCover } from "@/lib/releases/quality";
 import { RouteMessages } from "@/components/route-messages";
 import { EmptyState } from "@/components/ui/empty-state";
+import { HomeExpandable } from "@/components/home/home-expandable";
 import { AppLogoIcon, CalendarIcon } from "@/components/ui/icons";
 import { ReleaseRetry } from "./release-retry";
 import { ReleaseWorkCard } from "./release-work-card";
@@ -26,7 +27,8 @@ const thisWeekWorks = cache(async (limit: number) => {
 });
 
 /** The public landing uses four slots; the personal Home keeps its narrow rail. */
-export async function ThisWeekReleases({ wide = false }: { wide?: boolean } = {}) {
+export async function ThisWeekReleases({ wide = false, expandable = false }: { wide?: boolean; expandable?: boolean } = {}) {
+  if (expandable) return ExpandableWeekReleases();
   const t = await getTranslations("releases");
   const [result] = await Promise.allSettled([thisWeekWorks(wide ? 4 : 3)]);
   return <RouteMessages ns={["releases"]}>
@@ -39,6 +41,31 @@ export async function ThisWeekReleases({ wide = false }: { wide?: boolean } = {}
         : result.value.length === 0 ? <EmptyState variant="panel" glyph={<CalendarIcon className="h-5 w-5" />} title={t("weekEmpty")} />
           : <div className={wide ? styles.weekGrid : "flex min-w-0 flex-col gap-3"}>{result.value.map((work) => <ReleaseWorkCard key={work.workKey} releases={work.releases} compact />)}</div>}
     </section>
+  </RouteMessages>;
+}
+
+/** El Inicio personal transforma los mismos elementos del resumen al detalle. */
+async function ExpandableWeekReleases() {
+  const t = await getTranslations("releases");
+  const panel = await getTranslations("homePanels");
+  const [result] = await Promise.allSettled([thisWeekWorks(3)]);
+  const works = result.status === "fulfilled" ? result.value : [];
+  const content = <section className="home-week-focus home-focus-card min-w-0" tabIndex={-1}>
+    <div className="home-week-heading mb-3 flex flex-wrap items-baseline justify-between gap-2">
+      <h2 className="home-week-title font-serif text-xl font-semibold">{t("weekTitle")}</h2>
+    </div>
+    {result.status === "rejected" ? <div className="home-week-empty"><EmptyState variant="panel" glyph={<CalendarIcon className="h-5 w-5" />} title={t("loadErrorTitle")} message={t("loadErrorBody")} action={<ReleaseRetry />} /></div>
+      : works.length === 0 ? <div className="home-week-empty"><EmptyState variant="panel" glyph={<CalendarIcon className="h-5 w-5" />} title={t("weekEmpty")} /></div>
+        : <div className="home-release-list flex min-w-0 flex-col gap-3">{works.map((work, index) =>
+          <div key={work.workKey} className="home-release-work-slot" style={{ ["--home-fan-x" as string]: `${index * 23}px`, ["--home-fan-tilt" as string]: `${works.length > 1 ? index === 0 ? -7 : index === works.length - 1 ? 7 : 0 : 0}deg` }}><ReleaseWorkCard releases={work.releases} compact homeCompact /></div>)}</div>}
+    <div className="home-week-navigation-row"><div className="home-week-navigation-inner">
+      <Link href="/novedades" className="home-week-navigation inline-flex min-h-11 items-center justify-center text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground">{t("weekLink")}</Link>
+    </div></div>
+  </section>;
+  return <RouteMessages ns={["releases"]}>
+    <HomeExpandable title={t("weekTitle")} openLabel={panel("openReleases")} closeLabel={panel("close")}
+      className="home-releases-panel home-releases-morph home-shared-panel" summary={<span>{t("weekTitle")}</span>}
+      sectionHeading={<h2 className="home-shared-title">{t("weekTitle")}</h2>} focus={content}>{null}</HomeExpandable>
   </RouteMessages>;
 }
 

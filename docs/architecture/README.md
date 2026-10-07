@@ -75,6 +75,22 @@ y `search` junto con `stats`, `challenges`, `notes` y `rincon`. Un
 en `r-comunidad` y `r-coleccion`. Los textos de `PeopleResults` se componen
 en servidor.
 
+Inicio con sesión incorpora resúmenes y despliegues inline exclusivos bajo
+1100 px; escritorio conserva los paneles completos salvo anuncios semanales
+breves y barras de los laterales ocultas. `r-home` incluye HomeExpandable y su
+contexto en el layout: contenido montado, CSS grid0fr/1fr e inert; limpieza de
+Activity/ruta/breakpoint recoge la vista preservando el estado funcional. Los tres
+paneles transforman elementos persistentes: TodayCard, barras de WeeklyStrip y
+portadas de ReleaseWorkCard. Novedades crece debajo de la crónica sin bloquearla; esta ensancha con ella y
+ResizeObserver reserva la altura real de su resumen multilínea; las tarjetas
+comparten el módulo Paper de `/novedades`;
+el gráfico sin datos conserva el guard de móvil/PC. Evidencia focal en
+[portadas y barras](../testing/2026-10-07-inicio-shared.md). HomeRail
+mide su alto real incluyendo el saludo. `c-wrap-ups` conserva HomeWrapUp y el
+reproductor al pulsar, con identidad fijada y datos reconciliados. Evidencia local
+del delta en [Inicio inline](../testing/2026-10-07-inicio-inline.md); los diseños
+previos son históricos. Publicación seguida en #1453/#1454 y PR #1457.
+
 ## Para agentes: cómo usar `graph.json`
 
 Empieza por **`flows`**. Cada flujo es un recorrido end-to-end (registrar una sesión,

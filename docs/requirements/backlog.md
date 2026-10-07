@@ -34,6 +34,10 @@
 - [ ] Integrar/publicar el candidato visual y verificar las rutas productivas (#1450).
   Evidencia: `docs/testing/2026-10-07-novedades-paper.md` y
   `docs/testing/2026-10-07-novedades-calendar.md`.
+- [x] Implementar resúmenes visuales expandibles del Inicio con sesión en móvil y
+  compactar solo Sale esta semana en PC, con scroll independiente de laterales
+  (#1453/#1454, 2026-10-07; candidato local). Refinado a despliegues dentro de
+  Inicio, manteniendo la crónica como reproductor (PR #1457). Publicación pendiente.
 - [ ] Curar la selección editorial inicial de libros y revisar semanalmente las fuentes.
   Aún no hay filas editoriales, suscripciones ni entregas, así que no se ha probado una
   notificación a usuarios. Seguimiento: [#1423](https://github.com/borjar20/Biblioshare/issues/1423),
