@@ -6,6 +6,7 @@
 import type { ItemType } from "@/lib/catalog/types";
 import { formatDots } from "@/lib/rating/dots";
 import { formatHours, timeKind } from "./format";
+import { summaryForPayload } from "./share-summary";
 import { narratorLine } from "./narrator-copy";
 import type { ItemRef, Story, WrapUpPayload } from "./types";
 
@@ -106,7 +107,7 @@ function deltaLine(total: number, previous: number | null, kind: WrapUpPayload["
  * de cierre, la imagen 9:16 y la tarjeta del feed (mismas reglas de cero honesto).
  */
 export function closingCopy(
-  share: Pick<WrapUpPayload["share"], "minutes" | "episodesWithoutRuntime" | "finished">,
+  share: Pick<WrapUpPayload["share"], "minutes" | "episodesWithoutRuntime" | "finished" | "seriesProgress">,
   t: T,
 ): { figure?: { value: string; unit: string }; lines: string[] } {
   const { minutes, episodesWithoutRuntime } = share;
@@ -116,7 +117,11 @@ export function closingCopy(
     lines: [
       ...tf.lines,
       t(`${K}.closing.finished`, { count: share.finished }),
-      ...(minutes > 0 ? noRuntimeLine(episodesWithoutRuntime, t) : []),
+      ...(share.seriesProgress ? [share.seriesProgress.episodes == null
+        ? t(`${K}.closing.seriesCount`, {count: share.seriesProgress.count})
+        : t(`${K}.closing.seriesProgress`, {count: share.seriesProgress.count, episodes: share.seriesProgress.episodes})] : []),
+      ...(minutes > 0 && episodesWithoutRuntime > 0 ? [t(share.seriesProgress?.episodes != null
+        ? `${K}.closing.episodesWithoutRuntime` : `${K}.time.episodesWithoutRuntime`, {count: episodesWithoutRuntime})] : []),
     ],
   };
 }
@@ -309,8 +314,10 @@ export function posterFor(story: Story, payload: WrapUpPayload, t: T): PosterMod
         ],
       });
 
-    case "closing":
-      return make("closing", { layout: "closing", ...closingCopy(payload.share, t), covers: payload.share.covers });
+    case "closing": {
+      const summary = summaryForPayload(payload);
+      return make("closing", { layout: "closing", ...closingCopy(summary, t), covers: summary.covers });
+    }
 
     default: {
       const _never: never = story;

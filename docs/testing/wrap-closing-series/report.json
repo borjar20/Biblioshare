@@ -1,0 +1,51 @@
+{
+  "cases": [
+    {
+      "label": "320-light-closing",
+      "minContrast": 17.48,
+      "horizontalClipping": [],
+      "documentOverflow": false,
+      "scrollReachable": true
+    },
+    {
+      "label": "320-dark-closing",
+      "minContrast": 17.48,
+      "horizontalClipping": [],
+      "documentOverflow": false,
+      "scrollReachable": true
+    },
+    {
+      "label": "390-light-closing",
+      "minContrast": 17.48,
+      "horizontalClipping": [],
+      "documentOverflow": false,
+      "scrollReachable": false
+    },
+    {
+      "label": "390-dark-closing",
+      "minContrast": 17.48,
+      "horizontalClipping": [],
+      "documentOverflow": false,
+      "scrollReachable": false
+    },
+    {
+      "label": "1440-light-closing",
+      "minContrast": 17.48,
+      "horizontalClipping": [],
+      "documentOverflow": false,
+      "scrollReachable": false
+    },
+    {
+      "label": "1440-dark-closing",
+      "minContrast": 17.48,
+      "horizontalClipping": [],
+      "documentOverflow": false,
+      "scrollReachable": false
+    }
+  ],
+  "errors": [],
+  "cleanup": {
+    "actorDeleted": true,
+    "wrapUps": 0
+  }
+}

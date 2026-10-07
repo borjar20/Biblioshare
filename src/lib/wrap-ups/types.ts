@@ -47,7 +47,8 @@ export type ShareSummary = {
   kind: WrapUpKind; periodStart: string; periodEnd: string;
   narrator: NarratorVariant; palette: Palette;
   minutes: number; episodesWithoutRuntime: number; finished: number;
-  covers: ItemRef[];               // máx. 4
+  seriesProgress?: { count: number; episodes: number | null }; // null: story antigua truncada
+  covers: ItemRef[];               // máx. 4, terminadas y avances
   pet: OwnPet | null;
 };
 

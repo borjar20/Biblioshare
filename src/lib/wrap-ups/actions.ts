@@ -7,6 +7,7 @@ import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { buildWrapUp } from "./build";
 import { getOwnWrapUp } from "./get-own-wrap-ups";
+import { summaryForPayload } from "./share-summary";
 import { canRefresh } from "./refresh-policy";
 import { isWrapUpKind, wrapUpWindow, type WrapUpKind } from "./windows";
 
@@ -65,6 +66,25 @@ export async function publishWrapUp(
   kind: WrapUpKind,
 ): Promise<{ ok: true; postId: string } | { ok: false; reason: string }> {
   assertKind(kind);
+  const row = await getOwnWrapUp(kind);
+  if (row && !row.publishedPostId) {
+    const summary = summaryForPayload(row.payload);
+    if (summary !== row.payload.share) {
+      const user = await getCurrentUser();
+      if (!user) return { ok: false, reason: "not_found" };
+      // Adaptación del formato guardado, no recálculo: mismas facts y timestamps.
+      // La adaptación no pisa cambios de cron, Actualizar u otra publicación.
+      const admin = createServiceRoleClient();
+      let update = admin.from("wrap_ups")
+        .update({ payload: { ...row.payload, share: summary } as never })
+        .eq("user_id", user.id).eq("kind", kind).eq("period_start", row.payload.periodStart)
+        .eq("generated_at", row.generatedAt).is("published_post_id", null);
+      update = row.refreshedAt == null ? update.is("refreshed_at", null) : update.eq("refreshed_at", row.refreshedAt);
+      const { data, error } = await update.select("kind");
+      if (error) throw error;
+      if (!data?.length) return { ok: false, reason: "wrap_up_changed" };
+    }
+  }
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("publish_wrap_up", { p_kind: kind });
   if (error) return { ok: false, reason: error.message };

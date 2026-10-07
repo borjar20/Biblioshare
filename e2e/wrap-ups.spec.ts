@@ -90,6 +90,16 @@ test.describe("crónicas (wrap-ups)", () => {
     await expect(player.getByRole("heading", {name: /Tus avances en series/})).toBeVisible();
     await expect(player.getByText("The Bear · 3 episodios vistos esta semana", {exact: true})).toBeVisible();
     await expect(player).not.toContainText("temporada completada");
+    await a.keyboard.press("ArrowRight");
+    await expect(player.getByText("3 episodios vistos en 1 serie", {exact: true})).toBeVisible();
+    await player.getByRole("button", {name: "Publicar en el feed", exact: true}).click();
+    await expect(player.getByText("Publicado", {exact: true})).toBeVisible();
+    const {data: shared, error} = await admin.from("wrap_up_shares").select("summary").eq("user_id", ownerId).eq("kind", "week").single();
+    if (error) throw error;
+    expect(shared?.summary).toMatchObject({seriesProgress: {count: 1, episodes: 3}});
+    await a.keyboard.press("Escape");
+    await a.goto("/");
+    await expect(a.getByTestId("wrap-up-feed-card").getByText("3 episodios vistos en 1 serie", {exact: true})).toBeVisible();
   });
 
   test("abrir, avanzar, publicar y verlo desde un seguidor", async ({ browser }) => {

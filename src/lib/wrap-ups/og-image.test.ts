@@ -142,3 +142,9 @@ describe("sprites", () => {
     expect(await petPng({ name: "B", petClass: "bard", stage: "young" })).not.toBeNull();
   });
 });
+
+it("la imagen final incluye el mismo avance en series", () => {
+ const copy=wrapUpImageCopy({...base, seriesProgress:{count:2,episodes:8}});
+ expect(copy.lines).toContain("8 episodios vistos en 2 series");
+ expect(copy.lines).toContain("De ellos, 2 episodios sin duración conocida");
+});
