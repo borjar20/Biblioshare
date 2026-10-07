@@ -103,7 +103,8 @@ editor de catálogo inline (banner + barra sticky).
    Desde 1100 px se conservan los bloques completos; solo los anuncios semanales
    reducen su tamaño, con título, modalidades, fechas y acceso a `/novedades`.
    Ambos laterales tienen scroll propio, con altura medida desde su posición real
-   hasta el borde inferior del viewport. Esqueletos equivalentes, Escape, cierre
+   hasta el borde inferior del viewport. En PC las barras quedan ocultas; rueda,
+   touchpad y teclado mantienen el acceso al contenido. Esqueletos equivalentes, Escape, cierre
    por fondo y movimiento reducido. La navegación y el cambio de breakpoint
    liberan las capas. Evidencia: `docs/testing/2026-10-07-inicio-expandible.md`.
 

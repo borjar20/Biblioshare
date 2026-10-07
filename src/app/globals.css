@@ -941,7 +941,8 @@ body {
 .home-wrap-skeleton { height:104px; margin-bottom:12px; }
 .home-today-mobile-skeleton,.home-small-mobile-skeleton { display:none; }
 @media(min-width:1100px) {
- .home-grid > [data-area="personal"],.home-grid > [data-area="stats"] { max-height:var(--home-rail-height,calc(100dvh - var(--topbar-h) - 112px)); overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-gutter:stable; }
+ .home-grid > [data-area="personal"],.home-grid > [data-area="stats"] { max-height:var(--home-rail-height,calc(100dvh - var(--topbar-h) - 112px)); overflow-y:auto; overscroll-behavior:contain; scrollbar-width:none; scrollbar-gutter:auto; }
+ .home-grid > [data-area="personal"]::-webkit-scrollbar,.home-grid > [data-area="stats"]::-webkit-scrollbar { display:none; width:0; height:0; }
 }
 @media(max-width:1099px) {
  .home-personal { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; align-items:start; }

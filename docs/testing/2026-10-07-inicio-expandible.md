@@ -37,3 +37,18 @@ La primera suite general leyó una regresión RED de HomeWrapUp mientras se aña
 Capturas finales de app en el directorio de visualizaciones de esta conversación: home-320.png, home-390.png, home-768.png, home-desktop.png y home-expanded.png. La captura ampliada se toma tras terminar WAAPI; una captura anterior durante el fade no representa el estado final.
 
 Entorno cerrado: puerto 3000 sin listener; proyecto Docker local biblioshare-local-cdfa98e0 detenido sin backup. Se restaura la copia local del entorno de desarrollo y se retira la build de QA con sus claves sintéticas. El worktree administrado y la rama se conservan para revisar los cambios. No se publica ni se integra en main.
+
+
+## Delta visual — barras ocultas en PC (2026-10-07, PR #1457)
+
+El usuario solicita retirar las barras visibles de los laterales. Ajuste CSS
+limitado a >=1100 px: scrollbar-width:none, gutter auto y pseudo-elemento WebKit
+oculto; overflow-y:auto conserva el acceso a los últimos anuncios.
+
+Prueba focal de estilos en Chromium con globals.css real y DOM representativo,
+1280×680: ambos laterales reportan scrollbarWidth=none, gutter=0 y recorrido
+máximo187px. La rueda alcanza187px; PageDown inicia desplazamiento en ambos,
+mientras scrollY de la página se mantiene0. A390×844, el lateral personal vuelve
+a overflow visible/max-height none. Esta prueba no requiere login ni backend;
+la suite general y los seis E2E anteriores corresponden al corte funcional previo.
+Artefacto local: .superpowers/qa/2026-10-07-inicio-expandible/scrollbar-check.json.

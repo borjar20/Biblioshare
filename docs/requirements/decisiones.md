@@ -6867,3 +6867,17 @@ bajo 640 px para que el primer post aparezca antes; no se añade navegación ent
 paneles. El alcance no incluye el rediseño público de #1450. Verificación local y
 límites en `docs/testing/2026-10-07-inicio-expandible.md`; publicación seguida en
 #1453/#1454. La prueba intermitente previa de retirada de aviso se sigue en #1456.
+
+
+## 2026-10-07 — Ocultar las barras de los laterales de Inicio en PC (#1457)
+
+Ajuste visual solicitado por el usuario: las barras en medio de la pantalla
+resultaban molestas. Los laterales conservan overflow-y:auto y la altura acotada,
+con scrollbar-width:none y el equivalente WebKit, sin reserva de gutter. Se
+mantiene el desplazamiento por rueda/touchpad/teclado para alcanzar todos los
+anuncios desde el principio del feed. El cambio se limita a >=1100 px.
+
+Prueba focal Chromium con el CSS real y contenido representativo: ambos laterales
+sin barra ni gutter, rueda y PageDown desplazan el contenido; la página permanece
+en scrollY=0. Bajo 1100 px la regla vuelve a overflow visible/max-height none.
+Evidencia en docs/testing/2026-10-07-inicio-expandible.md.
