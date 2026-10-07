@@ -53,12 +53,14 @@ async function ExpandableWeekReleases() {
   const content = <section className="home-week-focus home-focus-card min-w-0" tabIndex={-1}>
     <div className="home-week-heading mb-3 flex flex-wrap items-baseline justify-between gap-2">
       <h2 className="home-week-title font-serif text-xl font-semibold">{t("weekTitle")}</h2>
-      <Link href="/novedades" className="home-week-navigation inline-flex min-h-11 items-center text-xs text-muted-foreground underline hover:text-foreground">{t("weekLink")}</Link>
     </div>
     {result.status === "rejected" ? <div className="home-week-empty"><EmptyState variant="panel" glyph={<CalendarIcon className="h-5 w-5" />} title={t("loadErrorTitle")} message={t("loadErrorBody")} action={<ReleaseRetry />} /></div>
       : works.length === 0 ? <div className="home-week-empty"><EmptyState variant="panel" glyph={<CalendarIcon className="h-5 w-5" />} title={t("weekEmpty")} /></div>
         : <div className="home-release-list flex min-w-0 flex-col gap-3">{works.map((work, index) =>
           <div key={work.workKey} className="home-release-work-slot" style={{ ["--home-fan-x" as string]: `${index * 23}px`, ["--home-fan-tilt" as string]: `${works.length > 1 ? index === 0 ? -7 : index === works.length - 1 ? 7 : 0 : 0}deg` }}><ReleaseWorkCard releases={work.releases} compact homeCompact /></div>)}</div>}
+    <div className="home-week-navigation-row"><div className="home-week-navigation-inner">
+      <Link href="/novedades" className="home-week-navigation inline-flex min-h-11 items-center justify-center text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground">{t("weekLink")}</Link>
+    </div></div>
   </section>;
   return <RouteMessages ns={["releases"]}>
     <HomeExpandable title={t("weekTitle")} openLabel={panel("openReleases")} closeLabel={panel("close")}

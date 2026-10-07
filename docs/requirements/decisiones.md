@@ -7089,3 +7089,12 @@ antiguo. Inicio mantiene su abanico con una portada persistente por obra y el
 escritorio compacto; las acciones y consultas conservan su alcance. El fondo
 ambiental de Inicio usa la misma imagen como fondo CSS, sin duplicar la portada
 principal durante el morph. Evidencia en `docs/testing/2026-10-07-inicio-shared.md`.
+
+## 2026-10-07 — Ver todas las novedades cierra el bloque semanal de Inicio (#1457)
+
+El acceso al calendario se sitúa después de las tarjetas, centrado y con 44 px de
+altura táctil y 12 px de separación. La cabecera personal de Sale esta semana
+queda para el título y su cierre centrado; en móvil el enlace aparece con el mismo
+despliegue de la tarjeta. El estado sin anuncios/error mantiene ese acceso al pie.
+La landing pública conserva su cabecera. Sin cambios de consultas ni de copy.
+Evidencia en `docs/testing/2026-10-07-inicio-shared.md`.

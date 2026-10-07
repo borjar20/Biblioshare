@@ -143,3 +143,25 @@ Verificación final del corte:
   10 px descrita arriba corresponde al estado final, no a cada fotograma del recorrido.
 - El aviso incidental de RSC «destination stream closed early» al abandonar una
   navegación dev conserva su seguimiento previo en #1301; no hubo error de página.
+
+## Acceso a Novedades al pie, centrado
+
+Último ajuste de cabecera solicitado el 2026-10-07: mover Ver todas las novedades
+debajo del contenido. RED Chromium: el enlace seguía por encima de los anuncios.
+GREEN: enlace tras la última tarjeta (o estado vacío/error), centro horizontal a
+menos de 0,5 px del centro del bloque, 12 px de separación y altura de 44 px.
+Se comprueba el borde pulsable después de desplazar la página hasta el pie.
+
+El enlace permanece montado y su fila crece de 0fr a 1fr con el morph; con movimiento
+reducido no se anima. La flecha de cierre comparte el centro del título. El Inicio
+personal usa el mismo pie en PC, conservando portadas de 36 px y padding de 10 px;
+la landing pública mantiene su enlace original en cabecera.
+
+- Probe de slots y componentes reales: 320/390/520/768/1099/1280, claro/oscuro,
+  reduced motion, fotogramas 0/160/final/reverso, crónica presente/ausente,
+  vacíos/error/cold, identidad persistente y controles: PASS.
+- Cinco unitarios focales en `home-shared-panels` y `this-week-releases` PASS;
+  además se materializaron los slots SSR con una prueba temporal de QA, retirada.
+- TypeScript, ESLint y `diff --check` PASS. E2E de CI incorpora las aserciones de
+  posición, centrado y área táctil; la suite autenticada completa no se repite
+  en este ajuste de presentación. El build/start previo conserva su alcance.

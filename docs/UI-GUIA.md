@@ -105,8 +105,10 @@ editor de catálogo inline (banner + barra sticky).
    miniatura al gráfico. Sale esta semana convierte el mismo abanico de portadas
    en las tarjetas Paper de `/novedades`, creciendo a todo el ancho debajo de
    la crónica. Esta ensancha en la misma transición; el período puede ocupar
-   varias líneas y su altura real reserva el espacio de los lanzamientos. El cierre de novedades ocupa su propia zona de 44 px,
-   con 12 px de separación respecto al título y «Ver todas las novedades».
+   varias líneas y su altura real reserva el espacio de los lanzamientos.
+   El cierre de novedades ocupa 44 px y se centra con el título.
+   «Ver todas las novedades» queda al pie de los anuncios, centrado y con
+   12 px de separación de la última tarjeta; también se conserva sin resultados.
    En Tu semana, el cierre se centra verticalmente respecto al título y conserva
    sus 44 px de área de pulsación, también cuando aún no hay actividad.
    Los títulos siguen visibles en ambos estados. Al recoger,

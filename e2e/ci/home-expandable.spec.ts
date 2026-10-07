@@ -191,6 +191,11 @@ for (const width of [320, 390, 768]) test(`resúmenes, obra elegida, crónica fi
   expect((await weekCovers[0].boundingBox())!.width).toBeCloseTo(width <= 640 ? 56 : 72, 0);
   const closeBox = (await weekPanel.locator(".home-focus-collapse").boundingBox())!;
   const calendarBox = (await releasesDialog.getByRole("link", { name: "Ver todas las novedades", exact: true }).boundingBox())!;
+  const lastRelease = (await releasesDialog.locator(".home-release-work-slot").last().boundingBox())!;
+  const weeklyCard = (await releasesDialog.locator(".home-week-focus").boundingBox())!;
+  expect(calendarBox.y).toBeGreaterThanOrEqual(lastRelease.y + lastRelease.height + 11);
+  expect(calendarBox.x + calendarBox.width / 2).toBeCloseTo(weeklyCard.x + weeklyCard.width / 2, 0);
+  expect(calendarBox.height).toBeGreaterThanOrEqual(44);
   expect(closeBox.x + closeBox.width <= calendarBox.x || calendarBox.x + calendarBox.width <= closeBox.x ||
     closeBox.y + closeBox.height <= calendarBox.y || calendarBox.y + calendarBox.height <= closeBox.y).toBe(true);
   await releasesDialog.getByRole("button", { name: "Recoger: Sale esta semana", exact: true }).click(); await expect(releasesDialog).toBeHidden();
