@@ -130,7 +130,9 @@ editor de catálogo inline (banner + barra sticky).
    meses distintos); no asigna día a fechas parciales. Los anuncios con sólo mes aparecen
    en ese mes, y los de año/fecha desconocida en «Sin mes confirmado». «Información
    limitada» está accesible arriba, sin atravesar toda la agenda. En móvil el calendario
-   precede a la lista; en escritorio permanece en el lateral. URL/historial conservan
+   precede a la lista; en escritorio permanece en el lateral. «Volver arriba» aparece
+   al bajar en móvil, por encima de la barra inferior y con retorno del foco al título;
+   respeta movimiento reducido. URL/historial conservan
    mes, día, vista y filtros, también al volver del login. Los filtros
    rápidos mantienen selección y mercado; fuente/revisión por modalidad quedan en un
    desplegable de 44 px. Pendiente aparece en la fila del lanzamiento que ejecuta;

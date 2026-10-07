@@ -98,6 +98,7 @@ día, portadas 72/56 px y fuentes plegables. El calendario lateral conserva esas
 limita la agenda al mes/día elegido y da acceso directo a Información limitada y Sin mes
 confirmado. Cada modalidad exacta marca su día real; las fechas parciales no reciben un
 día artificial. La URL, el historial y el retorno del login mantienen mes/día/vista/filtros.
+En móvil, Volver arriba aparece al bajar, respeta movimiento reducido y retorna al título.
 El ancla de una obra prioriza su próxima fecha publicada dentro del período y conserva
 los avisos históricos dentro de ella. Integración/publicación pendientes en PR #1455;
 evidencia y límites en `docs/testing/2026-10-07-novedades-paper.md` y

@@ -46,3 +46,6 @@
 }
 
 .day[aria-pressed="true"] .today { text-decoration-color:var(--accent-foreground); }
+
+.backToTop { position:fixed; left:max(1rem,env(safe-area-inset-left)); bottom:calc(5.25rem + env(safe-area-inset-bottom)); z-index:30; min-height:44px; background:var(--surface); box-shadow:0 3px 12px rgb(0 0 0 / .14); }
+@media(min-width:768px) { .backToTop { display:none; } }

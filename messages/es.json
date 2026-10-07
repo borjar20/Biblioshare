@@ -93,7 +93,8 @@
     "calendarEmptyUnplaced": "No hay anuncios sin mes confirmado",
     "calendarEmptyBody": "Puedes elegir otro día, mes o vista para explorar los anuncios disponibles.",
     "calendarUnplacedHint": "Estos anuncios indican sólo el año o aún no tienen fecha. Se mantienen accesibles desde cualquier mes.",
-    "calendarFocusedOnly": "La obra seleccionada se muestra arriba con todos sus detalles."
+    "calendarFocusedOnly": "La obra seleccionada se muestra arriba con todos sus detalles.",
+    "backToTop": "Volver arriba"
   },
   "releaseAdmin": {
     "title": "Novedades de libros",

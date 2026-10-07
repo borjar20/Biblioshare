@@ -47,7 +47,8 @@ etiqueta breve del botón compacto; su nombre accesible sigue siendo **Añadir a
 El calendario lateral del candidato muestra **Estrenos** e **Información limitada**
 para el mes o día consultado; **Sin mes confirmado** reúne anuncios con año o fecha
 por confirmar, accesibles desde cualquier mes. **Ir a un mes**, **Mes actual** y
-**Ver mes completo** navegan sin inventar una fecha exacta.
+**Ver mes completo** navegan sin inventar una fecha exacta. **Volver arriba** devuelve
+al título de Novedades desde la lista móvil sin cambiar el período ni los filtros.
 Integración/publicación pendientes; no cambia el vocabulario de acciones ni su efecto.
 La administración usa **Borrador**, **Publicado**, **Cancelado**, **Revisar** y
 **Publicar**; publicar un anuncio no registra la obra en su biblioteca.

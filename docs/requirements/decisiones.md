@@ -6891,3 +6891,18 @@ se muestra una sola vez arriba y conserva el mes implícito al cerrarse con un f
 
 Estado: candidato local en PR #1455; integración/publicación pendientes en #1450.
 Evidencia y límites: docs/testing/2026-10-07-novedades-calendar.md.
+
+## 2026-10-07 — Volver arriba en Novedades móvil
+
+Se añade a petición del usuario un control flotante Paper, sólo bajo 768 px, visible
+después de bajar 480 px. Se coloca a la izquierda con separación de la barra inferior
+y safe-area, dejando libre la zona derecha de la mascota. Su objetivo mide 44 px.
+
+La suscripción pasiva usa useSyncExternalStore con snapshot SSR falso y limpieza del
+listener. Al activar, enfoca el h1 de su propia página y vuelve a scroll 0, suave o
+instantáneo según prefers-reduced-motion. No cambia URL, filtros ni período. Se monta
+también en estados de error/vacío, fuera del Suspense de los datos.
+
+Estado: candidato local de PR #1455; publicación pendiente en #1450. Tres regresiones
+RED→GREEN, 26 focales de página/calendario, 24 E2E y 548 archivos/5441 unitarios PASS.
+Los dos timeouts iniciales de escaneo y su control aislado se conservan en #1459.

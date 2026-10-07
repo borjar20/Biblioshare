@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { Children, Suspense, isValidElement, useSyncExternalStore, type ReactElement } from "react";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { Children, Suspense, cloneElement, isValidElement, useSyncExternalStore, type ReactElement } from "react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { createTranslator, NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import messages from "../../../messages/es.json";
@@ -190,4 +190,49 @@ it("cerrar el detalle mediante un filtro conserva el mes visible derivado de ese
   const path = new URL(filters.getByRole("link", { name: "Libros" }).getAttribute("href")!, "http://localhost");
   expect(path.searchParams.get("mes")).toBe("2027-02");
   expect(path.searchParams.has("lanzamiento")).toBe(false);
+});
+
+async function displayPageWithTopControl() {
+  const root = await ReleasesPage({ searchParams: Promise.resolve({}) });
+  const content = await body();
+  const children = Children.map(root.props.children, (child) => isValidElement(child) && child.type === Suspense ? content : child);
+  return render(<NextIntlClientProvider locale="es" timeZone="Europe/Madrid" messages={{ releases: messages.releases }}>{cloneElement(root, {}, children)}</NextIntlClientProvider>);
+}
+function scrollPageTo(top: number) {
+  act(() => { vi.stubGlobal("scrollY", top); window.dispatchEvent(new Event("scroll")); });
+}
+
+describe("volver arriba desde la lista de novedades", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  it("aparece al bajar y desaparece al volver al inicio", async () => {
+    vi.stubGlobal("scrollY", 0);
+    await displayPageWithTopControl();
+    expect(screen.queryByRole("button", { name: "Volver arriba" })).toBeNull();
+    scrollPageTo(700);
+    expect(screen.getByRole("button", { name: "Volver arriba" })).toBeTruthy();
+    scrollPageTo(0);
+    expect(screen.queryByRole("button", { name: "Volver arriba" })).toBeNull();
+  });
+  it("devuelve scroll y foco al título sin modificar la URL", async () => {
+    vi.stubGlobal("scrollY", 700);
+    vi.stubGlobal("matchMedia", () => ({ matches: false }));
+    vi.stubGlobal("scrollTo", (options: ScrollToOptions) => scrollPageTo(options.top ?? 0));
+    await displayPageWithTopControl();
+    const path = window.location.href;
+    fireEvent.click(screen.getByRole("button", { name: "Volver arriba" }));
+    expect(window.scrollY).toBe(0);
+    expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Novedades", level: 1 }));
+    expect(window.location.href).toBe(path);
+    expect(screen.queryByRole("button", { name: "Volver arriba" })).toBeNull();
+  });
+  it("vuelve sin animación cuando se prefiere movimiento reducido", async () => {
+    vi.stubGlobal("scrollY", 700);
+    vi.stubGlobal("matchMedia", () => ({ matches: true }));
+    const movement: ScrollBehavior[] = [];
+    vi.stubGlobal("scrollTo", (options: ScrollToOptions) => { movement.push(options.behavior!); scrollPageTo(options.top ?? 0); });
+    await displayPageWithTopControl();
+    fireEvent.click(screen.getByRole("button", { name: "Volver arriba" }));
+    expect(window.scrollY).toBe(0);
+    expect(movement).toEqual(["instant"]);
+  });
 });

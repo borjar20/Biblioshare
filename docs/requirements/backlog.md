@@ -27,7 +27,8 @@
   `docs/testing/2026-10-07-novedades-quality.md`.
 - [x] Implementar y verificar localmente el rediseño Paper de Inicio y Novedades (#1450).
 - [x] Añadir calendario lateral por mes/día, acceso directo a información limitada y
-  anuncios sin mes, conservando las tarjetas Paper (#1450, candidato en PR #1455).
+  anuncios sin mes y Volver arriba móvil, conservando las tarjetas Paper (#1450,
+  candidato en PR #1455).
 - [ ] Integrar/publicar el candidato visual y verificar las rutas productivas (#1450).
   Evidencia: `docs/testing/2026-10-07-novedades-paper.md` y
   `docs/testing/2026-10-07-novedades-calendar.md`.

@@ -19,6 +19,7 @@ import { madridDay } from "@/lib/releases/precision";
 import { releaseCalendarState } from "@/lib/releases/calendar";
 import { ReleaseCalendarAgenda, ReleaseFocusedWorkCard } from "@/components/releases/release-calendar-agenda";
 import { ReleaseFilterControls } from "@/components/releases/release-filters";
+import { ReleaseBackToTop } from "@/components/releases/release-back-to-top";
 import { releaseInformationGaps } from "@/lib/releases/quality";
 import type { CulturalRelease } from "@/lib/releases/types";
 import type { ReleaseUserState } from "@/components/releases/release-view";
@@ -31,10 +32,11 @@ type Selection = "explore" | "personal";
 
 export default async function ReleasesPage({ searchParams }: { searchParams: Promise<ReleasesSearchParams> }) {
   const t = await getTranslations("releases");
-  return <div className={`mx-auto flex w-full ${SHELL_GRID} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}>
+  return <div id="novedades-inicio" className={`mx-auto flex w-full ${SHELL_GRID} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}>
     <PageHeader title={t("title")} />
     <p className="-mt-3 text-sm text-muted-foreground">{t("intro")}</p>
     <Suspense fallback={<ReleasesSkeleton />}><ReleasesContent searchParams={searchParams} /></Suspense>
+    <ReleaseBackToTop />
   </div>;
 }
 

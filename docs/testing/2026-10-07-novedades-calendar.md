@@ -126,3 +126,52 @@ bajo .scratch/novedades-quality/.
 
 Integración/publicación: #1450 y PR #1455. Enriquecimiento diario: #1451.
 Curación editorial: #1423. Ninguna se cierra por añadir el calendario.
+
+## Extensión móvil — Volver arriba (2026-10-07)
+
+El usuario pide volver al principio desde la lista móvil. El botón Paper aparece al
+superar 480 px de scroll, sólo bajo 768 px, a la izquierda y por encima de la barra
+inferior. Regresa a scroll 0 y al foco del título; respeta movimiento reducido y
+conserva mes, día, vista y filtros. Funciona también si la consulta de datos falla.
+
+| Comprobación del añadido | Resultado |
+|---|---|
+| Tres regresiones de aparición, foco/URL y movimiento reducido | RED antes del botón; GREEN después |
+| Página y calendario | 26/26 unitarios focales PASS |
+| Build Next 16.3.8, TypeScript sin incremental y ESLint | PASS |
+| Suite general final | 548 archivos / 5441 pruebas PASS, 280,20 s |
+| Recorridos Novedades/Inicio, incluidos dos nuevos móviles | 24/24 PASS, 1,1 min |
+| Refuerzo de ocultación desktop con scroll >480 px real | 2/2 móviles PASS, 9,2 s |
+| Revisión independiente | Sin hallazgos de código |
+| Captura móvil con la muestra real | PASS, 390 px oscuro, vuelta al título y cero pageerror |
+
+Los casos nuevos cubren 320 px sin movimiento reducido, 390 px con movimiento reducido
+y sesión, objetivo de 44 px, separación de la navegación inferior, activación con Enter,
+scroll 0, foco en h1 y URL intacta. La comprobación desktop aumenta sólo la altura del
+body en el navegador de prueba para garantizar scroll >480 px y distinguir ocultación
+por CSS de ausencia de scroll suficiente.
+
+La muestra real mide botón 121×44 px, x=16/y=722 en 390×850 px; termina en y=766,
+17 px antes de la barra inferior (y=783). La captura conserva las mismas tarjetas.
+Es una comprobación de la posición en esa muestra, no ausencia de toda oclusión posible.
+
+![Volver arriba en móvil con portadas reales](novedades-paper/volver-arriba-390-dark.png)
+
+La primera suite general coincidió con bootstrap/build local y registró dos timeouts
+de 5000 ms: contraste-tokens (11.006 ms de escaneo) y revalidate-guard (14.204 ms).
+Resultado inicial: 2 FAIL/5439 PASS. Ambos archivos permanecen intactos; su repetición
+aislada pasó 81/81 en 1,64 s (tests 833 ms). La suite final sin bootstrap/build simultáneo
+pasa 5441/5441, sin aumentar límites ni omitir casos. La causa de la lentitud sigue
+sin confirmar en [#1459](https://github.com/borjar20/Biblioshare/issues/1459).
+
+Una sesión ajena ocupó transitoriamente 3000: no se detuvo su servidor, se esperó a
+que quedara libre. La QA siguió usando sólo la base propia en 55421 y los providers
+temporales descritos arriba, restaurados sin diff. La muestra se borra por REST y
+el servidor/base propios se detienen después de capturar. No hay migraciones nuevas
+ni acceso a datos productivos. Los errores de streaming conservan el seguimiento #1263.
+
+Recibos del añadido en .scratch/novedades-quality/: mobile-top-red.log,
+mobile-top-green.log, mobile-top-build.log, mobile-top-lint-final.log,
+mobile-top-typecheck.log, mobile-top-e2e.log, mobile-top-desktop-proof.log,
+mobile-top-unit-overlap-red.log, mobile-top-scans-recheck.log,
+mobile-top-unit-final.log y mobile-top-preview-result.json.
