@@ -4,8 +4,8 @@
 > excepción de mascota verificada el 2026-09-09; navegación principal y perfil
 > verificados contra código el 2026-10-03 (local/dev); cabecera y panel de
 > notificaciones verificados contra código y build/start local el 2026-10-04
-> (#1349; siete E2E focales PASS; candidato local); Inicio expandible verificado
-> en build/start local el 2026-10-07 (#1453/#1454)]**
+> (#1349; siete E2E focales PASS; candidato local); Inicio refinado a despliegues inline
+> en build/start local el 2026-10-07 (#1453/#1454, PR #1457)]**
 >
 > Los patrones que toda pantalla nueva debe cumplir y los que hay que corregir al
 > tocar pantallas viejas. La piel (tokens, tipografía, capturas Paper) vive en
@@ -93,20 +93,22 @@ editor de catálogo inline (banner + barra sticky).
    pinta su abanico con tres huecos punteados, no 168px de blanco.
 8. **Un nombre por concepto.** Glosario canónico en **`docs/UI-GLOSARIO.md`**;
    i18n y páginas usan el término del glosario y nada más.
-   **Inicio con sesión (2026-10-07, #1453/#1454; candidato local).** Bajo 1100 px,
-   Hoy ocupa una tarjeta visual con portada, progreso y acceso directo a sesión;
-   crónica y Sale esta semana comparten fila y la actividad queda en un resumen.
-   Pulsar amplía el contenido completo desde la tarjeta; cerrar devuelve foco y
-   scroll sin reiniciar la obra elegida. Los estados de cola, colección y
-   descubrimiento conservan sus controles. La crónica solo se marca vista al
-   abrir: mantiene su identidad y recibe los datos nuevos tras publicar o actualizar.
-   Desde 1100 px se conservan los bloques completos; solo los anuncios semanales
-   reducen su tamaño, con título, modalidades, fechas y acceso a `/novedades`.
-   Ambos laterales tienen scroll propio, con altura medida desde su posición real
-   hasta el borde inferior del viewport. En PC las barras quedan ocultas; rueda,
-   touchpad y teclado mantienen el acceso al contenido. Esqueletos equivalentes, Escape, cierre
-   por fondo y movimiento reducido. La navegación y el cambio de breakpoint
-   liberan las capas. Evidencia: `docs/testing/2026-10-07-inicio-expandible.md`.
+   **Inicio con sesión (2026-10-07, #1453/#1454; PR #1457).** Bajo 1100 px,
+   Hoy ocupa una tarjeta visual con portada, progreso y sesión directa; crónica
+   y Sale esta semana comparten fila y la actividad queda en un resumen.
+   Pulsar despliega el detalle dentro de Inicio, con un solo bloque abierto.
+   Hoy y Actividad convierten su resumen en cabecera; las novedades muestran
+   el detalle a todo el ancho bajo las dos tarjetas. El contenido permanece
+   montado, con foco de vuelta al recoger y desplazamiento de página normal.
+   La crónica conserva su reproductor y solo se marca vista al abrir; recibe
+   los datos nuevos tras publicar o actualizar. Cola, colección y descubrimiento
+   mantienen sus controles. Activity y la navegación recogen el bloque al salir,
+   conservando la obra elegida y su estado funcional. Desde 1100 px se mantienen
+   los paneles completos; solo los anuncios semanales reducen tamaño y enlazan
+   a `/novedades`. Ambos laterales miden su altura real, con barras ocultas y
+   acceso por rueda/teclado. Esqueletos equivalentes, contenido plegado fuera
+   del foco, Escape respetando hojas internas y movimiento reducido. Evidencia
+   local: `docs/testing/2026-10-07-inicio-inline.md`.
 
 9. **Toda feature cuelga de la navegación.** Ruta no alcanzable desde su área =
    o se le da entrada o se registra acta de por qué es contextual. **Aplicado

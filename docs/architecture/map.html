@@ -337,7 +337,7 @@
       "label": "/ · (home)",
       "layer": "route",
       "kind": "route",
-      "summary": "Feed social y paneles personales. Bajo 1100: resúmenes visuales expandibles; escritorio completo con Novedades breve y scroll independiente.",
+      "summary": "Feed social y paneles personales. Bajo 1100: despliegues inline exclusivos; escritorio completo con Novedades breve y scroll independiente.",
       "files": [
         "src/app/(home)",
         "src/components/home/home-expandable.tsx",
@@ -346,7 +346,7 @@
         "src/components/home/home-skeleton.tsx"
       ],
       "gotchas": [
-        "Contenido completo permanece montado; server slots y consultas con sesión sin caché compartida. Native dialog cierra al navegar/cambiar breakpoint; altura del rail considera el saludo."
+        "Contenido completo permanece montado; server slots y consultas con sesión sin caché compartida. Contexto coordina un panel inline; cleanup de Activity/ruta/breakpoint recoge el detalle conservando estado funcional. Altura del rail considera el saludo."
       ]
     },
     {

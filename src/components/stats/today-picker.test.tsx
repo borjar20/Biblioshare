@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import Link from "next/link";
-import { useState } from "react";
+import { Activity, useState } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HomeExpandable, HomePanelsProvider } from "@/components/home/home-expandable";
@@ -24,7 +24,7 @@ beforeEach(() => {
   HTMLDialogElement.prototype.close = function () { this.removeAttribute("open"); this.dispatchEvent(new Event("close")); };
   vi.stubGlobal("scrollTo", vi.fn());
 });
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); document.querySelectorAll("dialog[data-test-sheet]").forEach((sheet) => sheet.remove()); vi.unstubAllGlobals(); });
 function view() { return render(<TodayPicker entries={entries} keepGoingLabel="Continúa" {...{ panelLabels: labels }} />); }
 
 describe("Hoy resumido en móvil", () => {
@@ -72,6 +72,37 @@ describe("Hoy resumido en móvil", () => {
     fireEvent.click(screen.getByRole("button", { name: labels.openLabel }));
     expect(await screen.findByRole("button", { name: "Sesiones de la obra: 1" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Abrir novedades" }).getAttribute("aria-expanded")).toBe("false");
+  });
+  it("Activity recoge el detalle al salir y conserva el estado funcional al volver", async () => {
+    function content(mode: "visible" | "hidden") {
+      return <Activity mode={mode}><HomePanelsProvider><TodayPicker entries={entries} keepGoingLabel="Continúa" panelLabels={labels} /></HomePanelsProvider></Activity>;
+    }
+    const result = render(content("visible"));
+    fireEvent.click(screen.getByRole("button", { name: labels.openLabel }));
+    fireEvent.click(await screen.findByRole("button", { name: "Sesiones de la obra: 0" }));
+    pathname = "/sesion/pase-a";
+    result.rerender(content("hidden"));
+    pathname = "/";
+    result.rerender(content("visible"));
+    await waitFor(() => expect(screen.getByRole("button", { name: labels.openLabel }).getAttribute("aria-expanded")).toBe("false"));
+    fireEvent.click(screen.getByRole("button", { name: labels.openLabel }));
+    expect(await screen.findByRole("button", { name: "Sesiones de la obra: 1" })).toBeTruthy();
+  });
+  it("Escape respeta la hoja visible y no queda bloqueado por una hoja cacheada oculta", async () => {
+    view();
+    fireEvent.click(screen.getByRole("button", { name: labels.openLabel }));
+    const sheet = document.createElement("dialog");
+    sheet.setAttribute("open", "");
+    sheet.dataset.testSheet = "true";
+    let visible = true;
+    sheet.getClientRects = () => (visible ? [{ width: 300, height: 500 }] : []) as unknown as DOMRectList;
+    document.body.append(sheet);
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.getByRole("button", { name: "Sesiones de la obra: 0" })).toBeTruthy();
+    visible = false;
+    fireEvent.keyDown(window, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Sesiones de la obra: 0" })).toBeNull());
+    sheet.remove();
   });
   it("al pasar a escritorio conserva la obra y libera la capa", async () => {
     view(); fireEvent.click(screen.getByRole("button", { name: labels.openLabel }));

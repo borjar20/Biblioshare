@@ -978,7 +978,8 @@ body {
  .home-wrap-skeleton { height:96px; margin-bottom:0; }
  .home-today-mobile-skeleton,.home-small-mobile-skeleton { display:block; border:1px solid var(--border); border-radius:14px; background:var(--surface); }
  .home-today-mobile-skeleton { height:106px; }
- .home-small-mobile-skeleton { height:96px; }
+ /* El detalle semanal recogido aporta una fila vacía y su gap de 10px. */
+ .home-small-mobile-skeleton { height:106px; }
  .home-small-mobile-skeleton.stats { height:54px; }
  .home-loading-desktop { display:none; }
 }

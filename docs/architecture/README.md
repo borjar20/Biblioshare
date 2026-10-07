@@ -58,14 +58,15 @@ y `search` junto con `stats`, `challenges`, `notes` y `rincon`. Un
 en `r-comunidad` y `r-coleccion`. Los textos de `PeopleResults` se componen
 en servidor.
 
-Inicio con sesión incorpora resúmenes expandibles bajo 1100 px; escritorio
-conserva los paneles completos salvo anuncios semanales breves. `r-home` incluye
-HomeExpandable, HomeRail y panel-motion. El rail mide su alto real hasta el
-viewport, incluyendo el saludo; las capas limpian bloqueo y animación al navegar
-o cambiar de breakpoint. `c-wrap-ups` añade HomeWrapUp: selección fijada, datos
-reconciliados y carga del reproductor al pulsar. Verificación local del 2026-10-07
-en [Inicio expandible](../testing/2026-10-07-inicio-expandible.md); publicación
-pendiente en #1453/#1454. El mapa sigue siendo derivado, sin cambios de esquema.
+Inicio con sesión incorpora resúmenes y despliegues inline exclusivos bajo
+1100 px; escritorio conserva los paneles completos salvo anuncios semanales
+breves y barras de los laterales ocultas. `r-home` incluye HomeExpandable y su
+contexto en el layout: contenido montado, CSS grid0fr/1fr e inert; limpieza de
+Activity/ruta/breakpoint recoge la vista preservando el estado funcional. HomeRail
+mide su alto real incluyendo el saludo. `c-wrap-ups` conserva HomeWrapUp y el
+reproductor al pulsar, con identidad fijada y datos reconciliados. Evidencia local
+del delta en [Inicio inline](../testing/2026-10-07-inicio-inline.md); los diseños
+previos son históricos. Publicación seguida en #1453/#1454 y PR #1457.
 
 ## Para agentes: cómo usar `graph.json`
 

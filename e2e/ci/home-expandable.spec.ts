@@ -154,12 +154,12 @@ test("PC mantiene contenido y permite bajar el lateral sin mover el feed", async
   await personal.getByRole("link", { name: "Ver todas las novedades", exact: true }).click(); await expect(page).toHaveURL(/\/novedades$/);
 });
 
-test("resize y navegación a sesión no dejan diálogo ni bloqueo al regresar", async ({ page }) => {
+test("resize, sesión y navegación completa vuelven con los bloques recogidos", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 }); await login(page);
   await page.getByRole("button", { name: "Ampliar lo que disfrutas", exact: true }).click();
   await page.setViewportSize({ width: 1280, height: 680 });
   await expect(page.locator('.today-card-body')).toBeVisible(); expect(await page.evaluate(() => document.body.style.overflow)).toBe("");
-  expect(await page.locator('.home-panel-details').first().evaluate((element) => element.getAnimations().length)).toBe(0);
+  await expect.poll(() => page.locator('.home-panel-details').first().evaluate((element) => element.getAnimations().length)).toBe(0);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("button", { name: "Ampliar lo que disfrutas", exact: true }).click();
   const dialog = page.getByRole("region", { name: "Lo que disfrutas", exact: true });
@@ -169,6 +169,13 @@ test("resize y navegación a sesión no dejan diálogo ni bloqueo al regresar", 
   await expect(dialog).toBeHidden(); expect(await page.evaluate(() => document.body.style.overflow)).toBe("");
   await page.getByRole("button", { name: "Ampliar lo que disfrutas", exact: true }).click(); await expect(dialog).toBeVisible();
   await page.keyboard.press("Escape"); await expect(dialog).toBeHidden();
+  await page.getByRole("button", { name: "Ampliar lo que disfrutas", exact: true }).click();
+  await page.getByRole("link", { name: "Biblioteca", exact: true }).click();
+  await expect(page).toHaveURL(/\/coleccion$/);
+  await page.goBack(); await expect(page).toHaveURL(/\/$/);
+  await expect(dialog).toBeHidden();
+  await page.getByRole("button", { name: "Ampliar lo que disfrutas", exact: true }).click();
+  await expect(dialog).toBeVisible();
 });
 
 test("cola, colección y descubrimiento conservan sus vistas completas", async ({ page }) => {

@@ -1,5 +1,7 @@
 # Inicio móvil — despliegues dentro de la página
 
+> [Histórico · congelado el 2026-10-07 · implementado y verificado localmente]
+
 > Diseño elegido explícitamente por el usuario el 2026-10-07: «Desplegar dentro de Inicio (recomendado)».
 
 Hoy, Sale esta semana y Actividad crecen dentro del flujo de Inicio. Un bloque abierto a la vez, sin scrim, top layer ni bloqueo del feed. Resúmenes visuales conservados; detalle permanentemente montado y desplazamiento de página normal. Crónica mantiene su reproductor existente. PC conserva sus paneles completos y barras ocultas.

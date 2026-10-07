@@ -6881,3 +6881,25 @@ Prueba focal Chromium con el CSS real y contenido representativo: ambos laterale
 sin barra ni gutter, rueda y PageDown desplazan el contenido; la página permanece
 en scrollY=0. Bajo 1100 px la regla vuelve a overflow visible/max-height none.
 Evidencia en docs/testing/2026-10-07-inicio-expandible.md.
+
+
+## 2026-10-07 — Inicio móvil despliega sus detalles dentro de la página (#1457)
+
+El usuario descarta el uso general de modales para ampliar y elige explícitamente
+«Desplegar dentro de Inicio». Hoy, Novedades y Actividad pasan a regiones inline,
+con un bloque abierto a la vez; se conserva el reproductor de crónica. Hoy y
+Actividad transforman el resumen en cabecera para evitar portada/gráfico duplicados.
+Las novedades mantienen su tarjeta junto a la crónica y despliegan el detalle a
+ancho completo debajo. El contenido funcional sigue montado y la página conserva
+su desplazamiento normal. Recoger devuelve foco a la tarjeta; el control al final
+acerca el resumen al viewport si quedaba fuera. El cambio de ruta o de breakpoint
+recoge los bloques, y la limpieza de useLayoutEffect también cubre Activity oculto.
+El estado de obra, reloj y borrador del feed se mantiene.
+
+La exclusión se coordina por contexto cliente en el layout de Inicio; los slots,
+consultas y autorización siguen en servidor. Animación CSS grid0fr/1fr, visibilidad
+plegada antes de hidratar, inert y movimiento reducido. La reserva semanal móvil
+incluye el gap del detalle recogido (106px) para mantener el alto total al resolver
+el streaming. PC conserva la presentación y los laterales de la decisión anterior.
+Este acuerdo sustituye el uso de diálogos para los tres paneles; las decisiones y
+specs previas se conservan como historia. Evidencia en docs/testing/2026-10-07-inicio-inline.md.

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type Dispatch, type ReactNode, type SetStateAction } from "react";
+import { createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { usePathname } from "next/navigation";
 import { ChevronRightIcon } from "@/components/ui/icons";
 import { useReducedMotion } from "@/lib/ui/use-reduced-motion";
@@ -26,6 +26,7 @@ export function HomePanelsProvider({ children }: { children: ReactNode }) {
   const mobile = useNarrowHome();
   const pathname = usePathname();
   const previousPath = useRef(pathname);
+  useLayoutEffect(() => () => setActive(null), []);
   useEffect(() => {
     if (!mobile || previousPath.current !== pathname) setActive(null);
     previousPath.current = pathname;
@@ -50,6 +51,7 @@ export function HomeExpandable({ title, openLabel, closeLabel, summary, quickAct
   const id = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [local, setLocal] = useState(false);
+  useLayoutEffect(() => () => setLocal(false), []);
   const expanded = mobile && (group ? group.active === id : local);
   const setActive = group?.setActive;
   const change = useCallback((value: boolean) => {
@@ -80,7 +82,12 @@ export function HomeExpandable({ title, openLabel, closeLabel, summary, quickAct
     if (!expanded) return;
     const onKey = (event: KeyboardEvent) => {
       // Las hojas de sesión y el reproductor conservan su propio Escape.
-      if (event.key !== "Escape" || event.defaultPrevented || document.querySelector("dialog[open]")) return;
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      // Activity conserva nodos de hojas interceptadas con open=true, aunque
+      // estén ocultos. Solo una hoja renderizada debe recibir este Escape.
+      const visibleSheet = Array.from(document.querySelectorAll<HTMLDialogElement>("dialog[open]"))
+        .some((dialog) => dialog.getClientRects().length > 0);
+      if (visibleSheet) return;
       event.preventDefault();
       close();
     };
