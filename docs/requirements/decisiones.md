@@ -6957,3 +6957,13 @@ una semana de ceros en el detalle ni en PC. Los resúmenes siguen midiendo 96/54
 el esqueleto semanal deja de reservar el gap de la fila vacía del diseño previo.
 PC y landing mantienen su composición anterior. Consultas, caché, traducciones y
 acciones de dominio conservadas. Evidencia en `docs/testing/2026-10-07-inicio-shared.md`.
+
+
+## 2026-10-07 — El cierre de novedades tiene espacio propio (#1457)
+
+En Sale esta semana ampliado, la cabecera móvil reserva 44 px para Recoger
+y 12 px de separación. El botón se alinea con el borde interior derecho;
+el título y «Ver todas las novedades» respetan esa reserva, interpolada
+durante el morph. Se corrige el solapamiento en tablet conservando las
+portadas persistentes y la presentación de PC. Evidencia RED/GREEN en
+`docs/testing/2026-10-07-inicio-shared.md`.

@@ -62,3 +62,21 @@ No se acredita despliegue ni Safari/Firefox.
 Artefactos efímeros en .superpowers/qa/2026-10-07-inicio-shared/:
 slots.json, probe.mjs, observed.json y capturas. Las capturas de fixtures son
 pruebas de composición/movimiento, no capturas de las obras del usuario.
+
+## Corrección de cabecera: cierre y calendario separados
+
+La captura del usuario muestra el cierre sobre «Ver todas las novedades».
+Chromium reproduce el solapamiento a 768 px: la cabecera externa colocaba
+el botón 34 px demasiado a la izquierda y el enlace reservaba solo 36 px.
+Se lleva el cierre al borde derecho interior y ambas cabeceras reservan
+56 px (44 px de botón y 12 px de separación). La reserva también se interpola
+para conservar el primer fotograma del morph.
+
+RED de intersección a 768 px antes del ajuste; GREEN a 320/390/520/768/1099 px
+con slots SSR, wrapper/provider y CSS de Next reales. Se comprueban cajas
+separadas, hit-test sobre el extremo derecho del enlace y clic normal en el
+cierre. El probe previo sigue pasando identidad DOM, fotogramas, recorrido
+inverso, claro/oscuro, movimiento reducido y PC a 1280 px. TypeScript y eslint
+focal PASS. El E2E autenticado existente incorpora la aserción de no solapamiento
+a 320/390/768 px para CI; no se repite la suite autenticada completa ni build/start
+de producción en este ajuste CSS.

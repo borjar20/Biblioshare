@@ -102,7 +102,9 @@ editor de catálogo inline (banner + barra sticky).
    los datos y acciones. Tu semana conserva sus siete barras: crecen desde la
    miniatura al gráfico. Sale esta semana convierte el mismo abanico de portadas
    en las tarjetas, creciendo a todo el ancho debajo de la crónica, que permanece
-   visible e interactiva. Los títulos siguen visibles en ambos estados. Al recoger,
+   visible e interactiva. El cierre de novedades ocupa su propia zona de 44 px,
+   con 12 px de separación respecto al título y «Ver todas las novedades».
+   Los títulos siguen visibles en ambos estados. Al recoger,
    la transición recorre el camino inverso. El contenido permanece
    montado, con foco de vuelta al recoger y desplazamiento de página normal.
    La crónica conserva su reproductor y solo se marca vista al abrir; recibe

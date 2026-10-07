@@ -177,6 +177,10 @@ for (const width of [320, 390, 768]) test(`resúmenes, obra elegida, crónica fi
   const releasesDialog = page.getByRole("region", { name: "Sale esta semana", exact: true });
   await expect(releasesDialog.getByRole("link", { name: "Ver todas las novedades", exact: true })).toHaveAttribute("href", "/novedades");
   await expect(releasesDialog.locator('[data-release-id]')).toHaveCount(3);
+  const closeBox = (await weekPanel.locator(".home-focus-collapse").boundingBox())!;
+  const calendarBox = (await releasesDialog.getByRole("link", { name: "Ver todas las novedades", exact: true }).boundingBox())!;
+  expect(closeBox.x + closeBox.width <= calendarBox.x || calendarBox.x + calendarBox.width <= closeBox.x ||
+    closeBox.y + closeBox.height <= calendarBox.y || calendarBox.y + calendarBox.height <= closeBox.y).toBe(true);
   await releasesDialog.getByRole("button", { name: "Recoger: Sale esta semana", exact: true }).click(); await expect(releasesDialog).toBeHidden();
   const statsPanel = page.locator(".home-stats-morph");
   const bar = await statsPanel.locator(".weekly-strip-bar").first().elementHandle();
