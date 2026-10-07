@@ -97,7 +97,8 @@ editor de catálogo inline (banner + barra sticky).
    i18n y páginas usan el término del glosario y nada más.
    **Inicio con sesión (2026-10-07, #1453/#1454; PR #1457).** Bajo 1100 px,
    Hoy ocupa una tarjeta visual con portada, progreso y sesión directa; crónica
-   y Sale esta semana comparten fila y la actividad queda en un resumen.
+   y Sale esta semana comparten fila, relleno de 11 px y cabeceras alineadas.
+   La actividad queda en un resumen.
    Pulsar despliega el detalle dentro de Inicio, con un solo bloque abierto.
    Hoy mantiene «¿Qué has disfrutado hoy?» visible y transforma la misma tarjeta
    en el foco: portada, título y barra se recolocan durante 460 ms, mientras entran

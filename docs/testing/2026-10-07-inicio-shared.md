@@ -184,3 +184,20 @@ E2E de CI añade medición del centro del conjunto visual. ESLint focal y
 `diff --check` PASS. No se repite la suite autenticada completa, los unitarios ni
 build/start en este cambio exclusivamente de CSS; los cortes previos conservan
 su alcance.
+
+## Márgenes iguales en crónica y anuncios semanales
+
+RED a 390 px: cabecera de crónica a 12/12 px (izquierda/arriba) respecto a su
+borde; cabecera semanal a 11/9 px. GREEN: ambas a 12/12 px con diferencia menor
+de 0,5 px. Relleno semanal igualado a 11 px y altura de línea a 18,4 px,
+coincidiendo con la crónica. Ancho del título superpuesto ajustado al espacio
+interior, también cuando ocupa dos líneas. La altura de línea se expresa en px
+para que su transición al extremo ampliado de 28 px no cambie el primer fotograma.
+
+Chromium PASS: 320/390/520/768/1099 con igualdad de insets, fan centrado y
+una/dos/tres portadas, temas y movimiento reducido; PC1280 conserva su geometría.
+También PASS 0/160/final y reverso sin salto inicial, identidad de portadas,
+crónica flexible, pie centrado y pulsable, vacíos/error y actividad sin datos.
+E2E de CI incorpora igualdad de márgenes. ESLint focal y `diff --check` PASS;
+no se repiten unitarios, suite autenticada completa ni build/start por ser un
+ajuste exclusivo de CSS. Los gates anteriores conservan su alcance.

@@ -166,6 +166,11 @@ for (const width of [320, 390, 768]) test(`resúmenes, obra elegida, crónica fi
     return getComputedStyle(text).whiteSpace === "normal" && text.scrollHeight <= text.clientHeight && box.bottom <= card.bottom - 10;
   })).toBe(true);
   const weekPanel = page.locator(".home-releases-morph");
+  expect(await page.locator(".home-personal").evaluate((personal) => {
+    const wrap = personal.querySelector(".home-wrap-preview")!.getBoundingClientRect(), wrapTitle = personal.querySelector(".home-wrap-preview .home-preview-name")!.getBoundingClientRect();
+    const week = personal.querySelector(".home-week-focus")!.getBoundingClientRect(), weekTitle = personal.querySelector(".home-releases-morph .home-shared-title")!.getBoundingClientRect();
+    return Math.max(Math.abs((wrapTitle.x - wrap.x) - (weekTitle.x - week.x)), Math.abs((wrapTitle.y - wrap.y) - (weekTitle.y - week.y)));
+  })).toBeLessThan(1);
   const weekCovers = await weekPanel.locator(".release-work-cover").elementHandles();
   expect(await weekPanel.evaluate((panel) => {
     const covers = Array.from(panel.querySelectorAll(".release-work-cover"), (cover) => cover.getBoundingClientRect());

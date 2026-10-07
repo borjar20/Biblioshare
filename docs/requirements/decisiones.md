@@ -7106,3 +7106,12 @@ con su ancho derivado de las una, dos o tres obras que puede traer el bloque.
 La misma tarjeta interpola su padding lateral hacia el estado ampliado, conservando
 las portadas y su morph; el lateral de PC mantiene su geometría compacta.
 Evidencia RED/GREEN en `docs/testing/2026-10-07-inicio-shared.md`.
+
+## 2026-10-07 — Resúmenes de crónica y semana con el mismo margen (#1457)
+
+Las dos tarjetas móviles comparten 11 px de relleno interior. Con el borde, los
+títulos empiezan a 12 px de los lados superior e izquierdo. Se iguala su altura
+de línea a 18,4 px; el título semanal conserva el extremo de 28 px al ampliarse.
+La cabecera absoluta semanal y su título nativo invisible reservan el mismo ancho.
+El abanico sigue centrado y las dimensiones ampliadas y de PC conservan su alcance.
+Evidencia en `docs/testing/2026-10-07-inicio-shared.md`.
