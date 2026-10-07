@@ -20,6 +20,8 @@ import { HomeWrapUpCover, WrapUpCoverSkeleton } from "@/components/wrap-ups/wrap
 // los brillitos — fuera el SparklesIcon que decoraba la landing.
 import { AppLogoIcon } from "@/components/ui/icons";
 import { SHELL_HOME } from "@/lib/ui/layout";
+import { HomeRail } from "@/components/home/home-rail";
+import { HomeSmallSkeleton } from "@/components/home/home-skeleton";
 import { ThisWeekReleases } from "@/components/releases/this-week-releases";
 
 // Sin `instant = false` (#476): el boundary de la ruta es `loading.tsx`, que
@@ -79,12 +81,12 @@ export default async function Home({
     <div className={`mx-auto flex w-full ${SHELL_HOME} flex-1 flex-col px-5 pt-[18px] pb-[22px] lg:px-7 lg:pt-[26px]`}>
       {/* Saludo a ancho completo, sobre las columnas (paso 1 del orden móvil).
           Compacto en móvil, grande en escritorio. */}
-      <div className="pb-3.5 md:pb-4">
+      <div className="home-greeting pb-3.5 md:pb-4">
         <h1 className="font-serif text-2xl font-semibold tracking-tight md:text-[30px] md:leading-none">
           {t("home.greeting", { name: profile?.displayName || profile?.username || "" })}
         </h1>
         {profile?.username && (
-          <p className="mt-1 font-mono text-[12px] text-muted-foreground md:mt-[5px] md:text-[12.5px]">
+          <p className="home-greeting-meta mt-1 font-mono text-[12px] text-muted-foreground md:mt-[5px] md:text-[12.5px]">
             {`@${profile.username} · ${t("feed.followingPeople", { count: counts.following })}`}
           </p>
         )}
@@ -95,30 +97,28 @@ export default async function Home({
             continúa. Detrás de su <Suspense> con fallback que RESERVA su alto:
             con `fallback={null}` empujaba el feed al llegar — 0.51 de CLS en
             móvil, la peor métrica de la app (issue #284). */}
-        <div data-area="personal">
+        <HomeRail area="personal" className="home-personal">
           {/* Portada del wrap-up: alto reservado en el fallback (CLS, #284). */}
           <Suspense fallback={<WrapUpCoverSkeleton />}>
             <HomeWrapUpCover />
           </Suspense>
-          <Suspense fallback={<TodayBlockSkeleton />}>
-            <TodayBlock userId={user.id} />
-          </Suspense>
-          <div className="mt-5"><Suspense fallback={null}><ThisWeekReleases /></Suspense></div>
-        </div>
+          <div className="home-today-boundary"><Suspense fallback={<TodayBlockSkeleton />}><TodayBlock userId={user.id} /></Suspense></div>
+          <div className="home-week-boundary"><Suspense fallback={<HomeSmallSkeleton />}><ThisWeekReleases expandable /></Suspense></div>
+        </HomeRail>
 
         {/* FEED: compartir un pensamiento + filtros + actividad de tu gente. */}
         <div data-area="feed">
           {/* Compositor de «Pensamiento» (Fase 4), desplegado a ancho completo
               de la columna: escribir es la acción de cabecera del feed, así que
               va abierto, no tras un botón + modal. */}
-          <div className="pb-3.5">
+          <div className="home-feed-composer pb-3.5">
             <ThoughtComposerInline />
           </div>
 
           {/* Rótulo de sección ("Actividad de tu gente") + chips de filtro en
               una línea. El rótulo es la cabecera del feed en todos los tamaños,
               ya no solo en escritorio: el feed es ahora su propia columna/área. */}
-          <div className="mb-4 flex items-baseline justify-between gap-4 lg:mb-3.5">
+          <div className="home-feed-tools mb-4 flex items-baseline justify-between gap-4 lg:mb-3.5">
             <span className="label-section">{t("feed.sectionTitle")}</span>
             <FeedFilters filter={filter} />
           </div>
@@ -131,11 +131,11 @@ export default async function Home({
         {/* STATS: resumen semanal / meta anual / racha. En móvil StatsRail pinta
             un resumen compacto (tres cifras); de md para arriba, el detalle. El
             sticky (solo con 3 columnas) lo pone `.home-grid`. */}
-        <aside data-area="stats">
-          <Suspense fallback={null}>
+        <HomeRail area="stats">
+          <Suspense fallback={<HomeSmallSkeleton stats />}>
             <StatsRail userId={user.id} />
           </Suspense>
-        </aside>
+        </HomeRail>
       </div>
     </div>
   );

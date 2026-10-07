@@ -4541,5 +4541,22 @@
       "imageAlt": "Crónica de {name}: {period}",
       "close": "Cerrar"
     }
+  },
+  "homePanels": {
+    "today": "Lo que disfrutas",
+    "openToday": "Ampliar lo que disfrutas",
+    "close": "Cerrar vista completa",
+    "nextStory": "Tu siguiente historia",
+    "revisit": "Volver a disfrutar",
+    "discover": "Descubre algo nuevo",
+    "libraryCounts": "{current} en curso · {planned, plural, one {# pendiente} other {# pendientes}}",
+    "stats": "Tu actividad",
+    "openStats": "Ampliar tu actividad",
+    "week": "Tu semana",
+    "openReleases": "Ampliar Sale esta semana",
+    "openWrap": "Abrir tu crónica",
+    "wrap": "Tu crónica",
+    "activityStart": "Tus historias empiezan aquí",
+    "new": "Nueva"
   }
 }

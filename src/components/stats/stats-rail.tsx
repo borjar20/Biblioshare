@@ -7,6 +7,7 @@ import { getStreaks } from "@/lib/stats/get-streaks";
 import { getAnnualCompleted } from "@/lib/stats/get-annual-completed";
 import { getWhoToFollow } from "@/lib/social/get-who-to-follow";
 import { deriveRailState } from "@/lib/stats/derive-rail-state";
+import { HomeExpandable } from "@/components/home/home-expandable";
 import { WeeklyStrip } from "./weekly-strip";
 import { StatsWelcome } from "./stats-welcome";
 import { StreakCard } from "./streak-card";
@@ -42,6 +43,7 @@ import { WhoToFollowCard } from "./who-to-follow-card";
 export async function StatsRail({ userId }: { userId: string }) {
   const supabase = await createClient();
   const year = new Date().getFullYear();
+  const panel = await getTranslations("homePanels");
   const tRail = await getTranslations("statsRail");
   const tStats = await getTranslations("stats");
   const [profile, weekly, streaks, annual, annualGoals, whoToFollow] = await Promise.all([
@@ -74,38 +76,10 @@ export async function StatsRail({ userId }: { userId: string }) {
   const showGoalRows = anyGoalSet || annual.total > 0;
   const showStreak = streaks.current > 0 || streaks.best > 0;
 
-  return (
-    <div className="grid gap-4">
-      {/* Resumen compacto: móvil y tablet (<1100). Lista de tres filas
-          (rótulo · cifra) en una tarjeta: cabe en la columna estrecha de 260px
-          del tablet sin apretar y ocupa poco alto. Sin encabezados (h1–h6) a
-          propósito: el detalle de ≥1100 ya trae el <h3> "Lectura esta semana", y
-          dos encabezados con el mismo nombre accesible chocarían con los tests
-          que buscan ese heading dentro del <aside>. */}
-      <div className="min-[1100px]:hidden">
-        {cold ? (
-          <StatsWelcome username={username} compact />
-        ) : (
-          <div className="rounded-card border border-border bg-surface shadow-card p-3.5">
-            <div className="flex flex-col gap-2.5">
-              <SummaryRow label={tRail("summaryWeek")} value={weekLabel} />
-              <SummaryRow
-                label={tRail("summaryYear")}
-                value={`${annual.byType.book} ${tRail("summaryBooks", { count: annual.byType.book })}`}
-              />
-              <SummaryRow
-                label={tRail("summaryStreak")}
-                value={`${streaks.current} ${tRail("summaryDays", { count: streaks.current })}`}
-              />
-            </div>
-          </div>
-        )}
-      </div>
+  const maxMinutes = Math.max(1, ...weekly.map((day) => day.minutes));
+  return <HomeExpandable title={panel("stats")} openLabel={panel("openStats")} closeLabel={panel("close")} className="home-stats-panel" summary={<><span className="home-mini-bars" aria-hidden>{weekly.map((day) => <span key={day.date} style={{ height: `${Math.max(12, day.minutes / maxMinutes * 100)}%`, opacity: day.active ? 1 : 0.25 }} />)}</span><span><span className="home-preview-name">{panel("week")}</span><span className="home-preview-meta">{cold ? panel("activityStart") : `${weekLabel} · ${tRail("summaryStreak")} ${streaks.current} ${tRail("summaryDays", { count: streaks.current })}`}</span></span></>}>
+    <div className="grid gap-4 home-stats-details">
 
-      {/* Detalle: de 1100 para arriba. En frío, una sola bienvenida; si no,
-          cada bloque aparece cuando tiene datos (nunca un cero). "A quién
-          seguir" va SIEMPRE debajo (ya se degrada a null si no hay a quién). */}
-      <div className="hidden gap-4 min-[1100px]:grid">
         {cold ? (
           <StatsWelcome username={username} />
         ) : (
@@ -140,23 +114,7 @@ export async function StatsRail({ userId }: { userId: string }) {
         )}
 
         <WhoToFollowCard suggestions={whoToFollow} />
-      </div>
     </div>
-  );
+  </HomeExpandable>;
 }
 
-// Una fila del resumen: rótulo mono a la izquierda, cifra serif a la derecha.
-// En fila (no apilado) para que las tres quepan en poco alto — es justo lo que
-// pide el tablet, donde el resumen convive con lo personal sobre el feed.
-// `whitespace-nowrap` en la cifra: "12 h 30 m" no debe partirse en la columna
-// estrecha de 260px.
-function SummaryRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-baseline justify-between gap-3">
-      <span className="label-section">{label}</span>
-      <span className="font-serif text-[15px] leading-none font-semibold whitespace-nowrap text-foreground">
-        {value}
-      </span>
-    </div>
-  );
-}

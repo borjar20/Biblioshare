@@ -1,5 +1,7 @@
 "use client";
 
+import { HomeExpandable, type HomePanelLabels } from "@/components/home/home-expandable";
+
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 
 // Quién va arriba. Las mini NO llevan a la ficha: te ponen ese título en el
@@ -25,6 +27,8 @@ export type TodayEntry = {
   focusLabel: string;
   /** Lo que se anuncia al subirla al destacado («Dune, ahora en el destacado»). */
   announceLabel: string;
+  summary?: ReactNode;
+  quickAction?: ReactNode;
 };
 
 export function TodayPicker({
@@ -32,6 +36,8 @@ export function TodayPicker({
   keepGoingLabel,
   heading,
   later,
+  panelLabels,
+  sectionHeading,
 }: {
   entries: TodayEntry[];
   keepGoingLabel: string;
@@ -42,6 +48,8 @@ export function TodayPicker({
   /** "Para más tarde", pintado en servidor: se apila debajo de "Continúa", al
    *  final de la columna derecha. Otro slot, por la misma razón que las tarjetas. */
   later?: ReactNode;
+  panelLabels?: HomePanelLabels;
+  sectionHeading?: ReactNode;
 }) {
   const [selectedId, setSelectedId] = useState(entries[0]?.id);
 
@@ -77,7 +85,7 @@ export function TodayPicker({
   if (!featured) return null;
   const rest = entries.filter((e) => e.id !== featured.id);
 
-  return (
+  const content = (
     // Una columna principal: arriba el destacado (full-width), debajo las tiras
     // "Continúa" y "Para más tarde". Bajo 1100 esas dos van LADO A LADO en un
     // split asimétrico ("Continúa" 2×2, "Para más tarde" 4×2, las dos solo
@@ -85,6 +93,7 @@ export function TodayPicker({
     // pinta `today-shelves` (globals.css). `today-split` es hoy solo un flex-col
     // (el destacado sobre las tiras); el nombre es herencia.
     <div className="today-split flex flex-col gap-3">
+      {sectionHeading}
       {/* IZQUIERDA: En curso + destacado. */}
       <div className="flex min-w-0 flex-col gap-2">
         {heading}
@@ -145,4 +154,7 @@ export function TodayPicker({
       </div>
     </div>
   );
+  return panelLabels && featured.summary ? (
+    <HomeExpandable {...panelLabels} summary={featured.summary} quickAction={featured.quickAction} className="home-today-panel">{content}</HomeExpandable>
+  ) : content;
 }

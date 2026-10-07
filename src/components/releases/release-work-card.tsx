@@ -10,7 +10,7 @@ import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { PendingReleaseAction, ReleaseNoticeAction } from "./release-actions";
 import { releaseReviewDate, releaseWorkHref, safeReleaseUrl, type ReleaseUserState } from "./release-view";
 
-export function ReleaseWorkCard({ releases, authenticated = false, userState = {}, stateAvailable = true, returnPath = "/novedades", compact = false, limited = false, showSynopsis = false }: {
+export function ReleaseWorkCard({ releases, authenticated = false, userState = {}, stateAvailable = true, returnPath = "/novedades", compact = false, homeCompact = false, limited = false, showSynopsis = false }: {
   releases: CulturalRelease[];
   authenticated?: boolean;
   userState?: ReleaseUserState;
@@ -19,6 +19,7 @@ export function ReleaseWorkCard({ releases, authenticated = false, userState = {
   compact?: boolean;
   limited?: boolean;
   showSynopsis?: boolean;
+  homeCompact?: boolean;
 }) {
   const t = useTranslations("releases");
   const release = releases[0];
@@ -33,7 +34,7 @@ export function ReleaseWorkCard({ releases, authenticated = false, userState = {
   const inLibrary = releases.some((row) => userState[row.id]?.inLibrary);
   const pendingRelease = releases.find((row) => row.status === "published");
   return <article id={`lanzamiento-${release.id}`} data-work-key={release.work_key}
-    className={`min-w-0 ${limited ? "border-b border-border py-3" : "rounded-card border border-border bg-surface p-4"}`}>
+    className={`min-w-0 ${homeCompact ? "home-week-card" : ""} ${limited ? "border-b border-border py-3" : "rounded-card border border-border bg-surface p-4"}`}>
     <div className={`grid min-w-0 gap-4 ${limited ? "grid-cols-1" : compact ? "grid-cols-[64px_minmax(0,1fr)]" : "grid-cols-[80px_minmax(0,1fr)] sm:grid-cols-[96px_minmax(0,1fr)]"}`}>
       {!limited && <div className="relative aspect-[2/3] self-start overflow-hidden rounded-cover border border-border bg-surface-muted shadow-cover">
         <Link href={workHref} aria-label={t("viewDetails", { title: release.title })} className="block h-full">
@@ -42,15 +43,15 @@ export function ReleaseWorkCard({ releases, authenticated = false, userState = {
         </Link>
       </div>}
       <div className="min-w-0">
-        <p className={`mb-1 font-mono text-[10px] uppercase tracking-wider ${MEDIA_ACCENT[release.item_type].text}`}>{t(`types.${release.item_type}`)}</p>
+        <p className={`release-work-type mb-1 font-mono text-[10px] uppercase tracking-wider ${MEDIA_ACCENT[release.item_type].text}`}>{t(`types.${release.item_type}`)}</p>
         {workHref ? <Link href={workHref} className="hover:underline">{title}</Link> : title}
         {!compact && gaps.length > 0 && <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
           {gaps.map((gap) => <span key={gap}>{t(gap === "cover" ? "missingCover" : "missingSynopsis")}</span>)}
         </div>}
         {!compact && synopsis?.synopsis_language === "en" && <p className="mt-2 text-xs text-muted-foreground">{t("synopsisEnglish")}</p>}
         {showSynopsis && synopsis && <p className="mt-2 whitespace-pre-line break-words text-sm text-muted-foreground">{synopsis.synopsis}</p>}
-        {(release.author || release.subtitle) && <p className="mt-1 break-words text-sm text-muted-foreground">{release.author || release.subtitle}</p>}
-        {release.publisher && <p className="mt-1 text-xs text-muted-foreground">{release.publisher}</p>}
+        {(release.author || release.subtitle) && <p className="release-work-author mt-1 break-words text-sm text-muted-foreground">{release.author || release.subtitle}</p>}
+        {release.publisher && <p className="release-work-publisher mt-1 text-xs text-muted-foreground">{release.publisher}</p>}
         {!compact && pendingRelease && stateAvailable && <div className="mt-3">
           <PendingReleaseAction releaseId={pendingRelease.id} authenticated={authenticated} inLibrary={inLibrary} returnPath={returnPath} />
         </div>}

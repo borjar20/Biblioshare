@@ -1,0 +1,168 @@
+import { test, expect, type Page } from "@playwright/test";
+import { createClient } from "@supabase/supabase-js";
+import { randomUUID } from "node:crypto";
+import type { Database, Json } from "../../src/lib/supabase/database.types";
+import type { WrapUpPayload } from "../../src/lib/wrap-ups/types";
+import { madridDay } from "../../src/lib/releases/precision";
+
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+if (url !== "http://127.0.0.1:54321") throw new Error("Home fixtures require disposable local Supabase");
+const service = createClient<Database>(url, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
+const actor = { id: "", email: "ci-home-expandable@example.test", password: randomUUID() };
+const today = madridDay(new Date());
+const cover = "https://covers.openlibrary.org/b/id/ci-home-expandable-L.jpg";
+const books = Array.from({ length: 14 }, (_, index) => ({ id: `b1400010-2026-4000-a000-${String(index + 1).padStart(12, "0")}`, title: index === 0 ? "CI Inicio primera historia" : index === 1 ? "CI Inicio segunda historia" : `CI Inicio pendiente ${index}` }));
+const passes = books.map((_, index) => `b1400010-2026-4000-b000-${String(index + 1).padStart(12, "0")}`);
+const editions = books.map((_, index) => `b1400010-2026-4000-c000-${String(index + 1).padStart(12, "0")}`);
+const releases = books.slice(2, 5).map((_, index) => `b1400010-2026-4000-d000-${String(index + 1).padStart(12, "0")}`);
+
+function payload(kind: "week" | "month"): WrapUpPayload {
+  const periodStart = kind === "week" ? "2026-09-28" : "2026-09-01";
+  const periodEnd = kind === "week" ? "2026-10-04" : "2026-09-30";
+  return { v: 1, kind, periodStart, periodEnd, intensity: "full", narrator: "reader", palette: "book", pet: null,
+    stories: [{ id: "cover" }, { id: "time", minutes: { book: 100, movie: 0, series: 0 }, episodesWithoutRuntime: 0, previousMinutes: null }, { id: "closing" }],
+    share: { kind, periodStart, periodEnd, narrator: "reader", palette: "book", minutes: 100, episodesWithoutRuntime: 0, finished: 0, covers: [], pet: null } };
+}
+async function cleanup() {
+  for (let page = 1; ; page++) {
+    const users = await service.auth.admin.listUsers({ page, perPage: 1000 }); expect(users.error).toBeNull();
+    for (const user of users.data.users) if (user.email === actor.email) expect((await service.auth.admin.deleteUser(user.id)).error).toBeNull();
+    if (users.data.users.length < 1000) break;
+  }
+  expect((await service.from("cultural_releases").delete().like("source_key", "ci:home-expandable:%")).error).toBeNull();
+  expect((await service.from("books").delete().in("id", books.map((book) => book.id))).error).toBeNull();
+}
+test.beforeAll(async () => {
+  await cleanup();
+  const account = await service.auth.admin.createUser({ email: actor.email, password: actor.password, email_confirm: true }); expect(account.error).toBeNull(); actor.id = account.data.user!.id;
+  expect((await service.from("profiles").insert({ user_id: actor.id, username: "ci_home_expandable", display_name: "Lectora", is_public: true, onboarded_at: new Date().toISOString() })).error).toBeNull();
+  expect((await service.from("books").insert(books.map((book) => ({ ...book, author: "Autora de prueba", cover_url: cover, total_pages: 400 })))).error).toBeNull();
+  expect((await service.from("book_editions").insert(books.map((book, index) => ({ id: editions[index], book_id: book.id, label: "Edición CI", is_primary: false, cover_url: cover, total_pages: 400 })))).error).toBeNull();
+  expect((await service.from("passes").insert(books.map((book, index) => ({ id: passes[index], user_id: actor.id, item_type: "book" as const, item_id: book.id, edition_id: editions[index], is_active: true, is_public: true, status: index < 2 ? "in_progress" as const : "planned" as const, started_on: index < 2 ? today : null, planned_on: today, position: index < 2 ? { page: 120 } : {} })))).error).toBeNull();
+  expect((await service.from("progress_sessions").insert({ user_id: actor.id, pass_id: passes[0], duration_minutes: 35, session_date: today, position: { page: 120 }, note: "Una buena lectura" })).error).toBeNull();
+  expect((await service.from("posts").insert(Array.from({ length: 24 }, (_, index) => ({ author_id: actor.id, anchor_type: "book" as const, anchor_id: books[0].id, kind: "thought" as const, body: index === 0 ? "Primera crónica social de prueba" : `Pensamiento CI ${index}`, created_at: new Date(Date.now() - index * 60_000).toISOString() })))).error).toBeNull();
+  expect((await service.from("cultural_releases").insert(books.slice(2, 5).map((book, index) => ({ id: releases[index], title: `CI Novedad ${index + 1} con título completo`, work_key: `book:${book.id}`, source: "editorial" as const, source_key: `ci:home-expandable:${index}`, item_type: "book" as const, modality: "book" as const, market: "ES", language: "es", date_value: today, date_precision: "day" as const, status: "published" as const, revision: 1, checked_at: new Date().toISOString(), cover_url: cover, synopsis: "Sinopsis suficiente de prueba", synopsis_language: "es", author: "Autora CI", publisher: "Editorial CI", source_name: "Editorial CI", source_url: "https://example.test/editorial", book_id: book.id })))).error).toBeNull();
+});
+test.afterAll(cleanup);
+const browserErrors = new WeakMap<Page, string[]>();
+test.afterEach(async ({ page }) => { expect(browserErrors.get(page) ?? []).toEqual([]); });
+test.beforeEach(async ({ page }) => {
+  const errors: string[] = [];
+  browserErrors.set(page, errors);
+  page.on("pageerror", (error) => errors.push(error.message));
+  for (const kind of ["week", "month"] as const) {
+    const data = payload(kind);
+    expect((await service.from("wrap_ups").upsert({ user_id: actor.id, kind, period_start: data.periodStart, period_end: data.periodEnd, intensity: data.intensity, payload: data as unknown as Json, seen_at: null })).error).toBeNull();
+  }
+  await page.route((request) => request.href.includes("ci-home-expandable-L.jpg"), (route) => route.fulfill({ contentType: "image/svg+xml", body: '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300"><rect width="200" height="300" fill="#ad6b54"/><text x="20" y="120" fill="#fff">La historia</text></svg>' }));
+});
+async function login(page: Page) {
+  await page.goto("/login");
+  await page.locator('input[name="email"]:visible').fill(actor.email);
+  await page.locator('input[name="password"]:visible').fill(actor.password);
+  await page.locator('button[type="submit"]:visible').click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.locator(".home-today-panel")).toBeAttached();
+}
+async function seen(kind: "week" | "month") {
+  const result = await service.from("wrap_ups").select("seen_at").eq("user_id", actor.id).eq("kind", kind).single(); expect(result.error).toBeNull(); return result.data?.seen_at;
+}
+for (const width of [320, 390, 768]) test(`resúmenes, obra elegida, crónica fijada y retorno · ${width}px`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: width === 320 ? 640 : 844 });
+  await page.emulateMedia({ reducedMotion: width === 390 ? "no-preference" : "reduce", colorScheme: width === 768 ? "dark" : "light" });
+  await page.addInitScript((theme) => localStorage.setItem("theme", theme), width === 768 ? "dark" : "light");
+  await login(page);
+  const trigger = page.getByRole("button", { name: "Ampliar lo que disfrutas", exact: true });
+  await expect(trigger).toContainText(books[0].title);
+  await expect(page.getByText("Primera crónica social de prueba", { exact: true })).toBeVisible();
+  const firstPost = await page.getByText("Primera crónica social de prueba", { exact: true }).locator("xpath=ancestor::article[1]").boundingBox();
+  expect(firstPost!.y).toBeLessThan((width === 320 ? 640 : 844) - 70);
+  expect(await seen("week")).toBeNull(); expect(await seen("month")).toBeNull();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath(`home-${width}.png`), fullPage: false });
+  const scroll = await page.evaluate(() => scrollY);
+  await trigger.click();
+  const todayDialog = page.getByRole("dialog", { name: "Lo que disfrutas", exact: true });
+  await expect(todayDialog).toBeVisible();
+  await todayDialog.getByRole("button", { name: `Poner ${books[1].title} arriba`, exact: true }).click();
+  await todayDialog.getByRole("button", { name: "Cerrar vista completa", exact: true }).click();
+  await expect(todayDialog).toBeHidden(); await expect(trigger).toBeFocused(); await expect(trigger).toContainText(books[1].title);
+  expect(await page.evaluate(() => scrollY)).toBe(scroll);
+  await expect(page.locator('.home-panel-quick a')).toHaveAttribute("href", `/sesion/${passes[1]}`);
+  await trigger.click(); await expect(todayDialog.locator('.today-card-body')).toContainText(books[1].title);
+  await page.keyboard.press("Escape"); await expect(todayDialog).toBeHidden();
+  await page.getByRole("button", { name: "Ampliar Sale esta semana", exact: true }).click();
+  const releasesDialog = page.getByRole("dialog", { name: "Sale esta semana", exact: true });
+  await expect(releasesDialog.getByRole("link", { name: "Ver todas las novedades", exact: true })).toHaveAttribute("href", "/novedades");
+  await expect(releasesDialog.locator('[data-release-id]')).toHaveCount(3);
+  await releasesDialog.getByRole("button", { name: "Cerrar vista completa", exact: true }).click(); await expect(releasesDialog).toBeHidden();
+  await page.getByRole("button", { name: "Ampliar tu actividad", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Tu actividad", exact: true })).toBeVisible();
+  await page.keyboard.press("Escape"); await expect(page.getByRole("dialog", { name: "Tu actividad", exact: true })).toBeHidden();
+  await page.getByRole("button", { name: "Abrir tu crónica", exact: true }).click();
+  const story = page.getByRole("dialog").filter({ has: page.locator('ol') });
+  await expect(story).toBeVisible();
+  await expect.poll(() => seen("week")).not.toBeNull(); expect(await seen("month")).toBeNull();
+  await page.keyboard.press("Escape"); await expect(story).toBeHidden();
+  await expect(page.getByRole("button", { name: "Abrir tu crónica", exact: true })).toBeFocused();
+  expect(await page.evaluate(() => document.body.style.overflow)).toBe("");
+});
+
+test("PC mantiene contenido y permite bajar el lateral sin mover el feed", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1280, height: 680 }); await login(page);
+  await expect(page.locator('.today-card-body')).toBeVisible();
+  await expect(page.locator(".home-today-panel .home-panel-trigger")).toBeHidden();
+  const feedY = (await page.locator('[data-area="feed"]').boundingBox())!.y;
+  const personal = page.locator('[data-area="personal"]');
+  expect(await personal.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
+  await expect(personal.locator(`[data-release-id="${releases[2]}"]`)).toBeAttached();
+  await personal.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+  await expect(personal.locator(`[data-release-id="${releases[2]}"]`)).toBeInViewport();
+  expect(await page.evaluate(() => scrollY)).toBe(0);
+  expect((await page.locator('[data-area="feed"]').boundingBox())!.y).toBe(feedY);
+  expect((await personal.locator('.home-week-card img').first().boundingBox())!.width).toBeLessThanOrEqual(36);
+  await page.screenshot({ path: testInfo.outputPath("home-desktop.png"), fullPage: false });
+  await personal.getByRole("link", { name: "Ver todas las novedades", exact: true }).click(); await expect(page).toHaveURL(/\/novedades$/);
+});
+
+test("resize y navegación a sesión no dejan diálogo ni bloqueo al regresar", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 }); await login(page);
+  await page.getByRole("button", { name: "Ampliar lo que disfrutas", exact: true }).click();
+  await page.setViewportSize({ width: 1280, height: 680 });
+  await expect(page.locator('.today-card-body')).toBeVisible(); expect(await page.evaluate(() => document.body.style.overflow)).toBe("");
+  expect(await page.locator('.home-panel-surface').first().evaluate((element) => element.getAnimations().length)).toBe(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: "Ampliar lo que disfrutas", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Lo que disfrutas", exact: true });
+  await dialog.getByRole("link", { name: /Registrar/, exact: false }).first().click();
+  await expect(page).toHaveURL(new RegExp(`/sesion/${passes[0]}`));
+  await page.goBack(); await expect(page).toHaveURL(/\/$/);
+  await expect(dialog).toBeHidden(); expect(await page.evaluate(() => document.body.style.overflow)).toBe("");
+  await page.getByRole("button", { name: "Ampliar lo que disfrutas", exact: true }).click(); await expect(dialog).toBeVisible();
+  await page.keyboard.press("Escape"); await expect(dialog).toBeHidden();
+});
+
+test("cola, colección y descubrimiento conservan sus vistas completas", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  expect((await service.from("passes").update({ status: "planned", started_on: null, position: {} }).eq("user_id", actor.id)).error).toBeNull();
+  await login(page);
+  const trigger = page.getByRole("button", { name: "Ampliar lo que disfrutas", exact: true });
+  await expect(trigger).toContainText("Tu siguiente historia");
+  await trigger.click();
+  const dialog = page.getByRole("dialog", { name: "Lo que disfrutas", exact: true });
+  await expect(dialog.getByRole("button", { name: /Sacar un lomo/ })).toBeVisible();
+  await page.keyboard.press("Escape"); await expect(dialog).toBeHidden();
+  expect((await service.from("passes").delete().in("id", passes.slice(2))).error).toBeNull();
+  expect((await service.from("passes").update({ status: "completed", started_on: today, finished_on: today, position: { page: 400 } }).eq("user_id", actor.id)).error).toBeNull();
+  await page.reload(); await expect(trigger).toContainText("Volver a disfrutar");
+  await trigger.click(); await expect(dialog.getByRole("button", { name: /Empezar/ }).first()).toBeVisible();
+  await page.keyboard.press("Escape"); await expect(dialog).toBeHidden();
+  expect((await service.from("passes").delete().eq("user_id", actor.id)).error).toBeNull();
+  expect((await service.from("cultural_releases").delete().in("id", releases)).error).toBeNull();
+  await page.reload(); await expect(trigger).toContainText("Descubre algo nuevo");
+  await trigger.click(); await expect(dialog.getByRole("link").first()).toBeVisible();
+  await page.keyboard.press("Escape"); await expect(dialog).toBeHidden();
+  await page.getByRole("button", { name: "Ampliar Sale esta semana", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Sale esta semana", exact: true }).getByRole("link", { name: "Ver todas las novedades", exact: true })).toBeVisible();
+});
