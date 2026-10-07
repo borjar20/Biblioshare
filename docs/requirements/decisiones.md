@@ -6938,3 +6938,22 @@ sección y la fecha añaden su altura al Inicio compacto; el esqueleto móvil y
 el presupuesto del primer post reflejan esa cabecera solicitada. PC conserva la
 composición completa; no cambian consultas, sesiones ni la crónica. Evidencia y
 alcance en `docs/testing/2026-10-07-inicio-foco.md`.
+
+
+## 2026-10-07 — Novedades y Tu semana transforman sus elementos originales (#1457)
+
+El usuario extiende el acuerdo del foco de Hoy a Sale esta semana y Tu semana.
+Se reutiliza el mismo contrato focus de HomeExpandable: títulos persistentes,
+contenido montado y transformación de 460 ms. Sale esta semana pinta una sola
+portada por obra en ReleaseWorkCard; el abanico contraído se convierte en las
+mismas tarjetas, con datos y fechas progresivos. La tarjeta pasa de media fila a
+ancho completo debajo de la crónica; sin crónica no reserva ese espacio vertical.
+La caja transparente que ocupa la fila deja pasar el puntero, y el stage/controles
+reciben sus clics, para conservar el reproductor accesible en ambos estados.
+
+Tu semana reutiliza las siete barras de WeeklyStrip y las etiquetas de día; el
+resto de actividad se despliega debajo. Se conserva el guard sin datos: no aparece
+una semana de ceros en el detalle ni en PC. Los resúmenes siguen midiendo 96/54 px;
+el esqueleto semanal deja de reservar el gap de la fila vacía del diseño previo.
+PC y landing mantienen su composición anterior. Consultas, caché, traducciones y
+acciones de dominio conservadas. Evidencia en `docs/testing/2026-10-07-inicio-shared.md`.

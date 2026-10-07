@@ -99,9 +99,11 @@ editor de catálogo inline (banner + barra sticky).
    Pulsar despliega el detalle dentro de Inicio, con un solo bloque abierto.
    Hoy mantiene «¿Qué has disfrutado hoy?» visible y transforma la misma tarjeta
    en el foco: portada, título y barra se recolocan durante 460 ms, mientras entran
-   los datos y acciones. Actividad funde resumen/cabecera y las portadas semanales
-   se abren suavemente. Al recoger, la transición recorre el camino inverso. Las novedades muestran
-   el detalle a todo el ancho bajo las dos tarjetas. El contenido permanece
+   los datos y acciones. Tu semana conserva sus siete barras: crecen desde la
+   miniatura al gráfico. Sale esta semana convierte el mismo abanico de portadas
+   en las tarjetas, creciendo a todo el ancho debajo de la crónica, que permanece
+   visible e interactiva. Los títulos siguen visibles en ambos estados. Al recoger,
+   la transición recorre el camino inverso. El contenido permanece
    montado, con foco de vuelta al recoger y desplazamiento de página normal.
    La crónica conserva su reproductor y solo se marca vista al abrir; recibe
    los datos nuevos tras publicar o actualizar. Cola, colección y descubrimiento
@@ -113,7 +115,8 @@ editor de catálogo inline (banner + barra sticky).
    del foco, Escape respetando hojas internas y movimiento reducido. Evidencia
    local: `docs/testing/2026-10-07-inicio-inline.md`; refinamiento de movimiento
    en `docs/testing/2026-10-07-inicio-motion.md`; tarjeta única de Hoy verificada
-   en `docs/testing/2026-10-07-inicio-foco.md`.
+   en `docs/testing/2026-10-07-inicio-foco.md`; portadas y barras persistentes
+   en `docs/testing/2026-10-07-inicio-shared.md`.
 
 9. **Toda feature cuelga de la navegación.** Ruta no alcanzable desde su área =
    o se le da entrada o se registra acta de por qué es contextual. **Aplicado

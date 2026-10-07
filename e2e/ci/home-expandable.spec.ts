@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page, type Locator } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
 import type { Database, Json } from "../../src/lib/supabase/database.types";
@@ -63,6 +63,15 @@ async function login(page: Page) {
   await page.locator('button[type="submit"]:visible').click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.locator(".home-today-panel")).toBeAttached();
+}
+async function holdMorph(locator: Locator) {
+  await locator.evaluate((panel) => {
+    const observer = new MutationObserver(() => {
+      panel.getAnimations({ subtree: true }).forEach((animation) => { animation.pause(); animation.currentTime = 0; });
+      observer.disconnect();
+    });
+    observer.observe(panel, { attributes: true, attributeFilter: ["data-expanded"] });
+  });
 }
 async function seen(kind: "week" | "month") {
   const result = await service.from("wrap_ups").select("seen_at").eq("user_id", actor.id).eq("kind", kind).single(); expect(result.error).toBeNull(); return result.data?.seen_at;
@@ -151,12 +160,36 @@ for (const width of [320, 390, 768]) test(`resúmenes, obra elegida, crónica fi
     await footer.click(); await expect(todayDialog).toBeHidden();
     await expect(trigger).toBeInViewport();
   }
+  const weekPanel = page.locator(".home-releases-morph");
+  const weekCovers = await weekPanel.locator(".release-work-cover").elementHandles();
+  const weekStart = await weekCovers[0].boundingBox();
+  if (width === 390) await holdMorph(weekPanel);
   await page.getByRole("button", { name: "Ampliar Sale esta semana", exact: true }).click();
-  const releasesDialog = page.locator(".home-releases-panel .home-panel-details");
+  if (width === 390) {
+    const first = await weekCovers[0].boundingBox();
+    expect(first!.x).toBeCloseTo(weekStart!.x, 0); expect(first!.y).toBeCloseTo(weekStart!.y, 0);
+    await weekPanel.evaluate((panel) => panel.getAnimations({ subtree: true }).forEach((animation) => { animation.currentTime = 160; }));
+    const middle = await weekCovers[0].boundingBox();
+    expect(middle!.width).toBeGreaterThan(weekStart!.width); expect(middle!.width).toBeLessThan(64);
+    await weekPanel.evaluate((panel) => panel.getAnimations({ subtree: true }).forEach((animation) => animation.finish()));
+    expect(await weekCovers[0].evaluate((cover) => cover === document.querySelector(".home-releases-morph .release-work-cover"))).toBe(true);
+  }
+  const releasesDialog = page.getByRole("region", { name: "Sale esta semana", exact: true });
   await expect(releasesDialog.getByRole("link", { name: "Ver todas las novedades", exact: true })).toHaveAttribute("href", "/novedades");
   await expect(releasesDialog.locator('[data-release-id]')).toHaveCount(3);
-  await releasesDialog.getByRole("button", { name: "Recoger", exact: true }).click(); await expect(releasesDialog).toBeHidden();
+  await releasesDialog.getByRole("button", { name: "Recoger: Sale esta semana", exact: true }).click(); await expect(releasesDialog).toBeHidden();
+  const statsPanel = page.locator(".home-stats-morph");
+  const bar = await statsPanel.locator(".weekly-strip-bar").first().elementHandle();
+  if (width === 390) await holdMorph(statsPanel);
   await page.getByRole("button", { name: "Ampliar tu actividad", exact: true }).click();
+  if (width === 390) {
+    const firstWidth = (await bar!.boundingBox())!.width;
+    await statsPanel.evaluate((panel) => panel.getAnimations({ subtree: true }).forEach((animation) => { animation.currentTime = 160; }));
+    const middleWidth = (await bar!.boundingBox())!.width;
+    expect(middleWidth).toBeGreaterThan(firstWidth); expect(middleWidth).toBeLessThan(20);
+    await statsPanel.evaluate((panel) => panel.getAnimations({ subtree: true }).forEach((animation) => animation.finish()));
+    expect(await bar!.evaluate((node) => node === document.querySelector(".home-stats-morph .weekly-strip-bar"))).toBe(true);
+  }
   await expect(page.getByRole("region", { name: "Tu actividad", exact: true })).toBeVisible();
   await page.keyboard.press("Escape"); await expect(page.getByRole("region", { name: "Tu actividad", exact: true })).toBeHidden();
   await page.getByRole("button", { name: "Abrir tu crónica", exact: true }).click();
@@ -216,6 +249,21 @@ test("resize, sesión y navegación completa vuelven con los bloques recogidos",
   await expect(dialog).toBeVisible();
 });
 
+test("Novedades deja abrir la crónica y conserva el panel al volver", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await login(page);
+  await page.getByRole("button", { name: "Ampliar Sale esta semana", exact: true }).click();
+  await page.getByRole("button", { name: "Abrir tu crónica", exact: true }).click();
+  const story = page.getByRole("dialog").filter({ has: page.locator("ol") });
+  await expect(story).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(story).toBeHidden();
+  await expect(page.getByRole("region", { name: "Sale esta semana", exact: true })).toBeVisible();
+  await page.getByRole("region", { name: "Sale esta semana", exact: true }).getByRole("button", { name: "Recoger: Sale esta semana", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Abrir tu crónica", exact: true })).toBeInViewport();
+});
+
 test("cola, colección y descubrimiento conservan sus vistas completas", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ reducedMotion: "reduce" });
@@ -238,5 +286,5 @@ test("cola, colección y descubrimiento conservan sus vistas completas", async (
   await trigger.click(); await expect(dialog.getByRole("link").first()).toBeVisible();
   await page.keyboard.press("Escape"); await expect(dialog).toBeHidden();
   await page.getByRole("button", { name: "Ampliar Sale esta semana", exact: true }).click();
-  await expect(page.locator(".home-releases-panel .home-panel-details").getByRole("link", { name: "Ver todas las novedades", exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Sale esta semana", exact: true }).getByRole("link", { name: "Ver todas las novedades", exact: true })).toBeVisible();
 });
