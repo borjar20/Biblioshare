@@ -17,6 +17,7 @@ import { Select } from "@/components/ui/select";
 import { CalendarIcon } from "@/components/ui/icons";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SHELL_GRID } from "@/lib/ui/layout";
+import { releaseInformationGaps } from "@/lib/releases/quality";
 import type { CulturalRelease } from "@/lib/releases/types";
 import type { ReleaseUserState } from "@/components/releases/release-view";
 import { isReleaseId } from "@/components/releases/action-state";
@@ -91,8 +92,10 @@ async function ReleasesContent({ searchParams }: { searchParams: Promise<Release
       internationalSeriesAvailable = international.length > 0;
     } catch { /* A failed optional hint does not turn the verified empty result into an error. */ }
   }
-  const exact = visibleWorks.filter((work) => work.releases.some((row) => row.date_precision === "day"));
-  const announcements = visibleWorks.filter((work) => !exact.includes(work));
+  const limitedWorks = selection === "explore" ? visibleWorks.filter((work) => releaseInformationGaps(work.releases).length > 0) : [];
+  const mainWorks = selection === "explore" ? visibleWorks.filter((work) => releaseInformationGaps(work.releases).length === 0) : visibleWorks;
+  const exact = mainWorks.filter((work) => work.releases.some((row) => row.date_precision === "day"));
+  const announcements = mainWorks.filter((work) => !exact.includes(work));
   return <>
     <nav aria-label={t("navigation")} className="flex gap-6 overflow-x-auto border-b border-border">
       {(["explore", "personal"] as const).map((option) => <Link key={option} href={releasePath(option, type, market)} aria-current={selection === option ? "page" : undefined}
@@ -124,7 +127,7 @@ async function ReleasesContent({ searchParams }: { searchParams: Promise<Release
       <div className="flex min-w-0 flex-col gap-8">
         {focusedId && (focusedResult.status === "rejected" ? <EmptyState variant="panel" glyph={<CalendarIcon className="h-5 w-5" />} title={t("loadErrorTitle")} message={t("loadErrorBody")} action={<ReleaseRetry />} />
           : focused ? <section aria-labelledby="novedades-aviso"><h2 id="novedades-aviso" className="mb-4 font-serif text-xl font-semibold">{t("selectedRelease")}</h2>
-            <ReleaseWorkCard key={`${focused.work_key}:${user?.id ?? "anon"}`} releases={focusedReleases} authenticated={Boolean(user)} userState={userState} stateAvailable={stateAvailable} returnPath={returnPath} />
+            <ReleaseWorkCard key={`${focused.work_key}:${user?.id ?? "anon"}`} releases={focusedReleases} showSynopsis authenticated={Boolean(user)} userState={userState} stateAvailable={stateAvailable} returnPath={returnPath} />
           </section> : <EmptyState variant="panel" glyph={<CalendarIcon className="h-5 w-5" />} title={t("unavailableTitle")} message={t("unavailableBody")}
             action={!user ? <Link href={loginHref(returnPath)} className={buttonVariants("secondary")}>{t("login")}</Link> : undefined} />)}
         {workResult.status === "rejected" ? <EmptyState variant="panel" glyph={<CalendarIcon className="h-5 w-5" />} title={t("loadErrorTitle")} message={t("loadErrorBody")} action={<ReleaseRetry />} />
@@ -147,6 +150,16 @@ async function ReleasesContent({ searchParams }: { searchParams: Promise<Release
                 {announcements.map((work) => <ReleaseWorkCard key={`${work.workKey}:${user?.id ?? "anon"}`} releases={work.releases} authenticated={Boolean(user)} userState={userState} stateAvailable={stateAvailable} returnPath={returnPath} />)}
               </div>
             </section>}
+            {limitedWorks.length > 0 && <details className="min-w-0 rounded-card border border-border bg-surface p-4">
+              <summary className="flex min-h-11 cursor-pointer flex-wrap items-center justify-between gap-3 font-serif text-lg font-semibold">
+                <span className="inline-flex items-center gap-2"><span aria-hidden="true">▾</span><span>{t("limitedTitle")}</span></span>
+                <span className="font-sans text-xs font-normal text-muted-foreground">{t("limitedCount", { count: limitedWorks.length })}</span>
+              </summary>
+              <p className="mb-4 mt-2 text-sm text-muted-foreground">{t("limitedHint")}</p>
+              <div className="flex min-w-0 flex-col gap-3">
+                {limitedWorks.map((work) => <ReleaseWorkCard key={`${work.workKey}:${user?.id ?? "anon"}`} releases={work.releases} limited authenticated={Boolean(user)} userState={userState} stateAvailable={stateAvailable} returnPath={returnPath} />)}
+              </div>
+            </details>}
           </>}
       </div>
       <ReleaseSources sources={sourcesResult.status === "fulfilled" ? sourcesResult.value : null} />

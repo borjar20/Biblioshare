@@ -3,7 +3,7 @@ import type { ReleaseCandidate, TmdbReleaseDates, TmdbScreen } from "./provider-
 
 const imageUrl = (path: string | null | undefined) => path ? `https://image.tmdb.org/t/p/w342${path}` : null;
 
-export function normalizeMovieReleases(movie: TmdbScreen, releases: TmdbReleaseDates): ReleaseCandidate[] {
+export function normalizeMovieReleases(movie: TmdbScreen, releases: TmdbReleaseDates, synopsisLanguage: "es" | "en" | null = "es"): ReleaseCandidate[] {
   if (!Number.isSafeInteger(movie.id) || movie.id <= 0 || !movie.title?.trim()) throw new Error("malformed_provider_response");
   const rows: ReleaseCandidate[] = [];
   for (const channel of ["cinema", "digital"] as const) {
@@ -21,7 +21,8 @@ export function normalizeMovieReleases(movie: TmdbScreen, releases: TmdbReleaseD
         // A Spanish launch is a distinct announcement. It never inherits international consent.
         source_key: `movie:${movie.id}:${channel}:${market}`, work_key: `tmdb:movie:${movie.id}`,
         item_type: "movie", external_id: String(movie.id), title: movie.title.trim(),
-        cover_url: imageUrl(movie.poster_path), synopsis: movie.overview || null,
+        cover_url: imageUrl(movie.poster_path), synopsis: movie.overview?.trim() || null,
+        synopsis_language: movie.overview?.trim() ? synopsisLanguage : null,
         channel, season_number: null, market, language: selected.language,
         source_url: `https://www.themoviedb.org/movie/${movie.id}/release-dates`, platform: null,
       });
@@ -31,14 +32,15 @@ export function normalizeMovieReleases(movie: TmdbScreen, releases: TmdbReleaseD
 }
 
 /** Seasons use air_date, never next_episode_to_air (weekly episodes are out of scope). */
-export function normalizeSeriesReleases(series: TmdbScreen): ReleaseCandidate[] {
+export function normalizeSeriesReleases(series: TmdbScreen, synopsisLanguage: "es" | "en" | null = "es"): ReleaseCandidate[] {
   if (!Number.isSafeInteger(series.id) || series.id <= 0 || !series.name?.trim() || !Array.isArray(series.seasons)) {
     throw new Error("malformed_provider_response");
   }
   const common = {
     source: "tmdb" as const, work_key: `tmdb:tv:${series.id}`,
     item_type: "series" as const, external_id: String(series.id), title: series.name.trim(),
-    cover_url: imageUrl(series.poster_path), synopsis: series.overview || null,
+    cover_url: imageUrl(series.poster_path), synopsis: series.overview?.trim() || null,
+    synopsis_language: series.overview?.trim() ? synopsisLanguage : null,
     // TMDB air_date is international; original_language does not prove a Spanish release.
     market: "INT" as const, language: series.original_language || null, platform: null,
   };

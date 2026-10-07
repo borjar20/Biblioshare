@@ -1,7 +1,7 @@
 import type { CulturalRelease, ReleaseSubscription, ReleaseSourceStatus, ReleaseDelivery, ReleaseDeliveryClaim } from "@/lib/releases/types";
 
 // Keep hand-maintained checked domain unions for only the new release tables.
-type ReleaseDatabaseRow = { [K in keyof CulturalRelease]: CulturalRelease[K] };
+type ReleaseDatabaseRow = { [K in keyof CulturalRelease]: CulturalRelease[K] } & { synopsis_language: string | null };
 type ReleaseSubscriptionRow = { [K in keyof ReleaseSubscription]: ReleaseSubscription[K] };
 type ReleaseSourceStatusRow = { [K in keyof ReleaseSourceStatus]: ReleaseSourceStatus[K] };
 type ReleaseDeliveryRow = { [K in keyof ReleaseDelivery]: ReleaseDelivery[K] };

@@ -16,7 +16,7 @@ export async function ThisWeekReleases() {
   const today = madridDay(new Date());
   const dayOfWeek = new Date(`${today}T12:00:00Z`).getUTCDay();
   const sunday = addDays(today, dayOfWeek === 0 ? 0 : 7 - dayOfWeek);
-  const result = await Promise.allSettled([getPublicReleases({ market: "ES", language: "es", from: today, to: sunday, includeUndated: false, limit: 3 })]);
+  const result = await Promise.allSettled([getPublicReleases({ market: "ES", language: "es", from: today, to: sunday, includeUndated: false, completeness: "complete", limit: 3 })]);
   return <RouteMessages ns={["releases"]}>
     <section aria-labelledby="novedades-semana" className="min-w-0">
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">

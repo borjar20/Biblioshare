@@ -61,6 +61,7 @@ sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_own_photo_preview.sq
 sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_reviews.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_places.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/cultural_releases.sql'), 'utf8'));
+sql(readFileSync(join(repoRoot, 'supabase/tests/release_information_quality.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/wrap_ups.sql'), 'utf8'));
 await verifyQuotaConcurrency(stamp.projectId);
 await verifyGoogleVolumeQuotaConcurrency(stamp.projectId);

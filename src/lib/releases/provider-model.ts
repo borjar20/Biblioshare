@@ -10,6 +10,7 @@ export type ReleaseCandidate = ReleaseDateParts & {
   title: string;
   cover_url: string | null;
   synopsis: string | null;
+  synopsis_language?: "es" | "en" | null;
   channel: "cinema" | "digital" | "series" | "season";
   season_number: number | null;
   market: "ES" | "INT";

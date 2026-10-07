@@ -24,7 +24,7 @@ de la app, por bien dibujada que esté cada pantalla.
 
 ## Los términos
 
-Delta 2026-10-06, Novedades (implementación local pendiente de verificación):
+Novedades: base publicada el 2026-10-06; delta de calidad local/dev el 2026-10-07 (#1451):
 **Novedades** reúne próximos **Lanzamientos** de obras culturales. **Explorar**
 es la selección pública y **Lo que esperas** parte de Pendiente, del seguimiento
 de series o sagas y de los avisos elegidos. **Añadir a Pendiente** registra una
@@ -36,6 +36,9 @@ castellano** distingue una salida editorial de un libro nuevo. **Fecha por
 confirmar** conserva la ausencia de un día; **Anuncios sin día exacto** separa
 meses, años y fechas desconocidas. **Internacional** identifica un mercado
 distinto de España. **Sale esta semana** enlaza desde Inicio al calendario.
+**Anuncios con información limitada** agrupa obras sin portada segura o sinopsis;
+**Sin portada** y **Sin sinopsis** explican el motivo. **Sinopsis en inglés** describe el
+texto disponible, sin cambiar el mercado ni el idioma de edición/doblaje del lanzamiento.
 La administración usa **Borrador**, **Publicado**, **Cancelado**, **Revisar** y
 **Publicar**; publicar un anuncio no registra la obra en su biblioteca.
 

@@ -3,8 +3,8 @@
 > **[Canónico · verificado contra código el 2026-08-19]**
 >
 > Mapa de features construidas, por dominio, con su ruta principal y estado de entrega.
-> Delta Novedades implementado en código, base local y biblioshare-dev el 2026-10-06;
-> seis recorridos y revisión final de navegador R3 PASS; entrega a usuarios pendiente.
+> Novedades activas en producción desde el 2026-10-06 (PR #1424); delta de calidad
+> implementado en código y biblioshare-dev el 2026-10-07, pendiente de entrega en #1451.
 > Este doc dice **qué hay**; cómo está organizado lo dice `docs/ARQUITECTURA.md`,
 > el esquema `docs/requirements/data-model.md`, y lo pendiente
 > `docs/requirements/backlog.md` + las issues del repo. El producto y su porqué:
@@ -59,7 +59,7 @@ reúne Clubes y Personas; `/clubes` sigue funcionando. Los enlaces propios antig
 de Estadísticas/Panel y Rincón redirigen a sus nuevas superficies, conservando
 los filtros compatibles. No cambia el esquema ni la privacidad de los datos.
 
-## Novedades — implementación local/dev; entrega a usuarios pendiente
+## Novedades — activa en producción; mejora de calidad en local/dev
 
 `/novedades` reúne películas, series, temporadas, libros y primeras traducciones
 al castellano. Se accede desde Buscar y desde «Sale esta semana» en Inicio.
@@ -75,15 +75,21 @@ la aceptación del aviso acredita persistencia en la campana, sin acreditar rece
 de Web Push o Android. `/admin/novedades` permite introducir, revisar, publicar,
 corregir y cancelar libros, también sin ISBN, conservando la biblioteca del administrador.
 
-La sincronización diaria de TMDB y la revisión editorial semanal están implementadas
-con fecha de última comprobación efectiva. El esquema se ha aplicado y verificado en
-biblioshare-dev; el job `cultural-releases` permanece inactivo hasta comprobar el
-destino desplegado. Código, permisos y concurrencia verificados; navegador R3 completó
-seis recorridos contra build/start local a 390/1280 px, con revisión independiente PASS.
-La comprobación funcional no acredita una auditoría global de red limpia; sus límites
-y los cortes FAIL anteriores se conservan en el informe.
-Producción y publicación del código siguen pendientes en [#1423](https://github.com/borjar20/Biblioshare/issues/1423). Contrato: `docs/design/2026-10-06-novedades-implementation.md`;
-evidencia y límites: `docs/testing/2026-10-06-novedades.md`.
+La sincronización diaria de TMDB y la revisión editorial semanal muestran la última
+comprobación efectiva. La primera versión se desplegó en PR #1424; esquema, rutas y job
+horario se verificaron en producción el 2026-10-06. Evidencia de entrega:
+`docs/testing/2026-10-06-novedades-release.md`. La curación editorial inicial sigue en #1423.
+
+El delta de calidad (#1451, candidato local/dev del 2026-10-07) intenta completar sinopsis
+y portada oficiales antes de clasificar. Explorar reserva las obras con portada y sinopsis
+para el listado principal; las restantes mantienen fecha, fuente y acciones en «Anuncios
+con información limitada». La sinopsis inglesa se etiqueta. Inicio selecciona sólo obras
+completas antes de limitar a tres. Los datos conocidos sobreviven a un fallo opcional;
+completarlos mueve la obra al listado principal en la siguiente consulta. Lo que esperas
+conserva las elecciones personales. Título y portada abren catálogo cuando existe y,
+en caso contrario, el detalle público del anuncio sin crear catálogo ni pases (#1449).
+Verificación y entrega pendiente: `docs/testing/2026-10-07-novedades-quality.md`.
+El rediseño visual acordado se sigue por separado en #1450.
 
 ## Catálogo compartido
 

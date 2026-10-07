@@ -18,6 +18,9 @@ const monthId = "cbc1a019-0ac0-4d5e-8b24-9febc1bf0a24";
 const unknownId = "cbc1a019-0ac0-4d5e-8b24-9febc1bf0a25";
 const seasonId = "cbc1a019-0ac0-4d5e-8b24-9febc1bf0a26";
 const tmdbId = 97139001;
+const limitedId = "cbc1a019-0ac0-4d5e-8b24-9febc1bf0a27";
+const limitedKey = "tmdb:movie:97139003";
+const fixtureCover = "https://images.example.test/novedades/cover.svg";
 const today = madridDay(new Date());
 const month = addDays(today, 35).slice(0, 7);
 const actors: Record<"editor" | "a" | "b", { id: string; email: string; password: string }> = {
@@ -30,7 +33,7 @@ let sourceBaseline: Database["public"]["Tables"]["release_sync_state"]["Row"][] 
 function row(id: string, title: string, changes: Partial<CulturalRelease> = {}): Omit<CulturalRelease, "created_at" | "updated_at"> {
   return { id, title, work_key: `tmdb:movie:${tmdbId}`, source: "tmdb", source_key: `ci:novedades:${id}`, item_type: "movie", modality: "cinema",
     season_number: null, market: "ES", language: "und", date_value: today, date_precision: "day", status: "published", revision: 1,
-    checked_at: new Date().toISOString(), subtitle: null, cover_url: null, synopsis: null, author: null, publisher: null, isbn: null,
+    checked_at: new Date().toISOString(), subtitle: null, cover_url: fixtureCover, synopsis: "Sinopsis de prueba disponible", synopsis_language: "es", author: null, publisher: null, isbn: null,
     digital_platform: null, source_name: "CI Novedades fuente", source_url: "https://editorial.example/novedades", tmdb_id: tmdbId,
     book_id: null, movie_id: movieId, series_id: null, book_edition_id: null, ...changes };
 }
@@ -65,6 +68,8 @@ test.beforeAll(async () => {
   expect((await service.from("movies").insert({ id: movieId, tmdb_id: tmdbId, title: "CI Novedades película", release_year: Number(today.slice(0, 4)), duration_minutes: 90 })).error).toBeNull();
   expect((await service.from("books").insert([{ id: monthBookId, title: "CI Novedades libro con mes", author: "Autora CI" }, { id: unknownBookId, title: "CI Novedades libro sin fecha", author: "Autora CI" }])).error).toBeNull();
   const releases = [
+    row(limitedId, "A CI Novedades anuncio limitado", { work_key: limitedKey, tmdb_id: 97139003,
+      movie_id: null, cover_url: null, synopsis: "An official English synopsis", synopsis_language: "en" }),
     row(cinemaId, "CI Novedades película"), row(digitalId, "CI Novedades película", { modality: "digital", date_value: addDays(today, 2) }),
     row(internationalId, "CI Novedades película", { market: "INT", date_value: addDays(today, 1) }),
     row(monthId, "CI Novedades libro con mes", { source: "editorial", work_key: `book:${monthBookId}`, item_type: "book", modality: "book", book_id: monthBookId,
@@ -77,7 +82,10 @@ test.beforeAll(async () => {
   expect((await service.from("cultural_releases").insert(releases)).error).toBeNull();
 });
 
-test.beforeEach(async () => {
+test.beforeEach(async ({ page }) => {
+  await page.route(fixtureCover, (route) => route.fulfill({ contentType: "image/svg+xml",
+    body: '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="300"><rect width="200" height="300" fill="#54878b"/><text x="24" y="145" fill="#fff">CI Novedades</text></svg>' }));
+  expect((await service.from("cultural_releases").update({ cover_url: null }).eq("id", limitedId)).error).toBeNull();
   const ids = Object.values(actors).map((actor) => actor.id);
   expect((await service.from("release_subscriptions").delete().in("user_id", ids)).error).toBeNull();
   expect((await service.from("passes").delete().in("user_id", ids)).error).toBeNull();
@@ -141,6 +149,62 @@ for (const width of [390, 1280]) test(`Explorar público, fechas exactas/parcial
   await expect(page.getByRole("link", { name: "Ver todas las novedades", exact: true })).toBeVisible();
 });
 
+for (const width of [390, 1280]) test(`Información limitada, ficha pública y promoción automática · ${width}px`, async ({ page }, testInfo) => {
+  await page.addInitScript((theme) => localStorage.setItem("theme", theme), width === 1280 ? "dark" : "light");
+  await page.setViewportSize({ width, height: 850 });
+  await page.goto("/");
+  const weekly = page.getByRole("region", { name: "Sale esta semana", exact: true });
+  await expect(weekly.getByText("CI Novedades película", { exact: true })).toBeVisible();
+  await expect(weekly.getByText("A CI Novedades anuncio limitado", { exact: true })).toHaveCount(0);
+  await expect(weekly.getByRole("link", { name: "CI Novedades película", exact: true })).toHaveAttribute("href", `/pelicula/${movieId}`);
+  await page.goto("/novedades");
+  const limited = page.locator(`article[data-work-key="${limitedKey}"]`);
+  await expect(limited).toHaveCount(1);
+  await expect(limited).toBeHidden();
+  const disclosure = page.locator("summary").filter({ hasText: "Anuncios con información limitada" });
+  await disclosure.focus();
+  await disclosure.press("Enter");
+  await expect(page.locator("html")).toHaveClass(width === 1280 ? /dark/ : /light/);
+  await expect(limited).toBeVisible();
+  await expect(limited.getByText("Sin portada", { exact: true })).toBeVisible();
+  await expect(limited.getByText("Sinopsis en inglés", { exact: true })).toBeVisible();
+  await expect(limited.locator("img")).toHaveCount(0);
+  const main = page.locator('article[data-work-key="tmdb:movie:97139001"]');
+  await expect(main.getByRole("link", { name: "Ver detalles de CI Novedades película", exact: true })).toHaveAttribute("href", `/pelicula/${movieId}`);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: testInfo.outputPath(`information-quality-${width}.png`), fullPage: true });
+  await limited.getByRole("link", { name: "A CI Novedades anuncio limitado", exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/novedades\\?lanzamiento=${limitedId}$`));
+  await expect(page.getByText("An official English synopsis", { exact: true })).toBeVisible();
+  const catalog = await service.from("movies").select("id").eq("tmdb_id", 97139003);
+  expect(catalog.error).toBeNull(); expect(catalog.data).toEqual([]);
+  expect(await countPasses(actors.a.id)).toBe(0);
+  expect((await service.from("cultural_releases").update({ cover_url: fixtureCover }).eq("id", limitedId)).error).toBeNull();
+  await page.goto("/novedades");
+  await expect(limited).toHaveCount(1);
+  await expect(limited).toBeVisible();
+  await expect(page.locator("summary").filter({ hasText: "Anuncios con información limitada" })).toHaveCount(0);
+});
+
+test("un anuncio limitado conserva avisos en Lo que esperas sin crear una obra ni un pase", async ({ page }) => {
+  await login(page, actors.a);
+  await page.goto(`/novedades?lanzamiento=${limitedId}`);
+  await page.locator(`[data-release-id="${limitedId}"]`).getByRole("button", { name: "Avisarme", exact: true }).click();
+  await expect(page.locator(`[data-release-id="${limitedId}"]`).getByRole("button", { name: "Retirar aviso", exact: true })).toBeVisible();
+  await page.goto("/novedades?seleccion=personal");
+  const limited = page.locator(`article[data-work-key="${limitedKey}"]`);
+  await expect(limited).toBeVisible();
+  await expect(limited.getByText("Sin portada", { exact: true })).toBeVisible();
+  await limited.getByRole("button", { name: "Retirar aviso", exact: true }).click();
+  await expect.poll(async () => {
+    const choice = await service.from("release_subscriptions").select("active").eq("release_id", limitedId).eq("user_id", actors.a.id).single();
+    expect(choice.error).toBeNull(); return choice.data?.active;
+  }).toBe(false);
+  expect(await countPasses(actors.a.id)).toBe(0);
+  const catalog = await service.from("movies").select("id").eq("tmdb_id", 97139003);
+  expect(catalog.error).toBeNull(); expect(catalog.data).toEqual([]);
+});
 test("Lo que esperas conserva retorno de sesión y distingue Pendiente, consentimiento por modalidad y dos cuentas", async ({ page, browser }) => {
   await page.goto("/novedades?seleccion=personal&tipo=movie");
   await expect(page).toHaveURL(/\/login\?next=%2Fnovedades%3Fseleccion%3Dpersonal%26tipo%3Dmovie/);
