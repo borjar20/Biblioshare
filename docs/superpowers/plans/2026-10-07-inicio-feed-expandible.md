@@ -1,5 +1,6 @@
 # Plan de Inicio/feed expandible
 
+> [Histórico · congelado el 2026-10-07 · implementación y verificación local en docs/testing/2026-10-07-inicio-expandible.md]
 Diseño: ../specs/2026-10-07-inicio-feed-expandible-design.md. Ejecución directa autorizada por «Ve con la implementación». Rama codex/inicio-feed-expandible, base 9e3d45b5.
 
 ## Restricciones

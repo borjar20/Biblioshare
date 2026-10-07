@@ -1,5 +1,6 @@
 # Inicio/feed: resúmenes visuales y lateral accesible
 
+> [Histórico · congelado el 2026-10-07 · implementación y verificación local en docs/testing/2026-10-07-inicio-expandible.md]
 > Diseño aprobado en conversación el 2026-10-07; implementación solicitada explícitamente. Issues #1454 y #1453.
 
 Bajo 1100 px, Inicio muestra resúmenes visuales: obra/progreso con sesión directa, narradora/crónica, portadas de novedades y actividad semanal. Pulsar abre el contenido completo creciendo desde la tarjeta. Cerrar conserva feed, filtros, cursor, obra elegida y foco. La escalera sin obra en curso (cola, colección, descubrimiento) sigue funcionando.
