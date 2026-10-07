@@ -137,7 +137,10 @@ editor de catálogo inline (banner + barra sticky).
    mes, día, vista y filtros, también al volver del login. Los filtros
    se agrupan en un panel Paper: Tipo de obra usa un selector segmentado de dos columnas
    en móvil y cuatro desde 640 px; Mercado y Aplicar comparten fila. Las vistas y sus
-   contadores quedan al pie del mismo panel, separadas por una línea. Conservan selección,
+   contadores quedan al pie del mismo panel, separadas por una línea. El panel está abierto
+   inicialmente y se pliega con Ocultar filtros/Mostrar filtros; cerrado resume tipo y mercado
+   activos. Conserva cambios de mercado sin aplicar, URL y selección al cerrar/abrir.
+   Los controles ocultos quedan fuera del foco y la navegación accesible. Conservan selección,
    mercado y período; fuente/revisión por modalidad quedan en un
    desplegable de 44 px. Pendiente aparece en la fila del lanzamiento que ejecuta;
    Avisarme sigue siendo independiente por lanzamiento. La revisión global queda al

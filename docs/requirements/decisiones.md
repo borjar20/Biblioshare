@@ -6928,3 +6928,16 @@ no cambian. Sin migración, consultas nuevas ni caché adicional.
 
 Estado: candidato verificado de PR #1455; integración/publicación pendientes en #1450.
 Evidencia funcional y visual en docs/testing/2026-10-07-novedades-calendar.md.
+
+## 2026-10-07 — Novedades: plegar el panel aprobado sin perder cambios
+
+El usuario aprueba los filtros agrupados y pide poder ocultarlos. El panel empieza
+abierto para conservar la presentación aprobada, y la cabecera permite Ocultar filtros
+/ Mostrar filtros. Cerrado resume el tipo y mercado aplicados. El botón mantiene el
+foco y declara el estado y el cuerpo controlado; los controles ocultos quedan fuera
+de la navegación accesible.
+
+El cuerpo se oculta sin desmontarse: un cambio de mercado aún no aplicado permanece
+al abrirlo de nuevo. Plegar no aplica filtros, no cambia URL, vista ni período y no
+introduce persistencia o consultas. Estado: candidato en PR #1455; publicación
+pendiente en #1450. Evidencia en docs/testing/2026-10-07-novedades-calendar.md.

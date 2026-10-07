@@ -234,3 +234,46 @@ filters-group-green.log, filters-group-build.log, filters-group-types-final.log,
 filters-group-lint-final.log, filters-group-e2e-fixture-red.log,
 filters-group-e2e-final.log, filters-group-screens-final.log,
 filters-group-unit-full.log y filters-preview-result.json.
+
+## Ajuste posterior — panel ocultable (2026-10-07)
+
+El panel aprobado está abierto inicialmente. Ocultar filtros/Mostrar filtros cambia
+sólo su visibilidad: cerrado resume el tipo y mercado aplicados; el cuerpo permanece
+montado para conservar cambios pendientes de aplicar. El botón mantiene el foco y
+expone aria-expanded/aria-controls. Los controles ocultos no participan en la
+navegación accesible. No cambia URL, período ni vista.
+
+| Comprobación del plegado | Resultado |
+|---|---|
+| Regresión de visibilidad, borrador de mercado, vista y URL | RED antes del control; GREEN después |
+| Página, calendario, modelo, presentación y tarjetas | 70/70 focales PASS, cinco archivos |
+| Build Next 16.3.8, TypeScript sin incremental y ESLint | PASS |
+| Tres casos durables del panel en 320/390/1280 px | 3/3 PASS, 10,1 s, build/start local |
+| Revisión independiente de código y visual | Sin hallazgos accionables |
+| Capturas con muestra pública real | 18 capturas PASS, cuatro contextos; cero pageerror/overflow |
+
+Los casos nativos añaden Enter/Espacio, foco retenido, objetivo de 44 px, cuerpo
+oculto, mercado sin aplicar conservado y altura plegada menor de 140 px. La muestra
+real cubre 320/390 px oscuro, 390 px claro y 1280 px oscuro, en abierto y cerrado.
+La primera expectativa de vista del unitario usó limited; se corrige al parámetro
+público limitadas. No se modifica el resolver ni el comportamiento de vistas.
+
+La tanda completa de 27 casos del apartado anterior precede a este ajuste. Su
+intento de repetición se detuvo antes de ejecutar tests porque 3000 está ocupado
+por un next dev de otra sesión, en el checkout d7df. No se detiene ese servidor.
+La comprobación actual de los tres casos públicos usa un único next start temporal
+en 3030 con la build propia y la base desechable propia 55421. No hay segundo next dev
+ni cambios de configuración versionada/providers; no se repiten aquí los recorridos
+autenticados con retorno de login. La CI de publicación sigue en PR #1455/#1450.
+Los errores de streaming conocidos conservan #1263; cero pageerror no acredita
+limpieza global de consola/servidor. Se borran los fixtures por REST y se detienen
+servidor/base propios. Sin migraciones ni escrituras productivas.
+
+![Filtros plegados, móvil oscuro](novedades-paper/filtros-plegados-390-dark.png)
+
+![Mismo panel abierto, móvil oscuro](novedades-paper/filtros-ocultables-390-dark.png)
+
+Recibos en .scratch/novedades-quality/: filters-fold-red.log,
+filters-fold-green.log, filters-fold-build.log, filters-fold-types.log,
+filters-fold-lint.log, filters-fold-e2e.log (puerto ocupado),
+filters-fold-e2e-isolated.log y filters-fold-preview-result.json.

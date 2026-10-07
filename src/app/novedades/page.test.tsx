@@ -253,3 +253,26 @@ it("agrupa tipos, mercado y vistas sin perder el período al cambiar de vista", 
   expect(form.querySelector<HTMLInputElement>('input[name="mes"]')?.value).toBe("2027-02");
   expect(form.querySelector<HTMLInputElement>('input[name="vista"]')?.value).toBe("limitadas");
 });
+
+it("folds filters without losing a draft market, the selected view or URL context", async () => {
+  mocks.public.mockResolvedValue(groupReleaseWorks([releaseFixture({ cover_url: null })]));
+  await display({ tipo: "movie", mercado: "INT", dia: "2027-02-10", vista: "limitadas" });
+  const panel = within(screen.getByRole("region", { name: "Filtros de novedades" }));
+  const market = panel.getByRole("combobox", { name: "Mercado" }) as HTMLSelectElement;
+  fireEvent.change(market, { target: { value: "all" } });
+  const url = window.location.href;
+  const hide = panel.getByRole("button", { name: "Ocultar filtros" });
+  expect(hide.getAttribute("aria-expanded")).toBe("true");
+  fireEvent.click(hide);
+  expect(panel.queryByRole("combobox", { name: "Mercado" })).toBeNull();
+  expect(panel.queryByRole("link", { name: "Libros" })).toBeNull();
+  expect(panel.queryByRole("button", { name: /Información limitada/ })).toBeNull();
+  expect(window.location.href).toBe(url);
+  const show = panel.getByRole("button", { name: "Mostrar filtros" });
+  expect(show.getAttribute("aria-expanded")).toBe("false");
+  fireEvent.click(show);
+  expect(panel.getByRole("combobox", { name: "Mercado" })).toBe(market);
+  expect(market.value).toBe("all");
+  expect(panel.getByRole("button", { name: /Información limitada/ }).getAttribute("aria-pressed")).toBe("true");
+  expect(window.location.href).toBe(url);
+});

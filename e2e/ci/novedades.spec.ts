@@ -539,6 +539,25 @@ for (const width of [320, 390, 1280]) test("Filtros agrupados Paper: " + width +
   await expect(filters.getByRole("link", { name: "Series y temporadas", exact: true })).toBeVisible();
   const market = filters.getByRole("combobox", { name: "Mercado", exact: true });
   const apply = filters.getByRole("button", { name: "Aplicar filtros", exact: true });
+  const initialPath = page.url();
+  await market.selectOption("INT");
+  const hide = filters.getByRole("button", { name: "Ocultar filtros", exact: true });
+  await hide.focus(); await hide.press("Enter");
+  const show = filters.getByRole("button", { name: "Mostrar filtros", exact: true });
+  await expect(show).toHaveAttribute("aria-expanded", "false");
+  await expect(show).toBeFocused();
+  await expect(market).toBeHidden();
+  await expect(filters.getByRole("link", { name: "Libros", exact: true })).toBeHidden();
+  await expect(filters.getByRole("button", { name: /^Estrenos/ })).toBeHidden();
+  expect(page.url()).toBe(initialPath);
+  expect((await show.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  expect((await filters.boundingBox())!.height).toBeLessThan(140);
+  await page.screenshot({ path: testInfo.outputPath("filtros-plegados-" + width + ".png") });
+  await show.press("Space");
+  await expect(hide).toHaveAttribute("aria-expanded", "true");
+  await expect(hide).toBeFocused();
+  await expect(market).toHaveValue("INT");
+  await market.selectOption("ES");
   const field = (await market.boundingBox())!, submit = (await apply.boundingBox())!;
   expect(Math.abs(field.y - submit.y)).toBeLessThan(1);
   for (const item of await filters.getByRole("navigation", { name: "Filtros de novedades", exact: true }).getByRole("link").all()) {

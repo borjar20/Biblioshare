@@ -96,7 +96,10 @@
     "calendarFocusedOnly": "La obra seleccionada se muestra arriba con todos sus detalles.",
     "backToTop": "Volver arriba",
     "typeGroup": "Tipo de obra",
-    "applyShort": "Aplicar"
+    "applyShort": "Aplicar",
+    "filterTitle": "Filtros",
+    "hideFilters": "Ocultar filtros",
+    "showFilters": "Mostrar filtros"
   },
   "releaseAdmin": {
     "title": "Novedades de libros",

@@ -66,3 +66,8 @@
 .viewCount { font-variant-numeric:tabular-nums; color:var(--muted-foreground); }
 @media(min-width:640px) { .typeChoices { grid-template-columns:repeat(4,minmax(0,1fr)); } }
 @media(min-width:1024px) { .filterFields { grid-template-columns:minmax(0,1fr) 280px; gap:1.5rem; } }
+
+.filterHeader { display:flex; min-width:0; align-items:center; justify-content:space-between; gap:.75rem; }
+.filterTitle { font-size:.875rem; font-weight:600; color:var(--foreground); }
+.filterSummary { margin-top:.125rem; font-size:.75rem; line-height:1.4; color:var(--muted-foreground); }
+.filterBody { padding-top:.75rem; }

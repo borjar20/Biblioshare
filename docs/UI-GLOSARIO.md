@@ -52,7 +52,9 @@ al título de Novedades desde la lista móvil sin cambiar el período ni los fil
 **Tipo de obra** agrupa Todo, Libros, Películas y Series y temporadas en el panel de
 filtros. **Mercado** conserva España, Internacional y Todos los mercados; **Aplicar**
 es la etiqueta compacta del botón, cuyo nombre accesible sigue siendo **Aplicar filtros**.
-Las vistas y contadores comparten ese panel con separación visual.
+Las vistas y contadores comparten ese panel con separación visual. **Filtros** titula
+la cabecera plegable; **Ocultar filtros** y **Mostrar filtros** cierran/abren el panel
+sin aplicar ni borrar elecciones.
 Integración/publicación pendientes; no cambia el efecto de los controles.
 La administración usa **Borrador**, **Publicado**, **Cancelado**, **Revisar** y
 **Publicar**; publicar un anuncio no registra la obra en su biblioteca.

@@ -99,6 +99,7 @@ limita la agenda al mes/día elegido y da acceso directo a Información limitada
 confirmado. Cada modalidad exacta marca su día real; las fechas parciales no reciben un
 día artificial. Tipo de obra, Mercado/Aplicar y las vistas con sus contadores se agrupan
 ahora en un panel Paper compacto, con segmentación 2×2 en móvil y una fila en escritorio.
+El panel se puede plegar; cerrado resume tipo/mercado y conserva borradores y selecciones.
 La URL, el historial y el retorno del login mantienen mes/día/vista/filtros.
 En móvil, Volver arriba aparece al bajar, respeta movimiento reducido y retorna al título.
 El ancla de una obra prioriza su próxima fecha publicada dentro del período y conserva
