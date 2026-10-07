@@ -6912,3 +6912,19 @@ Los dos timeouts iniciales de escaneo y su control aislado se conservan en #1459
 El usuario solicita mover el control móvil de izquierda a derecha. Conserva su
 separación de la barra inferior y el safe-area. Si está la compañera flotante, el
 control se eleva para mantener pulsables ambos elementos. No cambia la navegación.
+
+## 2026-10-07 — Novedades: un panel Paper para tipos, mercado y vistas
+
+El usuario pide agrupar y mejorar la estética de los filtros. Se reúnen en una
+superficie Paper: Tipo de obra segmentado 2×2 en móvil y cuatro columnas desde 640 px,
+Mercado y Aplicar alineados, y las vistas mensuales con sus contadores al pie. Se
+mantienen los tokens, objetivos de 44 px y estados accesibles de selección/foco.
+
+ReleaseCalendarViews se extrae de la agenda para componerlo dentro de ReleaseFilterControls.
+Continúa usando el mismo estado de URL y los datos recibidos; tipo/mercado conservan
+mes/día/vista, y cambiar de vista no pide anuncios nuevos. El botón compacto conserva
+el nombre accesible Aplicar filtros. Las tarjetas, el calendario y el Inicio aprobados
+no cambian. Sin migración, consultas nuevas ni caché adicional.
+
+Estado: candidato verificado de PR #1455; integración/publicación pendientes en #1450.
+Evidencia funcional y visual en docs/testing/2026-10-07-novedades-calendar.md.

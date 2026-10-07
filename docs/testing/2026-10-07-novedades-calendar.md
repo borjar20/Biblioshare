@@ -188,3 +188,49 @@ altura máxima sobre su base obtenida del manifiesto actual). Se verifica margen
 derecho, altura táctil de 44 px, separación de barra/mascota, recepción del puntero
 por el botón y ocultación desktop. PASS 8/8. No es una nueva prueba del flujo de datos;
 los recibos del ajuste son mobile-top-right-layout.log y mobile-top-right-layout.json.
+
+## Ajuste posterior — filtros agrupados Paper (2026-10-07)
+
+Tipo de obra, Mercado/Aplicar y las vistas con sus contadores se agrupan en una sola
+superficie Paper. La segmentación es 2×2 en móvil y de cuatro columnas desde 640 px;
+Mercado y Aplicar comparten fila. Las vistas quedan al pie con separación visual.
+El componente de vistas se extrae de la agenda para componerlo en el panel, conservando
+mes/día/vista, conteos y navegación sin nuevas consultas. Las tarjetas e Inicio
+aprobados permanecen intactos.
+
+| Comprobación del ajuste | Resultado |
+|---|---|
+| Regresión del panel agrupado y estado de URL/formulario | RED antes del cambio; GREEN después |
+| Página, calendario, modelo, presentación y tarjetas | 69/69 unitarios focales PASS, cinco archivos |
+| Build Next 16.3.8, TypeScript sin incremental y ESLint final | PASS |
+| Suite general final | 548 archivos / 5442 pruebas PASS, 286,09 s |
+| Recorridos nativos completos contra build/start local | 27/27 PASS, 1,1 min |
+| Tres casos del panel, con encuadre final de captura | 3/3 PASS, 11,0 s |
+| Revisión independiente de código y visual | Sin hallazgos accionables |
+| Capturas con metadatos públicos reales | Panel a 320/390 px oscuro, 390 px claro y página a 1280 px oscuro |
+
+Los tres casos nuevos comprueban región agrupada, tipos con objetivo mínimo de 44 px,
+Mercado/Aplicar alineados, cambio de vista con teclado, contadores de meses vacíos,
+aplicación de mercado conservando el mes y ausencia de overflow horizontal. La primera
+tanda fue 26 PASS/1 FAIL: un anuncio de libro cancelado creado por el caso administrativo
+entraba legítimamente en el mes consultado. El test se acota a películas y avanza dos
+meses para independizarse de ese fixture y del día de ejecución. No se cambia el
+producto para ocultarlo; la tanda completa posterior pasa 27/27.
+
+La muestra visual utiliza diez anuncios públicos (ocho completos, dos limitados,
+nueve portadas reales), insertados sólo en la base local propia y borrados al terminar.
+Diez capturas: cuatro páginas, cuatro paneles y dos vistas limitadas. Portadas cargadas,
+cero pageerror y ausencia de overflow en los cuatro contextos. No acredita ausencia
+global de errores de consola/servidor: el streaming conocido conserva #1263.
+Los providers temporales de QA para 55421 se restauran sin diff. Sin cambios de esquema,
+escrituras productivas ni datos privados. Integración/publicación siguen en #1450.
+
+![Panel de filtros agrupados, móvil oscuro](novedades-paper/filtros-panel-390-dark.png)
+
+![Panel agrupado junto al calendario Paper, escritorio oscuro](novedades-paper/filtros-1280-dark.png)
+
+Recibos en .scratch/novedades-quality/: filters-group-red.log,
+filters-group-green.log, filters-group-build.log, filters-group-types-final.log,
+filters-group-lint-final.log, filters-group-e2e-fixture-red.log,
+filters-group-e2e-final.log, filters-group-screens-final.log,
+filters-group-unit-full.log y filters-preview-result.json.

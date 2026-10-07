@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { shiftMonth } from "@/lib/stats/dates";
 import { addDays, formatReleaseDate } from "@/lib/releases/precision";
-import { isReleaseMonth, releaseCalendarState, releaseCalendarPath, releaseCalendarMonths, releaseCalendarMarks, releaseMonthAgenda, releaseUnplacedWorks, releaseMonthCells, type ReleaseCalendarState, type ReleaseCalendarView } from "@/lib/releases/calendar";
+import { isReleaseMonth, releaseCalendarState, releaseCalendarPath, releaseCalendarMonths, releaseCalendarMarks, releaseMonthAgenda, releaseUnplacedWorks, releaseMonthCells, type ReleaseCalendarState } from "@/lib/releases/calendar";
 import type { ReleaseWork } from "@/lib/releases/presentation";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import type { ReleaseItemType } from "@/lib/releases/types";
@@ -35,9 +35,7 @@ export function ReleaseCalendarAgenda({ main, limited, today, authenticated = fa
   const grid = useRef<HTMLDivElement>(null);
   const [focusedDay, setFocusedDay] = useState<string | null>(null);
   const tabDay = focusedDay?.startsWith(state.month + "-") ? focusedDay : state.day ?? (today.startsWith(state.month + "-") ? today : state.month + "-01");
-  const mainMonth = releaseMonthAgenda(main, state.month, today);
-  const limitedMonth = releaseMonthAgenda(limited, state.month, today);
-  const count = (agenda: typeof mainMonth) => agenda.groups.reduce((sum, group) => sum + group.works.length, 0) + agenda.partial.length;
+  const count = (agenda: ReturnType<typeof releaseMonthAgenda>) => agenda.groups.reduce((sum, group) => sum + group.works.length, 0) + agenda.partial.length;
   const unplaced = releaseUnplacedWorks([...main, ...limited]);
   const marks = releaseCalendarMarks(main, limited, state.month);
   const byDate = new Map(marks.map((mark) => [mark.date, mark]));
@@ -76,19 +74,7 @@ export function ReleaseCalendarAgenda({ main, limited, today, authenticated = fa
     const target = grid.current?.querySelector<HTMLButtonElement>('button[data-date="' + next + '"]');
     if (target) { event.preventDefault(); target.focus(); }
   }
-  function chooseView(view: ReleaseCalendarView) { navigate({ month: state.month, day: view === "undated" ? null : state.day, view }); }
   return <div>
-    <div className={styles.views} role="group" aria-label={t("calendarViews")}>
-      <Button variant="secondary" className="min-h-11 px-3 text-xs" aria-pressed={state.view === "main"} onClick={() => chooseView("main")}>
-        {t("calendarMain")} <span className="text-muted-foreground">({count(mainMonth)})</span>
-      </Button>
-      {limited.length > 0 && <Button variant="secondary" className="min-h-11 px-3 text-xs" aria-pressed={state.view === "limited"} onClick={() => chooseView("limited")}>
-        {t("calendarLimited")} <span className="text-muted-foreground">({count(limitedMonth)})</span>
-      </Button>}
-      {unplaced.length > 0 && <Button variant="secondary" className="min-h-11 px-3 text-xs" aria-pressed={state.view === "undated"} onClick={() => chooseView("undated")}>
-        {t("calendarUnplaced")} <span className="text-muted-foreground">({unplaced.length})</span>
-      </Button>}
-    </div>
     <div className={styles.layout}>
       <section aria-label={t("calendarTitle")} className={styles.sidebar}>
         <div className={styles.monthBar}>

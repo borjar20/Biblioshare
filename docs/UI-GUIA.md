@@ -1,6 +1,6 @@
 # Guía de UI — principios y patrones
 
-> **[Delta calendario lateral Paper #1450 · 2026-10-07 · candidato de PR #1455; integración/publicación pendientes.]**
+> **[Delta filtros agrupados Paper #1450 · 2026-10-07 · candidato de PR #1455; integración/publicación pendientes.]**
 
 > **[Canónico · derivado de las fases 3-4 de la auditoría 2026-08 (2026-08-19);
 > excepción de mascota verificada el 2026-09-09; navegación principal y perfil
@@ -135,7 +135,10 @@ editor de catálogo inline (banner + barra sticky).
    foco al título; si aparece la mascota, se eleva para mantener ambos accesibles;
    respeta movimiento reducido. URL/historial conservan
    mes, día, vista y filtros, también al volver del login. Los filtros
-   rápidos mantienen selección y mercado; fuente/revisión por modalidad quedan en un
+   se agrupan en un panel Paper: Tipo de obra usa un selector segmentado de dos columnas
+   en móvil y cuatro desde 640 px; Mercado y Aplicar comparten fila. Las vistas y sus
+   contadores quedan al pie del mismo panel, separadas por una línea. Conservan selección,
+   mercado y período; fuente/revisión por modalidad quedan en un
    desplegable de 44 px. Pendiente aparece en la fila del lanzamiento que ejecuta;
    Avisarme sigue siendo independiente por lanzamiento. La revisión global queda al
    pie, sin panel lateral estirado. Inicio público combina abanico real y cuatro tarjetas

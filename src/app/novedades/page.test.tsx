@@ -236,3 +236,20 @@ describe("volver arriba desde la lista de novedades", () => {
     expect(movement).toEqual(["instant"]);
   });
 });
+
+it("agrupa tipos, mercado y vistas sin perder el período al cambiar de vista", async () => {
+  const complete = releaseFixture({ work_key: "grouped-main", title: "Estreno de febrero" });
+  const limited = releaseFixture({ id: "8174f7cd-39ed-40eb-8195-3d3d713a6a04", work_key: "grouped-limited", title: "Limitado de febrero", cover_url: null });
+  mocks.public.mockResolvedValue(groupReleaseWorks([complete, limited], {}, new Date("2026-10-06T12:00:00Z")));
+  await display({ mercado: "all", dia: "2027-02-03" });
+  const filters = within(screen.getByRole("region", { name: "Filtros de novedades" }));
+  expect(filters.getByRole("link", { name: "Libros" })).toBeTruthy();
+  expect(filters.getByRole("combobox", { name: "Mercado" })).toBeTruthy();
+  expect(filters.getByRole("button", { name: "Aplicar filtros" })).toBeTruthy();
+  fireEvent.click(filters.getByRole("button", { name: /Información limitada/ }));
+  const params = new URLSearchParams(window.location.search);
+  expect(Object.fromEntries(params)).toMatchObject({ mercado: "all", mes: "2027-02", dia: "2027-02-03", vista: "limitadas" });
+  const form = filters.getByRole("form", { name: "Filtros de novedades" });
+  expect(form.querySelector<HTMLInputElement>('input[name="mes"]')?.value).toBe("2027-02");
+  expect(form.querySelector<HTMLInputElement>('input[name="vista"]')?.value).toBe("limitadas");
+});

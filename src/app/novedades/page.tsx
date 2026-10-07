@@ -19,6 +19,7 @@ import { madridDay } from "@/lib/releases/precision";
 import { releaseCalendarState } from "@/lib/releases/calendar";
 import { ReleaseCalendarAgenda, ReleaseFocusedWorkCard } from "@/components/releases/release-calendar-agenda";
 import { ReleaseFilterControls } from "@/components/releases/release-filters";
+import { ReleaseCalendarViews } from "@/components/releases/release-calendar-views";
 import { ReleaseBackToTop } from "@/components/releases/release-back-to-top";
 import { releaseInformationGaps } from "@/lib/releases/quality";
 import type { CulturalRelease } from "@/lib/releases/types";
@@ -103,7 +104,9 @@ async function ReleasesContent({ searchParams }: { searchParams: Promise<Release
   const limitedWorks = selection === "explore" ? works.filter((work) => releaseInformationGaps(work.releases).length > 0) : [];
   const mainWorks = selection === "explore" ? works.filter((work) => releaseInformationGaps(work.releases).length === 0) : works;
   return <>
-    <ReleaseFilterControls selection={selection} type={type} market={market} fallbackMonth={fallbackMonth} />
+    <ReleaseFilterControls selection={selection} type={type} market={market} fallbackMonth={fallbackMonth}>
+      {workResult.status === "fulfilled" && (works.length > 0 || focused) && <ReleaseCalendarViews main={mainWorks} limited={limitedWorks} today={today} fallbackMonth={fallbackMonth} />}
+    </ReleaseFilterControls>
     {!stateAvailable && <div role="alert" className="flex flex-wrap items-center gap-3 rounded-card border border-border bg-surface p-4 text-sm">
       <p>{t("stateUnavailable")}</p><ReleaseRetry />
     </div>}

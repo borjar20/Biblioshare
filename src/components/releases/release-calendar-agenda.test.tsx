@@ -7,6 +7,7 @@ import messages from "../../../messages/es.json";
 import { groupReleaseWorks } from "@/lib/releases/presentation";
 import { releaseFixture } from "./test-fixture";
 import { ReleaseCalendarAgenda } from "./release-calendar-agenda";
+import { ReleaseCalendarViews } from "./release-calendar-views";
 const mocks = vi.hoisted(() => ({ refresh: vi.fn(), pending: vi.fn(), notice: vi.fn() }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: mocks.refresh, push: vi.fn() }),
@@ -29,6 +30,7 @@ const main = rows([
 const limited = rows([{ id: "limited", title: "Obra limitada", work_key: "limited", date_value: "2026-10-10", cover_url: null }]);
 function display(props: Partial<Parameters<typeof ReleaseCalendarAgenda>[0]> = {}) {
   return render(<NextIntlClientProvider locale="es" timeZone="Europe/Madrid" messages={{ releases: messages.releases }}>
+    <ReleaseCalendarViews main={props.main ?? main} limited={props.limited ?? limited} today={props.today ?? "2026-10-07"} fallbackMonth={props.fallbackMonth} />
     <ReleaseCalendarAgenda main={main} limited={limited} today="2026-10-07" {...props} />
   </NextIntlClientProvider>);
 }

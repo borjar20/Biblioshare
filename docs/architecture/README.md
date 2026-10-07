@@ -1,5 +1,11 @@
 # Mapa de arquitectura (máquina + humano)
 
+> **[Delta filtros agrupados Paper #1450 · 2026-10-07: panel único para tipos,
+> mercado y vistas con contadores; 69 unitarios focales, 27 recorridos build/start y
+> 548 archivos/5442 unitarios PASS. Diez capturas con metadatos públicos reales.
+> Candidato en PR #1455; publicación pendiente. Evidencia en
+> [el informe del calendario](../testing/2026-10-07-novedades-calendar.md).]**
+
 > **[Delta calendario lateral Paper #1450 · 2026-10-07: 65 unitarios focales y
 > 22 recorridos build/start PASS; agenda mensual/diaria, vistas superiores y URL/historial,
 > conservando tarjetas e Inicio aprobados. Candidato en PR #1455; publicación pendiente.

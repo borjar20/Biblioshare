@@ -1,6 +1,6 @@
 # Glosario de UI — un nombre por concepto
 
-> **[Delta calendario lateral Paper #1450 · 2026-10-07 · candidato de PR #1455; integración/publicación pendientes.]**
+> **[Delta filtros agrupados Paper #1450 · 2026-10-07 · candidato de PR #1455; integración/publicación pendientes.]**
 
 > **[Canónico · verificado 2026-08-20]**
 > Delta de navegación principal y herramientas de Biblioteca verificado 2026-10-03;
@@ -49,7 +49,11 @@ para el mes o día consultado; **Sin mes confirmado** reúne anuncios con año o
 por confirmar, accesibles desde cualquier mes. **Ir a un mes**, **Mes actual** y
 **Ver mes completo** navegan sin inventar una fecha exacta. **Volver arriba** devuelve
 al título de Novedades desde la lista móvil sin cambiar el período ni los filtros.
-Integración/publicación pendientes; no cambia el vocabulario de acciones ni su efecto.
+**Tipo de obra** agrupa Todo, Libros, Películas y Series y temporadas en el panel de
+filtros. **Mercado** conserva España, Internacional y Todos los mercados; **Aplicar**
+es la etiqueta compacta del botón, cuyo nombre accesible sigue siendo **Aplicar filtros**.
+Las vistas y contadores comparten ese panel con separación visual.
+Integración/publicación pendientes; no cambia el efecto de los controles.
 La administración usa **Borrador**, **Publicado**, **Cancelado**, **Revisar** y
 **Publicar**; publicar un anuncio no registra la obra en su biblioteca.
 

@@ -529,3 +529,38 @@ for (const [width, motion, authenticated] of [[320, "no-preference", false], [39
   await expect(desktopControl).toBeHidden();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
+
+for (const width of [320, 390, 1280]) test("Filtros agrupados Paper: " + width + "px", async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 900 });
+  await page.addInitScript(() => localStorage.setItem("theme", "dark"));
+  await page.goto("/novedades?tipo=movie");
+  const filters = page.getByRole("region", { name: "Filtros de novedades", exact: true });
+  await expect(filters).toBeVisible();
+  await expect(filters.getByRole("link", { name: "Series y temporadas", exact: true })).toBeVisible();
+  const market = filters.getByRole("combobox", { name: "Mercado", exact: true });
+  const apply = filters.getByRole("button", { name: "Aplicar filtros", exact: true });
+  const field = (await market.boundingBox())!, submit = (await apply.boundingBox())!;
+  expect(Math.abs(field.y - submit.y)).toBeLessThan(1);
+  for (const item of await filters.getByRole("navigation", { name: "Filtros de novedades", exact: true }).getByRole("link").all()) {
+    expect((await item.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  }
+  const limited = filters.getByRole("button", { name: /^Información limitada/ });
+  await limited.focus(); await limited.press("Enter");
+  await expect(limited).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator('article[data-work-key="' + limitedKey + '"]')).toBeVisible();
+  await filters.getByRole("button", { name: /^Estrenos/ }).click();
+  await page.getByRole("button", { name: "Mes siguiente", exact: true }).click();
+  await page.getByRole("button", { name: "Mes siguiente", exact: true }).click();
+  const selectedMonth = new URL(page.url()).searchParams.get("mes");
+  await expect(filters.getByRole("button", { name: /^Estrenos/ })).toContainText("(0)");
+  await expect(filters.getByRole("button", { name: /^Información limitada/ })).toContainText("(0)");
+  await market.selectOption("all");
+  await apply.click();
+  expect(new URL(page.url()).searchParams.get("mes")).toBe(selectedMonth);
+  await expect(filters).toBeVisible();
+  await page.getByRole("button", { name: "Mes actual", exact: true }).click();
+  await expect(filters.getByRole("button", { name: /^Estrenos/ })).toContainText("(4)");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+  await page.screenshot({ path: testInfo.outputPath("filtros-" + width + ".png") });
+});

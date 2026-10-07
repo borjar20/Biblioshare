@@ -29,6 +29,8 @@
 - [x] Añadir calendario lateral por mes/día, acceso directo a información limitada y
   anuncios sin mes y Volver arriba móvil, conservando las tarjetas Paper (#1450,
   candidato en PR #1455).
+- [x] Agrupar tipos, mercado y vistas en un panel Paper, con controles táctiles y
+  navegación/contexto conservados; verificado localmente en PR #1455 (#1450).
 - [ ] Integrar/publicar el candidato visual y verificar las rutas productivas (#1450).
   Evidencia: `docs/testing/2026-10-07-novedades-paper.md` y
   `docs/testing/2026-10-07-novedades-calendar.md`.

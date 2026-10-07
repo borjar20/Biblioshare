@@ -1,21 +1,27 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import { BookIcon, FilmIcon, SeriesIcon } from "@/components/ui/icons";
 import { isReleaseMonth } from "@/lib/releases/calendar";
+import styles from "./release-calendar.module.css";
 
-export function ReleaseFilterControls({ selection, type, market, fallbackMonth }: { selection: "explore" | "personal"; type: string; market: string; fallbackMonth?: string }) {
+const TYPE_ICON = { book: BookIcon, movie: FilmIcon, series: SeriesIcon };
+
+export function ReleaseFilterControls({ selection, type, market, fallbackMonth, children }: {
+  selection: "explore" | "personal"; type: string; market: string; fallbackMonth?: string; children?: ReactNode;
+}) {
   const t = useTranslations("releases");
   const search = useSearchParams();
   const calendarSearch = new URLSearchParams(search.toString());
-  // Closing a focused announcement must retain its implicitly selected month.
   if (fallbackMonth && isReleaseMonth(fallbackMonth) && !isReleaseMonth(calendarSearch.get("mes") ?? "")) calendarSearch.set("mes", fallbackMonth);
   function href(nextSelection: "explore" | "personal", nextType: string, nextMarket: string) {
     const params = new URLSearchParams(calendarSearch.toString());
-    // Changing a catalog filter closes the explicit detail as before; it keeps calendar navigation.
+    // Type/market changes close a focused detail and retain the calendar period.
     params.delete("lanzamiento");
     for (const [key, value, defaultValue] of [["seleccion", nextSelection === "personal" ? "personal" : "", ""], ["tipo", nextType, "all"], ["mercado", nextMarket, "ES"]]) {
       if (value === defaultValue) params.delete(key); else params.set(key, value);
@@ -29,26 +35,34 @@ export function ReleaseFilterControls({ selection, type, market, fallbackMonth }
         {t(option === "explore" ? "browse" : "personal")}
       </Link>)}
     </nav>
-    <p className="-mt-3 text-sm text-muted-foreground">{selection === "personal" ? t("personalHint") : t("scope")}</p>
-    <div className="flex flex-wrap items-end justify-between gap-4">
-      <nav aria-label={t("filters")} className="flex min-w-0 flex-wrap gap-2">
-        {(["all", "book", "movie", "series"] as const).map((value) => <Link key={value} href={href(selection, value, market)} aria-current={type === value ? "page" : undefined}
-          className={"inline-flex min-h-11 items-center rounded-full border px-4 text-sm transition-colors " + (type === value ? "border-accent bg-accent text-accent-foreground" : "border-border text-muted-foreground hover:bg-surface-muted hover:text-foreground")}>
-          {t("types." + value)}
-        </Link>)}
-      </nav>
-      <form key={selection + ":" + type + ":" + market} action="/novedades" aria-label={t("filters")} className="flex flex-wrap items-end gap-2">
-        {selection === "personal" && <input type="hidden" name="seleccion" value="personal" />}
-        <input type="hidden" name="tipo" value={type} />
-        {(["mes", "dia", "vista"] as const).map((key) => calendarSearch.get(key) ? <input key={key} type="hidden" name={key} value={calendarSearch.get(key)!} /> : null)}
-        <div className="flex flex-col gap-1 text-xs font-medium">
-          <label htmlFor="novedades-mercado">{t("market")}</label>
-          <Select id="novedades-mercado" name="mercado" defaultValue={market} className="min-h-11">
-            {(["ES", "INT", "all"] as const).map((value) => <option key={value} value={value}>{t("markets." + value)}</option>)}
-          </Select>
+    <section aria-label={t("filters")} className={styles.filterPanel}>
+      <p className={styles.filterHint}>{selection === "personal" ? t("personalHint") : t("scope")}</p>
+      <div className={styles.filterFields}>
+        <div className={styles.typeField}>
+          <p id="novedades-tipos" className={styles.fieldLabel}>{t("typeGroup")}</p>
+          <nav aria-label={t("filters")} className={styles.typeChoices}>
+            {(["all", "book", "movie", "series"] as const).map((value) => {
+              const Icon = value === "all" ? null : TYPE_ICON[value];
+              return <Link key={value} href={href(selection, value, market)} aria-current={type === value ? "page" : undefined} className={styles.typeChoice}>
+                {Icon && <Icon aria-hidden className="h-4 w-4 shrink-0" />}<span>{t("types." + value)}</span>
+              </Link>;
+            })}
+          </nav>
         </div>
-        <Button type="submit" variant="secondary" className="min-h-11">{t("apply")}</Button>
-      </form>
-    </div>
+        <form key={selection + ":" + type + ":" + market} action="/novedades" aria-label={t("filters")} className={styles.marketForm}>
+          {selection === "personal" && <input type="hidden" name="seleccion" value="personal" />}
+          <input type="hidden" name="tipo" value={type} />
+          {(["mes", "dia", "vista"] as const).map((key) => calendarSearch.get(key) ? <input key={key} type="hidden" name={key} value={calendarSearch.get(key)!} /> : null)}
+          <div className={styles.marketField}>
+            <label htmlFor="novedades-mercado" className={styles.fieldLabel}>{t("market")}</label>
+            <Select id="novedades-mercado" name="mercado" defaultValue={market} className="min-h-11 w-full min-w-0">
+              {(["ES", "INT", "all"] as const).map((value) => <option key={value} value={value}>{t("markets." + value)}</option>)}
+            </Select>
+          </div>
+          <Button type="submit" variant="secondary" aria-label={t("apply")} className="min-h-11 rounded-lg px-3 text-xs">{t("applyShort")}</Button>
+        </form>
+      </div>
+      {children}
+    </section>
   </>;
 }
