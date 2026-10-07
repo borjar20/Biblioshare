@@ -6918,3 +6918,23 @@ preferencia de movimiento reducido prevalece también sobre las reglas del estad
 expandido. Se conserva el comportamiento inline, el estado funcional y la
 presentación de PC. Verificación focal de fotogramas y alcance en
 `docs/testing/2026-10-07-inicio-motion.md`.
+
+
+## 2026-10-07 — El resumen de Hoy es el mismo foco contraído (#1457)
+
+Las dos capturas del usuario fijan el origen y el destino: conservar el título
+«¿Qué has disfrutado hoy?» sobre el resumen y transformar su contenido en la
+misma tarjeta de foco. TodayPicker entrega un único slot de TodayCard a
+HomeExpandable; su portada, nombre y barra permanecen visibles y montados,
+interpolando tamaño/posición. Meta, racha y acciones entran por filas animadas;
+las estanterías se despliegan debajo. Se elimina el resumen duplicado por obra.
+
+La sesión directa sigue disponible en el resumen, separada del botón que amplía.
+Los enlaces/controles del foco contraído permanecen inert; abrir lleva el foco del
+teclado a la tarjeta y recoger lo devuelve al botón, después de quitar inert.
+El título de la obra mantiene dos líneas como máximo y el resumen conserva 106 px
+incluso con nombres largos; al ampliar se expone el título completo. El título de
+sección y la fecha añaden su altura al Inicio compacto; el esqueleto móvil y
+el presupuesto del primer post reflejan esa cabecera solicitada. PC conserva la
+composición completa; no cambian consultas, sesiones ni la crónica. Evidencia y
+alcance en `docs/testing/2026-10-07-inicio-foco.md`.

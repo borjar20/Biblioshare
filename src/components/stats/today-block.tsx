@@ -135,11 +135,12 @@ export async function TodayBlock({ userId }: { userId: string }) {
           id: pass.item.entryId,
           focusLabel: t("focusMini", { title: pass.item.title }),
           announceLabel: t("focusedMini", { title: pass.item.title }),
-          summary: <TodaySummary pass={pass} count={focus.total} planned={planned.length} />,
+          summary: <span>{pass.item.title}</span>,
           quickAction: <Link href={pass.item.itemType !== "movie" && pass.item.activePassId ? `/sesion/${pass.item.activePassId}` : itemHref(pass.item.itemType, pass.item.itemId)}>{t(pass.item.itemType === "movie" ? "register" : "session")}</Link>,
           card: (
             <TodayCard
               pass={pass}
+              compactSummary={panel("libraryCounts", { current: focus.total, planned: planned.length })}
               weekly={weekly}
               dailyGoalMinutes={profile?.dailyGoalMinutes ?? null}
               nextEpisode={nextEpisodes.get(pass.item.entryId) ?? null}
@@ -230,15 +231,4 @@ function MiniThumb({ pass }: { pass: TodayPass }) {
       <span aria-hidden className="absolute inset-y-0 left-0 w-[2px] bg-[var(--acc)]" />
     </div>
   );
-}
-
-async function TodaySummary({ pass, count, planned }: { pass: TodayPass; count: number; planned: number }) {
-  const t = await getTranslations("homePanels");
-  const { item } = pass;
-  const progress = getProgress(item);
-  const percent = progress ? passPercent(progress.current, progress.total) : 0;
-  return <span className="home-today-preview" style={{ ["--acc" as string]: `var(${MEDIA_ACCENT[item.itemType].varName})` }}>
-    <span className="home-panel-preview-cover" data-home-art>{item.coverUrl && <Image src={item.coverUrl} alt="" fill sizes="48px" className="object-cover" />}</span>
-    <span><span className="home-preview-name">{item.title}</span>{progress && <><span className="home-preview-meta">{progress.label}</span><span className="home-preview-progress"><span style={{ width: `${percent}%` }} /></span></>}<span className="home-preview-meta">{t("libraryCounts", { current: count, planned })}</span></span>
-  </span>;
 }

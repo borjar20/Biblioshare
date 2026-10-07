@@ -1052,3 +1052,58 @@ body {
  /* La preferencia gana también a las reglas del estado expandido. */
  .home-panel-details,.home-panel-summary,.home-summary-compact,.home-summary-expanded,.home-panel-surface,.home-preview-fan .home-panel-preview-cover { transition:none !important; }
 }
+
+
+/* Hoy conserva una sola tarjeta: la portada, el título y la barra cambian de
+   tamaño y posición; el resto aparece dentro del mismo foco, sin duplicarlo. */
+.home-focus-heading { position:relative; margin-bottom:12px; }
+.home-focus-collapse,.home-focus-trigger,.home-focus-quick,.today-card-summary-meta { display:none; }
+.home-focus-context { margin-bottom:8px; }
+.home-focus-panel .home-panel-body { padding-top:12px; }
+.home-today-mobile-loading { display:none; }
+@media(max-width:1099px) {
+ .home-focus-heading { margin-bottom:10px; }
+ .home-today-mobile-loading { display:block; }
+ .home-focus-stage { position:relative; }
+ .home-focus-trigger { display:block; position:absolute; z-index:2; inset:0 86px 0 0; border-radius:14px; padding:0; }
+ .home-focus-trigger:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+ .home-focus-quick { display:block; position:absolute; z-index:3; top:53px; right:11px; margin:0; transform:translateY(-50%); opacity:1; transition:opacity 160ms var(--home-morph-ease); }
+ .home-focus-collapse { display:grid; place-items:center; position:absolute; right:0; top:-8px; width:44px; height:44px; border-radius:999px; color:var(--accent-ink); opacity:0; visibility:hidden; transition:opacity 240ms var(--home-morph-ease) 100ms,visibility 0s linear 240ms; }
+ .home-focus-panel[data-expanded="true"] .home-focus-trigger { visibility:hidden; pointer-events:none; }
+ .home-focus-panel[data-expanded="true"] .home-focus-quick { opacity:0; pointer-events:none; }
+ .home-focus-panel[data-expanded="true"] .home-focus-collapse { opacity:1; visibility:visible; }
+ .home-focus-panel .home-panel-surface { border:0; border-radius:0; background:transparent; box-shadow:none; }
+ .home-focus-panel .home-panel-body { padding:12px 0 0; }
+ .home-focus-panel .home-panel-footer { padding:12px 0 0; }
+ .home-focus-panel .home-focus-context { display:grid; grid-template-rows:0fr; margin:0; opacity:0; transition:grid-template-rows var(--home-morph-duration) var(--home-morph-ease),opacity 220ms var(--home-morph-ease); }
+ .home-focus-panel .home-focus-context > div { min-height:0; overflow:hidden; }
+ .home-focus-panel[data-expanded="true"] .home-focus-context { grid-template-rows:1fr; opacity:1; }
+ .home-focus-panel .home-focus-context > div > * { margin-bottom:8px; }
+ .home-focus-panel .home-focus-card .today-card-body { min-height:104px; max-height:104px; overflow:hidden; padding:11px; gap:10px; transition:max-height var(--home-morph-duration) var(--home-morph-ease),padding var(--home-morph-duration) var(--home-morph-ease),gap var(--home-morph-duration) var(--home-morph-ease); }
+ .home-focus-panel .home-focus-card .today-card-cover { width:48px; height:72px; transition:width var(--home-morph-duration) var(--home-morph-ease),height var(--home-morph-duration) var(--home-morph-ease); }
+ .home-focus-panel .home-focus-card .today-card-info { padding-right:78px; transition:padding-right var(--home-morph-duration) var(--home-morph-ease); }
+ .home-focus-panel .home-focus-card .today-card-title { margin-top:0; line-height:18px; max-height:36px; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; overflow-wrap:anywhere; transition:max-height var(--home-morph-duration) var(--home-morph-ease),line-height var(--home-morph-duration) var(--home-morph-ease),margin-top var(--home-morph-duration) var(--home-morph-ease); }
+ .home-focus-panel .home-focus-card .home-focus-reveal { display:grid; grid-template-rows:0fr; opacity:0; transition:grid-template-rows var(--home-morph-duration) var(--home-morph-ease),opacity 180ms var(--home-morph-ease); }
+ .home-focus-panel .home-focus-card .home-focus-reveal > * { min-height:0; overflow:hidden; }
+ .home-focus-panel .home-focus-card .today-card-progress { margin-top:4px; transition:margin-top var(--home-morph-duration) var(--home-morph-ease); }
+ .home-focus-panel .home-focus-card .today-card-progress-bar { transform:translateY(14px); transition:transform var(--home-morph-duration) var(--home-morph-ease); }
+ .home-focus-panel .home-focus-card .today-card-progress-label { line-height:12px; transform:translateY(-11px); transition:line-height var(--home-morph-duration) var(--home-morph-ease),transform var(--home-morph-duration) var(--home-morph-ease); }
+ .home-focus-panel .home-focus-card .today-card-progress-label > span:last-child:not(:first-child) { max-width:0; overflow:hidden; opacity:0; transition:opacity 220ms var(--home-morph-ease); }
+ .home-focus-panel .home-focus-card .today-card-summary-meta { display:block; font-size:11px; line-height:14px; color:var(--muted-foreground); margin-top:4px; max-height:32px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; opacity:1; transition:max-height var(--home-morph-duration) var(--home-morph-ease),margin-top var(--home-morph-duration) var(--home-morph-ease),opacity 160ms var(--home-morph-ease); }
+ .home-focus-panel .home-focus-card .today-card-actions { overflow:hidden; }
+ .home-focus-panel .home-focus-card .today-card-actions > div { border-top-width:0; transition:border-top-width var(--home-morph-duration) var(--home-morph-ease); }
+ .home-focus-panel[data-expanded="true"] .today-card-actions > div { border-top-width:1px; }
+ .home-focus-panel[data-expanded="true"] .today-card-body { max-height:2000px; padding:14px; gap:14px; }
+ .home-focus-panel[data-expanded="true"] .today-card-cover { width:58px; height:87px; }
+ .home-focus-panel[data-expanded="true"] .today-card-info { padding-right:0; }
+ .home-focus-panel[data-expanded="true"] .today-card-title { -webkit-line-clamp:unset; max-height:1600px; line-height:20px; margin-top:3px; }
+ .home-focus-panel[data-expanded="true"] .home-focus-reveal { grid-template-rows:1fr; opacity:1; transition:grid-template-rows var(--home-morph-duration) var(--home-morph-ease),opacity 260ms var(--home-morph-ease) 100ms; }
+ .home-focus-panel[data-expanded="true"] .today-card-progress { margin-top:8px; }
+ .home-focus-panel[data-expanded="true"] .today-card-progress-label { line-height:15px; }
+ .home-focus-panel[data-expanded="true"] .today-card-progress-bar,.home-focus-panel[data-expanded="true"] .today-card-progress-label { transform:none; }
+ .home-focus-panel[data-expanded="true"] .today-card-progress-label > span:last-child:not(:first-child) { max-width:60px; opacity:1; }
+ .home-focus-panel[data-expanded="true"] .today-card-summary-meta { max-height:0; margin-top:0; opacity:0; }
+}
+@media(max-width:1099px) and (prefers-reduced-motion:reduce) {
+ .home-focus-panel * { transition:none !important; }
+}

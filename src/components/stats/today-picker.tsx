@@ -85,41 +85,20 @@ export function TodayPicker({
   if (!featured) return null;
   const rest = entries.filter((e) => e.id !== featured.id);
 
-  const content = (
-    // Una columna principal: arriba el destacado (full-width), debajo las tiras
-    // "Continúa" y "Para más tarde". Bajo 1100 esas dos van LADO A LADO en un
-    // split asimétrico ("Continúa" 2×2, "Para más tarde" 4×2, las dos solo
-    // portada, separadas por un borde vertical); a ≥1100 van apiladas y ricas. Lo
-    // pinta `today-shelves` (globals.css). `today-split` es hoy solo un flex-col
-    // (el destacado sobre las tiras); el nombre es herencia.
-    <div className="today-split flex flex-col gap-3">
-      {sectionHeading}
-      {/* IZQUIERDA: En curso + destacado. */}
-      <div className="flex min-w-0 flex-col gap-2">
-        {heading}
-        {/* `role="status"` (aria-live polite implícito) fuera del subárbol que
-            se remonta: si viviera dentro del Fragment con `key`, cada cambio lo
-            recrearía y algunos lectores no anuncian un nodo recién insertado. */}
-        <p role="status" className="sr-only">
-          {announcement}
-        </p>
-        {/* La key fuerza el REMONTAJE al cambiar de destacado. Sin ella React
-            reutiliza el mismo <img> y le cambia el src, pero el navegador sigue
-            pintando la portada anterior hasta que descarga la nueva: durante
-            unos cientos de ms se veía la portada de un libro bajo el título de
-            otro. Vacío mientras carga es honesto; la portada equivocada, no. */}
-        <div
-          ref={featuredRef}
-          tabIndex={-1}
-          className="rounded-[14px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-        >
-          <Fragment key={featured.id}>{featured.card}</Fragment>
-        </div>
+  const focus = (
+    <div className="flex min-w-0 flex-col">
+      <div className="home-focus-context"><div>{heading}</div></div>
+      <p role="status" className="sr-only">{announcement}</p>
+      {/* Cambiar obra remonta su portada para no mostrar la anterior mientras
+          carga. Ampliar/recoger conserva esa misma key y el estado funcional. */}
+      <div ref={featuredRef} tabIndex={-1}
+        className="home-focus-card rounded-[14px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent">
+        <Fragment key={featured.id}>{featured.card}</Fragment>
       </div>
-
-      {/* "Continúa" y "Para más tarde": apiladas a ≥1100, lado a lado bajo 1100
-          en un split asimétrico (2×2 vs 4×2) — lo decide `today-shelves` en
-          globals.css. */}
+    </div>
+  );
+  // Las estanterías conservan su split asimétrico bajo 1100 y se apilan en PC.
+  const shelves = (
       <div className="today-shelves flex min-w-0 flex-col gap-3">
         {rest.length > 0 && (
           <div className="flex flex-col gap-2">
@@ -152,9 +131,9 @@ export function TodayPicker({
 
         {later}
       </div>
-    </div>
   );
   return panelLabels && featured.summary ? (
-    <HomeExpandable {...panelLabels} summary={featured.summary} quickAction={featured.quickAction} className="home-today-panel">{content}</HomeExpandable>
-  ) : content;
+    <HomeExpandable {...panelLabels} summary={featured.summary} quickAction={featured.quickAction}
+      focus={focus} sectionHeading={sectionHeading} className="home-today-panel">{shelves}</HomeExpandable>
+  ) : <div className="today-split flex flex-col gap-3">{sectionHeading}{focus}{shelves}</div>;
 }

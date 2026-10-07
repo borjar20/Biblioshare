@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import Link from "next/link";
+import Image from "next/image";
 import { Activity, useState } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -28,6 +29,24 @@ afterEach(() => { cleanup(); document.querySelectorAll("dialog[data-test-sheet]"
 function view() { return render(<TodayPicker entries={entries} keepGoingLabel="Continúa" {...{ panelLabels: labels }} />); }
 
 describe("Hoy resumido en móvil", () => {
+  it("mantiene el título de la sección en el resumen y transforma la misma tarjeta sin remontarla", async () => {
+    const title = "¿Qué has disfrutado hoy?";
+    const card = <article><Image src="/portada-prueba.png" alt="Portada del libro" width={48} height={72} /><Counter /></article>;
+    render(<TodayPicker entries={[{ ...entries[0], card }]} keepGoingLabel="Continúa" panelLabels={labels} sectionHeading={<h2>{title}</h2>} />);
+    expect(screen.getByRole("heading", { name: title })).toBeTruthy();
+    const cover = document.querySelector('img[alt="Portada del libro"]');
+    const trigger = screen.getByRole("button", { name: labels.openLabel });
+    fireEvent.click(trigger);
+    expect(screen.getByRole("heading", { name: title })).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Portada del libro" })).toBe(cover);
+    fireEvent.click(screen.getByRole("button", { name: "Sesiones de la obra: 0" }));
+    fireEvent.click(within(screen.getByRole("region", { name: labels.title })).getByRole("button", { name: `${labels.closeLabel}: ${labels.title}` }));
+    expect(screen.getByRole("heading", { name: title })).toBeTruthy();
+    expect(document.querySelector('img[alt="Portada del libro"]')).toBe(cover);
+    fireEvent.click(trigger);
+    expect(screen.getByRole("button", { name: "Sesiones de la obra: 1" })).toBeTruthy();
+  });
+
   it("presenta portada/progreso y sesión directa antes de abrir los controles completos", () => {
     view();
     expect(screen.getByRole("button", { name: labels.openLabel })).toBeTruthy();
@@ -39,7 +58,7 @@ describe("Hoy resumido en móvil", () => {
     fireEvent.click(trigger);
     const dialog = await screen.findByRole("region", { name: labels.title });
     fireEvent.click(within(dialog).getByRole("button", { name: "Sesiones de la obra: 0" }));
-    fireEvent.click(within(dialog).getByRole("button", { name: labels.closeLabel }));
+    fireEvent.click(within(dialog).getByRole("button", { name: `${labels.closeLabel}: ${labels.title}` }));
     await waitFor(() => expect(screen.getByRole("button", { name: labels.openLabel }).getAttribute("aria-expanded")).toBe("false"));
     expect(document.activeElement).toBe(trigger);
     fireEvent.click(trigger);

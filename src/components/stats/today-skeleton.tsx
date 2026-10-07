@@ -13,7 +13,13 @@ import { Skeleton, SkeletonLine } from "@/components/ui/skeleton";
 // texto puede desviarse una línea, según lleve o no barra de progreso y meta.
 export function TodayBlockSkeleton() {
   return (
-    <div aria-hidden><div className="home-today-mobile-skeleton" /><div className="home-loading-desktop"><section aria-hidden className="today-block flex flex-col gap-3">
+    <div aria-hidden><div className="home-today-mobile-loading">
+      <div className="home-focus-heading"><div className="today-head">
+        <SkeletonLine className="h-[16.5px] w-32" />
+        <Skeleton className="mt-1.5 h-[27px] w-64 max-w-full rounded-md max-[639px]:h-[21.5px]" />
+      </div></div>
+      <div className="home-today-mobile-skeleton" />
+    </div><div className="home-loading-desktop"><section aria-hidden className="today-block flex flex-col gap-3">
       {/* Cabecera: fecha (font-mono 11px) + título serif de 26px. */}
       <div className="today-head">
         <SkeletonLine className="h-3 w-32" />

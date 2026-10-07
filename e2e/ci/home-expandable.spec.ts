@@ -11,7 +11,7 @@ const service = createClient<Database>(url, process.env.SUPABASE_SERVICE_ROLE_KE
 const actor = { id: "", email: "ci-home-expandable@example.test", password: randomUUID() };
 const today = madridDay(new Date());
 const cover = "https://covers.openlibrary.org/b/id/ci-home-expandable-L.jpg";
-const books = Array.from({ length: 14 }, (_, index) => ({ id: `b1400010-2026-4000-a000-${String(index + 1).padStart(12, "0")}`, title: index === 0 ? "CI Inicio primera historia" : index === 1 ? "CI Inicio segunda historia" : `CI Inicio pendiente ${index}` }));
+const books = Array.from({ length: 14 }, (_, index) => ({ id: `b1400010-2026-4000-a000-${String(index + 1).padStart(12, "0")}`, title: index === 0 ? "CI Inicio: La increíble y triste historia de la cándida Eréndira y de su abuela desalmada" : index === 1 ? "CI Inicio segunda historia" : `CI Inicio pendiente ${index}` }));
 const passes = books.map((_, index) => `b1400010-2026-4000-b000-${String(index + 1).padStart(12, "0")}`);
 const editions = books.map((_, index) => `b1400010-2026-4000-c000-${String(index + 1).padStart(12, "0")}`);
 const releases = books.slice(2, 5).map((_, index) => `b1400010-2026-4000-d000-${String(index + 1).padStart(12, "0")}`);
@@ -74,9 +74,12 @@ for (const width of [320, 390, 768]) test(`resúmenes, obra elegida, crónica fi
   await login(page);
   const trigger = page.getByRole("button", { name: "Ampliar lo que disfrutas", exact: true });
   await expect(trigger).toContainText(books[0].title);
+  await expect(page.getByRole("heading", { name: "¿Qué has disfrutado hoy?", exact: true })).toBeVisible();
   await expect(page.getByText("Primera crónica social de prueba", { exact: true })).toBeVisible();
   const firstPost = await page.getByText("Primera crónica social de prueba", { exact: true }).locator("xpath=ancestor::article[1]").boundingBox();
-  expect(firstPost!.y).toBeLessThan((width === 320 ? 640 : 844) - 70);
+  const headingBox = await page.locator(".home-focus-heading").boundingBox();
+  // Se conserva el presupuesto del feed más la cabecera solicitada, ahora visible.
+  expect(firstPost!.y).toBeLessThan((width === 320 ? 640 : 844) - 70 + headingBox!.height + 10);
   expect(await seen("week")).toBeNull(); expect(await seen("month")).toBeNull();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath(`home-${width}.png`), fullPage: false });
@@ -96,34 +99,36 @@ for (const width of [320, 390, 768]) test(`resúmenes, obra elegida, crónica fi
       observer.observe(panel, { attributes: true, attributeFilter: ["data-expanded"] });
     });
   }
+  const coverNode = await page.locator(".home-focus-card .today-card-cover").elementHandle();
+  const before = await page.locator(".home-focus-card .today-card").boundingBox();
+  expect(before!.height).toBeCloseTo(106, 0);
   await trigger.click();
   const todayDialog = page.getByRole("region", { name: "Lo que disfrutas", exact: true });
   if (width === 390) {
     const morph = page.locator(".home-today-panel");
-    // La cara anterior sigue presente al comenzar; la siguiente entra después.
+    // La misma portada y barra interpolan su geometría, sin desaparecer.
     const firstFrame = await morph.evaluate((panel) => {
-      const animations = panel.getAnimations({ subtree: true });
-      animations.forEach((animation) => { animation.pause(); animation.currentTime = 0; });
-      const compact = getComputedStyle(panel.querySelector(".home-summary-compact")!);
-      return { animations: animations.length, compact: compact.display, opacity: Number(compact.opacity), title: Number(getComputedStyle(panel.querySelector(".home-summary-expanded")!).opacity), body: Number(getComputedStyle(panel.querySelector(".home-panel-surface")!).opacity) };
+      panel.getAnimations({ subtree: true }).forEach((animation) => { animation.pause(); animation.currentTime = 0; });
+      const cover = panel.querySelector(".today-card-cover")!;
+      return { animations: panel.getAnimations({ subtree: true }).length, width: cover.getBoundingClientRect().width, opacity: Number(getComputedStyle(cover).opacity), height: panel.querySelector(".today-card")!.getBoundingClientRect().height };
     });
     expect(firstFrame.animations).toBeGreaterThan(0);
-    expect(firstFrame.compact).not.toBe("none");
+    expect(firstFrame.width).toBeCloseTo(48, 0);
     expect(firstFrame.opacity).toBeGreaterThan(0.95);
-    expect(firstFrame.title).toBeLessThan(0.05);
-    expect(firstFrame.body).toBeLessThan(0.05);
+    expect(firstFrame.height).toBeCloseTo(before!.height, 0);
     const middle = await morph.evaluate((panel) => {
       panel.getAnimations({ subtree: true }).forEach((animation) => { animation.currentTime = 160; });
-      return { height: panel.querySelector(".home-panel-summary")!.getBoundingClientRect().height, title: Number(getComputedStyle(panel.querySelector(".home-summary-expanded")!).opacity) };
+      return { width: panel.querySelector(".today-card-cover")!.getBoundingClientRect().width, height: panel.querySelector(".today-card")!.getBoundingClientRect().height };
     });
-    expect(middle.height).toBeGreaterThan(64);
-    expect(middle.height).toBeLessThan(106);
-    expect(middle.title).toBeGreaterThan(0);
-    expect(middle.title).toBeLessThan(1);
+    expect(middle.width).toBeGreaterThan(48);
+    expect(middle.width).toBeLessThan(58);
+    expect(middle.height).toBeGreaterThan(firstFrame.height);
+    expect(await coverNode!.evaluate((cover) => cover === document.querySelector(".home-focus-card .today-card-cover"))).toBe(true);
     await morph.evaluate((panel) => { panel.getAnimations({ subtree: true }).forEach((animation) => animation.finish()); });
     await page.screenshot({ path: testInfo.outputPath("home-expanded.png"), fullPage: false });
   }
   await expect(todayDialog).toBeVisible();
+  await expect(todayDialog.locator(".home-focus-context a")).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   expect(await page.evaluate(() => document.body.style.overflow)).toBe("");
   await todayDialog.getByRole("button", { name: `Poner ${books[1].title} arriba`, exact: true }).click();
