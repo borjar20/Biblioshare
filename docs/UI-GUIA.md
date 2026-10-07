@@ -108,7 +108,7 @@ editor de catálogo inline (banner + barra sticky).
    decisiones y la sustitución del reparto «Tú» de 2026-08-21 constan en
    `decisiones.md`.
 
-   **Novedades (base publicada el 2026-10-06; calidad local/dev el 2026-10-07).** Cuelga de
+   **Novedades (base publicada el 2026-10-06; calidad de código y esquema local/dev/producción el 2026-10-07).** Cuelga de
    Buscar y del bloque público «Sale esta semana» de Inicio. Explorar permite
    visitantes; Lo que esperas y las acciones personales requieren sesión.
    España es el filtro inicial y las fechas internacionales tienen su etiqueta

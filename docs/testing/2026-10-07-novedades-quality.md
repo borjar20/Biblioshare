@@ -1,6 +1,6 @@
 # Novedades: calidad de información y acceso a detalles — 2026-10-07
 
-[Verificación del candidato local/dev · base 79fb2d25 · rama codex/novedades-calidad · producción pendiente]
+[Verificación de código y esquema local/dev/producción · base 79fb2d25 · rama codex/novedades-calidad · código en PR #1452]
 
 El cambio de #1451 intenta completar metadatos oficiales ausentes y separa anuncios
 limitados sin perder fechas o elecciones personales. #1449 queda cubierto con enlaces
@@ -79,13 +79,35 @@ auditoría completa ni corrige avisos previos de otros dominios.
 
 ## Entrega y limpieza
 
-No se aplicó la migración en producción ni se publicó código. #1451 conserva ese trabajo;
-#1449 conserva el despliegue de los enlaces. #1450 conserva el rediseño visual completo.
-La publicación debe aplicar primero la migración y después el código; la siguiente revisión
-diaria enriquecerá anuncios existentes. La portada ausente seguirá siendo ausencia si TMDB
+Corte inicial previo a autorización: no se había aplicado la migración en producción ni
+publicado el código. El corte productivo posterior figura debajo. #1451 conserva el
+seguimiento de publicación/enriquecimiento; #1449, los enlaces. #1450 conserva el rediseño
+visual completo. La siguiente revisión diaria enriquecerá anuncios existentes. La portada ausente seguirá siendo ausencia si TMDB
 no aporta imágenes. No se inventan imágenes, sinopsis ni fechas.
 
 Los E2E borran por REST sólo sus actores y datos sintéticos, antes y después, y restauran
 release_sync_state. La prueba SQL remota termina en rollback. Servidor Next cerrado por
 Playwright; puerto 3000 libre, instancia local biblioshare-local-3e9edd4c eliminada sin backup
 y Docker Desktop detenido al terminar (no había otros contenedores activos).
+
+## Aplicación productiva autorizada — 2026-10-07
+
+El usuario autorizó aplicar y fusionar PR #1452. Se aplicó exactamente la migración
+publicada, después de verificar los objetos productivos reales y el baseline de seguridad.
+Proyecto vmutcradmodhiltuohys; verificación posterior a las 08:57:59 UTC.
+
+- Columna synopsis_language nullable text con CHECK de código de idioma: 31 → 32 columnas.
+- SELECT anon/authenticated; sin INSERT/UPDATE ni EXECUTE del upsert. Service_role conserva
+  SELECT/INSERT/UPDATE y EXECUTE. SECURITY INVOKER y search_path vacío.
+- Firma única y definición iguales a local/dev: MD5 normalizado d550f1af8192102d8121adaee9eee52e.
+- Fingerprint de todas las columnas previas de los 311 anuncios idéntico antes/después:
+  9521e1fa70339e508c435ed3cba0b486. Suscripciones/entregas: 0/0; fuentes: 2.
+- Políticas RLS sin cambios: MD5 259f05286adfb4a1462896ab0f800f07.
+- Intento nulo de lote vacío rechazado con serialization_failure, como service_role y
+  con rollback; sin insertar fixtures ni alterar anuncios/consentimientos productivos.
+- Asesores: mismas 141 identidades en seis grupos, sin altas ni bajas. No equivale a
+  resolver los avisos históricos de otros dominios.
+
+La aplicación de esquema ya no bloquea el despliegue. El código se entrega en PR #1452;
+CI, publicación y siguiente enriquecimiento se siguen en #1451. Este recibo acredita
+esquema y compatibilidad, sin atribuir entrega de notificaciones a usuarios.

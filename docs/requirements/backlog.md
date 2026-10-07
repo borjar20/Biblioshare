@@ -8,7 +8,7 @@
   de aplicación en producción; ambas migraciones ya aplicadas y permisos comprobados
   allí el 2026-09-15. Contrato en la spec del 2026-09-15.
 
-## Novedades — activa en producción; calidad en local/dev y curación pendientes
+## Novedades — esquema de calidad productivo; publicación, enriquecimiento y curación seguidos en issues
 
 - [x] Primera versión en `codex/novedades`: calendario público, selección personal,
   edición de libros y avisos independientes. Código y esquema local/dev verificados
@@ -20,8 +20,9 @@
 - [x] Observar una ejecución programada real: `run_id=59355` terminó correctamente el
   2026-10-06 a las 17:00 UTC y publicó 124 anuncios de TMDB. No se insertaron fixtures.
 - [x] Implementar recuperación opcional de metadatos y separar anuncios con información limitada
-  en código/local/dev (2026-10-07, #1451); acceso público desde título/portada (#1449).
-- [ ] Integrar y desplegar el delta de calidad #1451 y acceso #1449; evidencia en
+  en código (PR #1452) y esquema local/dev/producción (2026-10-07, #1451); acceso público
+  desde título/portada (#1449).
+- [ ] Verificar publicación del código de PR #1452 y observar el enriquecimiento diario (#1451); evidencia en
   `docs/testing/2026-10-07-novedades-quality.md`.
 - [ ] Aplicar el rediseño Paper del Inicio y Novedades acordado en #1450.
 - [ ] Curar la selección editorial inicial de libros y revisar semanalmente las fuentes.

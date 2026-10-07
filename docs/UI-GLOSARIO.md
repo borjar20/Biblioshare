@@ -24,7 +24,7 @@ de la app, por bien dibujada que esté cada pantalla.
 
 ## Los términos
 
-Novedades: base publicada el 2026-10-06; delta de calidad local/dev el 2026-10-07 (#1451):
+Novedades: base publicada el 2026-10-06; delta de calidad con esquema local/dev/producción el 2026-10-07 (#1451, PR #1452):
 **Novedades** reúne próximos **Lanzamientos** de obras culturales. **Explorar**
 es la selección pública y **Lo que esperas** parte de Pendiente, del seguimiento
 de series o sagas y de los avisos elegidos. **Añadir a Pendiente** registra una

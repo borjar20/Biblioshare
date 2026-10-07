@@ -4,7 +4,8 @@
 >
 > Mapa de features construidas, por dominio, con su ruta principal y estado de entrega.
 > Novedades activas en producción desde el 2026-10-06 (PR #1424); delta de calidad
-> implementado en código y biblioshare-dev el 2026-10-07, pendiente de entrega en #1451.
+> verificado en código y esquema local/dev/producción el 2026-10-07; código en PR #1452
+> y publicación/enriquecimiento seguidos en #1451.
 > Este doc dice **qué hay**; cómo está organizado lo dice `docs/ARQUITECTURA.md`,
 > el esquema `docs/requirements/data-model.md`, y lo pendiente
 > `docs/requirements/backlog.md` + las issues del repo. El producto y su porqué:
@@ -59,7 +60,7 @@ reúne Clubes y Personas; `/clubes` sigue funcionando. Los enlaces propios antig
 de Estadísticas/Panel y Rincón redirigen a sus nuevas superficies, conservando
 los filtros compatibles. No cambia el esquema ni la privacidad de los datos.
 
-## Novedades — activa en producción; mejora de calidad en local/dev
+## Novedades — calidad de datos y acceso público a anuncios
 
 `/novedades` reúne películas, series, temporadas, libros y primeras traducciones
 al castellano. Se accede desde Buscar y desde «Sale esta semana» en Inicio.
@@ -80,7 +81,7 @@ comprobación efectiva. La primera versión se desplegó en PR #1424; esquema, r
 horario se verificaron en producción el 2026-10-06. Evidencia de entrega:
 `docs/testing/2026-10-06-novedades-release.md`. La curación editorial inicial sigue en #1423.
 
-El delta de calidad (#1451, candidato local/dev del 2026-10-07) intenta completar sinopsis
+El delta de calidad (#1451, código en PR #1452 y esquema aplicado en producción el 2026-10-07) intenta completar sinopsis
 y portada oficiales antes de clasificar. Explorar reserva las obras con portada y sinopsis
 para el listado principal; las restantes mantienen fecha, fuente y acciones en «Anuncios
 con información limitada». La sinopsis inglesa se etiqueta. Inicio selecciona sólo obras
@@ -88,7 +89,7 @@ completas antes de limitar a tres. Los datos conocidos sobreviven a un fallo opc
 completarlos mueve la obra al listado principal en la siguiente consulta. Lo que esperas
 conserva las elecciones personales. Título y portada abren catálogo cuando existe y,
 en caso contrario, el detalle público del anuncio sin crear catálogo ni pases (#1449).
-Verificación y entrega pendiente: `docs/testing/2026-10-07-novedades-quality.md`.
+Verificación y seguimiento de publicación/enriquecimiento: `docs/testing/2026-10-07-novedades-quality.md`.
 El rediseño visual acordado se sigue por separado en #1450.
 
 ## Catálogo compartido

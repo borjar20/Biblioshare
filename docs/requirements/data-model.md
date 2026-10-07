@@ -1,6 +1,6 @@
 # Modelo de datos
 
-> **Delta 2026-10-07 (calidad de Novedades; código, PostgreSQL local y biblioshare-dev verificados; producción pendiente en #1451):**
+> **Delta 2026-10-07 (calidad de Novedades; código verificado; esquema aplicado y verificado en local/dev/producción; entrega de código en PR #1452):**
 > `20261007075832_cultural_release_information_quality.sql` añade `synopsis_language`,
 > con grants explícitos, y conserva portada/sinopsis conocidas cuando el proveedor omite metadatos.
 > No cambia la publicación, el mercado, el consentimiento ni la revisión efectiva del lanzamiento. Ver §8quinquies.
@@ -5177,7 +5177,7 @@ El mercado forma parte de la identidad inmutable del lanzamiento: los anuncios E
 coexisten bajo la misma obra, con claves de fuente y consentimientos separados. Una fecha
 internacional no se transforma en un estreno español ni hereda automáticamente sus avisos.
 
-**Calidad de información (delta 2026-10-07, local/dev; pendiente de producción).**
+**Calidad de información (delta 2026-10-07, esquema aplicado y verificado en local/dev/producción).**
 `synopsis_language` es texto nullable con código de idioma validado; registra el idioma del
 texto y es independiente de `language` (edición/doblaje) y de `market`. NULL significa
 procedencia no registrada, por compatibilidad con anuncios y notificaciones anteriores.
@@ -5188,7 +5188,10 @@ La nueva columna es legible por anon/authenticated; sólo service_role recibe es
 La RPC conserva su firma de dos argumentos, SECURITY INVOKER y el bloqueo/token del intento.
 Una portada/sinopsis nula o compuesta sólo por espacios conserva la información conocida;
 una sinopsis nueva actualiza también su idioma. Metadatos por sí solos no aumentan revision
-ni disparan avisos. No hay umbral de popularidad, votos o ISBN para admitir un anuncio.
+ni disparan avisos. No hay umbral de popularidad, votos o ISBN para admitir un anuncio. En producción,
+la verificación de las 08:57:59 UTC confirma 32 columnas, permisos de lectura públicos
+y escritura sólo de servicio, función idéntica a dev/local tras normalizar CRLF,
+políticas RLS y los 311 anuncios previos intactos. No se insertaron fixtures productivos.
 
 La presentación agrupa las modalidades antes de exigir portada HTTPS segura y sinopsis no
 vacía. Explorar separa las obras limitadas en una lista plegable con motivos; el bloque de
