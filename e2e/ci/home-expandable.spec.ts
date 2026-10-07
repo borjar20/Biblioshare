@@ -167,6 +167,11 @@ for (const width of [320, 390, 768]) test(`resúmenes, obra elegida, crónica fi
   })).toBe(true);
   const weekPanel = page.locator(".home-releases-morph");
   const weekCovers = await weekPanel.locator(".release-work-cover").elementHandles();
+  expect(await weekPanel.evaluate((panel) => {
+    const covers = Array.from(panel.querySelectorAll(".release-work-cover"), (cover) => cover.getBoundingClientRect());
+    const card = panel.querySelector(".home-week-focus")!.getBoundingClientRect();
+    return Math.abs((Math.min(...covers.map((cover) => cover.left)) + Math.max(...covers.map((cover) => cover.right))) / 2 - card.x - card.width / 2);
+  })).toBeLessThan(1);
   const weekStart = await weekCovers[0].boundingBox();
   if (width === 390) await holdMorph(weekPanel);
   await page.getByRole("button", { name: "Ampliar Sale esta semana", exact: true }).click();

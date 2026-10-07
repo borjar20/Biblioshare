@@ -102,8 +102,8 @@ editor de catálogo inline (banner + barra sticky).
    Hoy mantiene «¿Qué has disfrutado hoy?» visible y transforma la misma tarjeta
    en el foco: portada, título y barra se recolocan durante 460 ms, mientras entran
    los datos y acciones. Tu semana conserva sus siete barras: crecen desde la
-   miniatura al gráfico. Sale esta semana convierte el mismo abanico de portadas
-   en las tarjetas Paper de `/novedades`, creciendo a todo el ancho debajo de
+   miniatura al gráfico. Sale esta semana centra el abanico bajo el título
+   (una, dos o tres portadas) y lo convierte en las mismas tarjetas Paper de `/novedades`, creciendo a todo el ancho debajo de
    la crónica. Esta ensancha en la misma transición; el período puede ocupar
    varias líneas y su altura real reserva el espacio de los lanzamientos.
    El cierre de novedades ocupa 44 px y se centra con el título.

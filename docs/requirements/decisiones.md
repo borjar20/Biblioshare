@@ -7098,3 +7098,11 @@ queda para el título y su cierre centrado; en móvil el enlace aparece con el m
 despliegue de la tarjeta. El estado sin anuncios/error mantiene ese acceso al pie.
 La landing pública conserva su cabecera. Sin cambios de consultas ni de copy.
 Evidencia en `docs/testing/2026-10-07-inicio-shared.md`.
+
+## 2026-10-07 — Abanico semanal centrado bajo el título (#1457)
+
+En el resumen móvil de Sale esta semana se centra el conjunto visual de portadas,
+con su ancho derivado de las una, dos o tres obras que puede traer el bloque.
+La misma tarjeta interpola su padding lateral hacia el estado ampliado, conservando
+las portadas y su morph; el lateral de PC mantiene su geometría compacta.
+Evidencia RED/GREEN en `docs/testing/2026-10-07-inicio-shared.md`.

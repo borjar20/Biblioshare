@@ -1176,11 +1176,13 @@ body {
  .home-releases-morph[data-expanded="true"] .home-week-title { font-size:20px; line-height:28px; }
  .home-week-focus .home-week-navigation-row { grid-template-rows:0fr; margin-top:0; opacity:0; transition:grid-template-rows var(--home-morph-duration) var(--home-morph-ease),margin-top var(--home-morph-duration) var(--home-morph-ease),opacity 220ms var(--home-morph-ease); }
  .home-releases-morph[data-expanded="true"] .home-week-navigation-row { grid-template-rows:1fr; margin-top:12px; opacity:1; }
- .home-week-focus .home-release-list { gap:0; transition:gap var(--home-morph-duration) var(--home-morph-ease); }
+ .home-week-focus .home-release-list { --home-fan-width:29px; gap:0; transition:gap var(--home-morph-duration) var(--home-morph-ease); }
+ .home-week-focus .home-release-list:has(> .home-release-work-slot:nth-child(2)) { --home-fan-width:52px; }
+ .home-week-focus .home-release-list:has(> .home-release-work-slot:nth-child(3)) { --home-fan-width:75px; }
  .home-releases-morph[data-expanded="true"] .home-release-list { gap:12px; }
  .home-week-focus .home-release-work-slot + .home-release-work-slot { margin-top:-43.5px; transition:margin-top var(--home-morph-duration) var(--home-morph-ease); }
  .home-releases-morph[data-expanded="true"] .home-release-work-slot + .home-release-work-slot { margin-top:0; }
- .home-week-focus .home-week-card { grid-template-columns:29px minmax(0,1fr); gap:0; padding:0; border-width:0; background:transparent; transition:grid-template-columns var(--home-morph-duration) var(--home-morph-ease),gap var(--home-morph-duration) var(--home-morph-ease),padding var(--home-morph-duration) var(--home-morph-ease),border-width var(--home-morph-duration) var(--home-morph-ease),background-color var(--home-morph-duration) var(--home-morph-ease); }
+ .home-week-focus .home-week-card { grid-template-columns:29px minmax(0,1fr); gap:0; padding:0; padding-left:calc((100% - var(--home-fan-width)) / 2); border-width:0; background:transparent; transition:grid-template-columns var(--home-morph-duration) var(--home-morph-ease),gap var(--home-morph-duration) var(--home-morph-ease),padding var(--home-morph-duration) var(--home-morph-ease),border-width var(--home-morph-duration) var(--home-morph-ease),background-color var(--home-morph-duration) var(--home-morph-ease); }
  .home-releases-morph[data-expanded="true"] .home-week-card { grid-template-columns:72px minmax(0,1fr); column-gap:16px; padding:14px; border-width:1px; background:var(--surface); }
  .home-week-focus .release-work-cover { transform:translateX(var(--home-fan-x)) rotate(var(--home-fan-tilt)); transition:transform var(--home-morph-duration) var(--home-morph-ease); }
  .home-releases-morph[data-expanded="true"] .release-work-cover { transform:none; }

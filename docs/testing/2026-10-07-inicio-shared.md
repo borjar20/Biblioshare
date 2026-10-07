@@ -165,3 +165,22 @@ la landing pública mantiene su enlace original en cabecera.
 - TypeScript, ESLint y `diff --check` PASS. E2E de CI incorpora las aserciones de
   posición, centrado y área táctil; la suite autenticada completa no se repite
   en este ajuste de presentación. El build/start previo conserva su alcance.
+
+## Abanico colapsado centrado
+
+RED Chromium a 390 px: centro de las tres portadas 36,5 px a la izquierda del
+centro de la tarjeta. GREEN: diferencia menor de 0,5 px. Se calcula el ancho del
+abanico según los elementos presentes (29/52/75 px antes de la rotación), y el
+padding existente interpola esa posición al desplegar la misma portada.
+
+Probe PASS con una, dos y tres portadas a 390 px; tres a 320/390/520/768/1099 px.
+También PASS el morph 0/160/final y reverso, identidad de portadas/barras, crónica
+multilínea y a todo el ancho, pie centrado/pulsable, estados vacíos/error, temas,
+movimiento reducido y PC1280 con portadas de 36 px. Los casos de una y dos obras
+reducen el DOM del slot SSR y conservan las inclinaciones de cada cardinalidad;
+no siembran datos ni acreditan consultas contra un catálogo real.
+
+E2E de CI añade medición del centro del conjunto visual. ESLint focal y
+`diff --check` PASS. No se repite la suite autenticada completa, los unitarios ni
+build/start en este cambio exclusivamente de CSS; los cortes previos conservan
+su alcance.
