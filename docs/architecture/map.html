@@ -337,9 +337,16 @@
       "label": "/ · (home)",
       "layer": "route",
       "kind": "route",
-      "summary": "Feed social + bloque de hoy + accesos rápidos. Shell instantáneo con <Suspense> por sección.",
+      "summary": "Feed social y paneles personales. Bajo 1100: resúmenes visuales expandibles; escritorio completo con Novedades breve y scroll independiente.",
       "files": [
-        "src/app/(home)"
+        "src/app/(home)",
+        "src/components/home/home-expandable.tsx",
+        "src/components/home/home-rail.tsx",
+        "src/components/home/panel-motion.ts",
+        "src/components/home/home-skeleton.tsx"
+      ],
+      "gotchas": [
+        "Contenido completo permanece montado; server slots y consultas con sesión sin caché compartida. Native dialog cierra al navegar/cambiar breakpoint; altura del rail considera el saludo."
       ]
     },
     {
@@ -2317,10 +2324,12 @@
         "src/components/wrap-ups/share-image.ts",
         "src/components/wrap-ups/wrap-up-entry.tsx",
         "src/components/wrap-ups/wrap-ups-row.tsx",
-        "src/components/wrap-ups/wrap-up-feed-card.tsx"
+        "src/components/wrap-ups/wrap-up-feed-card.tsx",
+        "src/components/wrap-ups/home-wrap-up.tsx"
       ],
       "gotchas": [
-        "Reduced motion sin auto avance. Web Share con File precargado; dispositivo Android pendiente #1431."
+        "Reduced motion sin auto avance. Web Share con File precargado; dispositivo Android pendiente #1431.",
+        "Inicio móvil carga StoryPlayer al pulsar, fija el kind abierto y reconcilia sus datos nuevos; el resumen no marca visto."
       ]
     },
     {

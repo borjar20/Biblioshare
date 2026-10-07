@@ -84,6 +84,10 @@ for (const width of [320, 390, 768]) test(`resúmenes, obra elegida, crónica fi
   await trigger.click();
   const todayDialog = page.getByRole("dialog", { name: "Lo que disfrutas", exact: true });
   await expect(todayDialog).toBeVisible();
+  if (width === 390) {
+    await todayDialog.evaluate((dialog) => Promise.all(dialog.getAnimations({ subtree: true }).filter((animation) => animation.id.startsWith("home-panel-")).map((animation) => animation.finished.catch(() => {}))));
+    await page.screenshot({ path: testInfo.outputPath("home-expanded.png"), fullPage: false });
+  }
   await todayDialog.getByRole("button", { name: `Poner ${books[1].title} arriba`, exact: true }).click();
   await todayDialog.getByRole("button", { name: "Cerrar vista completa", exact: true }).click();
   await expect(todayDialog).toBeHidden(); await expect(trigger).toBeFocused(); await expect(trigger).toContainText(books[1].title);
@@ -103,6 +107,13 @@ for (const width of [320, 390, 768]) test(`resúmenes, obra elegida, crónica fi
   const story = page.getByRole("dialog").filter({ has: page.locator('ol') });
   await expect(story).toBeVisible();
   await expect.poll(() => seen("week")).not.toBeNull(); expect(await seen("month")).toBeNull();
+  if (width === 390) {
+    await page.keyboard.press("ArrowRight"); await page.keyboard.press("ArrowRight");
+    await story.getByRole("button", { name: "Publicar en el feed", exact: true }).click();
+    await expect(story.getByRole("button", { name: "Despublicar", exact: true })).toBeVisible();
+    await story.getByRole("button", { name: "Despublicar", exact: true }).click();
+    await expect(story.getByRole("button", { name: "Publicar en el feed", exact: true })).toBeVisible();
+  }
   await page.keyboard.press("Escape"); await expect(story).toBeHidden();
   await expect(page.getByRole("button", { name: "Abrir tu crónica", exact: true })).toBeFocused();
   expect(await page.evaluate(() => document.body.style.overflow)).toBe("");

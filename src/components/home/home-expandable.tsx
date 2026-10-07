@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } fro
 import { usePathname } from "next/navigation";
 import { XIcon } from "@/components/ui/icons";
 import { useReducedMotion } from "@/lib/ui/use-reduced-motion";
-import { animateHomePanel, type PanelRect } from "./panel-motion";
+import { animateHomePanel, cancelHomePanelMotion, type PanelRect } from "./panel-motion";
 
 const NARROW = "(max-width: 1099px)";
 export function useNarrowHome() {
@@ -44,7 +44,7 @@ export function HomeExpandable({ title, openLabel, closeLabel, summary, quickAct
     }
   }
   function cancelMotion() {
-    dialogRef.current?.getAnimations?.({ subtree: true }).forEach((animation) => animation.cancel());
+    if (dialogRef.current) cancelHomePanelMotion(dialogRef.current);
   }
   useEffect(() => {
     const dialog = dialogRef.current;

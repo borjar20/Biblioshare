@@ -128,9 +128,8 @@ export default async function Home({
           </Suspense>
         </div>
 
-        {/* STATS: resumen semanal / meta anual / racha. En móvil StatsRail pinta
-            un resumen compacto (tres cifras); de md para arriba, el detalle. El
-            sticky (solo con 3 columnas) lo pone `.home-grid`. */}
+        {/* STATS: resumen expandible bajo 1100 px, detalle completo desde
+            1100. HomeRail acota el scroll propio de la columna sticky. */}
         <HomeRail area="stats">
           <Suspense fallback={<HomeSmallSkeleton stats />}>
             <StatsRail userId={user.id} />

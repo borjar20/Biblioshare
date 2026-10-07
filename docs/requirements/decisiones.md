@@ -6841,3 +6841,29 @@ catálogo ni pases. No se añade estado de publicación ni una segunda cola de a
 Estado: código/local/dev del 2026-10-07; producción pendiente en #1451 y #1449.
 El rediseño visual Paper acordado se sigue en #1450. Evidencia en
 `docs/testing/2026-10-07-novedades-quality.md`.
+
+
+## 2026-10-07 — Inicio: la tarjeta crece en móvil; escritorio conserva su detalle (#1453/#1454)
+
+Decisión del usuario: preservar portadas, narradora y piel Paper. Bajo 1100 px se
+resumen Hoy, crónica, anuncios semanales y actividad en tarjetas visuales; al
+pulsar, la tarjeta crece hacia su vista completa. Hoy mantiene acceso directo a
+sesión. En PC se mantiene el contenido completo y solo se reduce Sale esta semana,
+con acceso general a `/novedades`. Los laterales desplazan su propio contenido,
+con altura calculada a partir de su posición real, incluyendo el saludo.
+
+El detalle se entrega como slots del servidor y permanece montado en un diálogo
+nativo: abrir no reinicia selección, reloj ni feed. Los estados sin obra en curso
+siguen ofreciendo cola, colección o descubrimiento. Esqueletos equivalentes, foco
+de vuelta, Escape, bloqueo de fondo y limpieza al navegar o cambiar de breakpoint.
+La crónica carga StoryPlayer al pulsar y solo entonces se marca vista. Se fija su
+identidad; las respuestas nuevas del servidor actualizan sus modelos y acciones
+para que publicar/actualizar no deje controles antiguos. Las animaciones usan
+origen superior izquierdo y cancelan solo sus propias transiciones al interrumpirse.
+
+Se reutilizan consultas y acciones: sin migraciones, caché compartida ni datos
+ficticios en producto. Los filtros sociales existentes pasan a una fila horizontal
+bajo 640 px para que el primer post aparezca antes; no se añade navegación entre
+paneles. El alcance no incluye el rediseño público de #1450. Verificación local y
+límites en `docs/testing/2026-10-07-inicio-expandible.md`; publicación seguida en
+#1453/#1454. La prueba intermitente previa de retirada de aviso se sigue en #1456.

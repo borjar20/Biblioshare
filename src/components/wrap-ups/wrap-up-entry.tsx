@@ -92,6 +92,7 @@ export async function HomeWrapUpCover() {
   );
   const panel = await getTranslations("homePanels");
   const strings = await getTranslations();
-  const models = (wrap.payload.stories ?? []).map((story) => posterFor(story, wrap.payload, strings as unknown as T));
-  return <RouteMessages ns={["wrapUps.ui", "wrapUps.stories.cover"]}><HomeWrapUp wrapUp={wrap} models={models} desktopCover={desktopCover} openLabel={panel("openWrap")} summary={<><span className="home-preview-name">{panel("wrap")}</span><span className="home-wrap-preview-body"><NarratorThumb variant={wrap.payload.narrator} /><span>{unseenFull && <span className="text-xs text-accent-ink">{panel("new")}</span>}<span className="home-preview-meta">{periodLabel(wrap.payload)}</span></span></span></>} /></RouteMessages>;
+  const available = all.map((entry) => ({ wrapUp: entry, models: (entry.payload.stories ?? []).map((story) => posterFor(story, entry.payload, strings as unknown as T)) }));
+  const models = available.find((entry) => entry.wrapUp.kind === wrap.kind)!.models;
+  return <RouteMessages ns={["wrapUps.ui", "wrapUps.stories.cover"]}><HomeWrapUp wrapUp={wrap} models={models} available={available} desktopCover={desktopCover} openLabel={panel("openWrap")} summary={<><span className="home-preview-name">{panel("wrap")}</span><span className="home-wrap-preview-body"><NarratorThumb variant={wrap.payload.narrator} /><span>{unseenFull && <span className="text-xs text-accent-ink">{panel("new")}</span>}<span className="home-preview-meta">{periodLabel(wrap.payload)}</span></span></span></>} /></RouteMessages>;
 }

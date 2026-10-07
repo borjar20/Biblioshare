@@ -24,7 +24,10 @@
   desde título/portada (#1449).
 - [ ] Verificar publicación del código de PR #1452 y observar el enriquecimiento diario (#1451); evidencia en
   `docs/testing/2026-10-07-novedades-quality.md`.
-- [ ] Aplicar el rediseño Paper del Inicio y Novedades acordado en #1450.
+- [ ] Aplicar el rediseño Paper del Inicio público y Novedades acordado en #1450.
+- [x] Implementar resúmenes visuales expandibles del Inicio con sesión en móvil y
+  compactar solo Sale esta semana en PC, con scroll independiente de laterales
+  (#1453/#1454, 2026-10-07; candidato local). Publicación pendiente en esas issues.
 - [ ] Curar la selección editorial inicial de libros y revisar semanalmente las fuentes.
   Aún no hay filas editoriales, suscripciones ni entregas, así que no se ha probado una
   notificación a usuarios. Seguimiento: [#1423](https://github.com/borjar20/Biblioshare/issues/1423),

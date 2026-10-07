@@ -9,14 +9,15 @@ import type { PanelRect } from "@/components/home/panel-motion";
 
 const Player = dynamic(() => import("./story-player").then((module) => module.StoryPlayer), { ssr: false });
 
-export function HomeWrapUp({ wrapUp, models, desktopCover, summary, openLabel }: {
-  wrapUp: OwnWrapUp; models: PosterModel[]; desktopCover: ReactNode; summary: ReactNode; openLabel: string;
+export function HomeWrapUp({ wrapUp, models, available, desktopCover, summary, openLabel }: {
+  wrapUp: OwnWrapUp; models: PosterModel[]; available?: { wrapUp: OwnWrapUp; models: PosterModel[] }[]; desktopCover: ReactNode; summary: ReactNode; openLabel: string;
 }) {
   const pathname = usePathname();
   const previousPath = useRef(pathname);
   const trigger = useRef<HTMLButtonElement>(null);
   // La selección del servidor puede cambiar tras marcar vista una crónica.
-  // La que se abrió queda fijada hasta cerrar; no salta a otra semana/mes.
+  // La identidad queda fijada hasta cerrar; sus datos sí siguen la respuesta
+  // actual del servidor para que publicar/actualizar cambie los controles.
   const [opened, setOpened] = useState<{ wrapUp: OwnWrapUp; models: PosterModel[]; origin: PanelRect | null } | null>(null);
   useEffect(() => {
     if (!opened) return;
@@ -29,10 +30,11 @@ export function HomeWrapUp({ wrapUp, models, desktopCover, summary, openLabel }:
     previousPath.current = pathname;
     setOpened(null);
   }, [pathname]);
+  const current = opened && (available?.find((entry) => entry.wrapUp.kind === opened.wrapUp.kind) ?? opened);
   return <div className="home-wrap-entry">
     <div className="home-wrap-desktop">{desktopCover}</div>
     <button ref={trigger} type="button" className="home-wrap-preview" aria-label={openLabel} aria-haspopup="dialog"
       onClick={() => setOpened({ wrapUp, models, origin: trigger.current?.getBoundingClientRect() ?? null })}>{summary}</button>
-    {opened && <Player wrapUp={opened.wrapUp} models={opened.models} originRect={opened.origin} onClose={() => { setOpened(null); trigger.current?.focus({ preventScroll: true }); }} />}
+    {opened && current && <Player wrapUp={current.wrapUp} models={current.models} originRect={opened.origin} onClose={() => { setOpened(null); trigger.current?.focus({ preventScroll: true }); }} />}
   </div>;
 }

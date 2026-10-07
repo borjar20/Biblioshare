@@ -37,9 +37,8 @@ import { WhoToFollowCard } from "./who-to-follow-card";
 // arriba (las tres áreas). Por debajo, en el tablet a dos columnas las stats
 // comparten la fila de arriba con lo personal, y una barra lateral entera ahí
 // empujaría el feed —que va debajo— demasiado abajo: el resumen las deja bajas.
-// Es UN solo componente y UNA sola tanda de consultas: el resumen sale de los
-// mismos datos que el detalle, con visibilidad por CSS (nada se pinta dos veces
-// en el servidor).
+// Una sola tanda de consultas alimenta resumen y detalle. El contenido completo
+// permanece montado y pasa a un diálogo nativo bajo 1100 px.
 export async function StatsRail({ userId }: { userId: string }) {
   const supabase = await createClient();
   const year = new Date().getFullYear();
@@ -117,4 +116,3 @@ export async function StatsRail({ userId }: { userId: string }) {
     </div>
   </HomeExpandable>;
 }
-

@@ -58,6 +58,15 @@ y `search` junto con `stats`, `challenges`, `notes` y `rincon`. Un
 en `r-comunidad` y `r-coleccion`. Los textos de `PeopleResults` se componen
 en servidor.
 
+Inicio con sesión incorpora resúmenes expandibles bajo 1100 px; escritorio
+conserva los paneles completos salvo anuncios semanales breves. `r-home` incluye
+HomeExpandable, HomeRail y panel-motion. El rail mide su alto real hasta el
+viewport, incluyendo el saludo; las capas limpian bloqueo y animación al navegar
+o cambiar de breakpoint. `c-wrap-ups` añade HomeWrapUp: selección fijada, datos
+reconciliados y carga del reproductor al pulsar. Verificación local del 2026-10-07
+en [Inicio expandible](../testing/2026-10-07-inicio-expandible.md); publicación
+pendiente en #1453/#1454. El mapa sigue siendo derivado, sin cambios de esquema.
+
 ## Para agentes: cómo usar `graph.json`
 
 Empieza por **`flows`**. Cada flujo es un recorrido end-to-end (registrar una sesión,
