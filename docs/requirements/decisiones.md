@@ -6963,3 +6963,14 @@ presentación permanecen en el diseño pendiente, no son contratos de implementa
 Estado: acuerdos de producto documentados, propuesta escrita pendiente de revisión;
 sin cambios de aplicación ni esquema. Seguimiento en #1462 y detalle en
 docs/superpowers/specs/2026-10-09-comparar-bibliotecas-design.md.
+
+## 2026-10-10 — Comparación de bibliotecas con identidad visual propia
+
+El usuario pide una sección especialmente visual e impactante y autoriza apartarse
+del diseño actual para conseguirlo. Se presenta una maqueta interactiva llamada
+«Entre nosotros», con mapa del grupo, cruces Venn y perspectivas de consumo y notas.
+La libertad visual es una decisión del usuario; la composición concreta sigue siendo
+una propuesta para revisar. No se implementa la feature ni se cambian reglas de datos.
+
+Detalle y comprobación en
+docs/superpowers/specs/2026-10-10-entre-nosotros-mockup.md. Seguimiento en #1462.

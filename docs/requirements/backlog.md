@@ -546,7 +546,7 @@ verificación no afirma su ejecución. El resto sigue rastreable por `area:catal
 - Retos personalizables (§7.23; #310 aporta el vocabulario de género).
 - [x] «Tu año en Biblioshare» (§7.24), ampliado a semana y mes: integrado en [PR #1436](https://github.com/borjar20/Biblioshare/pull/1436), activo en producción el 2026-10-07; [spec](../superpowers/specs/2026-10-06-wrap-ups-design.md) y [recibo](../testing/2026-10-06-wrap-ups.md#activación-productiva--2026-10-07). Despacho dev pendiente [#1439](https://github.com/borjar20/Biblioshare/issues/1439).
 - [x] Crónicas: reparto de tiempo con etiquetas y avances semanales en series, también en el resumen final. Hitos históricos de temporada y ponerse al día pendientes [#1444](https://github.com/borjar20/Biblioshare/issues/1444).
-- [ ] Comparar bibliotecas (§7.25): diseño de producto en [#1462](https://github.com/borjar20/Biblioshare/issues/1462), con selecciones personales guardadas y secciones Obras/Gustos. [Propuesta para revisión](../superpowers/specs/2026-10-09-comparar-bibliotecas-design.md); sin implementar.
+- [ ] Comparar bibliotecas (§7.25): diseño de producto en [#1462](https://github.com/borjar20/Biblioshare/issues/1462), con selecciones personales guardadas y secciones Obras/Gustos. [Propuesta de producto](../superpowers/specs/2026-10-09-comparar-bibliotecas-design.md) y [maqueta «Entre nosotros»](../superpowers/specs/2026-10-10-entre-nosotros-mockup.md) para revisión; sin implementar.
 
 **Social y clubes**
 - Listas colaborativas (§7.26; hoy solo existe `list_challenge` de club).
