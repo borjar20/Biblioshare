@@ -7029,3 +7029,17 @@ usa recorridos de 850 ms en ambos sentidos, con un escalonado breve y la misma
 curva suave. Se conserva la identidad de las obras y se limpia el movimiento al
 interrumpirlo. Las propuestas para aprovechar el espacio libre siguen abiertas;
 no se da por aprobado un rediseño de la composición. Seguimiento en #1462.
+
+## 2026-10-10 — Probar detalle lateral y zoom guiado en Entre nosotros
+
+El usuario pide materializar las propuestas de composición y plantea acercarse
+a las zonas para revelar el resto de portadas. La maqueta amplía su ancho en
+escritorio, sitúa el detalle junto al Venn y añade hallazgos con evidencia visual.
+Se prueba una navegación por niveles (pilas, seis portadas, todas) con vuelta
+explícita al Venn completo. Así cada acercamiento conserva un cruce identificado
+y portadas legibles, sin introducir todavía zoom o desplazamiento libre.
+
+Los hallazgos de consumo se mantienen en Obras; los acuerdos y diferencias de
+valoración, con sus notas y muestra, aparecen en Gustos. La propuesta está
+materializada para evaluación, no constituye la implementación ni la aprobación
+definitiva de la feature. Seguimiento en #1462.

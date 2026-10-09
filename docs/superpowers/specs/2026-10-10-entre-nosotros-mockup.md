@@ -158,3 +158,36 @@ con portadas mayores y personas que comparten cada obra. Como complemento,
 hallazgos breves sobre obras de todos o exclusivas de una persona; las diferencias
 de valoración permanecerían en Gustos. Son opciones para debatir, todavía sin
 aprobación ni implementación, dentro de la exploración de la feature #1462.
+
+## Iteración del 2026-10-10: detalle lateral, hallazgos y zoom por cruce
+
+El usuario pide ver las propuestas anteriores en la maqueta y explorar un zoom
+que revele más portadas. La publicación aprovecha hasta 1.160 px en escritorio:
+el Venn y el detalle del cruce comparten fila, con una portada destacada, sus
+personas/estados y miniaturas para cambiar la obra inspeccionada. Se retiran la
+bandeja y la galería duplicadas en esta vista. En pantallas estrechas, el detalle
+queda debajo del diagrama.
+
+Las tarjetas de hallazgos incorporan portadas reales y seleccionan su cruce. Las
+exclusivas significan «solo hay registro visible en esta persona», no ausencia
+real de consumo en las demás. En Gustos, dos hallazgos derivados de las notas de
+la conexión elegida muestran cercanía y diferencia, con nombres, notas y tamaño
+de muestra. Se omiten cuando no hay datos comparables; no se inventa afinidad.
+
+Se prueba un zoom guiado, no una cámara de desplazamiento libre: vista general,
+seis portadas y todas las del cruce. Tocar de nuevo la pila activa o usar el botón
+de acercamiento despliega las portadas y amplía los círculos del fondo. El camino
+«Venn completo / cruce» conserva el contexto; los botones permiten acercar, alejar
+y volver. El nivel adicional se desactiva si ya están todas las obras visibles,
+y un cruce vacío no admite zoom. Filtrar vuelve a la vista general con el filtro
+aplicado. El nivel se guarda y restaura con la selección personal de la maqueta.
+
+Verificado en navegador: revelado de 6 y 13 portadas, restauración tras recarga,
+apertura y cierre del detalle, hallazgo exclusivo de Ana, cruce vacío, Libros con
+2 obras y zoom sin niveles sobrantes. A 570 y 320 px no hay desbordamiento; las
+13 portadas caben en el flujo vertical, incluida la última. La prueba instrumentada
+completa 7 animaciones de acercamiento, 14 de revelado total y 53 de regreso al
+grupo desde el zoom, todas con fotogramas intermedios y sin cancelaciones. Con
+movimiento reducido, el zoom funciona con 0 animaciones. Pasa el test del guardado
+y restauración. Se conservan ambas CSP, el iframe aislado, la paleta y el recorrido
+mapa/Venn de 850 ms. Sigue siendo una maqueta con datos ficticios, seguida en #1462.
