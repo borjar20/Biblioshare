@@ -7020,3 +7020,12 @@ la página al explorar para no interrumpir visualmente el recorrido.
 
 Es una decisión de interacción para evaluar en la maqueta, sin modificar las reglas
 de consumo o afinidad ni implementar todavía la feature. Seguimiento en #1462.
+
+## 2026-10-10 — Recorrido reversible y velocidad intermedia en la maqueta
+
+El usuario pide que las portadas regresen a la pila al volver al mapa y un ritmo
+intermedio entre las primeras transiciones y la versión de 1,1 segundos. La maqueta
+usa recorridos de 850 ms en ambos sentidos, con un escalonado breve y la misma
+curva suave. Se conserva la identidad de las obras y se limpia el movimiento al
+interrumpirlo. Las propuestas para aprovechar el espacio libre siguen abiertas;
+no se da por aprobado un rediseño de la composición. Seguimiento en #1462.

@@ -133,3 +133,28 @@ filtro sin dejar elementos en tránsito. El test del acuse de guardado sigue pas
 Se conserva la paleta, las portadas reales, el iframe aislado y ambas CSP. La
 preferencia de movimiento reducido sigue evitando los recorridos. Esta decisión
 pertenece a la maqueta; la feature de Biblioshare continúa pendiente en #1462.
+
+## Iteración del 2026-10-10: regreso a la pila y ritmo intermedio
+
+Al volver al grupo, las portadas del Venn regresan a la pila central. Las que
+representan cada cruce quedan visibles; las muestras adicionales se incorporan
+y desaparecen al llegar. Una capa temporal mantiene el recorrido visible aunque
+el panel se estreche al recuperar los hallazgos laterales. Se retira al terminar
+o interrumpir el movimiento. Ida y vuelta duran ahora 850 ms más un escalonado
+breve, sustituyendo los 1.100 ms anteriores, con la misma aceleración suave.
+
+La prueba del HTML exportado verifica 11 recorridos de vuelta en escritorio,
+5 en el trío a 570 px y 3 en la pareja a 320 px: todos muestran posiciones
+intermedias y completan sin cancelaciones espontáneas. El error máximo de salida
+medido es inferior a 0,01 px y el de llegada inferior a 0,1 px. No quedan capas
+temporales ni portadas ocultas; no hay desbordamiento horizontal a 320 px.
+La ida a 850 ms también completa los 11 recorridos. Volver y explorar antes de
+terminar conserva la continuidad; movimiento reducido crea 0 animaciones en ambos
+sentidos. El test de restauración/acuse de guardado pasa. Sandbox y CSP intactos.
+
+El usuario pide además plantear cómo aprovechar el espacio libre. Se propone
+ampliar la composición en escritorio y situar el detalle del cruce junto al Venn,
+con portadas mayores y personas que comparten cada obra. Como complemento,
+hallazgos breves sobre obras de todos o exclusivas de una persona; las diferencias
+de valoración permanecerían en Gustos. Son opciones para debatir, todavía sin
+aprobación ni implementación, dentro de la exploración de la feature #1462.
