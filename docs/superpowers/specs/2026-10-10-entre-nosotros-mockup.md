@@ -91,3 +91,23 @@ Venn. Se comprueba también que el iframe aislado y ambas CSP siguen intactos.
 Se publica en el mismo sitio. La implementación de la feature sigue en #1462.
 La densidad también se verifica a 570 px: se usa una portada por zona cuando el
 panel es estrecho o bajo, evitando que el abanico invada cruces vecinos.
+
+## Corrección del 2026-10-10: transiciones canceladas al guardar
+
+El usuario no veía las animaciones. La comprobación anterior solo contaba llamadas
+a `animate()`, por lo que no demostraba su reproducción. El runtime exportado emite
+`openai:set_globals` al guardar; el listener reconstruía la misma selección y
+cancelaba todas las animaciones antes de su primer fotograma. Reproducción medida
+al cambiar un cruce: 13 iniciadas, 13 canceladas, 0 completadas y nodos retirados.
+
+Se restaura el estado recibido pero solo se repinta cuando realmente cambia.
+El acuse del propio guardado conserva los nodos animados; una selección externa
+distinta sigue restaurándose. En paneles estrechos, la portada única se eleva 6 px
+y gira 8 grados al seleccionarla para que la transición exista también sin abanico.
+
+Verificación corregida: 13 de 13 transiciones de escritorio completadas y 11 de 11
+en la vista estrecha, sin cancelaciones. Se observa una transformación intermedia
+de la portada mientras permanece conectada. Con movimiento reducido, 0 animaciones.
+El test `checks/motion-state.test.mjs` del proyecto Sites falla contra la versión
+anterior y pasa con la corrección; cubre el propio guardado, restauración diferente,
+notificaciones repetidas y globals ajenos al estado. Sandbox y CSP conservados.
