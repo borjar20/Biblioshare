@@ -111,3 +111,25 @@ de la portada mientras permanece conectada. Con movimiento reducido, 0 animacion
 El test `checks/motion-state.test.mjs` del proyecto Sites falla contra la versión
 anterior y pasa con la corrección; cubre el propio guardado, restauración diferente,
 notificaciones repetidas y globals ajenos al estado. Sandbox y CSP conservados.
+
+## Iteración del 2026-10-10: seguir las portadas del mapa hasta el Venn
+
+El mapa muestra una portada representativa de cada cruce no vacío de la pareja o
+trío seleccionado. Al explorar, esas mismas obras viajan desde su posición real
+hasta su región; las muestras adicionales salen de la pila central. El recorrido
+describe una curva ligera durante 1,1 segundos, con salidas escalonadas, aceleración
+y frenado suaves. Los círculos se forman a la vez; etiquetas, recuentos y bandeja
+entran después para facilitar la lectura. Las otras transiciones también se suavizan.
+Se elimina el salto automático de página al explorar para conservar el encuadre.
+
+La prueba instrumentada del HTML exportado registra 11 recorridos en el trío de
+escritorio y 8 en la pareja: todos completan, pasan por posiciones intermedias y
+terminan exactamente en su destino. Las portadas que ya estaban en el mapa parten
+de sus coordenadas con error inferior a 0,001 px. En vistas de 570 y 320 px completan
+los 5 recorridos del trío; a 320 px no hay desbordamiento horizontal. Cambiar a
+Libros durante el viaje cancela los recorridos anteriores y muestra las obras del
+filtro sin dejar elementos en tránsito. El test del acuse de guardado sigue pasando.
+
+Se conserva la paleta, las portadas reales, el iframe aislado y ambas CSP. La
+preferencia de movimiento reducido sigue evitando los recorridos. Esta decisión
+pertenece a la maqueta; la feature de Biblioshare continúa pendiente en #1462.

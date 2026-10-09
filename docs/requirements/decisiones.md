@@ -7008,3 +7008,15 @@ selecciones y cambios de contenido; se desactiva con movimiento reducido.
 Es una iteración de la maqueta: conserva datos ficticios, reglas ilustrativas,
 iframe aislado y CSP, sin implementar la feature ni conectar datos de usuarios.
 La procedencia de las imágenes se conserva en el proyecto del sitio. #1462.
+
+## 2026-10-10 — Continuidad de las portadas al explorar un cruce
+
+El usuario quiere reconocer cómo las historias del mapa se distribuyen al abrir
+el Venn y pide suavizar los cambios. La maqueta conserva la identidad de cada
+portada durante el recorrido, desde una muestra central de los cruces seleccionados
+hasta su región exacta. La transición dura aproximadamente un segundo, con salida
+y llegada graduales, y respeta movimiento reducido. Se mantiene la posición de
+la página al explorar para no interrumpir visualmente el recorrido.
+
+Es una decisión de interacción para evaluar en la maqueta, sin modificar las reglas
+de consumo o afinidad ni implementar todavía la feature. Seguimiento en #1462.
