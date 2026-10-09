@@ -6997,3 +6997,14 @@ La maqueta Entre nosotros adopta los valores de `src/app/globals.css`: papel cá
 superficie crema y terracota en claro; espresso y terracota luminosa en oscuro.
 Los colores para distinguir personas usan los acentos secundarios de la app.
 Se mantienen la composición, tipografía expresiva, pilas e interacciones. #1462.
+
+## 2026-10-10 — Evaluar el Venn con portadas reales y transiciones
+
+El usuario pide portadas reales para valorar mejor la composición del Venn y
+animaciones entre estados. La maqueta incorpora las 26 portadas, manteniendo
+los colores de Biblioshare en la interfaz. El movimiento ayuda a seguir las
+selecciones y cambios de contenido; se desactiva con movimiento reducido.
+
+Es una iteración de la maqueta: conserva datos ficticios, reglas ilustrativas,
+iframe aislado y CSP, sin implementar la feature ni conectar datos de usuarios.
+La procedencia de las imágenes se conserva en el proyecto del sitio. #1462.

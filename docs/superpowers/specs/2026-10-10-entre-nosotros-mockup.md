@@ -68,3 +68,24 @@ Se revisan en navegador claro y oscuro; el JavaScript, composición, tipografía
 datos, portadas, iframe aislado y CSP conservan su contenido y comportamiento.
 Esta aclaración sustituye la propuesta cromática inicial, no el carácter expresivo
 solicitado. Sigue siendo una maqueta para revisión en #1462.
+
+## Iteración posterior del 2026-10-10: portadas reales y movimiento
+
+Se sustituyen las 26 ilustraciones por miniaturas de portadas y carteles reales:
+Wikipedia para libros y películas, TVmaze para series. Las imágenes se incluyen
+en la maqueta para mantener el iframe y sus CSP sin depender de nuevas peticiones.
+El detalle identifica la fuente y el repositorio del sitio conserva su procedencia
+por obra. Los datos de personas, consumo y notas siguen siendo ficticios.
+
+El movimiento responde a las acciones: abanico de la pila activa, paso del mapa al
+Venn, recolocación de obras al filtrar, cambios entre Obras/Gustos y movimiento de
+las medias de notas. No se anima la carga inicial, no hay bucles y se respeta
+`prefers-reduced-motion`. Se conserva la paleta cálida/terracota de Biblioshare;
+las imágenes muestran los colores de sus portadas originales.
+
+Comprobación en navegador: 26 de 26 imágenes cargadas, cruces de pareja y trío,
+filtros, zona vacía, detalle de obra, géneros/creadores, animaciones ejecutadas y
+ninguna animación programática en la prueba de movimiento reducido. Revisión en
+claro y oscuro, con 320 px sin desbordamiento ni solapamiento de los controles del
+Venn. Se comprueba también que el iframe aislado y ambas CSP siguen intactos.
+Se publica en el mismo sitio. La implementación de la feature sigue en #1462.
