@@ -6974,3 +6974,15 @@ una propuesta para revisar. No se implementa la feature ni se cambian reglas de 
 
 Detalle y comprobación en
 docs/superpowers/specs/2026-10-10-entre-nosotros-mockup.md. Seguimiento en #1462.
+
+## 2026-10-10 — Probar pilas de portadas dentro del Venn
+
+El usuario pide probar en la maqueta las portadas dentro de las intersecciones y
+actualizar el mismo sitio. Cada zona muestra una muestra de hasta tres portadas y
+el recuento total; la pila seleccionada se abre en abanico. En móvil se reduce a
+una portada por zona. Las obras se abren desde una selección inmediatamente debajo
+del diagrama, conservando notas y contexto. El Venn ocupa el ancho disponible.
+
+Es una prueba visual solicitada, no la aprobación del diseño final ni una nueva
+regla de afinidad. Se mantienen áreas esquemáticas, filtros y cruces exactos.
+Seguimiento y revisión dentro de #1462.

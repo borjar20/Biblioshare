@@ -42,3 +42,16 @@ incluida anchura de 320 px, y en apariencia clara y oscura.
 La revisión del diseño, las reglas reales de elegibilidad de series, la consolidación
 de notas, los tamaños de grupo admitidos y la integración siguen abiertos en #1462.
 Las medias ilustrativas no fijan todavía el algoritmo de afinidad de producción.
+
+## Iteración posterior del 2026-10-10: portadas en el Venn
+
+A petición del usuario, se prueba un Venn a ancho completo con pilas de hasta tres
+portadas por intersección y una sola en pantallas estrechas. El número sigue contando
+todas las obras del cruce. La pila activa se muestra en abanico y sus obras se pueden
+abrir desde la bandeja inmediata inferior; la galería completa permanece debajo.
+Las zonas vacías conservan el cero y una explicación, sin inventar portadas.
+
+Se comprueban parejas y tríos, filtros, correspondencia entre cada pila y su evidencia,
+apertura de valoraciones y cruces vacíos. A 320 px los controles no se solapan y no hay
+desbordamiento horizontal. Se conservan el iframe aislado y ambas CSP del sitio.
+La composición sigue siendo un experimento para revisión, con seguimiento en #1462.
