@@ -466,19 +466,21 @@ qué resultado esperar.
 
 ## Agentes disponibles
 
-Ver `.claude/agents/`:
+Definidos en `.claude/agents/` (con espejo para Codex en `.codex/agents/`):
 
-- **qa-verifier**: verifica una funcionalidad en el navegador de principio a
-  fin (login con `devtest`, ejercitar el flujo, revisar consola/red, limpiar
-  datos) y reporta si pasa o no. Es de nuevo el camino por defecto para
-  verificación de UI (ver sección de arriba), junto con `npm run test:e2e`.
-- **supabase-schema**: migraciones, RLS, advisors y regeneración de tipos de
-  Supabase.
-- **backlog-scribe**: mantiene `docs/requirements/backlog.md` y
-  `docs/requirements/decisiones.md` al día tras cerrar una tarea.
+- **qa-verifier**: verificación puntual en el navegador (login con `devtest`,
+  ejercitar el flujo, revisar consola/red, limpiar datos). Camino por defecto
+  para verificar UI, junto con `npm run test:e2e`.
+- **test-author**: convierte comportamiento verificado en tests Vitest/Playwright.
+- **supabase-schema**: migraciones, RLS, grants, advisors y tipos de Supabase.
+- **backlog-scribe**: pone al día `backlog.md` y `decisiones.md` tras cerrar una tarea.
+- **i18n-keeper**: claves de `messages/es.json` y namespaces por ruta.
+- **pwa-shell**: service worker, manifest y página offline.
+- **capacitor-android**: wrapper Android (Capacitor, permisos nativos, APK).
+- **pet-artist**: sprites de la mascota y BiblioPlay con PixelLab.
 
-Al ser subagentes independientes, se pueden lanzar en paralelo mientras se
-sigue trabajando en el hilo principal.
+Son subagentes independientes: se pueden lanzar en paralelo mientras se sigue
+trabajando en el hilo principal.
 
 ## Despliegue (Vercel)
 

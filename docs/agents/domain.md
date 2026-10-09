@@ -2,16 +2,10 @@
 
 Layout: single-context.
 
-Seguir la gobernanza documental de README.md y AGENTS.md.
-Consultar docs/architecture/graph.json antes de búsquedas amplias.
+- Vocabulario: `CONTEXT.md` (importación de Letterboxd, pases, novedades culturales) y, para
+  nombres de cara al usuario, `docs/UI-GLOSARIO.md`.
+- Decisiones: `docs/requirements/decisiones.md` (append-only). No hay `docs/adr/`; no lo crees.
+- Mapa de código: `docs/architecture/graph.json` antes de búsquedas amplias.
+- Qué doc manda para qué: `README.md`, sección «Gobernanza documental».
 
-Si existe CONTEXT.md en la raíz, usar su vocabulario.
-Si existe docs/adr/, consultar las decisiones relevantes.
-Si faltan, continuar sin crearlos como parte de este setup.
-
-Conservar las fuentes canónicas existentes. Las decisiones siguen
-registrándose en docs/requirements/decisiones.md conforme a
-AGENTS.md; este setup no migra ni duplica ese historial.
-
-Señalar contradicciones con decisiones documentadas antes de
-proponer cambios que las alteren.
+Si una propuesta contradice una decisión documentada, señálalo antes de proponer el cambio.

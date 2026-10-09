@@ -7115,3 +7115,17 @@ de línea a 18,4 px; el título semanal conserva el extremo de 28 px al ampliars
 La cabecera absoluta semanal y su título nativo invisible reservan el mismo ancho.
 El abanico sigue centrado y las dimensiones ampliadas y de PC conservan su alcance.
 Evidencia en `docs/testing/2026-10-07-inicio-shared.md`.
+
+## 2026-10-09 — Docs para agentes: guía corta, sin banners de delta en la cabecera
+
+`AGENTS.md`, `CLAUDE.md`, `docs/agents/` y las definiciones de `.claude/agents/` se reescriben
+para modelos actuales: mismas reglas, explicando el porqué una vez y sin repeticiones ni
+énfasis en mayúsculas, que estos modelos sobreinterpretan. Los subagentes apuntan a los docs
+canónicos en vez de copiar reglas que se quedan viejas (`supabase-schema` seguía mandando abrir
+INSERT del catálogo a `authenticated`, cerrado desde #674/#725; `qa-verifier` limpiaba
+`diary_entries`). `.codex/agents/*.toml` pasan a ser espejo literal de `.claude/agents/`.
+
+Los docs canónicos dejan de acumular banners «Delta …» al principio: los 40 de `data-model.md`
+(≈300 líneas antes de §0) pasan a «Deltas pendientes de integrar (vigentes)», al final del cuerpo,
+sin cambiar su texto. Siguen siendo vigentes porque algunos describen objetos sin sección propia.
+Un cambio nuevo se documenta en la sección del objeto; la evidencia, en `docs/testing/`.
