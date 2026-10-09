@@ -6986,3 +6986,14 @@ del diagrama, conservando notas y contexto. El Venn ocupa el ancho disponible.
 Es una prueba visual solicitada, no la aprobación del diseño final ni una nueva
 regla de afinidad. Se mantienen áreas esquemáticas, filtros y cruces exactos.
 Seguimiento y revisión dentro de #1462.
+
+## 2026-10-10 — Libertad de composición, paleta de Biblioshare
+
+El usuario precisa que apartarse del estilo actual buscaba quitar sobriedad, pero
+la sección debe conservar los colores de la app. La libertad anterior se refiere
+a composición y expresividad, no a sustituir su identidad cromática.
+
+La maqueta Entre nosotros adopta los valores de `src/app/globals.css`: papel cálido,
+superficie crema y terracota en claro; espresso y terracota luminosa en oscuro.
+Los colores para distinguir personas usan los acentos secundarios de la app.
+Se mantienen la composición, tipografía expresiva, pilas e interacciones. #1462.

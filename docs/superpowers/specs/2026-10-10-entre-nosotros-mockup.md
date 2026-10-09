@@ -55,3 +55,16 @@ Se comprueban parejas y tríos, filtros, correspondencia entre cada pila y su ev
 apertura de valoraciones y cruces vacíos. A 320 px los controles no se solapan y no hay
 desbordamiento horizontal. Se conservan el iframe aislado y ambas CSP del sitio.
 La composición sigue siendo un experimento para revisión, con seguimiento en #1462.
+
+## Aclaración posterior del 2026-10-10: conservar los colores de la app
+
+El usuario acota la libertad visual: quiere quitar sobriedad al diseño manteniendo
+la paleta de Biblioshare. Se reemplazan los fondos azulados y marinos del primer
+mockup por los tokens reales de `src/app/globals.css`: papel cálido/crema, espresso,
+terracota y los acentos secundarios existentes. También se ajustan controles,
+selecciones, hallazgos, sombras y el fondo exterior del sitio.
+
+Se revisan en navegador claro y oscuro; el JavaScript, composición, tipografía,
+datos, portadas, iframe aislado y CSP conservan su contenido y comportamiento.
+Esta aclaración sustituye la propuesta cromática inicial, no el carácter expresivo
+solicitado. Sigue siendo una maqueta para revisión en #1462.
