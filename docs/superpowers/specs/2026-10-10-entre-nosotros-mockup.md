@@ -89,3 +89,5 @@ ninguna animación programática en la prueba de movimiento reducido. Revisión 
 claro y oscuro, con 320 px sin desbordamiento ni solapamiento de los controles del
 Venn. Se comprueba también que el iframe aislado y ambas CSP siguen intactos.
 Se publica en el mismo sitio. La implementación de la feature sigue en #1462.
+La densidad también se verifica a 570 px: se usa una portada por zona cuando el
+panel es estrecho o bajo, evitando que el abanico invada cruces vecinos.
