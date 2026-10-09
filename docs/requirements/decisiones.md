@@ -6941,3 +6941,25 @@ El cuerpo se oculta sin desmontarse: un cambio de mercado aún no aplicado perma
 al abrirlo de nuevo. Plegar no aplica filtros, no cambia URL, vista ni período y no
 introduce persistencia o consultas. Estado: candidato en PR #1455; publicación
 pendiente en #1450. Evidencia en docs/testing/2026-10-07-novedades-calendar.md.
+
+## 2026-10-09 — Comparar bibliotecas: Obras y Gustos como perspectivas separadas
+
+En el brainstorming de §7.25, el usuario elige partir del grupo completo y explorar
+parejas o tríos dentro de una selección personal guardada. El grupo no es un club
+ni un espacio compartido con invitaciones. La entrada reúne libros, películas y
+series, con filtros posteriores por formato.
+
+Se separan **Obras** (coincidencias de títulos concretos, Venn y notas por obra) y
+**Gustos** (conexiones por autores, directores y géneros). En Gustos se distinguen
+explícitamente consumo y preferencia según valoraciones: consumir algo no significa
+que guste. La afinidad se expresa mediante hallazgos respaldados por obras, sin
+porcentaje global en esta propuesta.
+
+El recorrido de libros y películas es lo terminado; el usuario acepta una excepción
+para las series en curso. Pendientes y «Lo que esperamos juntos» quedan como posible
+experiencia separada. Los criterios precisos de series, notas repetidas, muestras y
+presentación permanecen en el diseño pendiente, no son contratos de implementación.
+
+Estado: acuerdos de producto documentados, propuesta escrita pendiente de revisión;
+sin cambios de aplicación ni esquema. Seguimiento en #1462 y detalle en
+docs/superpowers/specs/2026-10-09-comparar-bibliotecas-design.md.
