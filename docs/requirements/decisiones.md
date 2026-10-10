@@ -7189,3 +7189,14 @@ No se exige seguimiento mutuo. Se conserva la posibilidad de incluir al dueño
 de la selección o comparar solo a otros amigos, y de guardar distintas
 selecciones personales. Los datos consultados respetan los permisos vigentes
 del observador. La implementación de esta regla continúa en #1462.
+
+## 2026-10-10 — Entre nosotros pensado para grupos de cinco a diez personas
+
+El usuario prevé grupos habituales de entre cinco y diez personas. El mapa debe
+permitir entender ese grupo completo y profundizar en dos o tres participantes
+mediante el Venn. Este tamaño orienta el diseño; no equivale a aprobar todavía
+un límite máximo obligatorio.
+
+La especificación `docs/superpowers/specs/2026-10-10-entre-nosotros-design.md` reúne
+los acuerdos y distingue las propuestas nuevas para revisión. La feature sigue
+sin implementar, con seguimiento en #1462.

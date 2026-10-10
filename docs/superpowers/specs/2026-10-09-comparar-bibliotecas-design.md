@@ -260,3 +260,14 @@ comparaciones formados únicamente por otros amigos. Las selecciones son privada
 y guardables; su contenido se consulta con la visibilidad vigente del observador.
 Este acuerdo concreta la selección de perfiles de §8.6, sin cerrar todavía los
 límites de tamaño del grupo ni la implementación de #1462.
+
+## 16. Acuerdo posterior del 2026-10-10: tamaño habitual del grupo
+
+El usuario prevé que entre cinco y diez personas deberían bastar como tamaño
+habitual. Se conserva la exploración detallada mediante un Venn de dos o tres
+personas; esta respuesta no fija por sí sola un máximo obligatorio.
+
+Los acuerdos y las propuestas restantes se reúnen en la
+[especificación consolidada para revisión](2026-10-10-entre-nosotros-design.md).
+Su propuesta de límite inicial de diez participantes requiere revisar ese documento;
+la implementación permanece pendiente en #1462.
