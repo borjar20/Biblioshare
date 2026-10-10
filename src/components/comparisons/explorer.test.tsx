@@ -56,6 +56,16 @@ describe('independent format view retention', () => {
   });
 });
 describe('Explorer request boundaries', () => {
+  it('synchronizes a map pair with the participant controls before adding a third person', async () => {
+    const available: Group = { ...first, members: ['Ana', 'Bea', 'Carlos'].map((name, index) => ({ slotId: `${index}`, userId: ['a', 'b', 'c'][index], name, avatarUrl: null, available: true })) };
+    mocks.query = `group=${first.id}`; mocks.load.mockResolvedValue({ ok: true, data: snapshot(available) });
+    render(ui([available]));
+    fireEvent.click(await screen.findByRole('button', { name: 'Ana, Bea 0 obras comunes' }));
+    expect((screen.getByRole('checkbox', { name: 'Ana' }) as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByRole('checkbox', { name: 'Bea' }) as HTMLInputElement).checked).toBe(true);
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Carlos' }));
+    expect(screen.getAllByRole('button', { name: /Abrir región:/ })).toHaveLength(7);
+  });
   it('starts with no arbitrary selected group and lets keyboard users create one', () => {
     render(ui([])); expect(screen.getByText('Crea un grupo para empezar a comparar.')).toBeTruthy();
     const button = screen.getByRole('button', { name: 'Crear grupo' }); button.focus(); expect(document.activeElement).toBe(button);
@@ -91,22 +101,22 @@ describe('Explorer request boundaries', () => {
     mounted.unmount(); expect(mocks.unsubscribe).toHaveBeenCalled();
   });
   it('keeps evidence for repeated SIGNED_IN and token refresh of the same account', async () => {
-    mocks.query = `group=${first.id}`; render(ui()); await screen.findByText('Ana');
+    mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('checkbox', { name: 'Ana' });
     act(() => mocks.auth!('SIGNED_IN', { user: { id: 'a' } })); act(() => mocks.auth!('TOKEN_REFRESHED', { user: { id: 'a' } }));
-    expect(screen.getByText('Ana')).toBeTruthy(); expect(mocks.refresh).not.toHaveBeenCalled();
+    expect(screen.getByRole('checkbox', { name: 'Ana' })).toBeTruthy(); expect(mocks.refresh).not.toHaveBeenCalled();
   });
   it('starts a fresh subtree after the same account authenticates again on the server', async () => {
     mocks.query = `group=${first.id}`;
-    const mounted = render(ui()); await screen.findByText('Ana');
+    const mounted = render(ui()); await screen.findByRole('checkbox', { name: 'Ana' });
     fireEvent.click(screen.getByLabelText('Ana')); fireEvent.click(screen.getByRole('button', { name: 'Editar grupo' }));
     fireEvent.change(screen.getByLabelText('Nombre del grupo'), { target: { value: 'Borrador antiguo' } });
     act(() => mocks.auth!('SIGNED_OUT', null)); expect(screen.queryByLabelText('Grupo')).toBeNull();
-    mounted.rerender(ui()); await screen.findByText('Ana');
+    mounted.rerender(ui()); await screen.findByRole('checkbox', { name: 'Ana' });
     expect((screen.getByLabelText('Ana') as HTMLInputElement).checked).toBe(false);
     expect(screen.queryByLabelText('Nombre del grupo')).toBeNull();
   });
   it('updates saved group data and uses its new revision on the next edit', async () => {
-    mocks.query = `group=${first.id}`; render(ui()); await screen.findByText('Ana');
+    mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('checkbox', { name: 'Ana' });
     const saved: Group = { ...first, name: 'Nombre nuevo', revision: 2, members: [first.members[0], { slotId: 'new-member', userId: 'b', name: 'Bea', avatarUrl: null, available: true }] };
     mocks.save.mockResolvedValue({ ok: true, data: saved }); mocks.load.mockResolvedValue({ ok: true, data: snapshot(saved) });
     fireEvent.click(screen.getByRole('button', { name: 'Editar grupo' }));
@@ -120,7 +130,7 @@ describe('Explorer request boundaries', () => {
     await waitFor(() => expect(mocks.save).toHaveBeenLastCalledWith({ id: first.id, name: saved.name, userIds: ['a', 'b'], expectedRevision: 2 }));
   });
   it('deduplicates focus and visibility identity checks, hides evidence meanwhile and preserves the same-account draft', async () => {
-    mocks.query = `group=${first.id}`; render(ui()); await screen.findByText('Ana');
+    mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('checkbox', { name: 'Ana' });
     fireEvent.click(screen.getByRole('button', { name: 'Editar grupo' })); fireEvent.change(screen.getByLabelText('Nombre del grupo'), { target: { value: 'Borrador' } });
     let finish!: (result: { data: { user: { id: string } }; error: null }) => void;
     mocks.getUser.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
@@ -130,13 +140,13 @@ describe('Explorer request boundaries', () => {
     expect((screen.getByLabelText('Nombre del grupo') as HTMLInputElement).value).toBe('Borrador');
   });
   it('uses fresh identity on focus to catch cookie changes that emitted no browser auth event', async () => {
-    mocks.query = `group=${first.id}`; render(ui()); await screen.findByText('Ana');
+    mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('checkbox', { name: 'Ana' });
     mocks.getUser.mockResolvedValueOnce({ data: { user: { id: 'new-account' } }, error: null });
     act(() => window.dispatchEvent(new Event('focus'))); await screen.findByText(messages.comparisons.sessionChanged);
     expect(screen.queryByText('Ana')).toBeNull(); expect(screen.queryByLabelText('Grupo')).toBeNull();
   });
   it('keeps a failed identity check gated until successful retry and discards stale checks on unmount', async () => {
-    mocks.query = `group=${first.id}`; const mounted = render(ui()); await screen.findByText('Ana');
+    mocks.query = `group=${first.id}`; const mounted = render(ui()); await screen.findByRole('checkbox', { name: 'Ana' });
     mocks.getUser.mockResolvedValueOnce({ data: { user: null }, error: new Error('offline') });
     act(() => window.dispatchEvent(new Event('focus'))); await screen.findByText(messages.comparisons.sessionCheckFailed);
     expect(screen.queryByRole('combobox', { name: 'Grupo' })).toBeNull();
@@ -148,7 +158,7 @@ describe('Explorer request boundaries', () => {
     const before = mocks.getUser.mock.calls.length; act(() => window.dispatchEvent(new Event('focus'))); expect(mocks.getUser.mock.calls.length).toBe(before);
   });
   it('accepts a freshly authenticated server payload and ignores the previous identity check', async () => {
-    mocks.query = `group=${first.id}`; const mounted = render(ui()); await screen.findByText('Ana');
+    mocks.query = `group=${first.id}`; const mounted = render(ui()); await screen.findByRole('checkbox', { name: 'Ana' });
     let finish!: (result: { data: { user: { id: string } }; error: null }) => void;
     mocks.getUser.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; })); act(() => window.dispatchEvent(new Event('focus')));
     expect(screen.queryByRole('combobox', { name: 'Grupo' })).toBeNull(); mounted.rerender(ui());
@@ -173,7 +183,7 @@ describe('Explorer request boundaries', () => {
     mounted.unmount(); mocks.query = `group=${first.id}`; render(ui()); await screen.findByText('Persona no disponible'); expect(mocks.load).toHaveBeenCalledWith(first.id, 'all');
   });
   it('starts each section with all formats and restores the previous section filter', async () => {
-    mocks.query = `group=${first.id}`; render(ui()); await screen.findByText('Ana');
+    mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('checkbox', { name: 'Ana' });
     fireEvent.change(screen.getByLabelText('Formato'), { target: { value: 'book' } });
     await waitFor(() => expect(mocks.load).toHaveBeenLastCalledWith(first.id, 'book'));
     fireEvent.click(screen.getByRole('button', { name: 'Gustos' }));

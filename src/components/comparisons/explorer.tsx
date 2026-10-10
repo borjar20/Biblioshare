@@ -7,6 +7,7 @@ import { loadComparison } from '@/lib/comparisons/actions';
 import type { Candidate, Format, Group, Result, Snapshot } from '@/lib/comparisons/types';
 import { Button } from '@/components/ui/button';
 import { GroupEditor } from './group-editor';
+import { ComparisonCanvas } from './canvas';
 import { acceptResponse, changeGroup, changeSelection, clearEvidence, initialState, reconcileParticipants, reconcileView, selectOwnedGroup, setView } from './state';
 import type { ExplorerState, Section, View } from './state';
 
@@ -163,11 +164,13 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
         {snapshot && <>
           <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-serif text-xl font-semibold">{snapshot.group.name}</h2><Button variant="ghost" onClick={refresh}>{t('refreshAccess')}</Button></div>
           <fieldset className="my-4 flex flex-wrap gap-3"><legend className="mb-2 text-sm text-muted-foreground">{t(state.section === 'works' ? 'selectPair' : 'selectTastes')}</legend>{snapshot.group.members.map(member => member.available && member.userId ? <label key={member.slotId} className="flex min-h-11 items-center gap-2"><input type="checkbox" checked={state.selection.includes(member.userId)} onChange={event => dispatch({ type: 'selection', people: event.target.checked ? [...state.selection, member.userId!] : state.selection.filter(id => id !== member.userId) })}/>{member.name}</label> : <span key={member.slotId} className="flex min-h-11 items-center text-sm text-muted-foreground">{t('unavailablePerson')}</span>)}</fieldset>
-          {/* Task 6 replaces this slot with ComparisonCanvas(snapshot, views.works, onView).
-              Task 8 renders Tastes here with the section selection and facet work origins. */}
           <div data-comparison-slot={state.section} data-view={state.views[state.section].level} className="min-h-48">
             {state.section === 'works' && <Button variant="secondary" disabled={state.selection.length < 2 || state.selection.length > 3} onClick={() => dispatch({ type: 'view', view: { level: 'venn', people: [...state.selection] } })}>{t('compareSelection')}</Button>}
-            {state.views[state.section].level !== 'group' && <Button variant="ghost" onClick={() => dispatch({ type: 'view', view: { level: 'group' } })}>{t('backToGroup')}</Button>}
+            {state.section === 'works' && <ComparisonCanvas snapshot={snapshot} view={state.views.works} onView={view => {
+              if (view.level === 'venn') dispatch({ type: 'selection', people: view.people });
+              dispatch({ type: 'view', view });
+            }}/>}
+            {state.section === 'tastes' && state.views.tastes.level !== 'group' && <Button variant="ghost" onClick={() => dispatch({ type: 'view', view: { level: 'group' } })}>{t('backToGroup')}</Button>}
           </div>
         </>}
       </section>
