@@ -1,0 +1,75 @@
+{
+  "errors": [],
+  "console": [
+    "Service Worker registration blocked by Playwright",
+    "Service Worker registration blocked by Playwright"
+  ],
+  "failed": [
+    {
+      "path": "http://127.0.0.1:3000/comunidad",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "http://127.0.0.1:3000/",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "http://127.0.0.1:3000/login",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "http://127.0.0.1:3000/",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "http://127.0.0.1:3000/comunidad",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "http://127.0.0.1:3000/",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "http://127.0.0.1:3000/u/qa_comp_motion_a",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "http://127.0.0.1:3000/buscar",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "http://127.0.0.1:3000/comunidad/entre-nosotros",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "http://127.0.0.1:3000/comunidad/entre-nosotros",
+      "error": "net::ERR_ABORTED"
+    }
+  ],
+  "responses": [],
+  "screens": [],
+  "checks": {
+    "map320Probe": {
+      "box": {
+        "x": 134.20286560058594,
+        "y": 754.5252685546875,
+        "width": 51.59425354003906,
+        "height": 65.5694580078125
+      },
+      "stage": {
+        "x": 16,
+        "y": 447.3125,
+        "width": 288,
+        "height": 680
+      },
+      "opacity": "1",
+      "visibility": "visible",
+      "filter": "none",
+      "connected": true,
+      "imageLoaded": true,
+      "hitWithin": true,
+      "scrollY": 183
+    }
+  },
+  "failure": null
+}

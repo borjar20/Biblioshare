@@ -7507,3 +7507,24 @@ reales y 1.205 pases; cada gate posee su servidor de producción, un worker y ce
 reintentos. Los specs usan el origen configurado, sin fijar localhost. Se corrige
 el foco al volver de un cruce poblado (#1472) y se retiran dos claves sobrantes (#1473).
 La ilustración promocional se guarda en docs/marketing como imagen de concepto.
+
+## 2026-10-10 — Llevar la composición de Sites al producto de Entre nosotros
+
+La primera implementación conservaba el dominio y el zoom, pero su jerarquía visual
+se alejaba del prototipo aprobado. Se adopta su composición con los tokens de la app:
+hero sans, controles compactos, mapa con avatares seleccionables y curvas de grosor
+según coincidencias, pilas y tarjetas con portadas reales. Los colores dependen del
+puesto guardado, por lo que permanecen al explorar parejas y tríos. El abanico central
+usa tres posiciones acotadas incluso cuando se conservan obras visitadas en otras vistas.
+
+El contador central representa obras únicas compartidas por alguna pareja; el estante
+representa las compartidas por todas las personas disponibles. Gustos presenta juntos
+dos gráficos diferenciados: área proporcional a obras únicas consumidas y medias de
+valoraciones sobre diez, con muestra y rango. La escala de cinco y los datos ficticios
+del prototipo no se trasladan al producto. Se mantienen los niveles guiados, el blur,
+el retorno simétrico y el foco en el control exacto que abrió el recorrido.
+
+La composición vive en CSS Modules locales, sin cambiar estilos globales, fuentes,
+dependencias, lectores ni permisos. El contraste visual se verifica con la app en
+build/start y capturas a 1280, 430 y 320 px en claro y oscuro. Evidencia y límites en
+`docs/testing/2026-10-10-entre-nosotros-visual.md`.

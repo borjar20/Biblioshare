@@ -8,9 +8,17 @@ import { groupMapLayout, layoutScene, mapConnections, personCenter, regionCenter
 import { useCamera } from './use-camera';
 import { WheelGesture } from './motion';
 import { WorkDetail } from './work-detail';
+import { initials, personColor, personInk } from './presentation';
 import styles from './canvas.module.css';
 
-type Props = { snapshot: Snapshot; view: View; onView: (view: View) => void; facetKeys?: WorkKey[]; onOpenFacetWork?: (key: WorkKey) => void };
+type Props = { snapshot: Snapshot; view: View; onView: (view: View) => void; facetKeys?: WorkKey[]; onOpenFacetWork?: (key: WorkKey) => void; selectedPeople?: string[]; onTogglePerson?: (id: string) => void };
+function Avatar({ name, url }: { name: string; url: string | null }) {
+  const [failed, setFailed] = useState(false);
+  return <span className={styles.avatar} aria-hidden="true">{url && !failed
+    // eslint-disable-next-line @next/next/no-img-element
+    ? <img src={url} alt="" width={53} height={53} loading="lazy" onError={() => setFailed(true)}/>
+    : initials(name)}</span>;
+}
 function Cover({ work, title }: { work: CatalogWork; title: string }) {
   const t = useTranslations('comparisons'); const [failed, setFailed] = useState(false);
   return <><span className={styles.cover}>
@@ -20,17 +28,18 @@ function Cover({ work, title }: { work: CatalogWork; title: string }) {
       : <span className={styles.fallback}><span>{title}</span><small>{t('noCover')}</small></span>}
   </span><span className={styles.coverTitle}>{title}</span></>;
 }
-type NavigationMemory = { pair: string | null; region: number | null; refreshFocus: boolean };
+type NavigationMemory = { pair: string | null; mapOrigin: 'pair' | 'selection'; region: number | null; refreshFocus: boolean };
 export function ComparisonCanvas(props: Props) {
-  const navigationRef = useRef<NavigationMemory>({ pair: null, region: null, refreshFocus: false });
+  const navigationRef = useRef<NavigationMemory>({ pair: null, mapOrigin: 'pair', region: null, refreshFocus: false });
   return <CanvasSession navigationRef={navigationRef} key={`${props.snapshot.group.id}:${props.snapshot.group.revision}:${props.snapshot.format}`} {...props}/>;
 }
-function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, navigationRef }: Props & { navigationRef: RefObject<NavigationMemory> }) {
+function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, navigationRef, selectedPeople, onTogglePerson }: Props & { navigationRef: RefObject<NavigationMemory> }) {
   const t = useTranslations('comparisons');
   const host = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const entry = useRef<HTMLDivElement>(null);
   const backButton = useRef<HTMLButtonElement>(null);
+  const selectionButton = useRef<HTMLButtonElement>(null);
   const returnTo = useRef<{ key: WorkKey; scroll: number } | null>(null);
   const focusAfter = useRef<'work' | 'return' | 'back' | 'origin' | null>(null);
   useLayoutEffect(() => {
@@ -52,6 +61,7 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, nav
     return { [JSON.stringify([view.people, origin.mask, 'all'])]: Math.max(24, Math.ceil((index + 1) / 24) * 24) };
   });
   const [signal, setSignal] = useState<'all' | Finding['kind']>('all');
+  const [morePairs, setMorePairs] = useState(false);
   useLayoutEffect(() => {
     if (typeof matchMedia === 'undefined') return;
     const media = matchMedia('(prefers-reduced-motion: reduce)');
@@ -78,8 +88,10 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, nav
   const zones = !facetMode && vennPeople.length >= 2 && vennPeople.length <= 3 ? regions(snapshot, vennPeople) : [];
   const sharedAll = facetMode ? [] : snapshot.catalog.filter(work => members.length >= 2 && members.every(member => snapshot.works.some(row => row.userId === member.userId && row.key === work.key)))
     .toSorted((a, b) => a.title.localeCompare(b.title) || a.key.localeCompare(b.key)).map(work => work.key);
+  const connectedKeys = [...new Set(pairs.flatMap(pair => pair.keys))];
   const sampleSize = width <= 360 ? 1 : 3;
-  const representatives = facetMode ? [] : view.level === 'group' ? [...new Set([...sharedAll.slice(0, sampleSize), ...pairs.flatMap(pair => pair.keys.slice(0, sampleSize))])]
+  const mapPile = connectedKeys;
+  const representatives = facetMode ? [] : view.level === 'group' ? mapPile.slice(0, sampleSize)
     : zones.flatMap(zone => zone.keys.slice(0, sampleSize));
   const mask = view.level === 'region' ? view.mask : view.level === 'work' && view.origin.kind === 'region' ? view.origin.mask : null;
   const region = zones.find(zone => zone.mask === mask);
@@ -109,7 +121,7 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, nav
   const poses = { ...destination.poses, ...scene.poses };
   const catalog = new Map(snapshot.catalog.map(work => [work.key, work]));
   const titleFor = (work: CatalogWork) => work.metadataMissing || !work.title ? t('missingMetadata') : work.title;
-  function openPair(people: string[]) { navigationRef.current.pair = JSON.stringify(people); focusAfter.current = 'back'; onView({ level: 'venn', people }); }
+  function openPair(people: string[], mapOrigin: NavigationMemory['mapOrigin'] = 'pair') { navigationRef.current.pair = JSON.stringify(people); navigationRef.current.mapOrigin = mapOrigin; focusAfter.current = 'back'; onView({ level: 'venn', people }); }
   function openRegion(nextMask: number) { navigationRef.current.region = nextMask; focusAfter.current = 'back'; onView({ level: 'region', people: vennPeople, mask: nextMask }); }
   function openWork(key: WorkKey) {
     if (facetMode && onOpenFacetWork && view.level === 'facet') {
@@ -141,7 +153,8 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, nav
       target?.focus({ preventScroll: true }); window.scrollTo({ top: returnTo.current.scroll, behavior: 'instant' });
     } else {
       const controls = Array.from(host.current?.querySelectorAll<HTMLButtonElement>(view.level === 'group' ? '[data-map-pair]' : 'button[data-region-mask]:not([data-work-key])') ?? []);
-      const origin = focusAfter.current === 'origin' ? controls.find(control => view.level === 'group'
+      const selectionOrigin = view.level === 'group' && navigationRef.current.mapOrigin === 'selection' && !selectionButton.current?.disabled ? selectionButton.current : null;
+      const origin = focusAfter.current === 'origin' ? selectionOrigin ?? controls.find(control => view.level === 'group'
         ? control.dataset.mapPair === navigationRef.current.pair : Number(control.dataset.regionMask) === navigationRef.current.region) : null;
       (origin ?? (view.level === 'group' ? controls[0] : backButton.current) ?? host.current)?.focus({ preventScroll: true });
     }
@@ -181,6 +194,9 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, nav
       {view.level !== 'group' && <button ref={backButton} type="button" onClick={back}>{t(isWork ? facetMode ? 'backToFacet' : 'backToRegion' : view.level === 'region' ? 'backToVenn' : 'backToGroup')}</button>}
       {view.level !== 'group' && <span>{names(vennPeople)}</span>}
       {view.level === 'group' && <><p>{t('mapHint')}</p>{members.length < snapshot.group.members.length && <p>{t('unavailableCount', { count: snapshot.group.members.length - members.length })}</p>}</>}
+      <ol className={styles.levels} aria-label={t('canvasNavigation')}>
+        {(facetMode ? ['facet', 'work'] as const : ['group', 'venn', 'region', 'work'] as const).map(level => <li key={level} aria-current={view.level === level ? 'step' : undefined} data-active={view.level === level}><span>{t(`canvasLevels.${level}`)}</span></li>)}
+      </ol>
     </div>
     {!facetMode && !isWork && view.level !== 'group' && <div className={styles.signals} aria-label={t('noteFilters')}>
       {(['all', 'loved', 'similar', 'different'] as const).map(kind => <button type="button" key={kind} aria-pressed={signal === kind} onClick={() => setSignal(kind)}>{t(`signals.${kind}`)}</button>)}
@@ -194,8 +210,11 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, nav
           {view.level === 'group' ? pairs.map(pair => {
             const start = personCenter(members.findIndex(member => member.userId === pair.people[0]), members.length, width);
             const end = personCenter(members.findIndex(member => member.userId === pair.people[1]), members.length, width);
-            return <line key={pair.people.join(':')} x1={start.x} y1={start.y} x2={end.x} y2={end.y} className={styles.connection} strokeWidth={pair.keys.length ? 2 : 1}/>;
-          }) : !facetMode && vennCircles(vennPeople.length).map(({ x, y, radius }, index) => <circle key={index} cx={x} cy={y} r={radius} className={styles.vennCircle} data-person={index}/>)}
+            const strength = pairs[0]?.keys.length ? pair.keys.length / pairs[0].keys.length : 0;
+            const middle = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
+            const curve = { x: middle.x + (500 - middle.x) * .18, y: middle.y + (mapLayout.centerY - middle.y) * .18 };
+            return <path key={pair.people.join(':')} d={`M ${start.x} ${start.y} Q ${curve.x} ${curve.y} ${end.x} ${end.y}`} className={styles.connection} stroke={personColor(snapshot, pair.people[0])} strokeWidth={1 + strength * 5} opacity={pair.keys.length ? .2 + strength * .3 : .08}/>;
+          }) : !facetMode && vennCircles(vennPeople.length).map(({ x, y, radius }, index) => <circle key={index} cx={x} cy={y} r={radius} className={styles.vennCircle} style={{ '--person': personColor(snapshot, vennPeople[index]) } as CSSProperties} data-person={index}/>)}
         </svg>
         {keys.map(key => {
           const work = catalog.get(key); const pose = poses[key];
@@ -216,15 +235,36 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, nav
       </div>
       {overviewControls && <div className={styles.controls}>
         {view.level === 'group' ? <>
-          {members.map((member, index) => { const point = personCenter(index, members.length, width); return <span key={member.slotId} className={styles.person} data-compact={width <= 300} style={{ left: overview.camera.x + point.x * overview.camera.scale, top: point.y * overview.camera.scale }}>{member.name}</span>; })}
-          <div className={styles.shared} style={{ top: mapLayout.summaryY }}><strong>{sharedAll.length}</strong><span>{t(members.length < snapshot.group.members.length ? 'sharedByAvailable' : 'sharedByAll')}</span></div>
-        </> : zones.map(zone => { const point = regionCenter(vennPeople.length, zone.mask); return <button type="button" key={zone.mask} className={styles.region} data-region-mask={zone.mask} data-empty={!zone.keys.length}
-          style={{ left: overview.camera.x + point.x * overview.camera.scale, top: point.y * overview.camera.scale + (zone.keys.length ? 48 : 0) }}
-          aria-label={t('openRegion', { people: names(zone.people), count: zone.keys.length })} onClick={() => openRegion(zone.mask)}><strong>{zone.keys.length}</strong><span>{names(zone.people)}</span>{signal !== 'all' && <span>{t('matchingCount', { count: matchingKeys(zone.keys, zone.people).length })}</span>}</button>; })}
+          {members.map((member, index) => {
+            const point = personCenter(index, members.length, width);
+            const name = member.name ?? t('unavailablePerson');
+            const content = <><Avatar key={member.avatarUrl} name={name} url={member.avatarUrl}/><span className={styles.personName}>{name}</span><small>{t('mapPersonCount', { count: new Set(snapshot.works.filter(work => work.userId === member.userId).map(work => work.key)).size })}</small></>;
+            const style = { left: overview.camera.x + point.x * overview.camera.scale, top: point.y * overview.camera.scale, '--person': personColor(snapshot, member.userId!), '--person-ink': personInk(snapshot, member.userId!) } as CSSProperties;
+            return selectedPeople && onTogglePerson ? <label key={member.slotId} className={styles.person} data-compact={width <= 300} data-selected={selectedPeople.includes(member.userId!)} style={style}><input type="checkbox" aria-label={name} checked={selectedPeople.includes(member.userId!)} onChange={() => onTogglePerson(member.userId!)}/>{content}</label>
+              : <span key={member.slotId} className={styles.person} data-compact={width <= 300} style={style}>{content}</span>;
+          })}
+          <div className={styles.shared} data-compact={width <= 300} style={{ top: mapLayout.summaryY }}><strong>{connectedKeys.length}</strong><span>{t('connectedStories', { count: connectedKeys.length })}</span></div>
+        </> : <>
+          {vennPeople.map((id, index) => {
+            const circle = vennCircles(vennPeople.length)[index];
+            const x = vennPeople.length === 2 ? circle.x + (index ? 115 : -115) : index === 2 ? circle.x : circle.x + (index ? 115 : -115);
+            const y = vennPeople.length === 2 ? circle.y - circle.radius + 32 : index === 2 ? circle.y + circle.radius + 22 : circle.y - circle.radius + 32;
+            return <span key={id} className={styles.vennLabel} style={{ left: overview.camera.x + x * overview.camera.scale, top: y * overview.camera.scale, '--person': personColor(snapshot, id) } as CSSProperties}><i aria-hidden="true"/>{names([id])}</span>;
+          })}
+          {zones.map(zone => { const point = regionCenter(vennPeople.length, zone.mask); return <button type="button" key={zone.mask} className={styles.region} data-region-mask={zone.mask} data-empty={!zone.keys.length}
+            style={{ left: overview.camera.x + point.x * overview.camera.scale + (zone.keys.length ? 25 : 0), top: point.y * overview.camera.scale + (zone.keys.length ? 30 : 0) }}
+            aria-label={t('openRegion', { people: names(zone.people), count: zone.keys.length })} onClick={() => openRegion(zone.mask)}><strong>{zone.keys.length}</strong>{signal !== 'all' && <span>{t('matchingCount', { count: matchingKeys(zone.keys, zone.people).length })}</span>}</button>; })}
+        </>}
       </div>}
       {isWork && catalog.has(view.key) && <WorkDetail snapshot={snapshot} view={view} work={catalog.get(view.key)!} onEvidenceHeight={setEvidenceHeight}/>}
     </div>
-    {view.level === 'group' && <div className={styles.pairs} aria-label={t('pairConnections')}>{pairs.map(pair => <button type="button" data-map-pair={JSON.stringify(pair.people)} key={pair.people.join(':')} onClick={() => openPair(pair.people)}><span>{names(pair.people)}</span>{' '}<strong>{t('commonCount', { count: pair.keys.length })}</strong></button>)}</div>}
+    {view.level === 'group' && <>
+      {snapshot.group.members.some(member => !member.available || !member.userId) && <p className={styles.unavailable}>{t('unavailablePerson')}</p>}
+      {selectedPeople && <div className={styles.mapFooter}><p>{t('selectPair')}</p><button ref={selectionButton} type="button" disabled={selectedPeople.length < 2 || selectedPeople.length > 3} onClick={() => openPair(selectedPeople, 'selection')}>{t('compareSelection')}</button></div>}
+      <div className={styles.pairs} aria-label={t('pairConnections')}>{pairs.slice(0, 3).map(pair => <button type="button" className={styles.pairCard} data-map-pair={JSON.stringify(pair.people)} key={pair.people.join(':')} style={{ '--person': personColor(snapshot, pair.people[0]) } as CSSProperties} aria-label={`${names(pair.people)} ${t('commonCount', { count: pair.keys.length })}`} onClick={() => openPair(pair.people)}><span>{names(pair.people)}</span><strong>{t('commonCount', { count: pair.keys.length })}</strong><span className={styles.miniCovers} aria-hidden="true">{pair.keys.slice(0, 3).map(key => { const work = catalog.get(key); return work ? <span key={key}><Cover work={work} title={titleFor(work)}/></span> : null; })}</span><span className={styles.cardArrow} aria-hidden="true">↗</span></button>)}</div>
+      {pairs.length > 3 && <details className={styles.morePairs} open={morePairs} onToggle={event => setMorePairs(event.currentTarget.open)}><summary>{t('mapMoreConnections', { count: pairs.length - 3 })}</summary><div className={styles.pairRows}>{pairs.slice(3).map(pair => <button type="button" data-map-pair={JSON.stringify(pair.people)} key={pair.people.join(':')} onClick={() => openPair(pair.people)}><span>{names(pair.people)}</span>{' '}<strong>{t('commonCount', { count: pair.keys.length })}</strong></button>)}</div></details>}
+      {!!sharedAll.length && <section className={styles.sharedShelf}><header><h3>{t('sharedShelf')}</h3><p>{t('commonCount', { count: sharedAll.length })}</p></header><ul>{sharedAll.slice(0, 6).map(key => { const work = catalog.get(key); return work ? <li key={key}><Cover work={work} title={titleFor(work)}/></li> : null; })}</ul></section>}
+    </>}
     {view.level === 'region' && <div className={styles.pagination}><p aria-live="polite">{t('renderedCount', { count: pageKeys.length, total: fullKeys.length })}</p>{limit < fullKeys.length && <button type="button" onClick={() => setPages(current => ({ ...current, [pageId]: limit + 24 }))}>{t('loadMore')}</button>}</div>}
     {!isWork && <p className={styles.caption}>{t('schematic')}</p>}
   </div>;

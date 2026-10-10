@@ -1,8 +1,9 @@
 # Arquitectura
 
-> **[Entre nosotros #1462 · código/local/dev verificados el 2026-10-10; esquema aplicado y verificado en producción. Entrega de código: PR #1474; estado de integración y despliegue en GitHub.]**
-
 ## Entre nosotros — selección privada y evidencia bajo permisos vigentes
+
+Verificado contra código el 2026-10-10. La primera entrega está integrada y publicada
+mediante PR #1474; el esquema privado está verificado en desarrollo y producción.
 
 `/comunidad/entre-nosotros` se abre desde Comunidad. Su `page.tsx` resuelve la sesión,
 los grupos y los candidatos bajo `Suspense`; `layout.tsx` entrega únicamente el namespace
@@ -29,12 +30,23 @@ mapa/Venn, retorno simétrico y movimiento reducido. No hay arrastre libre,
 desplazamiento por flechas, modales ni paneles laterales para explorar evidencia.
 En móvil crece la altura del lienzo y se usa el scroll normal de la página.
 
+La composición visual sigue el prototipo aprobado de Sites: hero y controles compactos,
+avatares seleccionables, enlaces curvos y pilas de portadas. `presentation.ts` asigna
+colores por puesto guardado, estables al entrar en una pareja o trío. El centro del mapa
+cuenta la unión de obras compartidas por alguna pareja; el estante cuenta por separado
+las compartidas por todas las personas disponibles. Las parejas se despliegan dentro
+de la página. Gustos muestra dos superficies simultáneas: área proporcional a obras
+únicas consumidas y notas reales en escala 0–10, con muestras, rangos y cobertura.
+Los CSS Modules locales permiten esa composición sin cambiar la paleta global.
+
 Las dos tablas nuevas solo guardan selecciones del dueño; `passes` y `episode_watches`
 siguen siendo las fuentes de consumo. Cliente de petición con sesión/RLS; sin
 `use cache`, cliente sin sesión, localStorage ni persistencia compartida de evidencia.
 El esquema está aplicado y verificado en local/dev/producción. La evidencia
 integrada y sus límites están en [el informe](testing/2026-10-10-entre-nosotros.md);
-la entrega continúa en [#1462](https://github.com/borjar20/Biblioshare/issues/1462).
+la corrección visual se contrasta con capturas de navegador en
+[el informe visual](testing/2026-10-10-entre-nosotros-visual.md). El alcance futuro
+«Lo que esperamos juntos» sigue en [#1462](https://github.com/borjar20/Biblioshare/issues/1462).
 
 > **Delta Novedades 2026-10-06 · código y esquema local/dev:** `/novedades`
 > combina exploración pública y selección privada; `components/releases` y

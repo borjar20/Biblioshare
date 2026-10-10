@@ -1,0 +1,31 @@
+{
+  "buildId": "LVQT9ZvljG75urh3G4djs",
+  "sourceEpoch": "2026-10-10T19:01:36.662Z",
+  "sourceFingerprint": "c3bded6e78bb19d604b9c428475f269a199115ea15c0e21d82523e4cb900e2c3",
+  "changedProductFilesAfterQa": [],
+  "visualStatesPassed": 30,
+  "firstFullRun": {
+    "passed": 12,
+    "failed": 3,
+    "retries": 0
+  },
+  "reviewedFullRun": {
+    "passed": 14,
+    "failed": 1,
+    "retries": 0
+  },
+  "finalFocalRun": {
+    "passed": 1,
+    "failed": 0,
+    "durationSeconds": 35.6,
+    "retries": 0
+  },
+  "singleFullLocalFifteenPassRun": false,
+  "cleanup": {
+    "backend": "local54321",
+    "qa_actors": 0,
+    "qa_books": 0,
+    "qa_movies": 0,
+    "qa_series": 0
+  }
+}

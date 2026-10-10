@@ -1,0 +1,10 @@
+{
+  "backend": "local54321",
+  "members": 10,
+  "historicalBookPassesForPrivateMember": 1205,
+  "catalogWorks": 1207,
+  "personWorks": 1292,
+  "elapsedLoginCreateAndLoadMs": 10611,
+  "refreshMs": 3798,
+  "uncompressedActionResponseBytes": 361170
+}

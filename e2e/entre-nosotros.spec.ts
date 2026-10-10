@@ -414,9 +414,13 @@ test('LOCAL ONLY ten-person full HTTP snapshot includes 1205 historical book pas
     const map = await stage.evaluate((stage, names) => {
       const boundary = stage.getBoundingClientRect();
       const people = names.map(name => {
-        const node = [...stage.querySelectorAll('span')].find(node => node.textContent === name)!;
+        const input = [...stage.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')].find(input => input.getAttribute('aria-label') === name)!;
+        const control = input.closest('label')!;
+        const node = [...control.querySelectorAll('span')].find(node => node.textContent === name)!;
         const rect = node.getBoundingClientRect();
-        return { name, rect: rect.toJSON(), scrollWidth: node.scrollWidth, clientWidth: node.clientWidth };
+        return { name, rect: rect.toJSON(), control: control.getBoundingClientRect().toJSON(), checkbox: input.getBoundingClientRect().toJSON(),
+          lineHeight: parseFloat(getComputedStyle(node).lineHeight), scrollWidth: node.scrollWidth, clientWidth: node.clientWidth,
+          scrollHeight: node.scrollHeight, clientHeight: node.clientHeight };
       });
       const summary = [...stage.querySelectorAll('strong')].find(node => node.parentElement?.querySelector('span'))!.parentElement!.getBoundingClientRect().toJSON();
       const covers = [...stage.querySelectorAll('[data-work-key]')].map(node => node.getBoundingClientRect().toJSON());
@@ -430,22 +434,44 @@ test('LOCAL ONLY ten-person full HTTP snapshot includes 1205 historical book pas
     await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
     await page.screenshot({ path: info.outputPath('ten-person-mobile-map-full-page.png'), fullPage: true });
     for (const person of map.people) {
+      await expect(stage.getByRole('checkbox', { name: person.name, exact: true })).toBeVisible();
+      await expect(stage.getByText(person.name, { exact: true })).toBeVisible();
+      expect(person.checkbox.width).toBeGreaterThanOrEqual(44);
+      expect(person.checkbox.height).toBeGreaterThanOrEqual(44);
+      expect(person.scrollHeight).toBeLessThanOrEqual(person.clientHeight + 1);
+      for (const rect of [person.control, person.checkbox]) {
+        expect(rect.x).toBeGreaterThanOrEqual(map.stage.x);
+        expect(rect.right).toBeLessThanOrEqual(map.stage.right);
+        expect(rect.top).toBeGreaterThanOrEqual(map.stage.top);
+        expect(rect.bottom).toBeLessThanOrEqual(map.stage.bottom);
+      }
       expect(person.rect.x).toBeGreaterThanOrEqual(map.stage.x);
       expect(person.rect.x + person.rect.width).toBeLessThanOrEqual(map.stage.x + map.stage.width);
       expect(person.rect.top).toBeGreaterThanOrEqual(map.stage.top);
       expect(person.rect.bottom).toBeLessThanOrEqual(map.stage.bottom);
       expect(person.scrollWidth).toBeLessThanOrEqual(person.clientWidth + 1);
       for (const other of [map.summary, ...map.covers]) {
-        const a = person.rect, b = other;
-        expect(Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)), `${person.name} must not intersect the summary or a cover`).toBe(0);
+        for (const a of [person.rect, person.control]) {
+          const b = other;
+          expect(Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)), `${person.name} must not intersect the summary or a cover`).toBe(0);
+        }
       }
     }
-    expect(map.people.find(person => person.name === fixture.actors[3].name)!.rect.height).toBeGreaterThan(40);
-    expect(map.summary.bottom).toBeLessThanOrEqual(map.stage.bottom);
+    const longName = map.people.find(person => person.name === fixture.actors[3].name)!;
+    // The avatar and consumption count belong to the touch target, not the name.
+    // Protect actual two-line wrapping without counting those other elements.
+    expect(longName.rect.height).toBeGreaterThanOrEqual(longName.lineHeight * 2 - 1);
+    expect(longName.rect.height).toBeLessThanOrEqual(longName.lineHeight * 2 + 1);
+    for (const rect of [map.summary, ...map.covers]) {
+      expect(rect.x).toBeGreaterThanOrEqual(map.stage.x); expect(rect.right).toBeLessThanOrEqual(map.stage.right);
+      expect(rect.top).toBeGreaterThanOrEqual(map.stage.top); expect(rect.bottom).toBeLessThanOrEqual(map.stage.bottom);
+    }
     for (let first = 0; first < map.people.length; first++) for (let second = first + 1; second < map.people.length; second++) {
-      const a = map.people[first].rect, b = map.people[second].rect;
-      const intersection = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
-      expect(intersection, `${map.people[first].name} and ${map.people[second].name} name chips must not overlap`).toBe(0);
+      for (const part of ['rect', 'control'] as const) {
+        const a = map.people[first][part], b = map.people[second][part];
+        const intersection = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+        expect(intersection, `${map.people[first].name} and ${map.people[second].name} ${part} must not overlap`).toBe(0);
+      }
     }
     // Chromium cannot always retrieve this large Flight body through CDP.
     // Buffer the ORIGINAL upstream HTTP response and deliver it unchanged to UI.
@@ -476,13 +502,44 @@ test('final fixes: natural origin focus, 320px selector, all-person episode samp
     await loginComparisonActor(page, fixture.actors[0]); await page.goto('/comunidad/entre-nosotros');
     const selector = page.getByRole('combobox', { name: 'Grupo', exact: true });
     const selectorBox = async (phase: string) => {
-      const box = await selector.boundingBox(); expect(box!.width).toBeGreaterThan(220);
-      expect(box!.x + box!.width).toBeLessThanOrEqual(320);
-      await attachJson(info, `selector-${phase}`, box);
+      await expect(selector).toBeVisible(); await selector.focus(); await expect(selector).toBeFocused();
+      const layout = await selector.evaluate(select => {
+        const label = select.closest('label')!, picker = label.parentElement!, controls = picker.parentElement!;
+        const box = (node: Element) => node.getBoundingClientRect().toJSON();
+        return { select: box(select), picker: box(picker), label: box(label), controls: box(controls), header: box(controls.parentElement!),
+          buttons: [...controls.querySelectorAll('button')].map(box), documentWidth: document.documentElement.scrollWidth };
+      });
+      // The native select uses its picker width; inline edit/create actions also
+      // need real touch targets. A long option must not expand the shared row.
+      expect(layout.select.width).toBeGreaterThanOrEqual(44); expect(layout.select.height).toBeGreaterThanOrEqual(44);
+      expect(Math.abs(layout.select.width - layout.picker.width)).toBeLessThanOrEqual(1);
+      expect(Math.abs(layout.label.width - layout.picker.width)).toBeLessThanOrEqual(1);
+      expect(Math.abs(layout.controls.width - layout.header.width)).toBeLessThanOrEqual(1);
+      expect(Math.abs(layout.controls.x - layout.header.x)).toBeLessThanOrEqual(1);
+      expect(Math.abs(layout.controls.right - layout.header.right)).toBeLessThanOrEqual(1);
+      expect(Math.abs(layout.select.x - layout.controls.x)).toBeLessThanOrEqual(1);
+      expect(Math.abs(layout.buttons.at(-1)!.right - layout.controls.right)).toBeLessThanOrEqual(1);
+      expect(layout.buttons[0].x - layout.select.right).toBeLessThanOrEqual(16);
+      expect(layout.documentWidth).toBeLessThanOrEqual(320);
+      for (const box of [layout.select, layout.controls, ...layout.buttons]) {
+        expect(box.x).toBeGreaterThanOrEqual(0); expect(box.right).toBeLessThanOrEqual(320);
+      }
+      for (const button of layout.buttons) {
+        expect(button.width).toBeGreaterThanOrEqual(44); expect(button.height).toBeGreaterThanOrEqual(44);
+        expect(button.x).toBeGreaterThanOrEqual(layout.select.right);
+        expect(button.bottom).toBeLessThanOrEqual(layout.controls.bottom);
+        expect(button.top).toBeGreaterThanOrEqual(layout.controls.top);
+      }
+      for (let first = 0; first < layout.buttons.length - 1; first++) {
+        expect(layout.buttons[first].right).toBeLessThanOrEqual(layout.buttons[first + 1].x);
+        expect(layout.buttons[first + 1].x - layout.buttons[first].right).toBeLessThanOrEqual(16);
+      }
+      await attachJson(info, `selector-${phase}`, layout);
       await page.screenshot({ path: info.outputPath(`selector-${phase}.png`) });
     };
     await selectorBox('empty');
     await createGroup(page, fixture.actors, 'Un grupo de bibliotecas y amistades con un nombre largo QA');
+    await expect(selector.locator('option:checked')).toHaveText('Un grupo de bibliotecas y amistades con un nombre largo QA');
     await selectorBox('long-selected');
     const pairs = page.locator('[data-map-pair]'); const originPair = pairs.nth(2);
     const originIdentity = await originPair.getAttribute('data-map-pair');
@@ -515,6 +572,13 @@ test('final fixes: natural origin focus, 320px selector, all-person episode samp
     await page.keyboard.press('Escape'); await settled(page);
     await comparisonRest(`episode_watches?user_id=eq.${fixture.actors[1].id}&series_id=eq.${fixture.series!.id}`, { method: 'DELETE' });
     await page.getByRole('button', { name: 'Actualizar acceso', exact: true }).click(); await settled(page);
+    await expect(page.locator('[data-camera-moving]')).toHaveAttribute('data-view', 'venn');
+    // Refresh keeps the current level. The selection CTA belongs to the map,
+    // so follow the real return path before comparing that preserved selection.
+    await page.getByRole('button', { name: 'Volver al grupo', exact: true }).click(); await settled(page);
+    await expect(page.locator('[data-camera-moving]')).toHaveAttribute('data-view', 'group');
+    await expect(page.getByRole('checkbox', { name: 'Ana QA', exact: true })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: 'Beatriz QA', exact: true })).toBeChecked();
     await page.getByRole('button', { name: 'Comparar selección', exact: true }).click(); await settled(page);
     await page.getByRole('button', { name: 'Abrir región: Ana QA; 1 obras', exact: true }).click(); await settled(page);
     await series.click(); await settled(page);
@@ -526,6 +590,13 @@ test('final fixes: natural origin focus, 320px selector, all-person episode samp
     await page.getByRole('button', { name: 'Actualizar acceso', exact: true }).click(); await settled(page);
     await expect(page.locator('[data-comparison-coverage]')).toContainText('3 historiales de persona y serie del grupo cargado');
     await expect(page.getByRole('button', { name: /Abrir obra:/ })).toHaveCount(0);
+    await expect(page.locator('[data-camera-moving]')).toHaveAttribute('data-view', 'region');
+    await page.getByRole('button', { name: 'Volver al Venn', exact: true }).click(); await settled(page);
+    await expect(page.locator('[data-camera-moving]')).toHaveAttribute('data-view', 'venn');
+    await page.getByRole('button', { name: 'Volver al grupo', exact: true }).click(); await settled(page);
+    await expect(page.locator('[data-camera-moving]')).toHaveAttribute('data-view', 'group');
+    await expect(page.getByRole('checkbox', { name: 'Ana QA', exact: true })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: 'Beatriz QA', exact: true })).toBeChecked();
     await page.getByRole('button', { name: 'Comparar selección', exact: true }).click(); await settled(page);
     await page.getByRole('button', { name: /^Abrir región: (Ana QA, Beatriz QA|Beatriz QA, Ana QA); 0 obras$/ }).click(); await settled(page);
     await expect(page.getByText('No hay registros elegibles visibles en esta región.', { exact: true })).toBeVisible();
@@ -552,14 +623,31 @@ test('final fixes: intermediate map DOM names, piles and summary stay disjoint',
       const boxes = await page.evaluate(() => {
         const stage = document.querySelector('[data-comparison-stage]')!;
         const box = (node: Element) => { const b = node.getBoundingClientRect(); return { x: b.x, y: b.y, width: b.width, height: b.height, right: b.right, bottom: b.bottom, text: node.textContent }; };
-        const labels = [...stage.querySelectorAll('[data-compact]')];
-        return { stage: box(stage), labels: labels.map(node => ({ ...box(node), font: getComputedStyle(node).fontSize, lineHeight: getComputedStyle(node).lineHeight })),
+        const labels = [...stage.querySelectorAll('label')].filter(node => node.querySelector('input[type="checkbox"]'));
+        return { stage: box(stage), labels: labels.map(node => {
+          const input = node.querySelector('input[type="checkbox"]')!;
+          const name = [...node.querySelectorAll('span')].find(span => span.textContent === input.getAttribute('aria-label'))!;
+          return { ...box(node), name: box(name), checkbox: box(input), font: getComputedStyle(name).fontSize,
+            lineHeight: parseFloat(getComputedStyle(name).lineHeight), scrollWidth: name.scrollWidth, clientWidth: name.clientWidth,
+            scrollHeight: name.scrollHeight, clientHeight: name.clientHeight };
+        }),
           piles: [...stage.querySelectorAll('[data-work-key][data-background="false"][data-inactive="false"]')].map(box), summary: box(stage.querySelector('[class*="shared"]')!), documentWidth: document.documentElement.scrollWidth };
       });
       const overlap = (a: typeof boxes.stage, b: typeof boxes.stage) => Math.max(0, Math.min(a.right, b.right) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.y, b.y));
       expect(boxes.labels).toHaveLength(10); expect(boxes.documentWidth).toBeLessThanOrEqual(width);
-      expect(boxes.labels.some(label => label.height >= parseFloat(label.lineHeight) * 2 + 13)).toBe(true);
+      // Compact names must wrap; desktop names may fit on one line. Measure the
+      // actual text, rather than the avatar/name/count container's fixed height.
+      if (boxes.labels[0].width <= 84) expect(boxes.labels.some(label => label.name.height >= label.lineHeight * 2 - 1)).toBe(true);
+      expect(boxes.summary.x).toBeGreaterThanOrEqual(boxes.stage.x); expect(boxes.summary.right).toBeLessThanOrEqual(boxes.stage.right);
+      expect(boxes.summary.y).toBeGreaterThanOrEqual(boxes.stage.y); expect(boxes.summary.bottom).toBeLessThanOrEqual(boxes.stage.bottom);
       for (const [index, label] of boxes.labels.entries()) {
+        expect(label.checkbox.width).toBeGreaterThanOrEqual(44); expect(label.checkbox.height).toBeGreaterThanOrEqual(44);
+        expect(label.scrollWidth).toBeLessThanOrEqual(label.clientWidth + 1); expect(label.scrollHeight).toBeLessThanOrEqual(label.clientHeight + 1);
+        expect(label.name.height).toBeLessThanOrEqual(label.lineHeight * 2 + 1);
+        expect(label.name.x).toBeGreaterThanOrEqual(label.x); expect(label.name.right).toBeLessThanOrEqual(label.right);
+        expect(label.name.y).toBeGreaterThanOrEqual(label.y); expect(label.name.bottom).toBeLessThanOrEqual(label.bottom);
+        expect(label.checkbox.x).toBeGreaterThanOrEqual(boxes.stage.x); expect(label.checkbox.right).toBeLessThanOrEqual(boxes.stage.right);
+        expect(label.checkbox.y).toBeGreaterThanOrEqual(boxes.stage.y); expect(label.checkbox.bottom).toBeLessThanOrEqual(boxes.stage.bottom);
         expect(label.x).toBeGreaterThanOrEqual(boxes.stage.x); expect(label.right).toBeLessThanOrEqual(boxes.stage.right);
         expect(label.y).toBeGreaterThanOrEqual(boxes.stage.y); expect(label.bottom).toBeLessThanOrEqual(boxes.stage.bottom);
         for (const other of boxes.labels.slice(index + 1)) expect(overlap(label, other), `name/name ${width}`).toBe(0);
