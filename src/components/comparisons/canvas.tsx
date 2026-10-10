@@ -1,10 +1,12 @@
 'use client';
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { useTranslations } from 'next-intl';
 import { findings, regions } from '@/lib/comparisons/derive';
 import type { CatalogWork, Finding, Snapshot, WorkKey } from '@/lib/comparisons/types';
 import type { View } from './state';
-import { layoutScene, mapConnections, personCenter, regionCenter, vennCircles, WORLD_HEIGHT, WORLD_WIDTH } from './geometry';
+import { layoutScene, mapConnections, personCenter, regionCenter, vennCircles, WORLD_HEIGHT, WORLD_WIDTH, type Scene } from './geometry';
+import { useCamera } from './use-camera';
+import { WheelGesture } from './motion';
 import { WorkDetail } from './work-detail';
 import styles from './canvas.module.css';
 
@@ -24,6 +26,14 @@ export function ComparisonCanvas(props: Props) {
 function CanvasSession({ snapshot, view, onView }: Props) {
   const t = useTranslations('comparisons');
   const host = useRef<HTMLDivElement>(null);
+  const stage = useRef<HTMLDivElement>(null);
+  const backButton = useRef<HTMLButtonElement>(null);
+  const returnTo = useRef<{ key: WorkKey; scroll: number } | null>(null);
+  const focusAfter = useRef<'work' | 'return' | 'back' | null>(null);
+  const gesture = useRef(new WheelGesture());
+  const [reduced, setReduced] = useState(false);
+  const [journey, setJourney] = useState<{ level: View['level']; transition: 'group' | 'level' }>({ level: view.level, transition: 'level' });
+  if (journey.level !== view.level) setJourney({ level: view.level, transition: journey.level === 'group' || view.level === 'group' ? 'group' : 'level' });
   const [width, setWidth] = useState(640);
   const [pages, setPages] = useState<Record<string, number>>(() => {
     if (view.level !== 'work' || view.origin.kind !== 'region') return {};
@@ -32,6 +42,13 @@ function CanvasSession({ snapshot, view, onView }: Props) {
     return { [JSON.stringify([view.people, origin.mask, 'all'])]: Math.max(24, Math.ceil((index + 1) / 24) * 24) };
   });
   const [signal, setSignal] = useState<'all' | Finding['kind']>('all');
+  useLayoutEffect(() => {
+    if (typeof matchMedia === 'undefined') return;
+    const media = matchMedia('(prefers-reduced-motion: reduce)');
+    const update = () => setReduced(media.matches);
+    update(); media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
   useEffect(() => {
     const element = host.current;
     if (!element) return;
@@ -62,28 +79,77 @@ function CanvasSession({ snapshot, view, onView }: Props) {
   const pageId = JSON.stringify([vennPeople, mask, signal]);
   const limit = pages[pageId] ?? 24;
   const pageKeys = fullKeys.slice(0, limit);
-  const keys = [...new Set([...representatives, ...pageKeys, ...(view.level === 'work' ? [view.key] : [])])];
+  const activeKeys = [...new Set([...representatives, ...pageKeys, ...(view.level === 'work' ? [view.key] : [])])];
+  const [keys, setKeys] = useState<WorkKey[]>(activeKeys);
+  if (activeKeys.some(key => !keys.includes(key))) setKeys([...new Set([...keys, ...activeKeys])]);
   const viewport = { width, height: 500 };
   const overview = layoutScene(snapshot, view.level === 'group' ? view : { level: 'venn', people: vennPeople }, viewport, keys);
-  const scene = mask === null ? overview : layoutScene(snapshot, view, viewport, pageKeys);
-  const poses = { ...overview.poses, ...scene.poses };
+  const layout = mask === null ? overview : layoutScene(snapshot, view, viewport, pageKeys);
+  const signature = JSON.stringify({ ...layout, poses: { ...overview.poses, ...layout.poses } });
+  // Detail requests rerender a child, and parent renders can recreate View.
+  // Only a changed geometric destination can restart the animation.
+  const [target, setTarget] = useState<{ signature: string; scene: Scene }>(() => ({ signature, scene: JSON.parse(signature) as Scene }));
+  if (target.signature !== signature) setTarget({ signature, scene: JSON.parse(signature) as Scene });
+  const destination = target.scene;
+  const scene = useCamera(destination, journey.transition, reduced);
+  const moving = scene !== destination;
+  const poses = { ...destination.poses, ...scene.poses };
   const catalog = new Map(snapshot.catalog.map(work => [work.key, work]));
   const titleFor = (work: CatalogWork) => work.metadataMissing || !work.title ? t('missingMetadata') : work.title;
-  function openRegion(nextMask: number) { onView({ level: 'region', people: vennPeople, mask: nextMask }); }
+  function openRegion(nextMask: number) { focusAfter.current = 'back'; onView({ level: 'region', people: vennPeople, mask: nextMask }); }
   function openWork(key: WorkKey) {
     const zone = zones.find(item => item.keys.includes(key));
-    if (zone) onView({ level: 'work', people: vennPeople, origin: { kind: 'region', mask: zone.mask }, key });
+    if (zone) {
+      returnTo.current = { key, scroll: window.scrollY }; focusAfter.current = 'work';
+      onView({ level: 'work', people: vennPeople, origin: { kind: 'region', mask: zone.mask }, key });
+    }
   }
   function back() {
+    focusAfter.current = view.level === 'work' ? 'return' : 'back';
     if (view.level === 'work' && view.origin.kind === 'region') onView({ level: 'region', people: view.people, mask: view.origin.mask });
     else if (view.level === 'region') onView({ level: 'venn', people: view.people });
     else onView({ level: 'group' });
   }
+  useLayoutEffect(() => {
+    if (view.level === 'work' && focusAfter.current === 'work') stage.current?.scrollIntoView?.({ block: 'start', behavior: 'instant' });
+  }, [view.level]);
+  useEffect(() => {
+    if (moving || !focusAfter.current) return;
+    if (focusAfter.current === 'return' && returnTo.current) {
+      const target = Array.from(host.current?.querySelectorAll<HTMLButtonElement>('[data-work-key]') ?? []).find(node => node.dataset.workKey === returnTo.current!.key);
+      target?.focus({ preventScroll: true }); window.scrollTo({ top: returnTo.current.scroll, behavior: 'instant' });
+    } else (backButton.current ?? host.current?.querySelector<HTMLButtonElement>('[data-map-pair]'))?.focus({ preventScroll: true });
+    focusAfter.current = null;
+  }, [moving, view.level]);
+  // The native, non-passive listener captures only a valid destination gesture.
+  // Its gesture state survives frames, so a burst cannot emit multiple levels.
+  useEffect(() => {
+    const element = stage.current; if (!element) return;
+    const wheel = (event: WheelEvent) => {
+      if (event.ctrlKey || event.metaKey) return;
+      const direction = event.deltaY < 0 ? 'in' : event.deltaY > 0 ? 'out' : null;
+      if (!direction) return;
+      const target = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-region-mask], [data-work-key], [data-pair]') : null;
+      const canBack = direction === 'out' && view.level !== 'group';
+      const canEnter = direction === 'in' && (view.level === 'venn' && !!target?.dataset.regionMask || view.level === 'region' && !!target?.dataset.workKey && target.dataset.background !== 'true' || view.level === 'group' && !!target?.dataset.pair);
+      const now = performance.now();
+      if (!canBack && !canEnter && !gesture.current.isCaptured(now, moving)) { gesture.current.reset(); return; }
+      const intent = gesture.current.push(event.deltaY, event.deltaMode, now, moving);
+      if (gesture.current.captured) event.preventDefault();
+      if (!intent) return;
+      if (intent === 'out' && canBack) back();
+      else if (view.level === 'venn' && target?.dataset.regionMask) openRegion(Number(target.dataset.regionMask));
+      else if (view.level === 'region' && target?.dataset.workKey) openWork(target.dataset.workKey as WorkKey);
+      else if (view.level === 'group' && target?.dataset.pair) onView({ level: 'venn', people: JSON.parse(target.dataset.pair) as string[] });
+    };
+    element.addEventListener('wheel', wheel, { passive: false });
+    return () => element.removeEventListener('wheel', wheel);
+  });
   const isWork = view.level === 'work';
   const overviewControls = view.level === 'group' || view.level === 'venn';
-  return <div ref={host} className={styles.canvas} data-view={view.level}>
+  return <div ref={host} className={styles.canvas} data-view={view.level} data-camera-moving={moving} onKeyDown={event => { if (event.key === 'Escape' && view.level !== 'group') { event.preventDefault(); back(); } }}>
     <div className={styles.toolbar}>
-      {view.level !== 'group' && <button type="button" onClick={back}>{t(isWork ? 'backToRegion' : view.level === 'region' ? 'backToVenn' : 'backToGroup')}</button>}
+      {view.level !== 'group' && <button ref={backButton} type="button" onClick={back}>{t(isWork ? 'backToRegion' : view.level === 'region' ? 'backToVenn' : 'backToGroup')}</button>}
       {view.level !== 'group' && <span>{names(vennPeople)}</span>}
       {view.level === 'group' && <><p>{t('mapHint')}</p>{members.length < snapshot.group.members.length && <p>{t('unavailableCount', { count: snapshot.group.members.length - members.length })}</p>}</>}
     </div>
@@ -93,7 +159,7 @@ function CanvasSession({ snapshot, view, onView }: Props) {
     {view.level === 'region' && <header className={styles.regionHeading}><h3>{names(region?.people ?? [])}</h3><p>{t('baseCount', { count: region?.keys.length ?? 0 })}</p>
       {!fullKeys.length && <p>{t(signal === 'all' ? 'emptyRegion' : 'emptyFindings')}</p>}
     </header>}
-    <div className={styles.stage} style={{ height: scene.height }} data-scene-height={scene.height}>
+    <div ref={stage} className={styles.stage} style={{ height: scene.height }} data-comparison-stage data-scene-height={scene.height}>
       <div className={styles.world} data-comparison-world style={{ width: WORLD_WIDTH, height: WORLD_HEIGHT, '--camera-scale': scene.camera.scale, transform: `translate(${scene.camera.x}px, ${scene.camera.y}px) scale(${scene.camera.scale})` } as CSSProperties}>
         <svg className={styles.background} data-focused={!overviewControls} width={WORLD_WIDTH} height={WORLD_HEIGHT} aria-hidden="true">
           {view.level === 'group' ? pairs.map(pair => {
@@ -106,10 +172,15 @@ function CanvasSession({ snapshot, view, onView }: Props) {
           const work = catalog.get(key); const pose = poses[key];
           if (!work || !pose) return null;
           const inPage = pageKeys.includes(key);
-          const background = isWork ? key !== view.key : view.level === 'region' && !inPage;
-          return <button key={key} type="button" data-work-key={key} data-background={background} className={styles.work} style={{ left: pose.x, top: pose.y, width: pose.width, height: pose.height, transform: `rotate(${pose.rotate}deg)` }}
+          const background = !activeKeys.includes(key) || (isWork ? key !== view.key : view.level === 'region' && !inPage);
+          // A center pile belongs to everyone, not an invented first pair. It
+          // has a Venn destination only when the entire group fits two/three.
+          const mapPeople = view.level === 'group' ? sharedAll.includes(key)
+            ? members.length <= 3 ? members.map(member => member.userId!) : undefined
+            : pairs.find(pair => pair.keys.includes(key))?.people : undefined;
+          return <button key={key} type="button" data-work-key={key} data-inactive={!activeKeys.includes(key)} data-pair={mapPeople && JSON.stringify(mapPeople)} data-region-mask={zones.find(zone => zone.keys.includes(key))?.mask} data-background={background} className={styles.work} style={{ left: pose.x, top: pose.y, width: pose.width, height: pose.height, transform: `rotate(${pose.rotate}deg)` }}
             aria-label={t(view.level === 'venn' ? 'explorePile' : 'openWork', { title: titleFor(work) })} tabIndex={background || view.level === 'group' ? -1 : 0} aria-hidden={background || view.level === 'group'}
-            onClick={() => view.level === 'venn' ? openRegion(zones.find(zone => zone.keys.includes(key))!.mask) : openWork(key)} disabled={view.level === 'group' || background}>
+            onClick={() => { if (view.level === 'venn') openRegion(zones.find(zone => zone.keys.includes(key))!.mask); else if (view.level === 'region') openWork(key); }} disabled={view.level === 'group' || background}>
             <Cover work={work} title={titleFor(work)}/>
           </button>;
         })}
@@ -118,13 +189,13 @@ function CanvasSession({ snapshot, view, onView }: Props) {
         {view.level === 'group' ? <>
           {members.map((member, index) => { const point = personCenter(index, members.length); return <span key={member.slotId} className={styles.person} style={{ left: overview.camera.x + point.x * overview.camera.scale, top: point.y * overview.camera.scale }}>{member.name}</span>; })}
           <div className={styles.shared} style={{ top: 450 * overview.camera.scale + 65 }}><strong>{sharedAll.length}</strong><span>{t(members.length < snapshot.group.members.length ? 'sharedByAvailable' : 'sharedByAll')}</span></div>
-        </> : zones.map(zone => { const point = regionCenter(vennPeople.length, zone.mask); return <button type="button" key={zone.mask} className={styles.region} data-empty={!zone.keys.length}
+        </> : zones.map(zone => { const point = regionCenter(vennPeople.length, zone.mask); return <button type="button" key={zone.mask} className={styles.region} data-region-mask={zone.mask} data-empty={!zone.keys.length}
           style={{ left: overview.camera.x + point.x * overview.camera.scale, top: point.y * overview.camera.scale + (zone.keys.length ? 48 : 0) }}
           aria-label={t('openRegion', { people: names(zone.people), count: zone.keys.length })} onClick={() => openRegion(zone.mask)}><strong>{zone.keys.length}</strong><span>{names(zone.people)}</span>{signal !== 'all' && <span>{t('matchingCount', { count: matchingKeys(zone.keys, zone.people).length })}</span>}</button>; })}
       </div>}
       {isWork && catalog.has(view.key) && <WorkDetail snapshot={snapshot} view={view} work={catalog.get(view.key)!}/>}
     </div>
-    {view.level === 'group' && <div className={styles.pairs} aria-label={t('pairConnections')}>{pairs.map(pair => <button type="button" key={pair.people.join(':')} onClick={() => onView({ level: 'venn', people: pair.people })}><span>{names(pair.people)}</span>{' '}<strong>{t('commonCount', { count: pair.keys.length })}</strong></button>)}</div>}
+    {view.level === 'group' && <div className={styles.pairs} aria-label={t('pairConnections')}>{pairs.map(pair => <button type="button" data-map-pair key={pair.people.join(':')} onClick={() => onView({ level: 'venn', people: pair.people })}><span>{names(pair.people)}</span>{' '}<strong>{t('commonCount', { count: pair.keys.length })}</strong></button>)}</div>}
     {view.level === 'region' && <div className={styles.pagination}><p aria-live="polite">{t('renderedCount', { count: pageKeys.length, total: fullKeys.length })}</p>{limit < fullKeys.length && <button type="button" onClick={() => setPages(current => ({ ...current, [pageId]: limit + 24 }))}>{t('loadMore')}</button>}</div>}
     {!isWork && <p className={styles.caption}>{t('schematic')}</p>}
   </div>;

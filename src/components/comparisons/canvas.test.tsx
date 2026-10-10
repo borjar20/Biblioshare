@@ -14,9 +14,25 @@ function Harness({ initial = { level: 'venn', people: ['0', '1', '2'] }, data = 
   const [view, setView] = useState<View>(initial);
   return <NextIntlClientProvider locale="es" messages={messages}><ComparisonCanvas snapshot={data} view={view} onView={setView}/></NextIntlClientProvider>;
 }
-beforeEach(() => { load.mockReset(); load.mockImplementation(async (_group, key, people) => ({ ok: true, data: { work: snapshot.catalog.find(work => work.key === key), people: snapshot.works.filter(work => work.key === key && people.includes(work.userId)), commonEpisodes: [] } })); });
-afterEach(cleanup);
+beforeEach(() => {
+  // These scaffold assertions inspect final geometry; motion has dedicated
+  // frame/cleanup tests and real-browser bounding-box coverage.
+  vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+  vi.stubGlobal('scrollTo', vi.fn());
+  load.mockReset(); load.mockImplementation(async (_group, key, people) => ({ ok: true, data: { work: snapshot.catalog.find(work => work.key === key), people: snapshot.works.filter(work => work.key === key && people.includes(work.userId)), commonEpisodes: [] } }));
+});
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 describe('comparison canvas', () => {
+  it('keeps the original region scroll when the already selected work cover is clicked again', async () => {
+    render(<Harness initial={{ level: 'region', people: ['0', '1'], mask: 3 }}/>);
+    vi.stubGlobal('scrollY', 1600);
+    const cover = screen.getByRole('button', { name: 'Abrir obra: Libro 00' });
+    fireEvent.click(cover); await screen.findByRole('link', { name: 'Ver ficha' });
+    vi.stubGlobal('scrollY', 100);
+    fireEvent.click(cover);
+    fireEvent.click(screen.getByRole('button', { name: 'Volver al cruce' }));
+    expect(window.scrollTo).toHaveBeenLastCalledWith({ top: 1600, behavior: 'instant' });
+  });
   it('keeps all seven exact regions including zero, with an explicit empty state', () => {
     render(<Harness/>);
     expect(screen.getAllByRole('button', { name: /Abrir región:/ })).toHaveLength(7);
