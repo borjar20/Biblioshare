@@ -7043,3 +7043,16 @@ Los hallazgos de consumo se mantienen en Obras; los acuerdos y diferencias de
 valoración, con sus notas y muestra, aparecen en Gustos. La propuesta está
 materializada para evaluación, no constituye la implementación ni la aprobación
 definitiva de la feature. Seguimiento en #1462.
+
+## 2026-10-10 — Mantener la exploración de Entre nosotros dentro del lienzo
+
+Por indicación del usuario, el prototipo abandona el detalle lateral de la
+iteración anterior. Grupo, Venn, despliegue de portadas y detalle de obra son
+estados de un mismo lienzo. Los hallazgos se integran en su superficie y las
+obras se abren con una transición de portada; el regreso conserva el cruce y el
+zoom. No se abren modales de obras ni del editor de selección. El detalle desde
+Gustos sigue la misma interacción, con vuelta a su conexión anterior.
+
+Se mantiene el zoom guiado por niveles, la separación entre consumo y valoración
+y las reglas de visibilidad. Es la dirección de exploración de la maqueta;
+la implementación en la app sigue pendiente en #1462.

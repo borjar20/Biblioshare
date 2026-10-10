@@ -191,3 +191,28 @@ grupo desde el zoom, todas con fotogramas intermedios y sin cancelaciones. Con
 movimiento reducido, el zoom funciona con 0 animaciones. Pasa el test del guardado
 y restauración. Se conservan ambas CSP, el iframe aislado, la paleta y el recorrido
 mapa/Venn de 850 ms. Sigue siendo una maqueta con datos ficticios, seguida en #1462.
+
+## Iteración del 2026-10-10: exploración dentro del lienzo
+
+El usuario pide que todo el recorrido del zoom ocurra dentro del lienzo y evitar
+modales y paneles laterales. Esta dirección sustituye la propuesta lateral de la
+iteración anterior. Mapa, Venn, portadas desplegadas y obra individual ocupan una
+misma superficie; los hallazgos y la galería del grupo quedan dentro de ella.
+
+Abrir una portada la lleva a una escena centrada, con título, personas, estado de
+consumo y nota, manteniendo los círculos del cruce como contexto. Se puede avanzar
+entre las obras del cruce. La ruta superior y el botón de regreso recuperan el
+mismo cruce y nivel de zoom. La transición de portada dura 700 ms en ambos sentidos;
+Escape vuelve un nivel. Gustos también abre las obras en esta escena y conserva
+su conexión al volver. El editor del grupo pasa a una vista integrada, sin diálogo.
+
+Verificado en navegador: seis y trece portadas; apertura, siguiente obra, regreso
+al mismo zoom, Escape, cruce exclusivo con dos personas sin registro visible,
+detalle desde Gustos y regreso, apertura/cierre del editor, restauración y tamaños
+de 570 y 320 px sin desbordamiento horizontal. El detalle muestra 0 elementos
+dialog y 0 aside. La prueba instrumentada completa las 5 animaciones de apertura
+y las 11 de regreso, con fotogramas intermedios y sin cancelaciones espontáneas.
+Con movimiento reducido, abrir y volver funcionan con 0 animaciones. Pasa el
+test de guardado/restauración; no aparecen errores de consola. Se conservan CSP,
+iframe aislado, portadas reales y paleta de la app. La integración sigue pendiente
+en #1462: estos cambios solo afectan a la maqueta publicada.
