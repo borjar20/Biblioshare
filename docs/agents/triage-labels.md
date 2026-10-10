@@ -1,24 +1,18 @@
-# Triage: estados internos y etiquetas del repositorio
+# Triage: estados internos
+
+Estos estados sirven para razonar y resumir el trabajo. No son etiquetas de GitHub y no se
+sincronizan con ellas; las etiquetas publicables son las tres dimensiones de `AGENTS.md`
+(área, tipo, prioridad) y se aplican según `issue-tracker.md`.
 
 | Estado interno | Significado |
 | --- | --- |
-| needs-triage | Pendiente de evaluación |
-| needs-info | Falta información |
-| ready-for-agent | Especificado y preparado para un agente |
+| needs-triage | Pendiente de evaluar |
+| needs-info | Falta información para decidir |
+| ready-for-agent | Especificado y listo para que lo haga un agente |
 | ready-for-human | Requiere intervención humana |
-| wontfix | Se ha decidido no abordarlo |
+| wontfix | Se decidió no abordarlo |
 
-Usar estos estados en el análisis y los resúmenes de trabajo.
-No sincronizarlos automáticamente como etiquetas de GitHub.
-
-La publicación de etiquetas sigue issue-tracker.md y las tres
-dimensiones de AGENTS.md. Los estados internos no sustituyen
-área, tipo ni prioridad.
-
-Aunque wontfix exista en GitHub, su uso interno no implica
-aplicarlo ni cerrar la issue. Las issues tipo:acta conservan
-el tratamiento establecido en AGENTS.md.
-
-Al retomar trabajo, reconstruir el estado desde la evidencia
-disponible. La ausencia de etiquetas de estado no significa
-que una issue nunca haya sido evaluada.
+- Usar `wontfix` internamente no implica aplicar esa etiqueta ni cerrar la issue. Las issues
+  `tipo:acta` siguen su propio tratamiento (`AGENTS.md`): no se hacen ni se cierran.
+- Al retomar trabajo, reconstruye el estado desde la evidencia (comentarios, PR enlazadas,
+  commits). Que una issue no tenga estado no significa que nunca se evaluara.

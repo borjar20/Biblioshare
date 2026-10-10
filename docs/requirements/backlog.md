@@ -34,6 +34,10 @@
 - [ ] Integrar/publicar el candidato visual y verificar las rutas productivas (#1450).
   Evidencia: `docs/testing/2026-10-07-novedades-paper.md` y
   `docs/testing/2026-10-07-novedades-calendar.md`.
+- [x] Implementar resúmenes visuales expandibles del Inicio con sesión en móvil y
+  compactar solo Sale esta semana en PC, con scroll independiente de laterales
+  (#1453/#1454, 2026-10-07; candidato local). Refinado a despliegues dentro de
+  Inicio, manteniendo la crónica como reproductor (PR #1457). Publicación pendiente.
 - [ ] Curar la selección editorial inicial de libros y revisar semanalmente las fuentes.
   Aún no hay filas editoriales, suscripciones ni entregas, así que no se ha probado una
   notificación a usuarios. Seguimiento: [#1423](https://github.com/borjar20/Biblioshare/issues/1423),
@@ -546,7 +550,7 @@ verificación no afirma su ejecución. El resto sigue rastreable por `area:catal
 - Retos personalizables (§7.23; #310 aporta el vocabulario de género).
 - [x] «Tu año en Biblioshare» (§7.24), ampliado a semana y mes: integrado en [PR #1436](https://github.com/borjar20/Biblioshare/pull/1436), activo en producción el 2026-10-07; [spec](../superpowers/specs/2026-10-06-wrap-ups-design.md) y [recibo](../testing/2026-10-06-wrap-ups.md#activación-productiva--2026-10-07). Despacho dev pendiente [#1439](https://github.com/borjar20/Biblioshare/issues/1439).
 - [x] Crónicas: reparto de tiempo con etiquetas y avances semanales en series, también en el resumen final. Hitos históricos de temporada y ponerse al día pendientes [#1444](https://github.com/borjar20/Biblioshare/issues/1444).
-- [x] Comparar bibliotecas (§7.25), «Entre nosotros»: implementación verificada en código/local/dev el 2026-10-10, con selecciones privadas de 2–10 participantes, Obras/Gustos y regiones exactas de pareja/trío. [Especificación](../superpowers/specs/2026-10-10-entre-nosotros-design.md), [plan](../superpowers/plans/2026-10-10-entre-nosotros.md) y [evidencia integrada](../testing/2026-10-10-entre-nosotros.md). **Esquema productivo e integración/publicación pendientes** en [#1462](https://github.com/borjar20/Biblioshare/issues/1462); no consta activa en producción.
+- [x] Comparar bibliotecas (§7.25), «Entre nosotros»: implementación verificada en código/local/dev el 2026-10-10, con selecciones privadas de 2–10 participantes, Obras/Gustos y regiones exactas de pareja/trío. [Especificación](../superpowers/specs/2026-10-10-entre-nosotros-design.md), [plan](../superpowers/plans/2026-10-10-entre-nosotros.md) y [evidencia integrada](../testing/2026-10-10-entre-nosotros.md). **Esquema aplicado y verificado en producción; integración/publicación de código en curso** en [#1462](https://github.com/borjar20/Biblioshare/issues/1462).
 - [ ] Pendientes y «Lo que esperamos juntos»: alcance futuro separado de Entre nosotros, registrado en [#1462](https://github.com/borjar20/Biblioshare/issues/1462).
 
 **Social y clubes**

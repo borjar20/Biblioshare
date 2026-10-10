@@ -2,6 +2,7 @@
 // Reproductor de stories (spec 2026-10-06 §5). <dialog> nativo: Escape, trampa
 // de foco y devolución de foco vienen del navegador, como el resto de capas.
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { animateHomePanel, type PanelRect } from "@/components/home/panel-motion";
 import { useTranslations } from "next-intl";
 import type { OwnWrapUp } from "@/lib/wrap-ups/get-own-wrap-ups";
 import { markWrapUpSeen } from "@/lib/wrap-ups/actions";
@@ -15,10 +16,11 @@ import styles from "./story-player.module.css";
 const STEP_MS = 6000;
 const HOLD_MS = 250;
 
-export function StoryPlayer({ wrapUp, models, onClose }: { wrapUp: OwnWrapUp; models: PosterModel[]; onClose: () => void }) {
+export function StoryPlayer({ wrapUp, models, onClose, originRect }: { wrapUp: OwnWrapUp; models: PosterModel[]; onClose: () => void; originRect?: PanelRect | null }) {
   const t = useTranslations("wrapUps.ui");
   const ref = useRef<HTMLDialogElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  const closing = useRef(false);
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   // Movimiento reducido: sin avance automático; la barra solo marca el índice.
@@ -34,12 +36,13 @@ export function StoryPlayer({ wrapUp, models, onClose }: { wrapUp: OwnWrapUp; mo
 
   useEffect(() => {
     ref.current?.showModal();
+    if (ref.current && originRect) void animateHomePanel(ref.current, originRect, window.matchMedia("(prefers-reduced-motion: reduce)").matches);
     // showModal enfoca el primer botón (Cerrar) y entonces el espacio CERRARÍA el
     // reproductor en vez de pausarlo: el foco inicial va al escenario.
     stageRef.current?.focus({ preventScroll: true });
     // Marcar visto es secundario: si falla, la story se ve igual (vuelve a intentarlo la próxima vez).
     markWrapUpSeen(wrapUp.kind).catch(() => {});
-  }, [wrapUp.kind]);
+  }, [wrapUp.kind, originRect]);
 
   const go = useCallback((delta: number) => {
     setIndex((i) => Math.min(last, Math.max(0, i + delta)));
@@ -96,8 +99,15 @@ export function StoryPlayer({ wrapUp, models, onClose }: { wrapUp: OwnWrapUp; mo
   const cover = models[0];
   const title = cover ? [cover.lines[0], cover.eyebrow].filter(Boolean).join(" · ") : undefined;
 
+  async function closePlayer() {
+    if (!ref.current || closing.current) return;
+    closing.current = true;
+    if (originRect) await animateHomePanel(ref.current, originRect, reduced, true);
+    ref.current?.close();
+  }
+
   return (
-    <dialog ref={ref} onClose={onClose} aria-label={title}
+    <dialog ref={ref} onClose={onClose} aria-label={title} onCancel={(event) => { if (originRect) { event.preventDefault(); void closePlayer(); } }}
       className={`${pixelFont.variable} ${styles.dialog}`}
       style={{ "--field": POSTER_FIELD[wrapUp.payload.palette] } as CSSProperties}>
       <div className={styles.column}>
@@ -117,7 +127,7 @@ export function StoryPlayer({ wrapUp, models, onClose }: { wrapUp: OwnWrapUp; mo
             <span className={styles.badge} aria-hidden="true">
               {paused ? `❚❚ ${t("paused")}` : `${index + 1}/${models.length}`}
             </span>
-            <button type="button" className={styles.close} onClick={() => ref.current?.close()} aria-label={t("close")}>
+            <button type="button" className={styles.close} onClick={closePlayer} aria-label={t("close")}>
               ✕
             </button>
           </div>

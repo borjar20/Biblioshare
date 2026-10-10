@@ -140,7 +140,7 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, nav
       const target = Array.from(host.current?.querySelectorAll<HTMLButtonElement>('[data-work-key]') ?? []).find(node => node.dataset.workKey === returnTo.current!.key);
       target?.focus({ preventScroll: true }); window.scrollTo({ top: returnTo.current.scroll, behavior: 'instant' });
     } else {
-      const controls = Array.from(host.current?.querySelectorAll<HTMLButtonElement>(view.level === 'group' ? '[data-map-pair]' : 'button[data-region-mask]') ?? []);
+      const controls = Array.from(host.current?.querySelectorAll<HTMLButtonElement>(view.level === 'group' ? '[data-map-pair]' : 'button[data-region-mask]:not([data-work-key])') ?? []);
       const origin = focusAfter.current === 'origin' ? controls.find(control => view.level === 'group'
         ? control.dataset.mapPair === navigationRef.current.pair : Number(control.dataset.regionMask) === navigationRef.current.region) : null;
       (origin ?? (view.level === 'group' ? controls[0] : backButton.current) ?? host.current)?.focus({ preventScroll: true });

@@ -16,9 +16,10 @@ const mode = process.argv[2];
 const commands = {
   build: ['node_modules/next/dist/bin/next', 'build'],
   smoke: ['node_modules/@playwright/test/cli.js', 'test', '--config', 'playwright.ci.config.ts', ...process.argv.slice(3)],
+  comparisons: ['node_modules/@playwright/test/cli.js', 'test', '--config', 'playwright.comparisons.ci.config.ts', ...process.argv.slice(3)],
   shop: ['node_modules/@playwright/test/cli.js', 'test', '--config', 'playwright.shop-local.config.ts', ...process.argv.slice(3)],
 };
-if (!commands[mode]) throw new Error('Expected build, smoke or shop');
+if (!commands[mode]) throw new Error('Expected build, smoke, comparisons or shop');
 const fixtureNamespace = String(Date.now());
 // Shared, synthetic provider metadata; tests add their own UUID-scoped ISBNs.
 const quotaFixturePath = resolve('.superpowers', `google-volume-quota-${fixtureNamespace}.ndjson`);

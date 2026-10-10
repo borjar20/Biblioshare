@@ -316,7 +316,7 @@ test('two real tabs conflict, same-account focus preserves context, cookie logou
       await expect(page.getByRole('heading', { name: 'Otra pesta\u00f1a QA', exact: true })).not.toBeVisible();
       await other.bringToFront();
       await other.getByRole('button', { name: 'Cerrar sesi\u00f3n', exact: true }).click();
-      await expect(other).toHaveURL('http://localhost:3000/'); mark('real logout completed');
+      await expect(other).toHaveURL(new URL('/', info.project.use.baseURL).href); mark('real logout completed');
       await loginComparisonActor(other, fixture.actors[2]);
       await expect(other.getByRole('link', { name: 'Mi perfil', exact: true })).toHaveAttribute('href', `/u/${fixture.actors[2].username}`);
       mark('B real login completed and profile verified');
@@ -580,14 +580,14 @@ test('final fix M3 bounded allow/block fixture-cover ownership diagnosis', async
   await withComparisonFixture(async fixture => {
     const runs: unknown[] = [];
     for (const serviceWorkers of ['allow', 'block'] as const) {
-      const context = await browser.newContext({ baseURL: 'http://localhost:3000', serviceWorkers });
+      const context = await browser.newContext({ baseURL: info.project.use.baseURL, serviceWorkers });
       const page = await context.newPage(); const covers: unknown[] = [], initiators: unknown[] = [], errors: string[] = [];
       const cdp = await context.newCDPSession(page); await cdp.send('Network.enable');
       cdp.on('Network.requestWillBeSent', event => {
         if (new URL(event.request.url).hostname !== 'comparison-fixture.invalid') return;
         const url = new URL(event.request.url);
         initiators.push({ url: url.origin + url.pathname, type: event.type, initiator: event.initiator.type,
-          stack: event.initiator.stack?.callFrames.map(frame => ({ functionName: frame.functionName, url: frame.url ? new URL(frame.url, 'http://localhost:3000').origin + new URL(frame.url, 'http://localhost:3000').pathname : '', line: frame.lineNumber })) });
+          stack: event.initiator.stack?.callFrames.map(frame => ({ functionName: frame.functionName, url: frame.url ? new URL(frame.url, info.project.use.baseURL).origin + new URL(frame.url, info.project.use.baseURL).pathname : '', line: frame.lineNumber })) });
       });
       context.on('request', request => { const cover = coverOwnership(request); if (cover) covers.push({ ...cover, event: 'request' }); });
       context.on('requestfailed', request => { const cover = coverOwnership(request); if (cover) covers.push({ ...cover, event: 'failed', error: request.failure()?.errorText }); });

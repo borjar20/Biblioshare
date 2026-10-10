@@ -1,6 +1,6 @@
 # Seguridad — modelo de permisos y excepciones
 
-> **[Delta Entre nosotros #1462 · permisos, objetos y grants verificados en local/dev el 2026-10-10; esquema productivo pendiente.]**
+> **[Entre nosotros #1462 · permisos, objetos y grants verificados en local/dev/producción el 2026-10-10.]**
 
 ## Entre nosotros — grupos privados y lecturas de la sesión
 
@@ -30,7 +30,10 @@ Contrato SQL con roles reales y rollback local/dev, concurrencia local y superfi
 verificados; advisors dev sin hallazgos añadidos ni retirados respecto a su baseline.
 Detalle de tablas/ACL en [modelo de datos](requirements/data-model.md); navegador,
 acciones ajenas/revocación y límites en [el informe](testing/2026-10-10-entre-nosotros.md).
-Producción no se ha modificado.
+En producción se aplicó la migración aditiva y se verificó coincidencia exacta con
+desarrollo: dos tablas con RLS, ocho políticas, cinco funciones invoker, cuatro
+triggers y grants por columna. Advisors de seguridad: seis antes y después,
+sin hallazgos añadidos. No hubo fixtures productivos; [recibo](testing/assets/2026-10-10-entre-nosotros/integration/schema-production.json).
 
 > **[Canónico · verificado contra dev (con diff a prod) el 2026-08-19]**
 >

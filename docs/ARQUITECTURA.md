@@ -1,6 +1,6 @@
 # Arquitectura
 
-> **[Delta Entre nosotros #1462 · verificado contra código y local/dev el 2026-10-10; producción e integración/publicación pendientes.]**
+> **[Entre nosotros #1462 · código/local/dev verificados el 2026-10-10; esquema aplicado y verificado en producción. Integración/publicación de código en curso.]**
 
 ## Entre nosotros — selección privada y evidencia bajo permisos vigentes
 
@@ -32,7 +32,7 @@ En móvil crece la altura del lienzo y se usa el scroll normal de la página.
 Las dos tablas nuevas solo guardan selecciones del dueño; `passes` y `episode_watches`
 siguen siendo las fuentes de consumo. Cliente de petición con sesión/RLS; sin
 `use cache`, cliente sin sesión, localStorage ni persistencia compartida de evidencia.
-El esquema está verificado en local/dev, sin aplicación en producción. La evidencia
+El esquema está aplicado y verificado en local/dev/producción. La evidencia
 integrada y sus límites están en [el informe](testing/2026-10-10-entre-nosotros.md);
 la entrega continúa en [#1462](https://github.com/borjar20/Biblioshare/issues/1462).
 

@@ -1,402 +1,11 @@
 # Modelo de datos
 
-> **Delta 2026-10-10 (Entre nosotros; esquema y grants verificados en local y biblioshare-dev; producción pendiente):**
-> `20261010084120_entre_nosotros_groups.sql` añade selecciones privadas de 2–10 participantes,
-> con RLS exclusiva del dueño, revisión opaca y RPC invoker. Contrato SQL con roles reales y
-> rollback PASS en local/dev; dos conexiones concurrentes verificadas en local. Ver el apartado siguiente.
-
-## Grupos privados de comparación — Entre nosotros
-
-`comparison_groups`: `id uuid`, `owner_id uuid NOT NULL DEFAULT auth.uid()` (FK a
-`auth.users`, CASCADE), `name text` recortado (1–60 caracteres), `revision integer`
-positiva, `created_at` y `updated_at`. `comparison_group_members`: `id uuid`,
-`group_id` (FK CASCADE), `user_id uuid NOT NULL`, `position integer` (0–9).
-Hay unicidad grupo/usuario y grupo/posición; esta última es diferible para reordenar.
-El usuario miembro no tiene FK: borrar su cuenta conserva un puesto no disponible,
-sin nombre ni avatar almacenados. El lector debe entregar `userId=null` y nombre/avatar
-nulos si ya no hay identidad disponible. El dueño puede quedar fuera de la selección.
-
-Ambas tablas son privadas incluso si el perfil del dueño es público: SELECT, INSERT,
-UPDATE y DELETE exigen dueño autenticado. Guardar un puesto no concede visibilidad
-de biblioteca. Cada alta exige perfil vigente visible para la sesión, `can_view_profile`
-y self o seguimiento aceptado del dueño hacia esa persona, sin reciprocidad.
-Borrar/reordenar no vuelve a exigir el follow: permite retirar puestos inaccesibles.
-Las tablas no consultan `passes`, `episode_watches` ni bibliotecas.
-
-Los triggers invoker con `search_path=''` serializan cada cambio de miembro mediante
-`UPDATE name=name` del padre antes de escribir. El trigger del padre incrementa la
-revisión y actualiza la fecha. Constraints diferibles comprueban 2–10 puestos al
-terminar la transacción; omiten padres borrados. La revisión es un token opaco y puede
-crecer más de uno por guardado. No se concede escritura directa de revisión/identidad.
-
-`save_comparison_group(p_id uuid, p_name text, p_user_ids uuid[], p_expected_revision integer)`
-devuelve `comparison_groups`; id y revisión nulos crean. Editar bloquea el padre
-`FOR UPDATE`, comprueba la revisión y reemplaza la lista atómicamente en su orden.
-`delete_comparison_group(p_id uuid, p_expected_revision integer)` devuelve boolean.
-Ambas son invoker, sesión obligatoria y EXECUTE solo para authenticated (sin PUBLIC/anon).
-Errores: `PT409` conflicto, `PT404` inexistente/ajeno indistinguibles, `22023` entrada
-inválida, `42501` sesión/permisos. La conversión de texto no UUID falla con `22P02`
-antes de entrar a la función. Reemplazar una lista revalida todas sus altas; se deben
-retirar personas que ya no se pueden añadir.
-
-Superficie 6 de DRIFT-CHECK verificada contra objetos locales/dev el 2026-10-10:
-
-| Tabla | Columnas | INSERT authenticated | UPDATE authenticated |
-|---|---:|---|---|
-| comparison_groups | 6 | name (1) | name (1) |
-| comparison_group_members | 4 | group_id, user_id, position (3) | position (1) |
-
-SELECT/DELETE son grants de tabla para authenticated. Anon no tiene permisos;
-id, dueño, revisión y timestamps quedan gestionados por la base. Tipos generados desde
-local y dev fusionados solo para estas tablas/RPC; se conserva la extensión manual de
-argumentos nulos de creación. El resto del modelo mantiene sus verificaciones anteriores.
-
-### Políticas, funciones y alcance verificado (2026-10-10)
-
-Las cuatro policies de grupos son `comparison_groups_owner_select`,
-`comparison_groups_owner_insert`, `comparison_groups_owner_update` y
-`comparison_groups_owner_delete`; las cuatro de miembros siguen el mismo sufijo
-con prefijo `comparison_group_members_owner_`. Todas se limitan a authenticated:
-grupos compara `owner_id=auth.uid()`; miembros exige padre propio visible por RLS.
-Los triggers `comparison_group_touch`, `comparison_member_guard`,
-`comparison_groups_size` y `comparison_members_size` ejecutan las tres funciones
-`comparison_group_touch`, `comparison_member_guard` y `comparison_group_size_check`.
-Las cinco funciones, incluidas ambas RPC, son invoker con ruta de búsqueda vacía.
-Los triggers no tienen EXECUTE directo concedido a authenticated/anon.
-
-Verificación contra `pg_class`, columnas, constraints, `pg_proc`, `pg_policies` y ACL
-en local/dev: objetos y hashes de definiciones idénticos, ocho policies, dos tablas
-con RLS y grants finos 6/1/1 y 4/3/1. El contrato SQL real prueba también DML directo,
-identidad/bloqueo, columnas inmutables, unicidad y cardinalidad diferibles; dos
-conexiones locales prueban bloqueo, ganador único y rechazo de un miembro undécimo.
-Bootstrap completo de 307 pasos y verificador local PASS con recibo de coordinación
-auténtico. Las comprobaciones no se deducen del ledger. Producción permanece intacta:
-este delta solo acredita local y biblioshare-dev.
-
-### Lectura de evidencia y contrato de respuesta
-
-El consumo se deriva de `passes` y `episode_watches`, nunca `library_entries`.
-Historial completo paginado; libros/películas elegibles al menos una vez terminados,
-nota del último terminado sin recuperar una anterior ausente; series con al menos
-un episodio, incluso abandonadas, deduplicadas por temporada/episodio entre pases.
-Progreso del pase actual y nota general de serie se mantienen separados de las
-notas de episodios. Una obra cuenta una vez por persona.
-
-Después de consultar fuentes/catálogo se revalidan grupo y disponibilidad; cambio
-de revisión devuelve `conflict` para recargar, no interpreta miembros nuevos sin
-lectura como cero obras. Una revocación retira hechos, catálogo exclusivo y cobertura;
-un puesto que recupera acceso durante la carga espera a la siguiente lectura.
-Metadatos perdidos conservan obra/pertenencia con `metadataMissing`, título vacío,
-portada nula y facetas ausentes, sin hidratación. El detalle admite 1–10 personas
-disponibles distintas y exige algún consumidor elegible; los episodios comunes
-requieren ≥2 personas y nota de todas. El DTO no contiene filas crudas, reseñas,
-spoilers ni motivos de abandono. Sesión/RLS actual en cada action, sin service role
-ni caché compartida. Evidencia: [verificación integrada](../testing/2026-10-10-entre-nosotros.md).
-
-> **Delta 2026-10-07 (calidad de Novedades; código verificado; esquema aplicado y verificado en local/dev/producción; entrega de código en PR #1452):**
-> `20261007075832_cultural_release_information_quality.sql` añade `synopsis_language`,
-> con grants explícitos, y conserva portada/sinopsis conocidas cuando el proveedor omite metadatos.
-> No cambia la publicación, el mercado, el consentimiento ni la revisión efectiva del lanzamiento. Ver §8quinquies.
-
-> **Delta 2026-10-07 (crónicas activas en dev y producción):** dos migraciones aplicadas, ocho superficies de esquema/ACL verificadas idénticas y cron productivo probado con HTTP 200. Ver §8sexies y el recibo de #1433.
-
-> **Corrección aplicada y verificada en biblioshare-dev y producción 2026-10-06 (Novedades):**
-> la quinta migración `20261006134245_cultural_release_translation_publication_year.sql`
-> sustituye solo `private.release_editorial_save`. Al publicar una primera traducción
-> sin obra enlazada, deja `books.published_year=NULL`: la fecha de la traducción no
-> acredita la primera publicación de la obra. La ruta `book` y el año de una obra
-> ya enlazada se conservan. Sin tablas, columnas, firmas ni grants nuevos.
-
-> **Delta 2026-10-06 (Novedades; aplicado y verificado en local, biblioshare-dev y producción):**
-> cinco migraciones `20261006103313` … `20261006134245` añaden anuncios públicos,
-> consentimiento privado por lanzamiento, cola de aceptación de avisos y estado de revisión
-> de las fuentes. El trabajo programado nace **inactivo** hasta verificar la aplicación de
-> destino y el despliegue de la aplicación. No se infieren cambios de `passes`, ni se crean secretos. Ver §8quinquies.
-
-> **Delta 2026-10-05 (lugares de Experiencias; verificado en dev y en producción 2026-10-05):**
-> migración `20261005100000_experience_places.sql`: tabla `places`,
-> `experience_moments.place_id`, `place_upsert` (solo `service_role`) y claves `placeId`/`keepPlace`
-> en las RPC de momentos. Aplicada en `biblioshare-dev`; `supabase/tests/experiences_places.sql`
-> PASS con rollback. Aplicada en producción el mismo día con cuerpos idénticos a dev (md5). Ver §8ter.2.
-
-> **Delta 2026-10-05 (#1380, notas en el margen; esquema verificado en dev 2026-10-05; producción
-> pendiente):** seis migraciones nuevas (`20261004120000` … `20261004120500`) añaden
-> `margin_notes` y `margin_note_encounters`, los enums `margin_audience` y `margin_found_via`,
-> el target `margin_encounter` (hilo privado por lector), tres tipos de aviso, la rama de
-> denuncia y la RPC `margin_claim_notices`. `merge_book_into` repunta `margin_notes`. Aplicadas en
-> `biblioshare-dev` el 2026-10-05 y `supabase/tests/margin_notes.sql` PASS con rollback.
-> **No aplicadas en producción.** Ver §8quater.
-
-> **Delta 2026-10-04 (#1334, esquema activo en dev y producción; consumidor en PR #1364):**
-> Celebraciones añade `claim_token`/`claim_expires_at` y tres RPC invoker para
-> reservar, confirmar y liberar. La entrega tiene tres fases: expansión con claims
-> cerradas, REVOKE del legacy y activación sólo con quiescencia acreditada sobre el
-> target real. La fase final instala un no-op compatible para clientes antiguos.
-> `scripts/db/celebrations-cutover.mjs` comprueba actividad fresca, ACL efectivas y
-> cada transacción previa terminal; el SQL vuelve a comprobarlo y exige cero otras
-> transacciones actuales. Las tres fases se aplicaron en dev el 2026-10-03 y los
-> objetos, ACL y grants por columna se revalidaron el 2026-10-04 a las 15:54 UTC:
-> cuatro RPC invoker, ejecución sólo authenticated y grants 11/11/11; 26 filas
-> históricas intactas. Producción recibió la expansión a las 16:42:17 UTC y
-> la activación final a las 20:15:35 UTC, tras cierre de admisión confirmado y
-> quiescencia real. El corte de las 20:16:22 UTC verifica cuatro RPC invoker
-> iguales a dev, EXECUTE sólo de authenticated, legacy compatible de cero filas,
-> RLS y grants 11/11/11; las 221 filas del preflight y los 303 registros previos
-> del ledger siguen intactos. Este corte de esquema precede a la entrega del
-> consumidor, seguida en PR #1364; acredita permisos, no presentación remota.
-> No hay recuperación de sellos históricos. Un control PostgreSQL causal con tracking desactivado
-> mostró un falso gate; las tres barreras corregidas rechazan `state=disabled`.
-> Contrato, fases y límites en §7bis.
-
-> **Delta 2026-10-04 (#1293, reseñas por momento; verificado en dev 2026-10-04 contra
-> pg_proc/pg_class/pg_policies; aplicado y verificado en producción el 2026-10-04):** seis migraciones nuevas
-> (`20261004100000` … `20261004100500`) añaden `experience_moment_reviews`, los tipos
-> de momento `food`/`festival`/`sport`/`nature`, la publicación de reseñas en Actividad,
-> el kind de moderación `experience_review` y la firma de tres argumentos de
-> `experience_set_attendance`. Aplicadas en `biblioshare-dev` el 2026-10-04: trece
-> funciones, RLS activa, tres políticas, solo SELECT para `anon`/`authenticated` y
-> `supabase/tests/experiences_reviews.sql` PASS con rollback en dev. **Producción:** las
-> seis migraciones se aplicaron y sus objetos se verificaron el 2026-10-04; sin fixtures
-> en producción. Ver §8ter.1 y el [informe de producción](../testing/2026-10-04-experiencias-resenas.md#verificación-de-producción-y-alcance-2026-10-04),
-> recogido en [PR #1378](https://github.com/borjar20/Biblioshare/pull/1378).
-
-> **Delta 2026-10-03 (#1335, corrección aplicada y verificada en dev/producción):**
-> `20261003153110_guard_comment_target_recursion.sql` protege la rama de comentario
-> de `public.can_view_target` frente a la reordenación del planner. Antes de recursar,
-> un `CASE` exige el ID solicitado y el target padre del comentario. El test real
-> de planes por índice/secuenciales y el fixture social original pasan en dev con
-> rollback. Producción verificada a las 15:36:19 UTC: cuerpo idéntico a dev, firma,
-> SQL/STABLE, SECURITY DEFINER, search_path, dueño y ACL conservados. Sin fixtures
-> en producción; el corte de las ocho originales, abajo, se conserva.
-
-> **Delta 2026-10-03 (#1293, esquema aplicado y verificado en producción):** Experiencias
-> añade seis tablas colaborativas con RLS, escritura solo mediante RPC y cuotas
-> existentes. Creación atómica, IDs estables al ampliar y revisiones para evitar
-> ediciones perdidas. Bootstrap vacío final de 281 pasos y pruebas de acceso,
-> participación, fotos/publicación/moderación locales y en dev; carreras de edición
-> y publicación comprobadas localmente. Ocho migraciones aplicadas y objetos,
-> definiciones y permisos verificados en producción el 2026-10-03 a las 10:04 UTC.
-> Ver §8ter y [evidencia de release](../testing/2026-10-03-experiencias-release.md).
-
-> **Delta 2026-10-02 (#1299):** la migración
-> `20261002102913_notification_type_mentioned.sql` rescata al historial local
-> el valor `mentioned` de `public.notification_type`, usando `IF NOT EXISTS`
-> tras crear `club_event_created` y antes de sus consumidores. Replay vacío
-> canónico de 273 pasos, inserción/lectura como service_role con rollback,
-> idempotencia y generación de tipos locales verificados. Dev (43 labels) y
-> prod (40) ya contienen el valor en la posición 18: comprobados contra
-> `pg_enum` y mediante cast real; no se aplica DDL remoto ni se cambian grants.
-> Evidencia: [bootstrap de menciones](../testing/2026-10-02-notification-type-bootstrap-1299.md).
-
-> **Delta 2026-10-02 (#1237):** `catalog_google_volume_create` admite 60 altas nuevas
-> por cuenta y ventana fija de una hora. En `books`, el trigger AFTER INSERT
-> aplica sólo a una fila con volumen Google y sin work key de Open Library;
-> el BEFORE genérico sigue cubriendo los demás libros. Reutilizar una fila mediante
-> `ON CONFLICT DO NOTHING`, incluso desde otra cuenta, no consume cuota de creación.
-> `PT429` revierte la inserción, su edición automática y el incremento de cuota.
-> Local y dev: 41 comprobaciones con reversión; dos carreras locales reales.
-> Aplicada una vez y verificada en producción el 2026-10-02: definición y helper
-> idénticos a dev, ambos triggers activos (`enabled=O`), SECURITY DEFINER y ACL
-> conservadas (`anon=false`, `authenticated=true`); RLS privado activo y sin SELECT
-> para anon/authenticated. Firma, validación de ID y capacidades anteriores se
-> conservan; no hay columnas, backfill ni datos de prueba nuevos en producción.
-> Entrega de UI: PR #1291, con sus checks obligatorios antes del merge.
-> Evidencia: [cuota de Google Books](../testing/2026-10-02-google-books-creation-quota-1237.md).
-
-> **Delta 2026-10-01 (#875):** `merge_book_into` repunta las referencias book de
-> eventos `lanzamiento.config.item` y `fecha_destacada.config.relations`, preservando
-> orden, claves ajenas y configuraciones opacas. Local/dev: regresiones con rollback;
-> prod: cuerpo `c8b66534da7190781a3578225040817b`, `SECURITY DEFINER`, search_path
-> `public, pg_temp` y ejecución solo service_role verificados, sin fusiones de datos.
-> El reconciliador cuenta ambos formatos como rastro de usuario para elegir ganador.
-
-> **Delta 2026-09-30 (#870):** un colaborador o admin que vacía `books.author`
-> deja `repr_meta.author={"source":"manual"}` tanto para `NULL` como para `''`;
-> el centinela impide que `hydrate_book` y `hydrate_books_bulk` lo rellenen. Si
-> falta esa entrada, el autor sigue siendo desconocido y ambos hidratadores pueden
-> rellenarlo. La migración `20260930190000_book_author_manual_clear.sql` conserva
-> firmas y fill-only, deja las tres funciones solo para `service_role` y fija
-> `search_path=''`. Aplicada y verificada en **dev** (regresión con rollback) y
-> en **prod** (definiciones, ACL y comentarios, sin fixtures ni curación de datos).
-
-> **Delta 2026-09-30 (#906):** ISBN-10 válidos y su equivalente ISBN-13 con
-> prefijo 978 comparten identidad; 979 conserva la suya. `canonical_isbn13(text)`
-> coincide con TypeScript en checksum, separadores y espacios exteriores de
-> ECMAScript. La tabla privada `book_edition_isbn_keys(book_id, isbn13, row_count)`
-> admite nuevas identidades de forma atómica y conserva los duplicados anteriores.
-> Trigger AFTER para INSERT/UPDATE/DELETE y cascadas; sin acceso de columna para
-> anon/authenticated. Las RPC devuelven el UUID existente al repetir, conservando
-> sus firmas y roles. `merge_book_into` deduplica por esa identidad y sigue
-> abortando antes de borrar una edición referenciada. Ambas migraciones aplicadas
-> en **dev y prod**: cero diferencias entre ledger y ediciones; filas existentes
-> conservadas (481/396). Dev: regresión SQL con rollback; local: replay vacío de
-> 268 pasos, 37 checks de admisión, fusión y cinco carreras con cleanup PASS.
-> Las parejas históricas (15 grupos dev, 3 prod) se siguen en #1242.
-
-> **Delta 2026-09-30 (#924):** `register_catalog_item_by_volume(text)` exige, tras
-> `btrim`, de 1 a 256 caracteres ASCII URL-safe (`A-Z`, `a-z`, `0-9`, `_`, `-`).
-> Es un límite conservador del proyecto, no una gramática oficial de Google ni
-> una prueba de existencia del volumen. La migración
-> `20260930160000_register_catalog_item_by_volume_validation.sql` conserva firma,
-> sesión obligatoria, idempotencia, SECURITY DEFINER, search path y ACL efectiva
-> `anon=false`, `authenticated=true`, `service_role=true`. Verificada en **dev**
-> (19 pruebas con rollback) y **prod** (función real y ACL, sin datos de prueba).
-> Replay local limpio: 266 pasos y gate completo. Sin columnas ni cambios de datos
-> existentes. La admisión por número de altas se incorpora en el delta #1237 de
-> 2026-10-02, aplicado y verificado en dev y prod como se detalla arriba; la gramática
-> y la ACL de esta RPC permanecen idénticas.
-
-> **Delta 2026-09-30 (#1204):** `hydrate_movie` y `hydrate_series` conservan sus
-> firmas con `backdrop_url` y su cuerpo fill-only. La migración
-> `20260930151804_hydrate_screen_revoke_anon.sql` revoca EXECUTE de `PUBLIC`/`anon`
-> y mantiene grants explícitos de `authenticated`/`service_role`. Aplicada y
-> verificada en **dev** y **prod** mediante `pg_proc` y `has_function_privilege`:
-> `anon=false`, `authenticated=true`, `service_role=true` en ambas funciones.
-> Replay local limpio: 265 pasos y gate DB completo; llamadas por rol con rollback
-> en local y dev. Sin cambios de columnas, firmas ni datos.
-
-> **Delta 2026-09-26 (visionados conjuntos, #1220):** tablas `joint_viewings` y
-> `joint_viewing_members`, `post_kind` `joint`, `post_source_kind` `joint_viewing`, dos
-> `notification_type` (`joint_viewing_invite`, `joint_viewing_accepted`). Detalle en §5.4.
-> **Estado:** las dos aplicadas y verificadas en **dev** y en **prod** (2026-09-26).
-
-> **Delta 2026-09-25 (reseñas con spoiler):** `passes.review_is_spoiler` y
-> `episode_watches.review_is_spoiler` (`boolean not null default false`; migración
-> `20260925120000_review_is_spoiler.sql`). Marca la reseña ENTERA como spoiler, igual que
-> `comments`/`notes`/`posts.is_spoiler`; la UI la tapa con `SpoilerGate` (solo UI: el texto viaja
-> igual a quien puede leerlo). `pass_reviews` la sirve como última columna (recreada con
-> `create or replace` + el bloque `grant select`/`revoke` de la superficie 7). Grants por columna en
-> `passes` (superficie 6): `select` a `anon`/`authenticated` (la bandera no es sensible, como
-> `rating`), `insert`/`update` a `authenticated`. `episode_watches` tiene grants de tabla: la cubren
-> solos. La acción la apaga si la reseña queda vacía. Verificado en **dev** y **prod** (2026-09-25,
-> `column_privileges` + `role_table_grants` de la vista + `UPDATE` como `authenticated` con rollback).
-
-> **Delta 2026-09-24 (ficha cinemática, PR 1):** `movies.backdrop_url` y `series.backdrop_url`
-> (`text`, nullable; migración `20260924120000_movies_series_backdrop_url.sql`). Backdrop apaisado
-> de TMDB a `w1280` para el hero de la ficha. Check `*_backdrop_url_tmdb`: solo
-> `https://image.tmdb.org/t/p/%`. Lo escriben **solo** `hydrate_movie`/`hydrate_series` (nuevo
-> parámetro `p_backdrop_url`, fill-only) desde `ensureItemEnriched`; sin grant de UPDATE para
-> `authenticated`. `hydrate_screens_bulk` acepta la clave `backdrop_url`. NULL = sin consultar
-> o TMDB no tiene (sin centinela; reintenta al abrir la ficha). Verificado en **dev** y **prod**
-> (2026-09-24, `pg_proc` + grants de columna + checks).
-
-> **Delta 2026-09-23 (#1201):** `hydrate_screens_bulk` reescrita para no marcar `hydrated_at`
-> (migración `20260923150000_hydrate_screens_bulk_no_hydrated_at.sql`, con backfill que devuelve
-> a pendientes las pelis/series marcadas sin director/creador o tamaños). Verificada en **dev**
-> (`pg_proc` + prueba con rollback: fill-only, `hydrated_at` intacto, `genres` null no rompe el
-> lote) y en **prod** (`pg_proc`: sin delegar en `hydrate_movie`, grants intactos; 0 películas
-> marcadas sin director/duración tras el backfill, 3601 películas y 981 series pendientes).
-
-> **Delta 2026-09-23 (fase 4 de series, #626):** columna `post_preferences.autopost_watched`
-> (migración `20260923140000_post_preferences_autopost_watched.sql`) con grants por columna
-> select/insert/update a `authenticated`, verificada en **dev** y en **prod**
-> (`information_schema.columns` + `has_column_privilege`: default `true`, not null, mismos grants
-> que sus hermanas). Las series dejan de crear
-> `progress_sessions` y su actividad se lee de `episode_watches.watched_on` (ver
-> «`episode_watches`» más abajo).
-
-> **Delta 2026-09-23 (#1193, catálogo vivo de series):** columnas `series.tmdb_status`,
-> `next_episode_air_date` y `episodes_synced_at` (migración
-> `20260923130000_series_live_episode_catalog.sql`), verificadas en **dev** y en **prod**
-> (`information_schema.columns` + `has_column_privilege`: SELECT para anon/authenticated, sin
-> UPDATE para authenticated, UPDATE para service_role; CHECK `series_tmdb_status_length`). Ver
-> «Catálogo vivo de episodios» más abajo.
-
-> **Delta 2026-09-23 (#1187, #1188):** trigger `passes_cleanup_contradicted_posts` y `with check` nuevo de `posts insert own`, verificados en dev (pg_trigger/pg_proc/pg_policy + `supabase/tests/posts_hitos_coherentes.sql` con rollback) y en prod (pg_trigger/pg_proc/pg_policy; 0 casos previos que limpiar).
-
-> **Delta 2026-09-22:** triggers `*_cleanup_source_posts` verificados en dev (pg_trigger/pg_proc + prueba SQL con rollback) y en prod (pg_trigger/pg_proc; limpieza de 11 posts huérfanos `pass`, 0 con hilo ajeno, 0 huérfanos tras aplicar).
-
-> **Delta #1183, 2026-09-15:** moderación administrativa verificada con identidades
-> reales y fixtures transaccionales en **dev**; esquema, permisos y consultas administrativas
-> comprobados también en **producción el 2026-09-15**. Migración
-> `20260915145340_admin_content_moderation.sql` y seguimiento
-> `20260915150429_moderation_event_notification_visibility.sql`;
-> **ambas aplicadas en dev y producción**. El seguimiento cubre los avisos legacy `club_event`.
-> Estado y evidencia viven en `private.moderation_state` y
-> `private.moderation_history`, sin FK destructiva al objeto ni acceso directo
-> para `anon`/`authenticated`. `private.moderation_operations` solo marca la
-> operación administrativa durante la transacción. No se añaden columnas a
-> tablas públicas existentes ni se amplían sus grants por columna.
->
-> `admin_moderation_list`, `admin_moderate_content`, `admin_review_report` y
-> `admin_moderation_audio` son envoltorios invoker de funciones privadas con
-> comprobación de admin global. Retirar oculta clubes/posts/club_posts/comments
-> y descendientes incluso al admin fuera de estas RPC. Políticas restrictivas,
-> helpers de visibilidad y guardas de escritura cubren consultas y funciones
-> privilegiadas. Restaurar el padre conserva las retiradas individuales.
-> Borrar exige motivo y confirmación (nombre exacto para club, `ELIMINAR` para
-> el resto), conserva evidencia y no elimina pases personales. Los posts
-> derivados borrados por moderación no se regeneran desde la misma fuente.
->
-> Tras retirar o borrar contenido, sus reportes solo se consultan mediante la
-> RPC administrativa; esta regla restringe la lectura ordinaria descrita abajo.
-> El audio usado como evidencia se conserva en el bucket privado y solo se
-> entrega mediante `/api/admin/voice-notes/[id]`; la RPC
-> `moderation_audio_is_evidence` es exclusiva de `service_role` para impedir que
-> la limpieza de archivos destruya evidencia.
-
-> **Delta recuperación Letterboxd #1151–#1159, 2026-09-08:** migración local
-> `20260908151906_letterboxd_recovery.sql`; validación con datos sintéticos.
-> Aplicada en dev y producción, con RPC, RLS y grants comprobados. Reparación de cuenta pendiente.
-
-> **Delta Letterboxd #1137–#1145, 2026-09-08:** implementación y migraciones verificadas
-> en Supabase local, dev remoto y producción. Siete migraciones aplicadas; RLS y permisos comprobados. Cron de producción validado con importación sintética privada y limpieza. Añade importaciones ZIP persistentes y permite `completed` sin fecha.
-
-> **Delta #920, 2026-09-07:** permisos y definición de registro de ediciones
-> verificados en dev; comportamiento SQL con fixtures y rollback verificado en
-> Supabase local. Definición y permisos verificados también en producción el 2026-09-07.
-
-> **Delta #708, 2026-09-07:** esquema y comportamiento verificados en Supabase
-> local con fixtures y rollback; definición y permisos comprobados en dev
-> (`biblioshare-dev`, `tyvzpuhxfwxrnkcpzxyg`) y en producción el 2026-09-07,
-> con 15 triggers de referencia y 3 de protección de borrado activos. Ver el inventario de
-> referencias y el alcance en [pruebas de integridad](../testing/2026-09-07-708-catalog-references.md).
-
-> **[Canónico · verificado contra dev el 2026-09-03; `pet_battles` (§8bis.5) y `get_widget_snapshot` contra dev y prod el 2026-09-06 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26; aventuras de R4a (§8bis.7, migración `20260908_pet_adventures.sql`) verificadas en dev y prod el 2026-09-07, tras aceptación jugable de R3 (#1106); equipo y calidad R4b (§8bis.8, migración `20260908074921_pet_r4b_equipment.sql`) aplicada y verificada en dev y prod el 2026-09-09, con el código R4b desplegado ese mismo día; bellotas y fondos del campamento R5 (§8bis.9, migración `20260910101116_pet_acorns.sql`) reverificadas en local/dev/prod el 2026-10-01]**
->
-> **Repaso de cierre del plan obra/edición/representación (2026-08-28).** Cada tarea del plan fue
-> sincronizando esta doc sobre la marcha, así que este paso fue de VERIFICACIÓN, no de volcado.
-> Comprobado contra objetos reales de dev (`pg_proc`, `has_function_privilege`,
-> `col_description`, `has_column_privilege`), nunca contra `list_migrations`:
-> `hydrate_book`, `hydrate_books_bulk` y `merge_book_into` son `SECURITY DEFINER` y **solo
-> `service_role`** (`anon` y `authenticated` sin execute); `register_book_edition` y
-> `register_manual_catalog_item` siguen con execute para `authenticated`; el comentario vivo de
-> `books.repr_meta` ya nombra al trigger y niega que lo escriban las actions; y la superficie 6
-> de `DRIFT-CHECK.md` da `books | 17 | 0 | 9` en dev. **Estado histórico del 2026-08-28, no una comprobación actual:** nada de esto estaba en prod todavía
-> (fase destructiva sin ejecutar en aquella revisión): se describió prod con `books` en 14 columnas,
-> sin `repr_meta`/`wikidata_id` y con `get_widget_snapshot` nombrando `is_primary`.
-> Las dos afirmaciones falsas que quedaban vivas estaban FUERA de esta doc y se corrigieron en
-> el mismo commit: la cabecera de `createTokenClient` (`src/lib/supabase/server.ts`), que
-> seguía citando `hydrate_book` como RPC con guard `authentication required`, y la de
-> `20260880_manual_catalog_item.sql`, que justificaba el `hydrated_at` NULL con el «fill-only».
-> Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3. **Este es el documento canónico del esquema.**
-> El historial de verificaciones anteriores (la antigua cabecera-changelog de deltas por fecha) se movió,
-> íntegro y congelado, a la sección «Historial de verificaciones (deltas antiguos, congelados)» al final del documento.
-
-> **Bootstrap local, 2026-09-06:** el esquema inicial y las 236 migraciones versionadas se aplican desde una base vacía con el manifiesto canónico. Ver [receta y límites](../testing/supabase-local.md). Esta comprobación local no actualiza las afirmaciones anteriores sobre dev o producción.
-
-> **#811, aplicado y verificado en dev y producción el 2026-09-07:** `private.request_quotas` guarda `(user_id, operation)` como clave primaria, `window_started_at timestamptz` y `used integer`. FK a `auth.users` con borrado en cascada, RLS activo y ningún permiso de tabla/columna para `anon` o `authenticated`. `consume_request_quota(text, integer default 1)` es SECURITY DEFINER, VOLATILE, `search_path=''`, ejecutable solo por `authenticated` entre los roles cliente. La identidad procede de `auth.uid()`, las capacidades de una lista fija y el incremento de un único UPSERT atómico. No hay cuotas en memoria ni campos modificables por clientes.
->
-> Los triggers `request_quota` cubren INSERT en catálogo, posts, comentarios, reacciones, follows y pendientes de importación; push devices cubre INSERT/UPDATE. DELETE sigue disponible. `get_activities_progress`, `get_club_round_state` y `save_saga_sequence` conservan firma, permisos y cuerpo de consulta con un guard de cuota; los dos lectores pasan de SQL/STABLE a PL/pgSQL/VOLATILE y se invocan por POST. El guard SQL emite `PT429` al agotar cuota. Los trabajos sin JWT conservan sus permisos previos y no consumen cuota de usuario. Ver [capacidades, pruebas y límites](../testing/2026-09-06-811-shared-rate-limits.md).
-
-> **Verificación #900, 2026-09-06:** `get_widget_snapshot()` ya coincide en dev y producción:
-> `md5(prosrc) = 358c7aa6950f1b71a5790541fe39a89b`, 10083 caracteres, sin `is_primary`.
-> Es exactamente la función prevista por `20260892`; no se reaplica. Esta lectura de `pg_proc`
-> sustituye el pendiente de #900 y no verifica el resto de la fase destructiva.
->
-> **#879, aplicada en dev y producción 2026-09-06:** `20260906201847_pass_interaction_hrefs.sql`
-> conserva el trigger de `passes` y propaga cambios reales de `item_type/item_id` a los href
-> de sesiones, comentarios y respuestas; conserva query de comunidad y anclas. Repara también
-> enlaces antiguos mediante `private.refresh_pass_interaction_hrefs(uuid)`, sin EXECUTE para
-> roles API. No cambia propietarios, audiencias ni políticas. Verificación local mediante
-> `supabase/tests/pass_interaction_hrefs.sql`; funciones y permisos verificados en ambos entornos.
-
-> **#812, producción verificada el 2026-09-06:** aplicada la migración existente
-> `20260878_catalog_technical_columns_gate.sql`. Los tres triggers BEFORE UPDATE
-> de books/movies/series siguen activos. Los campos técnicos ya poblados solo pueden
-> reescribirse por las vías privilegiadas existentes; null → valor sigue permitido.
-> La regresión funcional con filas sintéticas se ejecutó únicamente en local.
-> Evidencia: [verificación #812](../testing/2026-09-06-812-catalog-gate.md).
+> **[Canónico · cada sección lleva su propia fecha de verificación]** Documento canónico del esquema.
+> Empieza por §0 (dos renombres que invalidan la doc antigua). Las cabeceras de delta por cambio
+> (2026-08-19 → 2026-10-07) están en «Deltas pendientes de integrar», al final del cuerpo: son
+> vigentes y algunos describen objetos sin sección propia. Si dudas de que el doc coincida con
+> prod, corre [`DRIFT-CHECK.md`](../DRIFT-CHECK.md). Un cambio nuevo se documenta en su sección,
+> no como banner aquí arriba.
 
 ## 0. Dos renombres que invalidan la doc antigua
 
@@ -2423,7 +2032,7 @@ encadenadas (`20260826_confirm_checkpoint_lee_passes.sql` y
 
 - **#470** — la RPC original (20260713) leía `library_entries.position`, tabla CONGELADA
   desde el pase-hub: comparaba contra una posición muerta y rechazaba confirmaciones que la
-  UI (que lee `passes`) daba por alcanzables. La 20260826 la pasó al pase activo… 
+  UI (que lee `passes`) daba por alcanzables. La 20260826 la pasó al pase activo…
 - **#471** — …y la 20260827 eliminó el gate entero: la página objetivo la fijaba el
   moderador según SU edición y cada participante mide en páginas de la SUYA
   (`book_editions.total_pages` varía), así que el mismo número cae en puntos distintos de
@@ -5691,8 +5300,413 @@ pase-hub se redataron y prod las registra en otro orden.
 está aplicada pero sin registrar en el ledger. Para comprobar si algo existe de verdad,
 mirar los **objetos** (`pg_proc`, `pg_class`), no el ledger.
 
+## Grupos privados de comparación — Entre nosotros
+
+> [Canónico · esquema y grants verificados local/dev/producción el 2026-10-10.]
+
+`comparison_groups`: `id uuid`, `owner_id uuid NOT NULL DEFAULT auth.uid()` (FK a
+`auth.users`, CASCADE), `name text` recortado (1–60 caracteres), `revision integer`
+positiva, `created_at` y `updated_at`. `comparison_group_members`: `id uuid`,
+`group_id` (FK CASCADE), `user_id uuid NOT NULL`, `position integer` (0–9).
+Hay unicidad grupo/usuario y grupo/posición; esta última es diferible para reordenar.
+El usuario miembro no tiene FK: borrar su cuenta conserva un puesto no disponible,
+sin nombre ni avatar almacenados. El lector debe entregar `userId=null` y nombre/avatar
+nulos si ya no hay identidad disponible. El dueño puede quedar fuera de la selección.
+
+Ambas tablas son privadas incluso si el perfil del dueño es público: SELECT, INSERT,
+UPDATE y DELETE exigen dueño autenticado. Guardar un puesto no concede visibilidad
+de biblioteca. Cada alta exige perfil vigente visible para la sesión, `can_view_profile`
+y self o seguimiento aceptado del dueño hacia esa persona, sin reciprocidad.
+Borrar/reordenar no vuelve a exigir el follow: permite retirar puestos inaccesibles.
+Las tablas no consultan `passes`, `episode_watches` ni bibliotecas.
+
+Los triggers invoker con `search_path=''` serializan cada cambio de miembro mediante
+`UPDATE name=name` del padre antes de escribir. El trigger del padre incrementa la
+revisión y actualiza la fecha. Constraints diferibles comprueban 2–10 puestos al
+terminar la transacción; omiten padres borrados. La revisión es un token opaco y puede
+crecer más de uno por guardado. No se concede escritura directa de revisión/identidad.
+
+`save_comparison_group(p_id uuid, p_name text, p_user_ids uuid[], p_expected_revision integer)`
+devuelve `comparison_groups`; id y revisión nulos crean. Editar bloquea el padre
+`FOR UPDATE`, comprueba la revisión y reemplaza la lista atómicamente en su orden.
+`delete_comparison_group(p_id uuid, p_expected_revision integer)` devuelve boolean.
+Ambas son invoker, sesión obligatoria y EXECUTE solo para authenticated (sin PUBLIC/anon).
+Errores: `PT409` conflicto, `PT404` inexistente/ajeno indistinguibles, `22023` entrada
+inválida, `42501` sesión/permisos. La conversión de texto no UUID falla con `22P02`
+antes de entrar a la función. Reemplazar una lista revalida todas sus altas; se deben
+retirar personas que ya no se pueden añadir.
+
+Superficie 6 de DRIFT-CHECK verificada contra objetos locales/dev el 2026-10-10:
+
+| Tabla | Columnas | INSERT authenticated | UPDATE authenticated |
+|---|---:|---|---|
+| comparison_groups | 6 | name (1) | name (1) |
+| comparison_group_members | 4 | group_id, user_id, position (3) | position (1) |
+
+SELECT/DELETE son grants de tabla para authenticated. Anon no tiene permisos;
+id, dueño, revisión y timestamps quedan gestionados por la base. Tipos generados desde
+local y dev fusionados solo para estas tablas/RPC; se conserva la extensión manual de
+argumentos nulos de creación. El resto del modelo mantiene sus verificaciones anteriores.
+
+### Políticas, funciones y alcance verificado (2026-10-10)
+
+Las cuatro policies de grupos son `comparison_groups_owner_select`,
+`comparison_groups_owner_insert`, `comparison_groups_owner_update` y
+`comparison_groups_owner_delete`; las cuatro de miembros siguen el mismo sufijo
+con prefijo `comparison_group_members_owner_`. Todas se limitan a authenticated:
+grupos compara `owner_id=auth.uid()`; miembros exige padre propio visible por RLS.
+Los triggers `comparison_group_touch`, `comparison_member_guard`,
+`comparison_groups_size` y `comparison_members_size` ejecutan las tres funciones
+`comparison_group_touch`, `comparison_member_guard` y `comparison_group_size_check`.
+Las cinco funciones, incluidas ambas RPC, son invoker con ruta de búsqueda vacía.
+Los triggers no tienen EXECUTE directo concedido a authenticated/anon.
+
+Verificación contra `pg_class`, columnas, constraints, `pg_proc`, `pg_policies` y ACL
+en local/dev y, tras aplicar la migración, en producción: objetos y hashes de definiciones idénticos, ocho policies, dos tablas
+con RLS y grants finos 6/1/1 y 4/3/1. El contrato SQL real prueba también DML directo,
+identidad/bloqueo, columnas inmutables, unicidad y cardinalidad diferibles; dos
+conexiones locales prueban bloqueo, ganador único y rechazo de un miembro undécimo.
+Bootstrap completo de 307 pasos y verificador local PASS con recibo de coordinación
+auténtico. Las comprobaciones no se deducen del ledger. En producción se aplicó
+la misma migración aditiva y se contrastaron objetos, funciones, políticas, constraints,
+triggers y grants contra desarrollo: coincidencia exacta, sin hallazgos de seguridad
+añadidos. No se ejecutaron fixtures productivos. Recibo:
+[catálogo y permisos de producción](../testing/assets/2026-10-10-entre-nosotros/integration/schema-production.json).
+
+### Lectura de evidencia y contrato de respuesta
+
+El consumo se deriva de `passes` y `episode_watches`, nunca `library_entries`.
+Historial completo paginado; libros/películas elegibles al menos una vez terminados,
+nota del último terminado sin recuperar una anterior ausente; series con al menos
+un episodio, incluso abandonadas, deduplicadas por temporada/episodio entre pases.
+Progreso del pase actual y nota general de serie se mantienen separados de las
+notas de episodios. Una obra cuenta una vez por persona.
+
+Después de consultar fuentes/catálogo se revalidan grupo y disponibilidad; cambio
+de revisión devuelve `conflict` para recargar, no interpreta miembros nuevos sin
+lectura como cero obras. Una revocación retira hechos, catálogo exclusivo y cobertura;
+un puesto que recupera acceso durante la carga espera a la siguiente lectura.
+Metadatos perdidos conservan obra/pertenencia con `metadataMissing`, título vacío,
+portada nula y facetas ausentes, sin hidratación. El detalle admite 1–10 personas
+disponibles distintas y exige algún consumidor elegible; los episodios comunes
+requieren ≥2 personas y nota de todas. El DTO no contiene filas crudas, reseñas,
+spoilers ni motivos de abandono. Sesión/RLS actual en cada action, sin service role
+ni caché compartida. Evidencia: [verificación integrada](../testing/2026-10-10-entre-nosotros.md).
+
+## Deltas pendientes de integrar (vigentes)
+
+> **Vigentes, no históricos.** Cabeceras de verificación por cambio (2026-08-19 → 2026-10-07)
+> que antes ocupaban el principio del documento. Algunas describen objetos que todavía no
+> tienen su sección (p. ej. `private.request_quotas`, `admin_review_report`). Al integrar uno
+> en su sección, bórralo de aquí. Más reciente primero.
+
+> **Delta 2026-10-07 (calidad de Novedades; código verificado; esquema aplicado y verificado en local/dev/producción; entrega de código en PR #1452):**
+> `20261007075832_cultural_release_information_quality.sql` añade `synopsis_language`,
+> con grants explícitos, y conserva portada/sinopsis conocidas cuando el proveedor omite metadatos.
+> No cambia la publicación, el mercado, el consentimiento ni la revisión efectiva del lanzamiento. Ver §8quinquies.
+
+> **Delta 2026-10-07 (crónicas activas en dev y producción):** dos migraciones aplicadas, ocho superficies de esquema/ACL verificadas idénticas y cron productivo probado con HTTP 200. Ver §8sexies y el recibo de #1433.
+
+> **Corrección aplicada y verificada en biblioshare-dev y producción 2026-10-06 (Novedades):**
+> la quinta migración `20261006134245_cultural_release_translation_publication_year.sql`
+> sustituye solo `private.release_editorial_save`. Al publicar una primera traducción
+> sin obra enlazada, deja `books.published_year=NULL`: la fecha de la traducción no
+> acredita la primera publicación de la obra. La ruta `book` y el año de una obra
+> ya enlazada se conservan. Sin tablas, columnas, firmas ni grants nuevos.
+
+> **Delta 2026-10-06 (Novedades; aplicado y verificado en local, biblioshare-dev y producción):**
+> cinco migraciones `20261006103313` … `20261006134245` añaden anuncios públicos,
+> consentimiento privado por lanzamiento, cola de aceptación de avisos y estado de revisión
+> de las fuentes. El trabajo programado nace **inactivo** hasta verificar la aplicación de
+> destino y el despliegue de la aplicación. No se infieren cambios de `passes`, ni se crean secretos. Ver §8quinquies.
+
+> **Delta 2026-10-05 (lugares de Experiencias; verificado en dev y en producción 2026-10-05):**
+> migración `20261005100000_experience_places.sql`: tabla `places`,
+> `experience_moments.place_id`, `place_upsert` (solo `service_role`) y claves `placeId`/`keepPlace`
+> en las RPC de momentos. Aplicada en `biblioshare-dev`; `supabase/tests/experiences_places.sql`
+> PASS con rollback. Aplicada en producción el mismo día con cuerpos idénticos a dev (md5). Ver §8ter.2.
+
+> **Delta 2026-10-05 (#1380, notas en el margen; esquema verificado en dev 2026-10-05; producción
+> pendiente):** seis migraciones nuevas (`20261004120000` … `20261004120500`) añaden
+> `margin_notes` y `margin_note_encounters`, los enums `margin_audience` y `margin_found_via`,
+> el target `margin_encounter` (hilo privado por lector), tres tipos de aviso, la rama de
+> denuncia y la RPC `margin_claim_notices`. `merge_book_into` repunta `margin_notes`. Aplicadas en
+> `biblioshare-dev` el 2026-10-05 y `supabase/tests/margin_notes.sql` PASS con rollback.
+> **No aplicadas en producción.** Ver §8quater.
+
+> **Delta 2026-10-04 (#1334, esquema activo en dev y producción; consumidor en PR #1364):**
+> Celebraciones añade `claim_token`/`claim_expires_at` y tres RPC invoker para
+> reservar, confirmar y liberar. La entrega tiene tres fases: expansión con claims
+> cerradas, REVOKE del legacy y activación sólo con quiescencia acreditada sobre el
+> target real. La fase final instala un no-op compatible para clientes antiguos.
+> `scripts/db/celebrations-cutover.mjs` comprueba actividad fresca, ACL efectivas y
+> cada transacción previa terminal; el SQL vuelve a comprobarlo y exige cero otras
+> transacciones actuales. Las tres fases se aplicaron en dev el 2026-10-03 y los
+> objetos, ACL y grants por columna se revalidaron el 2026-10-04 a las 15:54 UTC:
+> cuatro RPC invoker, ejecución sólo authenticated y grants 11/11/11; 26 filas
+> históricas intactas. Producción recibió la expansión a las 16:42:17 UTC y
+> la activación final a las 20:15:35 UTC, tras cierre de admisión confirmado y
+> quiescencia real. El corte de las 20:16:22 UTC verifica cuatro RPC invoker
+> iguales a dev, EXECUTE sólo de authenticated, legacy compatible de cero filas,
+> RLS y grants 11/11/11; las 221 filas del preflight y los 303 registros previos
+> del ledger siguen intactos. Este corte de esquema precede a la entrega del
+> consumidor, seguida en PR #1364; acredita permisos, no presentación remota.
+> No hay recuperación de sellos históricos. Un control PostgreSQL causal con tracking desactivado
+> mostró un falso gate; las tres barreras corregidas rechazan `state=disabled`.
+> Contrato, fases y límites en §7bis.
+
+> **Delta 2026-10-04 (#1293, reseñas por momento; verificado en dev 2026-10-04 contra
+> pg_proc/pg_class/pg_policies; aplicado y verificado en producción el 2026-10-04):** seis migraciones nuevas
+> (`20261004100000` … `20261004100500`) añaden `experience_moment_reviews`, los tipos
+> de momento `food`/`festival`/`sport`/`nature`, la publicación de reseñas en Actividad,
+> el kind de moderación `experience_review` y la firma de tres argumentos de
+> `experience_set_attendance`. Aplicadas en `biblioshare-dev` el 2026-10-04: trece
+> funciones, RLS activa, tres políticas, solo SELECT para `anon`/`authenticated` y
+> `supabase/tests/experiences_reviews.sql` PASS con rollback en dev. **Producción:** las
+> seis migraciones se aplicaron y sus objetos se verificaron el 2026-10-04; sin fixtures
+> en producción. Ver §8ter.1 y el [informe de producción](../testing/2026-10-04-experiencias-resenas.md#verificación-de-producción-y-alcance-2026-10-04),
+> recogido en [PR #1378](https://github.com/borjar20/Biblioshare/pull/1378).
+
+> **Delta 2026-10-03 (#1335, corrección aplicada y verificada en dev/producción):**
+> `20261003153110_guard_comment_target_recursion.sql` protege la rama de comentario
+> de `public.can_view_target` frente a la reordenación del planner. Antes de recursar,
+> un `CASE` exige el ID solicitado y el target padre del comentario. El test real
+> de planes por índice/secuenciales y el fixture social original pasan en dev con
+> rollback. Producción verificada a las 15:36:19 UTC: cuerpo idéntico a dev, firma,
+> SQL/STABLE, SECURITY DEFINER, search_path, dueño y ACL conservados. Sin fixtures
+> en producción; el corte de las ocho originales, abajo, se conserva.
+
+> **Delta 2026-10-03 (#1293, esquema aplicado y verificado en producción):** Experiencias
+> añade seis tablas colaborativas con RLS, escritura solo mediante RPC y cuotas
+> existentes. Creación atómica, IDs estables al ampliar y revisiones para evitar
+> ediciones perdidas. Bootstrap vacío final de 281 pasos y pruebas de acceso,
+> participación, fotos/publicación/moderación locales y en dev; carreras de edición
+> y publicación comprobadas localmente. Ocho migraciones aplicadas y objetos,
+> definiciones y permisos verificados en producción el 2026-10-03 a las 10:04 UTC.
+> Ver §8ter y [evidencia de release](../testing/2026-10-03-experiencias-release.md).
+
+> **Delta 2026-10-02 (#1299):** la migración
+> `20261002102913_notification_type_mentioned.sql` rescata al historial local
+> el valor `mentioned` de `public.notification_type`, usando `IF NOT EXISTS`
+> tras crear `club_event_created` y antes de sus consumidores. Replay vacío
+> canónico de 273 pasos, inserción/lectura como service_role con rollback,
+> idempotencia y generación de tipos locales verificados. Dev (43 labels) y
+> prod (40) ya contienen el valor en la posición 18: comprobados contra
+> `pg_enum` y mediante cast real; no se aplica DDL remoto ni se cambian grants.
+> Evidencia: [bootstrap de menciones](../testing/2026-10-02-notification-type-bootstrap-1299.md).
+
+> **Delta 2026-10-02 (#1237):** `catalog_google_volume_create` admite 60 altas nuevas
+> por cuenta y ventana fija de una hora. En `books`, el trigger AFTER INSERT
+> aplica sólo a una fila con volumen Google y sin work key de Open Library;
+> el BEFORE genérico sigue cubriendo los demás libros. Reutilizar una fila mediante
+> `ON CONFLICT DO NOTHING`, incluso desde otra cuenta, no consume cuota de creación.
+> `PT429` revierte la inserción, su edición automática y el incremento de cuota.
+> Local y dev: 41 comprobaciones con reversión; dos carreras locales reales.
+> Aplicada una vez y verificada en producción el 2026-10-02: definición y helper
+> idénticos a dev, ambos triggers activos (`enabled=O`), SECURITY DEFINER y ACL
+> conservadas (`anon=false`, `authenticated=true`); RLS privado activo y sin SELECT
+> para anon/authenticated. Firma, validación de ID y capacidades anteriores se
+> conservan; no hay columnas, backfill ni datos de prueba nuevos en producción.
+> Entrega de UI: PR #1291, con sus checks obligatorios antes del merge.
+> Evidencia: [cuota de Google Books](../testing/2026-10-02-google-books-creation-quota-1237.md).
+
+> **Delta 2026-10-01 (#875):** `merge_book_into` repunta las referencias book de
+> eventos `lanzamiento.config.item` y `fecha_destacada.config.relations`, preservando
+> orden, claves ajenas y configuraciones opacas. Local/dev: regresiones con rollback;
+> prod: cuerpo `c8b66534da7190781a3578225040817b`, `SECURITY DEFINER`, search_path
+> `public, pg_temp` y ejecución solo service_role verificados, sin fusiones de datos.
+> El reconciliador cuenta ambos formatos como rastro de usuario para elegir ganador.
+
+> **Delta 2026-09-30 (#870):** un colaborador o admin que vacía `books.author`
+> deja `repr_meta.author={"source":"manual"}` tanto para `NULL` como para `''`;
+> el centinela impide que `hydrate_book` y `hydrate_books_bulk` lo rellenen. Si
+> falta esa entrada, el autor sigue siendo desconocido y ambos hidratadores pueden
+> rellenarlo. La migración `20260930190000_book_author_manual_clear.sql` conserva
+> firmas y fill-only, deja las tres funciones solo para `service_role` y fija
+> `search_path=''`. Aplicada y verificada en **dev** (regresión con rollback) y
+> en **prod** (definiciones, ACL y comentarios, sin fixtures ni curación de datos).
+
+> **Delta 2026-09-30 (#906):** ISBN-10 válidos y su equivalente ISBN-13 con
+> prefijo 978 comparten identidad; 979 conserva la suya. `canonical_isbn13(text)`
+> coincide con TypeScript en checksum, separadores y espacios exteriores de
+> ECMAScript. La tabla privada `book_edition_isbn_keys(book_id, isbn13, row_count)`
+> admite nuevas identidades de forma atómica y conserva los duplicados anteriores.
+> Trigger AFTER para INSERT/UPDATE/DELETE y cascadas; sin acceso de columna para
+> anon/authenticated. Las RPC devuelven el UUID existente al repetir, conservando
+> sus firmas y roles. `merge_book_into` deduplica por esa identidad y sigue
+> abortando antes de borrar una edición referenciada. Ambas migraciones aplicadas
+> en **dev y prod**: cero diferencias entre ledger y ediciones; filas existentes
+> conservadas (481/396). Dev: regresión SQL con rollback; local: replay vacío de
+> 268 pasos, 37 checks de admisión, fusión y cinco carreras con cleanup PASS.
+> Las parejas históricas (15 grupos dev, 3 prod) se siguen en #1242.
+
+> **Delta 2026-09-30 (#924):** `register_catalog_item_by_volume(text)` exige, tras
+> `btrim`, de 1 a 256 caracteres ASCII URL-safe (`A-Z`, `a-z`, `0-9`, `_`, `-`).
+> Es un límite conservador del proyecto, no una gramática oficial de Google ni
+> una prueba de existencia del volumen. La migración
+> `20260930160000_register_catalog_item_by_volume_validation.sql` conserva firma,
+> sesión obligatoria, idempotencia, SECURITY DEFINER, search path y ACL efectiva
+> `anon=false`, `authenticated=true`, `service_role=true`. Verificada en **dev**
+> (19 pruebas con rollback) y **prod** (función real y ACL, sin datos de prueba).
+> Replay local limpio: 266 pasos y gate completo. Sin columnas ni cambios de datos
+> existentes. La admisión por número de altas se incorpora en el delta #1237 de
+> 2026-10-02, aplicado y verificado en dev y prod como se detalla arriba; la gramática
+> y la ACL de esta RPC permanecen idénticas.
+
+> **Delta 2026-09-30 (#1204):** `hydrate_movie` y `hydrate_series` conservan sus
+> firmas con `backdrop_url` y su cuerpo fill-only. La migración
+> `20260930151804_hydrate_screen_revoke_anon.sql` revoca EXECUTE de `PUBLIC`/`anon`
+> y mantiene grants explícitos de `authenticated`/`service_role`. Aplicada y
+> verificada en **dev** y **prod** mediante `pg_proc` y `has_function_privilege`:
+> `anon=false`, `authenticated=true`, `service_role=true` en ambas funciones.
+> Replay local limpio: 265 pasos y gate DB completo; llamadas por rol con rollback
+> en local y dev. Sin cambios de columnas, firmas ni datos.
+
+> **Delta 2026-09-26 (visionados conjuntos, #1220):** tablas `joint_viewings` y
+> `joint_viewing_members`, `post_kind` `joint`, `post_source_kind` `joint_viewing`, dos
+> `notification_type` (`joint_viewing_invite`, `joint_viewing_accepted`). Detalle en §5.4.
+> **Estado:** las dos aplicadas y verificadas en **dev** y en **prod** (2026-09-26).
+
+> **Delta 2026-09-25 (reseñas con spoiler):** `passes.review_is_spoiler` y
+> `episode_watches.review_is_spoiler` (`boolean not null default false`; migración
+> `20260925120000_review_is_spoiler.sql`). Marca la reseña ENTERA como spoiler, igual que
+> `comments`/`notes`/`posts.is_spoiler`; la UI la tapa con `SpoilerGate` (solo UI: el texto viaja
+> igual a quien puede leerlo). `pass_reviews` la sirve como última columna (recreada con
+> `create or replace` + el bloque `grant select`/`revoke` de la superficie 7). Grants por columna en
+> `passes` (superficie 6): `select` a `anon`/`authenticated` (la bandera no es sensible, como
+> `rating`), `insert`/`update` a `authenticated`. `episode_watches` tiene grants de tabla: la cubren
+> solos. La acción la apaga si la reseña queda vacía. Verificado en **dev** y **prod** (2026-09-25,
+> `column_privileges` + `role_table_grants` de la vista + `UPDATE` como `authenticated` con rollback).
+
+> **Delta 2026-09-24 (ficha cinemática, PR 1):** `movies.backdrop_url` y `series.backdrop_url`
+> (`text`, nullable; migración `20260924120000_movies_series_backdrop_url.sql`). Backdrop apaisado
+> de TMDB a `w1280` para el hero de la ficha. Check `*_backdrop_url_tmdb`: solo
+> `https://image.tmdb.org/t/p/%`. Lo escriben **solo** `hydrate_movie`/`hydrate_series` (nuevo
+> parámetro `p_backdrop_url`, fill-only) desde `ensureItemEnriched`; sin grant de UPDATE para
+> `authenticated`. `hydrate_screens_bulk` acepta la clave `backdrop_url`. NULL = sin consultar
+> o TMDB no tiene (sin centinela; reintenta al abrir la ficha). Verificado en **dev** y **prod**
+> (2026-09-24, `pg_proc` + grants de columna + checks).
+
+> **Delta 2026-09-23 (#1201):** `hydrate_screens_bulk` reescrita para no marcar `hydrated_at`
+> (migración `20260923150000_hydrate_screens_bulk_no_hydrated_at.sql`, con backfill que devuelve
+> a pendientes las pelis/series marcadas sin director/creador o tamaños). Verificada en **dev**
+> (`pg_proc` + prueba con rollback: fill-only, `hydrated_at` intacto, `genres` null no rompe el
+> lote) y en **prod** (`pg_proc`: sin delegar en `hydrate_movie`, grants intactos; 0 películas
+> marcadas sin director/duración tras el backfill, 3601 películas y 981 series pendientes).
+
+> **Delta 2026-09-23 (fase 4 de series, #626):** columna `post_preferences.autopost_watched`
+> (migración `20260923140000_post_preferences_autopost_watched.sql`) con grants por columna
+> select/insert/update a `authenticated`, verificada en **dev** y en **prod**
+> (`information_schema.columns` + `has_column_privilege`: default `true`, not null, mismos grants
+> que sus hermanas). Las series dejan de crear
+> `progress_sessions` y su actividad se lee de `episode_watches.watched_on` (ver
+> «`episode_watches`» más abajo).
+
+> **Delta 2026-09-23 (#1193, catálogo vivo de series):** columnas `series.tmdb_status`,
+> `next_episode_air_date` y `episodes_synced_at` (migración
+> `20260923130000_series_live_episode_catalog.sql`), verificadas en **dev** y en **prod**
+> (`information_schema.columns` + `has_column_privilege`: SELECT para anon/authenticated, sin
+> UPDATE para authenticated, UPDATE para service_role; CHECK `series_tmdb_status_length`). Ver
+> «Catálogo vivo de episodios» más abajo.
+
+> **Delta 2026-09-23 (#1187, #1188):** trigger `passes_cleanup_contradicted_posts` y `with check` nuevo de `posts insert own`, verificados en dev (pg_trigger/pg_proc/pg_policy + `supabase/tests/posts_hitos_coherentes.sql` con rollback) y en prod (pg_trigger/pg_proc/pg_policy; 0 casos previos que limpiar).
+
+> **Delta 2026-09-22:** triggers `*_cleanup_source_posts` verificados en dev (pg_trigger/pg_proc + prueba SQL con rollback) y en prod (pg_trigger/pg_proc; limpieza de 11 posts huérfanos `pass`, 0 con hilo ajeno, 0 huérfanos tras aplicar).
+
+> **Delta #1183, 2026-09-15:** moderación administrativa verificada con identidades
+> reales y fixtures transaccionales en **dev**; esquema, permisos y consultas administrativas
+> comprobados también en **producción el 2026-09-15**. Migración
+> `20260915145340_admin_content_moderation.sql` y seguimiento
+> `20260915150429_moderation_event_notification_visibility.sql`;
+> **ambas aplicadas en dev y producción**. El seguimiento cubre los avisos legacy `club_event`.
+> Estado y evidencia viven en `private.moderation_state` y
+> `private.moderation_history`, sin FK destructiva al objeto ni acceso directo
+> para `anon`/`authenticated`. `private.moderation_operations` solo marca la
+> operación administrativa durante la transacción. No se añaden columnas a
+> tablas públicas existentes ni se amplían sus grants por columna.
+>
+> `admin_moderation_list`, `admin_moderate_content`, `admin_review_report` y
+> `admin_moderation_audio` son envoltorios invoker de funciones privadas con
+> comprobación de admin global. Retirar oculta clubes/posts/club_posts/comments
+> y descendientes incluso al admin fuera de estas RPC. Políticas restrictivas,
+> helpers de visibilidad y guardas de escritura cubren consultas y funciones
+> privilegiadas. Restaurar el padre conserva las retiradas individuales.
+> Borrar exige motivo y confirmación (nombre exacto para club, `ELIMINAR` para
+> el resto), conserva evidencia y no elimina pases personales. Los posts
+> derivados borrados por moderación no se regeneran desde la misma fuente.
+>
+> Tras retirar o borrar contenido, sus reportes solo se consultan mediante la
+> RPC administrativa; esta regla restringe la lectura ordinaria descrita abajo.
+> El audio usado como evidencia se conserva en el bucket privado y solo se
+> entrega mediante `/api/admin/voice-notes/[id]`; la RPC
+> `moderation_audio_is_evidence` es exclusiva de `service_role` para impedir que
+> la limpieza de archivos destruya evidencia.
+
+> **Delta recuperación Letterboxd #1151–#1159, 2026-09-08:** migración local
+> `20260908151906_letterboxd_recovery.sql`; validación con datos sintéticos.
+> Aplicada en dev y producción, con RPC, RLS y grants comprobados. Reparación de cuenta pendiente.
+
+> **Delta Letterboxd #1137–#1145, 2026-09-08:** implementación y migraciones verificadas
+> en Supabase local, dev remoto y producción. Siete migraciones aplicadas; RLS y permisos comprobados. Cron de producción validado con importación sintética privada y limpieza. Añade importaciones ZIP persistentes y permite `completed` sin fecha.
+
+> **Delta #920, 2026-09-07:** permisos y definición de registro de ediciones
+> verificados en dev; comportamiento SQL con fixtures y rollback verificado en
+> Supabase local. Definición y permisos verificados también en producción el 2026-09-07.
+
+> **Delta #708, 2026-09-07:** esquema y comportamiento verificados en Supabase
+> local con fixtures y rollback; definición y permisos comprobados en dev
+> (`biblioshare-dev`, `tyvzpuhxfwxrnkcpzxyg`) y en producción el 2026-09-07,
+> con 15 triggers de referencia y 3 de protección de borrado activos. Ver el inventario de
+> referencias y el alcance en [pruebas de integridad](../testing/2026-09-07-708-catalog-references.md).
+
+> **[Canónico · verificado contra dev el 2026-09-03; `pet_battles` (§8bis.5) y `get_widget_snapshot` contra dev y prod el 2026-09-06 · prod verificado parcialmente — puntos pendientes marcados «prod por reverificar»; notas de voz (`comments`, migración 20260881) verificadas en dev Y prod el 2026-08-26; aventuras de R4a (§8bis.7, migración `20260908_pet_adventures.sql`) verificadas en dev y prod el 2026-09-07, tras aceptación jugable de R3 (#1106); equipo y calidad R4b (§8bis.8, migración `20260908074921_pet_r4b_equipment.sql`) aplicada y verificada en dev y prod el 2026-09-09, con el código R4b desplegado ese mismo día; bellotas y fondos del campamento R5 (§8bis.9, migración `20260910101116_pet_acorns.sql`) reverificadas en local/dev/prod el 2026-10-01]**
+>
+> **Repaso de cierre del plan obra/edición/representación (2026-08-28).** Cada tarea del plan fue
+> sincronizando esta doc sobre la marcha, así que este paso fue de VERIFICACIÓN, no de volcado.
+> Comprobado contra objetos reales de dev (`pg_proc`, `has_function_privilege`,
+> `col_description`, `has_column_privilege`), nunca contra `list_migrations`:
+> `hydrate_book`, `hydrate_books_bulk` y `merge_book_into` son `SECURITY DEFINER` y **solo
+> `service_role`** (`anon` y `authenticated` sin execute); `register_book_edition` y
+> `register_manual_catalog_item` siguen con execute para `authenticated`; el comentario vivo de
+> `books.repr_meta` ya nombra al trigger y niega que lo escriban las actions; y la superficie 6
+> de `DRIFT-CHECK.md` da `books | 17 | 0 | 9` en dev. **Estado histórico del 2026-08-28, no una comprobación actual:** nada de esto estaba en prod todavía
+> (fase destructiva sin ejecutar en aquella revisión): se describió prod con `books` en 14 columnas,
+> sin `repr_meta`/`wikidata_id` y con `get_widget_snapshot` nombrando `is_primary`.
+> Las dos afirmaciones falsas que quedaban vivas estaban FUERA de esta doc y se corrigieron en
+> el mismo commit: la cabecera de `createTokenClient` (`src/lib/supabase/server.ts`), que
+> seguía citando `hydrate_book` como RPC con guard `authentication required`, y la de
+> `20260880_manual_catalog_item.sql`, que justificaba el `hydrated_at` NULL con el «fill-only».
+> Parte de [Requisitos y alcance](../REQUIREMENTS.md). Sección §3. **Este es el documento canónico del esquema.**
+> El historial de verificaciones anteriores (la antigua cabecera-changelog de deltas por fecha) se movió,
+> íntegro y congelado, a la sección «Historial de verificaciones (deltas antiguos, congelados)» al final del documento.
+
+> **Bootstrap local, 2026-09-06:** el esquema inicial y las 236 migraciones versionadas se aplican desde una base vacía con el manifiesto canónico. Ver [receta y límites](../testing/supabase-local.md). Esta comprobación local no actualiza las afirmaciones anteriores sobre dev o producción.
+
+> **#811, aplicado y verificado en dev y producción el 2026-09-07:** `private.request_quotas` guarda `(user_id, operation)` como clave primaria, `window_started_at timestamptz` y `used integer`. FK a `auth.users` con borrado en cascada, RLS activo y ningún permiso de tabla/columna para `anon` o `authenticated`. `consume_request_quota(text, integer default 1)` es SECURITY DEFINER, VOLATILE, `search_path=''`, ejecutable solo por `authenticated` entre los roles cliente. La identidad procede de `auth.uid()`, las capacidades de una lista fija y el incremento de un único UPSERT atómico. No hay cuotas en memoria ni campos modificables por clientes.
+>
+> Los triggers `request_quota` cubren INSERT en catálogo, posts, comentarios, reacciones, follows y pendientes de importación; push devices cubre INSERT/UPDATE. DELETE sigue disponible. `get_activities_progress`, `get_club_round_state` y `save_saga_sequence` conservan firma, permisos y cuerpo de consulta con un guard de cuota; los dos lectores pasan de SQL/STABLE a PL/pgSQL/VOLATILE y se invocan por POST. El guard SQL emite `PT429` al agotar cuota. Los trabajos sin JWT conservan sus permisos previos y no consumen cuota de usuario. Ver [capacidades, pruebas y límites](../testing/2026-09-06-811-shared-rate-limits.md).
+
+> **Verificación #900, 2026-09-06:** `get_widget_snapshot()` ya coincide en dev y producción:
+> `md5(prosrc) = 358c7aa6950f1b71a5790541fe39a89b`, 10083 caracteres, sin `is_primary`.
+> Es exactamente la función prevista por `20260892`; no se reaplica. Esta lectura de `pg_proc`
+> sustituye el pendiente de #900 y no verifica el resto de la fase destructiva.
+>
+> **#879, aplicada en dev y producción 2026-09-06:** `20260906201847_pass_interaction_hrefs.sql`
+> conserva el trigger de `passes` y propaga cambios reales de `item_type/item_id` a los href
+> de sesiones, comentarios y respuestas; conserva query de comunidad y anclas. Repara también
+> enlaces antiguos mediante `private.refresh_pass_interaction_hrefs(uuid)`, sin EXECUTE para
+> roles API. No cambia propietarios, audiencias ni políticas. Verificación local mediante
+> `supabase/tests/pass_interaction_hrefs.sql`; funciones y permisos verificados en ambos entornos.
+
+> **#812, producción verificada el 2026-09-06:** aplicada la migración existente
+> `20260878_catalog_technical_columns_gate.sql`. Los tres triggers BEFORE UPDATE
+> de books/movies/series siguen activos. Los campos técnicos ya poblados solo pueden
+> reescribirse por las vías privilegiadas existentes; null → valor sigue permitido.
+> La regresión funcional con filas sintéticas se ejecutó únicamente en local.
+> Evidencia: [verificación #812](../testing/2026-09-06-812-catalog-gate.md).
 
 ## Historial de verificaciones (deltas antiguos, congelados)
+
 
 > **[Histórico · congelado el 2026-08-19]** Este bloque es la antigua cabecera-changelog del doc
 > (deltas de verificación acumulados hasta el 2026-08-15), movida aquí tal cual al sustituirla por

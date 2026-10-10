@@ -1,6 +1,6 @@
 # Entre nosotros — verificación integrada
 
-> [Canónico · evidencia de ejecución local del 2026-10-10. Corte previo sobre cd43ce9bffbbcdceca92c22509794f1f3044fca0/build AzNCV4SAaUJ6YTFacyCNy conservado; ronda final sobre base a481da32/build pOmDFAzwjVIeNxwlt6Cex al final. Revisión acotada pendiente.]
+> [Canónico · evidencia local y revisión final del 2026-10-10; esquema aplicado y verificado en producción. Corte previo sobre cd43ce9bffbbcdceca92c22509794f1f3044fca0/build AzNCV4SAaUJ6YTFacyCNy conservado; ronda final sobre base a481da32/build pOmDFAzwjVIeNxwlt6Cex al final. Integración de código/CI en curso.]
 
 ## Fronteras y reproducción
 

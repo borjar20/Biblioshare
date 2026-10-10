@@ -1,0 +1,661 @@
+{
+  "date": "2026-10-10",
+  "migration": "20261010084120_entre_nosotros_groups.sql",
+  "applied": true,
+  "catalogIdentical": true,
+  "dev": {
+    "tables": [
+      {
+        "name": "comparison_group_members",
+        "rls": true
+      },
+      {
+        "name": "comparison_groups",
+        "rls": true
+      }
+    ],
+    "functions": [
+      {
+        "name": "comparison_group_size_check",
+        "args": "",
+        "security_definer": false,
+        "config": [
+          "search_path=\"\""
+        ],
+        "hash": "0d23424b84401b5d3987ad0290414f8a",
+        "anon_execute": false,
+        "auth_execute": false
+      },
+      {
+        "name": "comparison_group_touch",
+        "args": "",
+        "security_definer": false,
+        "config": [
+          "search_path=\"\""
+        ],
+        "hash": "08a814668a794bb33deea0d203de7498",
+        "anon_execute": false,
+        "auth_execute": false
+      },
+      {
+        "name": "comparison_member_guard",
+        "args": "",
+        "security_definer": false,
+        "config": [
+          "search_path=\"\""
+        ],
+        "hash": "40c950d48ff6dfb9b1e153bebd7b3eac",
+        "anon_execute": false,
+        "auth_execute": false
+      },
+      {
+        "name": "delete_comparison_group",
+        "args": "p_id uuid, p_expected_revision integer",
+        "security_definer": false,
+        "config": [
+          "search_path=\"\""
+        ],
+        "hash": "a9535ad36d9181e7f717bc22ce141971",
+        "anon_execute": false,
+        "auth_execute": true
+      },
+      {
+        "name": "save_comparison_group",
+        "args": "p_id uuid, p_name text, p_user_ids uuid[], p_expected_revision integer",
+        "security_definer": false,
+        "config": [
+          "search_path=\"\""
+        ],
+        "hash": "5332ba95734dea55c8e553bb74e470ba",
+        "anon_execute": false,
+        "auth_execute": true
+      }
+    ],
+    "policies": [
+      {
+        "table": "comparison_group_members",
+        "name": "comparison_group_members_owner_delete",
+        "roles": [
+          "authenticated"
+        ],
+        "cmd": "DELETE",
+        "qual": "(EXISTS ( SELECT 1\n   FROM comparison_groups g\n  WHERE ((g.id = comparison_group_members.group_id) AND (g.owner_id = ( SELECT auth.uid() AS uid)))))",
+        "check": null
+      },
+      {
+        "table": "comparison_group_members",
+        "name": "comparison_group_members_owner_insert",
+        "roles": [
+          "authenticated"
+        ],
+        "cmd": "INSERT",
+        "qual": null,
+        "check": "(EXISTS ( SELECT 1\n   FROM comparison_groups g\n  WHERE ((g.id = comparison_group_members.group_id) AND (g.owner_id = ( SELECT auth.uid() AS uid)))))"
+      },
+      {
+        "table": "comparison_group_members",
+        "name": "comparison_group_members_owner_select",
+        "roles": [
+          "authenticated"
+        ],
+        "cmd": "SELECT",
+        "qual": "(EXISTS ( SELECT 1\n   FROM comparison_groups g\n  WHERE ((g.id = comparison_group_members.group_id) AND (g.owner_id = ( SELECT auth.uid() AS uid)))))",
+        "check": null
+      },
+      {
+        "table": "comparison_group_members",
+        "name": "comparison_group_members_owner_update",
+        "roles": [
+          "authenticated"
+        ],
+        "cmd": "UPDATE",
+        "qual": "(EXISTS ( SELECT 1\n   FROM comparison_groups g\n  WHERE ((g.id = comparison_group_members.group_id) AND (g.owner_id = ( SELECT auth.uid() AS uid)))))",
+        "check": "(EXISTS ( SELECT 1\n   FROM comparison_groups g\n  WHERE ((g.id = comparison_group_members.group_id) AND (g.owner_id = ( SELECT auth.uid() AS uid)))))"
+      },
+      {
+        "table": "comparison_groups",
+        "name": "comparison_groups_owner_delete",
+        "roles": [
+          "authenticated"
+        ],
+        "cmd": "DELETE",
+        "qual": "(owner_id = ( SELECT auth.uid() AS uid))",
+        "check": null
+      },
+      {
+        "table": "comparison_groups",
+        "name": "comparison_groups_owner_insert",
+        "roles": [
+          "authenticated"
+        ],
+        "cmd": "INSERT",
+        "qual": null,
+        "check": "(owner_id = ( SELECT auth.uid() AS uid))"
+      },
+      {
+        "table": "comparison_groups",
+        "name": "comparison_groups_owner_select",
+        "roles": [
+          "authenticated"
+        ],
+        "cmd": "SELECT",
+        "qual": "(owner_id = ( SELECT auth.uid() AS uid))",
+        "check": null
+      },
+      {
+        "table": "comparison_groups",
+        "name": "comparison_groups_owner_update",
+        "roles": [
+          "authenticated"
+        ],
+        "cmd": "UPDATE",
+        "qual": "(owner_id = ( SELECT auth.uid() AS uid))",
+        "check": "(owner_id = ( SELECT auth.uid() AS uid))"
+      }
+    ],
+    "column_grants": [
+      {
+        "table": "comparison_group_members",
+        "column": "group_id",
+        "privilege": "INSERT",
+        "role": "authenticated"
+      },
+      {
+        "table": "comparison_group_members",
+        "column": "group_id",
+        "privilege": "SELECT",
+        "role": "authenticated"
+      },
+      {
+        "table": "comparison_group_members",
+        "column": "id",
+        "privilege": "SELECT",
+        "role": "authenticated"
+      },
+      {
+        "table": "comparison_group_members",
+        "column": "position",
+        "privilege": "INSERT",
+        "role": "authenticated"
+      },
+      {
+        "table": "comparison_group_members",
+        "column": "position",
+        "privilege": "SELECT",
+        "role": "authenticated"
+      },
+      {
+        "table": "comparison_group_members",
+        "column": "position",
+        "privilege": "UPDATE",
+        "role": "authenticated"
+      },
+      {
+        "table": "comparison_group_members",
+        "column": "user_id",
+        "privilege": "INSERT",
+        "role": "authenticated"
+      },
+      {
+        "table": "comparison_group_members",
+        "column": "user_id",
+        "privilege": "SELECT",
+        "role": "authenticated"
+      },
+      {
+        "table": "comparison_groups",
+        "column": "created_at",
+        "privilege": "SELECT",
+        "role": "authenticated"
+      },
+      {
+        "table": "comparison_groups",
+        "column": "id",
+        "privilege": "SELECT",
+        "role": "authenticated"
+      },
+      {
+        "table": "comparison_groups",
+        "column": "name",
+        "privilege": "INSERT",
+        "role": "authenticated"
+      },
+      {
+        "table": "comparison_groups",
+        "column": "name",
+        "privilege": "SELECT",
+        "role": "authenticated"
+      },
+      {
+        "table": "comparison_groups",
+        "column": "name",
+        "privilege": "UPDATE",
+        "role": "authenticated"
+      },
+      {
+        "table": "comparison_groups",
+        "column": "owner_id",
+        "privilege": "SELECT",
+        "role": "authenticated"
+      },
+      {
+        "table": "comparison_groups",
+        "column": "revision",
+        "privilege": "SELECT",
+        "role": "authenticated"
+      },
+      {
+        "table": "comparison_groups",
+        "column": "updated_at",
+        "privilege": "SELECT",
+        "role": "authenticated"
+      }
+    ],
+    "constraints": [
+      {
+        "table": "comparison_group_members",
+        "name": "comparison_group_members_group_id_fkey",
+        "definition": "FOREIGN KEY (group_id) REFERENCES comparison_groups(id) ON DELETE CASCADE"
+      },
+      {
+        "table": "comparison_group_members",
+        "name": "comparison_group_members_group_id_position_key",
+        "definition": "UNIQUE (group_id, \"position\") DEFERRABLE INITIALLY DEFERRED"
+      },
+      {
+        "table": "comparison_group_members",
+        "name": "comparison_group_members_group_id_user_id_key",
+        "definition": "UNIQUE (group_id, user_id)"
+      },
+      {
+        "table": "comparison_group_members",
+        "name": "comparison_group_members_pkey",
+        "definition": "PRIMARY KEY (id)"
+      },
+      {
+        "table": "comparison_group_members",
+        "name": "comparison_group_members_position_check",
+        "definition": "CHECK (((\"position\" >= 0) AND (\"position\" <= 9)))"
+      },
+      {
+        "table": "comparison_groups",
+        "name": "comparison_groups_name_check",
+        "definition": "CHECK (((name = btrim(name)) AND ((char_length(name) >= 1) AND (char_length(name) <= 60))))"
+      },
+      {
+        "table": "comparison_groups",
+        "name": "comparison_groups_owner_id_fkey",
+        "definition": "FOREIGN KEY (owner_id) REFERENCES auth.users(id) ON DELETE CASCADE"
+      },
+      {
+        "table": "comparison_groups",
+        "name": "comparison_groups_pkey",
+        "definition": "PRIMARY KEY (id)"
+      },
+      {
+        "table": "comparison_groups",
+        "name": "comparison_groups_revision_check",
+        "definition": "CHECK ((revision > 0))"
+      },
+      {
+        "table": "comparison_groups",
+        "name": "comparison_groups_size",
+        "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+      },
+      {
+        "table": "comparison_group_members",
+        "name": "comparison_members_size",
+        "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+      }
+    ],
+    "triggers": [
+      {
+        "name": "comparison_group_touch",
+        "definition": "CREATE TRIGGER comparison_group_touch BEFORE INSERT OR UPDATE ON public.comparison_groups FOR EACH ROW EXECUTE FUNCTION comparison_group_touch()"
+      },
+      {
+        "name": "comparison_groups_size",
+        "definition": "CREATE CONSTRAINT TRIGGER comparison_groups_size AFTER INSERT OR UPDATE ON public.comparison_groups DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION comparison_group_size_check()"
+      },
+      {
+        "name": "comparison_member_guard",
+        "definition": "CREATE TRIGGER comparison_member_guard BEFORE INSERT OR DELETE OR UPDATE ON public.comparison_group_members FOR EACH ROW EXECUTE FUNCTION comparison_member_guard()"
+      },
+      {
+        "name": "comparison_members_size",
+        "definition": "CREATE CONSTRAINT TRIGGER comparison_members_size AFTER INSERT OR DELETE OR UPDATE ON public.comparison_group_members DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION comparison_group_size_check()"
+      }
+    ],
+    "visibility_dependency": true
+  },
+  "prod": {
+    "tables": [
+      {
+        "name": "comparison_group_members",
+        "rls": true
+      },
+      {
+        "name": "comparison_groups",
+        "rls": true
+      }
+    ],
+    "functions": [
+      {
+        "name": "comparison_group_size_check",
+        "args": "",
+        "security_definer": false,
+        "config": [
+          "search_path=\"\""
+        ],
+        "hash": "0d23424b84401b5d3987ad0290414f8a",
+        "anon_execute": false,
+        "auth_execute": false
+      },
+      {
+        "name": "comparison_group_touch",
+        "args": "",
+        "security_definer": false,
+        "config": [
+          "search_path=\"\""
+        ],
+        "hash": "08a814668a794bb33deea0d203de7498",
+        "anon_execute": false,
+        "auth_execute": false
+      },
+      {
+        "name": "comparison_member_guard",
+        "args": "",
+        "security_definer": false,
+        "config": [
+          "search_path=\"\""
+        ],
+        "hash": "40c950d48ff6dfb9b1e153bebd7b3eac",
+        "anon_execute": false,
+        "auth_execute": false
+      },
+      {
+        "name": "delete_comparison_group",
+        "args": "p_id uuid, p_expected_revision integer",
+        "security_definer": false,
+        "config": [
+          "search_path=\"\""
+        ],
+        "hash": "a9535ad36d9181e7f717bc22ce141971",
+        "anon_execute": false,
+        "auth_execute": true
+      },
+      {
+        "name": "save_comparison_group",
+        "args": "p_id uuid, p_name text, p_user_ids uuid[], p_expected_revision integer",
+        "security_definer": false,
+        "config": [
+          "search_path=\"\""
+        ],
+        "hash": "5332ba95734dea55c8e553bb74e470ba",
+        "anon_execute": false,
+        "auth_execute": true
+      }
+    ],
+    "policies": [
+      {
+        "table": "comparison_group_members",
+        "name": "comparison_group_members_owner_delete",
+        "roles": [
+          "authenticated"
+        ],
+        "cmd": "DELETE",
+        "qual": "(EXISTS ( SELECT 1\n   FROM comparison_groups g\n  WHERE ((g.id = comparison_group_members.group_id) AND (g.owner_id = ( SELECT auth.uid() AS uid)))))",
+        "check": null
+      },
+      {
+        "table": "comparison_group_members",
+        "name": "comparison_group_members_owner_insert",
+        "roles": [
+          "authenticated"
+        ],
+        "cmd": "INSERT",
+        "qual": null,
+        "check": "(EXISTS ( SELECT 1\n   FROM comparison_groups g\n  WHERE ((g.id = comparison_group_members.group_id) AND (g.owner_id = ( SELECT auth.uid() AS uid)))))"
+      },
+      {
+        "table": "comparison_group_members",
+        "name": "comparison_group_members_owner_select",
+        "roles": [
+          "authenticated"
+        ],
+        "cmd": "SELECT",
+        "qual": "(EXISTS ( SELECT 1\n   FROM comparison_groups g\n  WHERE ((g.id = comparison_group_members.group_id) AND (g.owner_id = ( SELECT auth.uid() AS uid)))))",
+        "check": null
+      },
+      {
+        "table": "comparison_group_members",
+        "name": "comparison_group_members_owner_update",
+        "roles": [
+          "authenticated"
+        ],
+        "cmd": "UPDATE",
+        "qual": "(EXISTS ( SELECT 1\n   FROM comparison_groups g\n  WHERE ((g.id = comparison_group_members.group_id) AND (g.owner_id = ( SELECT auth.uid() AS uid)))))",
+        "check": "(EXISTS ( SELECT 1\n   FROM comparison_groups g\n  WHERE ((g.id = comparison_group_members.group_id) AND (g.owner_id = ( SELECT auth.uid() AS uid)))))"
+      },
+      {
+        "table": "comparison_groups",
+        "name": "comparison_groups_owner_delete",
+        "roles": [
+          "authenticated"
+        ],
+        "cmd": "DELETE",
+        "qual": "(owner_id = ( SELECT auth.uid() AS uid))",
+        "check": null
+      },
+      {
+        "table": "comparison_groups",
+        "name": "comparison_groups_owner_insert",
+        "roles": [
+          "authenticated"
+        ],
+        "cmd": "INSERT",
+        "qual": null,
+        "check": "(owner_id = ( SELECT auth.uid() AS uid))"
+      },
+      {
+        "table": "comparison_groups",
+        "name": "comparison_groups_owner_select",
+        "roles": [
+          "authenticated"
+        ],
+        "cmd": "SELECT",
+        "qual": "(owner_id = ( SELECT auth.uid() AS uid))",
+        "check": null
+      },
+      {
+        "table": "comparison_groups",
+        "name": "comparison_groups_owner_update",
+        "roles": [
+          "authenticated"
+        ],
+        "cmd": "UPDATE",
+        "qual": "(owner_id = ( SELECT auth.uid() AS uid))",
+        "check": "(owner_id = ( SELECT auth.uid() AS uid))"
+      }
+    ],
+    "column_grants": [
+      {
+        "table": "comparison_group_members",
+        "column": "group_id",
+        "privilege": "INSERT",
+        "role": "authenticated"
+      },
+      {
+        "table": "comparison_group_members",
+        "column": "group_id",
+        "privilege": "SELECT",
+        "role": "authenticated"
+      },
+      {
+        "table": "comparison_group_members",
+        "column": "id",
+        "privilege": "SELECT",
+        "role": "authenticated"
+      },
+      {
+        "table": "comparison_group_members",
+        "column": "position",
+        "privilege": "INSERT",
+        "role": "authenticated"
+      },
+      {
+        "table": "comparison_group_members",
+        "column": "position",
+        "privilege": "SELECT",
+        "role": "authenticated"
+      },
+      {
+        "table": "comparison_group_members",
+        "column": "position",
+        "privilege": "UPDATE",
+        "role": "authenticated"
+      },
+      {
+        "table": "comparison_group_members",
+        "column": "user_id",
+        "privilege": "INSERT",
+        "role": "authenticated"
+      },
+      {
+        "table": "comparison_group_members",
+        "column": "user_id",
+        "privilege": "SELECT",
+        "role": "authenticated"
+      },
+      {
+        "table": "comparison_groups",
+        "column": "created_at",
+        "privilege": "SELECT",
+        "role": "authenticated"
+      },
+      {
+        "table": "comparison_groups",
+        "column": "id",
+        "privilege": "SELECT",
+        "role": "authenticated"
+      },
+      {
+        "table": "comparison_groups",
+        "column": "name",
+        "privilege": "INSERT",
+        "role": "authenticated"
+      },
+      {
+        "table": "comparison_groups",
+        "column": "name",
+        "privilege": "SELECT",
+        "role": "authenticated"
+      },
+      {
+        "table": "comparison_groups",
+        "column": "name",
+        "privilege": "UPDATE",
+        "role": "authenticated"
+      },
+      {
+        "table": "comparison_groups",
+        "column": "owner_id",
+        "privilege": "SELECT",
+        "role": "authenticated"
+      },
+      {
+        "table": "comparison_groups",
+        "column": "revision",
+        "privilege": "SELECT",
+        "role": "authenticated"
+      },
+      {
+        "table": "comparison_groups",
+        "column": "updated_at",
+        "privilege": "SELECT",
+        "role": "authenticated"
+      }
+    ],
+    "constraints": [
+      {
+        "table": "comparison_group_members",
+        "name": "comparison_group_members_group_id_fkey",
+        "definition": "FOREIGN KEY (group_id) REFERENCES comparison_groups(id) ON DELETE CASCADE"
+      },
+      {
+        "table": "comparison_group_members",
+        "name": "comparison_group_members_group_id_position_key",
+        "definition": "UNIQUE (group_id, \"position\") DEFERRABLE INITIALLY DEFERRED"
+      },
+      {
+        "table": "comparison_group_members",
+        "name": "comparison_group_members_group_id_user_id_key",
+        "definition": "UNIQUE (group_id, user_id)"
+      },
+      {
+        "table": "comparison_group_members",
+        "name": "comparison_group_members_pkey",
+        "definition": "PRIMARY KEY (id)"
+      },
+      {
+        "table": "comparison_group_members",
+        "name": "comparison_group_members_position_check",
+        "definition": "CHECK (((\"position\" >= 0) AND (\"position\" <= 9)))"
+      },
+      {
+        "table": "comparison_groups",
+        "name": "comparison_groups_name_check",
+        "definition": "CHECK (((name = btrim(name)) AND ((char_length(name) >= 1) AND (char_length(name) <= 60))))"
+      },
+      {
+        "table": "comparison_groups",
+        "name": "comparison_groups_owner_id_fkey",
+        "definition": "FOREIGN KEY (owner_id) REFERENCES auth.users(id) ON DELETE CASCADE"
+      },
+      {
+        "table": "comparison_groups",
+        "name": "comparison_groups_pkey",
+        "definition": "PRIMARY KEY (id)"
+      },
+      {
+        "table": "comparison_groups",
+        "name": "comparison_groups_revision_check",
+        "definition": "CHECK ((revision > 0))"
+      },
+      {
+        "table": "comparison_groups",
+        "name": "comparison_groups_size",
+        "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+      },
+      {
+        "table": "comparison_group_members",
+        "name": "comparison_members_size",
+        "definition": "TRIGGER DEFERRABLE INITIALLY DEFERRED"
+      }
+    ],
+    "triggers": [
+      {
+        "name": "comparison_group_touch",
+        "definition": "CREATE TRIGGER comparison_group_touch BEFORE INSERT OR UPDATE ON public.comparison_groups FOR EACH ROW EXECUTE FUNCTION comparison_group_touch()"
+      },
+      {
+        "name": "comparison_groups_size",
+        "definition": "CREATE CONSTRAINT TRIGGER comparison_groups_size AFTER INSERT OR UPDATE ON public.comparison_groups DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION comparison_group_size_check()"
+      },
+      {
+        "name": "comparison_member_guard",
+        "definition": "CREATE TRIGGER comparison_member_guard BEFORE INSERT OR DELETE OR UPDATE ON public.comparison_group_members FOR EACH ROW EXECUTE FUNCTION comparison_member_guard()"
+      },
+      {
+        "name": "comparison_members_size",
+        "definition": "CREATE CONSTRAINT TRIGGER comparison_members_size AFTER INSERT OR DELETE OR UPDATE ON public.comparison_group_members DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION comparison_group_size_check()"
+      }
+    ],
+    "visibility_dependency": true
+  },
+  "securityAdvisors": {
+    "beforeCount": 6,
+    "afterCount": 6,
+    "newFindings": []
+  }
+}

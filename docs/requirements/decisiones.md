@@ -6843,6 +6843,140 @@ El rediseño visual Paper acordado se sigue en #1450. Evidencia en
 `docs/testing/2026-10-07-novedades-quality.md`.
 
 
+## 2026-10-07 — Inicio: la tarjeta crece en móvil; escritorio conserva su detalle (#1453/#1454)
+
+Decisión del usuario: preservar portadas, narradora y piel Paper. Bajo 1100 px se
+resumen Hoy, crónica, anuncios semanales y actividad en tarjetas visuales; al
+pulsar, la tarjeta crece hacia su vista completa. Hoy mantiene acceso directo a
+sesión. En PC se mantiene el contenido completo y solo se reduce Sale esta semana,
+con acceso general a `/novedades`. Los laterales desplazan su propio contenido,
+con altura calculada a partir de su posición real, incluyendo el saludo.
+
+El detalle se entrega como slots del servidor y permanece montado en un diálogo
+nativo: abrir no reinicia selección, reloj ni feed. Los estados sin obra en curso
+siguen ofreciendo cola, colección o descubrimiento. Esqueletos equivalentes, foco
+de vuelta, Escape, bloqueo de fondo y limpieza al navegar o cambiar de breakpoint.
+La crónica carga StoryPlayer al pulsar y solo entonces se marca vista. Se fija su
+identidad; las respuestas nuevas del servidor actualizan sus modelos y acciones
+para que publicar/actualizar no deje controles antiguos. Las animaciones usan
+origen superior izquierdo y cancelan solo sus propias transiciones al interrumpirse.
+
+Se reutilizan consultas y acciones: sin migraciones, caché compartida ni datos
+ficticios en producto. Los filtros sociales existentes pasan a una fila horizontal
+bajo 640 px para que el primer post aparezca antes; no se añade navegación entre
+paneles. El alcance no incluye el rediseño público de #1450. Verificación local y
+límites en `docs/testing/2026-10-07-inicio-expandible.md`; publicación seguida en
+#1453/#1454. La prueba intermitente previa de retirada de aviso se sigue en #1456.
+
+
+## 2026-10-07 — Ocultar las barras de los laterales de Inicio en PC (#1457)
+
+Ajuste visual solicitado por el usuario: las barras en medio de la pantalla
+resultaban molestas. Los laterales conservan overflow-y:auto y la altura acotada,
+con scrollbar-width:none y el equivalente WebKit, sin reserva de gutter. Se
+mantiene el desplazamiento por rueda/touchpad/teclado para alcanzar todos los
+anuncios desde el principio del feed. El cambio se limita a >=1100 px.
+
+Prueba focal Chromium con el CSS real y contenido representativo: ambos laterales
+sin barra ni gutter, rueda y PageDown desplazan el contenido; la página permanece
+en scrollY=0. Bajo 1100 px la regla vuelve a overflow visible/max-height none.
+Evidencia en docs/testing/2026-10-07-inicio-expandible.md.
+
+
+## 2026-10-07 — Inicio móvil despliega sus detalles dentro de la página (#1457)
+
+El usuario descarta el uso general de modales para ampliar y elige explícitamente
+«Desplegar dentro de Inicio». Hoy, Novedades y Actividad pasan a regiones inline,
+con un bloque abierto a la vez; se conserva el reproductor de crónica. Hoy y
+Actividad transforman el resumen en cabecera para evitar portada/gráfico duplicados.
+Las novedades mantienen su tarjeta junto a la crónica y despliegan el detalle a
+ancho completo debajo. El contenido funcional sigue montado y la página conserva
+su desplazamiento normal. Recoger devuelve foco a la tarjeta; el control al final
+acerca el resumen al viewport si quedaba fuera. El cambio de ruta o de breakpoint
+recoge los bloques, y la limpieza de useLayoutEffect también cubre Activity oculto.
+El estado de obra, reloj y borrador del feed se mantiene.
+
+La exclusión se coordina por contexto cliente en el layout de Inicio; los slots,
+consultas y autorización siguen en servidor. Animación CSS grid0fr/1fr, visibilidad
+plegada antes de hidratar, inert y movimiento reducido. La reserva semanal móvil
+incluye el gap del detalle recogido (106px) para mantener el alto total al resolver
+el streaming. PC conserva la presentación y los laterales de la decisión anterior.
+Este acuerdo sustituye el uso de diálogos para los tres paneles; las decisiones y
+specs previas se conservan como historia. Evidencia en docs/testing/2026-10-07-inicio-inline.md.
+
+
+## 2026-10-07 — Transformación continua entre resumen y detalle de Inicio (#1457)
+
+El usuario pide que cada apertura se perciba como transformación de un estado a
+otro. El resumen y la cabecera permanecen en el mismo botón y se funden mediante
+opacidad/posición; no se sustituyen con display:none. El contorno y la altura se
+interpolan durante 460 ms, mientras el detalle entra 100 ms después. Recoger invierte
+el recorrido. Las portadas semanales reducen su inclinación y separan sus lomos.
+
+Se elimina la altura mínima que forzaba un salto de 64 a 106 px al recoger. La
+preferencia de movimiento reducido prevalece también sobre las reglas del estado
+expandido. Se conserva el comportamiento inline, el estado funcional y la
+presentación de PC. Verificación focal de fotogramas y alcance en
+`docs/testing/2026-10-07-inicio-motion.md`.
+
+
+## 2026-10-07 — El resumen de Hoy es el mismo foco contraído (#1457)
+
+Las dos capturas del usuario fijan el origen y el destino: conservar el título
+«¿Qué has disfrutado hoy?» sobre el resumen y transformar su contenido en la
+misma tarjeta de foco. TodayPicker entrega un único slot de TodayCard a
+HomeExpandable; su portada, nombre y barra permanecen visibles y montados,
+interpolando tamaño/posición. Meta, racha y acciones entran por filas animadas;
+las estanterías se despliegan debajo. Se elimina el resumen duplicado por obra.
+
+La sesión directa sigue disponible en el resumen, separada del botón que amplía.
+Los enlaces/controles del foco contraído permanecen inert; abrir lleva el foco del
+teclado a la tarjeta y recoger lo devuelve al botón, después de quitar inert.
+El título de la obra mantiene dos líneas como máximo y el resumen conserva 106 px
+incluso con nombres largos; al ampliar se expone el título completo. El título de
+sección y la fecha añaden su altura al Inicio compacto; el esqueleto móvil y
+el presupuesto del primer post reflejan esa cabecera solicitada. PC conserva la
+composición completa; no cambian consultas, sesiones ni la crónica. Evidencia y
+alcance en `docs/testing/2026-10-07-inicio-foco.md`.
+
+
+## 2026-10-07 — Novedades y Tu semana transforman sus elementos originales (#1457)
+
+El usuario extiende el acuerdo del foco de Hoy a Sale esta semana y Tu semana.
+Se reutiliza el mismo contrato focus de HomeExpandable: títulos persistentes,
+contenido montado y transformación de 460 ms. Sale esta semana pinta una sola
+portada por obra en ReleaseWorkCard; el abanico contraído se convierte en las
+mismas tarjetas, con datos y fechas progresivos. La tarjeta pasa de media fila a
+ancho completo debajo de la crónica; sin crónica no reserva ese espacio vertical.
+La caja transparente que ocupa la fila deja pasar el puntero, y el stage/controles
+reciben sus clics, para conservar el reproductor accesible en ambos estados.
+
+Tu semana reutiliza las siete barras de WeeklyStrip y las etiquetas de día; el
+resto de actividad se despliega debajo. Se conserva el guard sin datos: no aparece
+una semana de ceros en el detalle ni en PC. Los resúmenes siguen midiendo 96/54 px;
+el esqueleto semanal deja de reservar el gap de la fila vacía del diseño previo.
+PC y landing mantienen su composición anterior. Consultas, caché, traducciones y
+acciones de dominio conservadas. Evidencia en `docs/testing/2026-10-07-inicio-shared.md`.
+
+
+## 2026-10-07 — El cierre de novedades tiene espacio propio (#1457)
+
+En Sale esta semana ampliado, la cabecera móvil reserva 44 px para Recoger
+y 12 px de separación. El botón se alinea con el borde interior derecho;
+el título y «Ver todas las novedades» respetan esa reserva, interpolada
+durante el morph. Se corrige el solapamiento en tablet conservando las
+portadas persistentes y la presentación de PC. Evidencia RED/GREEN en
+`docs/testing/2026-10-07-inicio-shared.md`.
+
+
+## 2026-10-07 — Tu semana alinea su cierre con el título (#1457)
+
+El botón de Recoger conserva 44×44 px y centra su flecha en el eje vertical
+de «Tu semana», tanto con gráfico como sin actividad. Su altura deja de
+determinar la posición del icono respecto a la cabecera de 18 px. Ajuste
+local en móvil, conservando morph y PC; evidencia RED/GREEN en
+`docs/testing/2026-10-07-inicio-shared.md`.
+
 ## 2026-10-07 — Paper: portada y fecha por delante de controles repetidos
 
 Inicio público conserva el diseño aprobado: mensaje de producto, abanico de hasta tres
@@ -7305,3 +7439,57 @@ está confirmado y seguido en [#1472](https://github.com/borjar20/Biblioshare/is
 Se conserva el comportamiento de producto decidido —restaurar su control de
 origen—, pero no consta completamente implementado. Los retornos a pareja,
 categoría, portada y región vacía sí tienen la evidencia descrita en el informe.
+
+## 2026-10-07 — Crónica a ancho completo y novedades Paper en Inicio (#1457)
+
+Al abrir Sale esta semana bajo 1100 px, Tu crónica ensancha de media fila a
+la fila completa durante el mismo morph; al recoger vuelve al resumen. El período
+se reparte en varias líneas y conserva altura flexible, sin elipsis. HomeWrapUp
+mide su alto real para dejar 10 px antes de las novedades sin bloquear el botón.
+
+Las obras ampliadas usan ReleaseWorkCard y el mismo módulo Paper de `/novedades`
+incorporado en main por #1455: portada, tipografía, fondo y fechas sin el separador
+antiguo. Inicio mantiene su abanico con una portada persistente por obra y el
+escritorio compacto; las acciones y consultas conservan su alcance. El fondo
+ambiental de Inicio usa la misma imagen como fondo CSS, sin duplicar la portada
+principal durante el morph. Evidencia en `docs/testing/2026-10-07-inicio-shared.md`.
+
+## 2026-10-07 — Ver todas las novedades cierra el bloque semanal de Inicio (#1457)
+
+El acceso al calendario se sitúa después de las tarjetas, centrado y con 44 px de
+altura táctil y 12 px de separación. La cabecera personal de Sale esta semana
+queda para el título y su cierre centrado; en móvil el enlace aparece con el mismo
+despliegue de la tarjeta. El estado sin anuncios/error mantiene ese acceso al pie.
+La landing pública conserva su cabecera. Sin cambios de consultas ni de copy.
+Evidencia en `docs/testing/2026-10-07-inicio-shared.md`.
+
+## 2026-10-07 — Abanico semanal centrado bajo el título (#1457)
+
+En el resumen móvil de Sale esta semana se centra el conjunto visual de portadas,
+con su ancho derivado de las una, dos o tres obras que puede traer el bloque.
+La misma tarjeta interpola su padding lateral hacia el estado ampliado, conservando
+las portadas y su morph; el lateral de PC mantiene su geometría compacta.
+Evidencia RED/GREEN en `docs/testing/2026-10-07-inicio-shared.md`.
+
+## 2026-10-07 — Resúmenes de crónica y semana con el mismo margen (#1457)
+
+Las dos tarjetas móviles comparten 11 px de relleno interior. Con el borde, los
+títulos empiezan a 12 px de los lados superior e izquierdo. Se iguala su altura
+de línea a 18,4 px; el título semanal conserva el extremo de 28 px al ampliarse.
+La cabecera absoluta semanal y su título nativo invisible reservan el mismo ancho.
+El abanico sigue centrado y las dimensiones ampliadas y de PC conservan su alcance.
+Evidencia en `docs/testing/2026-10-07-inicio-shared.md`.
+
+## 2026-10-09 — Docs para agentes: guía corta, sin banners de delta en la cabecera
+
+`AGENTS.md`, `CLAUDE.md`, `docs/agents/` y las definiciones de `.claude/agents/` se reescriben
+para modelos actuales: mismas reglas, explicando el porqué una vez y sin repeticiones ni
+énfasis en mayúsculas, que estos modelos sobreinterpretan. Los subagentes apuntan a los docs
+canónicos en vez de copiar reglas que se quedan viejas (`supabase-schema` seguía mandando abrir
+INSERT del catálogo a `authenticated`, cerrado desde #674/#725; `qa-verifier` limpiaba
+`diary_entries`). `.codex/agents/*.toml` pasan a ser espejo literal de `.claude/agents/`.
+
+Los docs canónicos dejan de acumular banners «Delta …» al principio: los 40 de `data-model.md`
+(≈300 líneas antes de §0) pasan a «Deltas pendientes de integrar (vigentes)», al final del cuerpo,
+sin cambiar su texto. Siguen siendo vigentes porque algunos describen objetos sin sección propia.
+Un cambio nuevo se documenta en la sección del objeto; la evidencia, en `docs/testing/`.

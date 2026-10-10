@@ -6,7 +6,8 @@
 > excepción de mascota verificada el 2026-09-09; navegación principal y perfil
 > verificados contra código el 2026-10-03 (local/dev); cabecera y panel de
 > notificaciones verificados contra código y build/start local el 2026-10-04
-> (#1349; siete E2E focales PASS; candidato local)]**
+> (#1349; siete E2E focales PASS; candidato local); Inicio refinado a despliegues inline
+> en build/start local el 2026-10-07 (#1453/#1454, PR #1457)]**
 >
 > Los patrones que toda pantalla nueva debe cumplir y los que hay que corregir al
 > tocar pantallas viejas. La piel (tokens, tipografía, capturas Paper) vive en
@@ -94,6 +95,39 @@ editor de catálogo inline (banner + barra sticky).
    pinta su abanico con tres huecos punteados, no 168px de blanco.
 8. **Un nombre por concepto.** Glosario canónico en **`docs/UI-GLOSARIO.md`**;
    i18n y páginas usan el término del glosario y nada más.
+   **Inicio con sesión (2026-10-07, #1453/#1454; PR #1457).** Bajo 1100 px,
+   Hoy ocupa una tarjeta visual con portada, progreso y sesión directa; crónica
+   y Sale esta semana comparten fila, relleno de 11 px y cabeceras alineadas.
+   La actividad queda en un resumen.
+   Pulsar despliega el detalle dentro de Inicio, con un solo bloque abierto.
+   Hoy mantiene «¿Qué has disfrutado hoy?» visible y transforma la misma tarjeta
+   en el foco: portada, título y barra se recolocan durante 460 ms, mientras entran
+   los datos y acciones. Tu semana conserva sus siete barras: crecen desde la
+   miniatura al gráfico. Sale esta semana centra el abanico bajo el título
+   (una, dos o tres portadas) y lo convierte en las mismas tarjetas Paper de `/novedades`, creciendo a todo el ancho debajo de
+   la crónica. Esta ensancha en la misma transición; el período puede ocupar
+   varias líneas y su altura real reserva el espacio de los lanzamientos.
+   El cierre de novedades ocupa 44 px y se centra con el título.
+   «Ver todas las novedades» queda al pie de los anuncios, centrado y con
+   12 px de separación de la última tarjeta; también se conserva sin resultados.
+   En Tu semana, el cierre se centra verticalmente respecto al título y conserva
+   sus 44 px de área de pulsación, también cuando aún no hay actividad.
+   Los títulos siguen visibles en ambos estados. Al recoger,
+   la transición recorre el camino inverso. El contenido permanece
+   montado, con foco de vuelta al recoger y desplazamiento de página normal.
+   La crónica conserva su reproductor y solo se marca vista al abrir; recibe
+   los datos nuevos tras publicar o actualizar. Cola, colección y descubrimiento
+   mantienen sus controles. Activity y la navegación recogen el bloque al salir,
+   conservando la obra elegida y su estado funcional. Desde 1100 px se mantienen
+   los paneles completos; solo los anuncios semanales reducen tamaño y enlazan
+   a `/novedades`. Ambos laterales miden su altura real, con barras ocultas y
+   acceso por rueda/teclado. Esqueletos equivalentes, contenido plegado fuera
+   del foco, Escape respetando hojas internas y movimiento reducido. Evidencia
+   local: `docs/testing/2026-10-07-inicio-inline.md`; refinamiento de movimiento
+   en `docs/testing/2026-10-07-inicio-motion.md`; tarjeta única de Hoy verificada
+   en `docs/testing/2026-10-07-inicio-foco.md`; portadas y barras persistentes
+   en `docs/testing/2026-10-07-inicio-shared.md`.
+
 9. **Toda feature cuelga de la navegación.** Ruta no alcanzable desde su área =
    o se le da entrada o se registra acta de por qué es contextual. **Aplicado
    desde 2026-10-03).** Inicio, Biblioteca, Experiencias, Comunidad y Buscar

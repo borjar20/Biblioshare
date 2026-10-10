@@ -10,6 +10,8 @@ import { getSorteoPool } from "@/lib/rincon/get-sorteo-pool";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { getProgress, passPercent } from "@/lib/library/progress";
 import { ChevronRightIcon } from "@/components/ui/icons";
+import { HomeExpandable } from "@/components/home/home-expandable";
+import { itemHref } from "@/lib/catalog/item-href";
 import { TodayCard } from "./today-card";
 import { TodayPicker } from "./today-picker";
 import { LaterShelf } from "./later-shelf";
@@ -49,6 +51,13 @@ export async function TodayBlock({ userId }: { userId: string }) {
       <LaterShelf items={planned.slice(0, LATER_SHOWN)} total={planned.length} />
     ) : null;
 
+  const t = await getTranslations("today");
+  const panel = await getTranslations("homePanels");
+  const panelLabels = { title: panel("today"), openLabel: panel("openToday"), closeLabel: panel("close") };
+  function cold(content: React.ReactNode, items: typeof planned, title: string) {
+    return <HomeExpandable {...panelLabels} className="home-today-panel" summary={<><span className="home-preview-name">{title}</span><span className="home-preview-fan">{items.slice(0, 3).map((item) => <span key={item.entryId} className="home-panel-preview-cover">{item.coverUrl && <Image src={item.coverUrl} alt="" fill sizes="48px" className="object-cover" />}</span>)}</span></>}>{content}</HomeExpandable>;
+  }
+
   // Escalera de estados: si no hay nada en curso, la columna no queda vacía —
   // ofrece la próxima lectura, luego sugerencias de colección, luego
   // descubrimiento. El estado "En curso" (focus.featured) sigue debajo intacto.
@@ -58,11 +67,7 @@ export async function TodayBlock({ userId }: { userId: string }) {
       // del Rincón: pases planned activos con su estimación). Perezoso: solo se
       // pide cuando de verdad estamos en el estado 2.
       const pool = await getSorteoPool(supabase, userId);
-      return (
-        <div className="pb-1">
-          <ProximaLectura pool={pool.items} collections={pool.collections} later={later} />
-        </div>
-      );
+      return cold(<ProximaLectura pool={pool.items} collections={pool.collections} later={later} />, planned, panel("nextStory"));
     }
     // Solo se pide la colección cuando de verdad hace falta (sin en curso y sin
     // cola): un query menos en el camino feliz. Solo completados — releer es
@@ -73,17 +78,9 @@ export async function TodayBlock({ userId }: { userId: string }) {
       limit: 3,
     });
     if (collection.length > 0) {
-      return (
-        <div className="pb-1">
-          <CollectionSuggestions items={collection} />
-        </div>
-      );
+      return cold(<CollectionSuggestions items={collection} />, collection, panel("revisit"));
     }
-    return (
-      <div className="pb-1">
-        <EmptyDiscovery />
-      </div>
-    );
+    return cold(<EmptyDiscovery />, [], panel("discover"));
   }
 
   const passes = [focus.featured, ...focus.rest];
@@ -107,18 +104,17 @@ export async function TodayBlock({ userId }: { userId: string }) {
     ),
   );
 
-  const t = await getTranslations("today");
-
   return (
     // `today-block`: la sección personal del Inicio. Va SIEMPRE en una columna
     // (destacado arriba, tiras debajo); la fila de tablet a dos columnas se
     // retiró, así que ya no hay container query.
     <section className="today-block flex flex-col gap-3">
-      <TodayHeader title={t("title")} />
 
       {/* Apilado por TodayPicker (`.today-split`, hoy solo flex-col): en curso →
           continúa → para más tarde. */}
       <TodayPicker
+        panelLabels={panelLabels}
+        sectionHeading={<TodayHeader title={t("title")} />}
         keepGoingLabel={t("keepGoing")}
         later={later}
         heading={
@@ -139,9 +135,12 @@ export async function TodayBlock({ userId }: { userId: string }) {
           id: pass.item.entryId,
           focusLabel: t("focusMini", { title: pass.item.title }),
           announceLabel: t("focusedMini", { title: pass.item.title }),
+          summary: <span>{pass.item.title}</span>,
+          quickAction: <Link href={pass.item.itemType !== "movie" && pass.item.activePassId ? `/sesion/${pass.item.activePassId}` : itemHref(pass.item.itemType, pass.item.itemId)}>{t(pass.item.itemType === "movie" ? "register" : "session")}</Link>,
           card: (
             <TodayCard
               pass={pass}
+              compactSummary={panel("libraryCounts", { current: focus.total, planned: planned.length })}
               weekly={weekly}
               dailyGoalMinutes={profile?.dailyGoalMinutes ?? null}
               nextEpisode={nextEpisodes.get(pass.item.entryId) ?? null}

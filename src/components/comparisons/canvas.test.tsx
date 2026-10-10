@@ -40,6 +40,15 @@ describe('comparison canvas', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Volver al grupo' }));
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Bea, Carlos 0 obras comunes' }));
   });
+  it('returns focus to the populated intersection control instead of its first work cover', () => {
+    render(<Harness/>);
+    const region = screen.getByRole('button', { name: 'Abrir región: Ana, Bea; 83 obras' });
+    region.focus();
+    fireEvent.click(region);
+    fireEvent.click(screen.getByRole('button', { name: 'Volver al Venn' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Abrir región: Ana, Bea; 83 obras' }));
+    expect(document.activeElement).not.toBe(screen.getByRole('button', { name: 'Explorar el cruce de Libro 00' }));
+  });
   it.each<View>([{ level: 'region', people: ['0', '1'], mask: 3 }, { level: 'facet', people: ['0', '1'], facetKind: 'genre', facetId: 'Drama' }])('keeps the 720ms clock and focus/scroll return when delayed detail and later resizing grow evidence: %j', async initial => {
     let now = 0; let frameId = 0; let evidenceSize = 0;
     const frames = new Map<number, FrameRequestCallback>(); const observers = new Set<() => void>();

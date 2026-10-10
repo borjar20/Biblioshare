@@ -1,6 +1,6 @@
 # Biblioshare — qué existe hoy
 
-> **[Delta Entre nosotros #1462 · implementación verificada contra código y local/dev el 2026-10-10; esquema productivo e integración/publicación pendientes.]**
+> **[Entre nosotros #1462 · código/local/dev verificados el 2026-10-10; esquema aplicado y verificado en producción. Integración/publicación de código en curso.]**
 
 ## Entre nosotros — candidato implementado local/dev
 

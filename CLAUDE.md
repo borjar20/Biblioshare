@@ -3,13 +3,12 @@
 ## Agent skills
 
 ### Issue tracker
-Usar GitHub Issues de borjar20/Biblioshare. Antes de operar con
-issues, leer docs/agents/issue-tracker.md.
+GitHub Issues de `borjar20/Biblioshare`. Antes de crear, leer o etiquetar issues, lee
+`docs/agents/issue-tracker.md`.
 
 ### Triage labels
-Antes de clasificar trabajo, leer docs/agents/triage-labels.md:
-distingue estados internos de etiquetas publicables.
+`docs/agents/triage-labels.md` define los estados internos de triage, que no son etiquetas
+de GitHub.
 
 ### Domain docs
-Contexto único. Al explorar términos o decisiones del dominio,
-leer docs/agents/domain.md.
+Contexto único. Para términos y decisiones del dominio, lee `docs/agents/domain.md`.
