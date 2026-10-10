@@ -9,13 +9,52 @@ const mockRouter = { replace: mocks.replace, refresh: mocks.refresh };
 vi.mock('@/lib/supabase/client', () => ({ createClient: () => ({ auth: { getUser: mocks.getUser, onAuthStateChange: (callback: typeof mocks.auth) => { mocks.auth = callback; return { data: { subscription: { unsubscribe: mocks.unsubscribe } } }; } } }) }));
 vi.mock('@/lib/comparisons/actions', () => ({ loadComparison: mocks.load, saveGroup: mocks.save, deleteGroup: mocks.remove }));
 vi.mock('next/navigation', () => ({ useRouter: () => mockRouter, useSearchParams: () => new URLSearchParams(mocks.query) }));
-import { Explorer } from './explorer';
+import { Explorer, explorerReducer } from './explorer';
+import { initialState } from './state';
+import type { ExplorerState, View } from './state';
 const group = (suffix: string, name: string): Group => ({ id: `${suffix.repeat(8)}-${suffix.repeat(4)}-${suffix.repeat(4)}-${suffix.repeat(4)}-${suffix.repeat(12)}`, name, revision: 1, members: [{ slotId: 'one', userId: 'a', name: 'Ana', avatarUrl: null, available: true }, { slotId: 'two', userId: null, name: null, avatarUrl: null, available: false }] });
 const first = group('a', 'Lectores'); const second = group('b', 'Cine');
 const snapshot = (g: Group): Snapshot => ({ group: g, format: 'all', catalog: [], works: [], excludedSeriesWithoutEpisodes: 0 });
 function ui(groups = [first, second], viewerId = 'a') { return <NextIntlClientProvider locale="es" messages={messages}><Explorer initialGroups={groups} candidates={[{ userId: 'a', name: 'Ana', avatarUrl: null }, { userId: 'b', name: 'Bea', avatarUrl: null }]} viewerId={viewerId}/></NextIntlClientProvider>; }
 beforeEach(() => { vi.clearAllMocks(); mocks.query = ''; mocks.load.mockResolvedValue({ ok: true, data: snapshot(first) }); mocks.getUser.mockResolvedValue({ data: { user: { id: 'a' } }, error: null }); });
 afterEach(cleanup);
+describe('independent format view retention', () => {
+  const availableGroup: Group = { ...first, members: [{ ...first.members[0] }, { slotId: 'two', userId: 'b', name: 'Bea', avatarUrl: null, available: true }] };
+  const bookSnapshot: Snapshot = { ...snapshot(availableGroup), format: 'book', catalog: [{ key: 'book:x', title: 'Libro', coverUrl: null, genres: ['Ensayo'], creators: [] }], works: [{ key: 'book:x', userId: 'a', rating: null, orderUnknown: false, progress: null }] };
+  const movieSnapshot: Snapshot = { ...snapshot(availableGroup), format: 'movie', catalog: [{ key: 'movie:y', title: 'Película', coverUrl: null, genres: ['Drama'], creators: [] }], works: [{ key: 'movie:y', userId: 'a', rating: null, orderUnknown: false, progress: null }] };
+  const stateFor = (section: 'works' | 'tastes', views: ExplorerState['views']): ExplorerState => ({ ...initialState('a'), section, formats: { works: 'book', tastes: 'movie' }, views, selection: ['a', 'b'], snapshot: { seq: 2, value: null, status: 'loading' } });
+  it.each<View>([
+    { level: 'facet', people: ['a', 'b'], facetKind: 'genre', facetId: 'Drama' },
+    { level: 'work', people: ['a', 'b'], origin: { kind: 'facet', facetKind: 'genre', facetId: 'Drama' }, key: 'movie:y' },
+  ])('retains the inactive movie context %j through an active book load and restores it on its own load', tasteView => {
+    const state = stateFor('works', { works: { level: 'group' }, tastes: tasteView });
+    const books = explorerReducer(state, { type: 'response', seq: 2, result: { ok: true, data: bookSnapshot } });
+    expect(books.views.tastes).toEqual(tasteView);
+    const switched = explorerReducer(books, { type: 'section', section: 'tastes' });
+    const loading = explorerReducer(switched, { type: 'loading', seq: 3 });
+    expect(explorerReducer(loading, { type: 'response', seq: 3, result: { ok: true, data: movieSnapshot } }).views.tastes).toEqual(tasteView);
+  });
+  it('preserves an inactive book work/region origin while loading movies', () => {
+    const bookView: View = { level: 'work', people: ['a', 'b'], origin: { kind: 'region', mask: 1 }, key: 'book:x' };
+    const state = stateFor('tastes', { works: bookView, tastes: { level: 'group' } });
+    expect(explorerReducer(state, { type: 'response', seq: 2, result: { ok: true, data: movieSnapshot } }).views.works).toEqual(bookView);
+  });
+  it('invalidates inactive contexts and selection when a participant loses access', () => {
+    const tasteView: View = { level: 'work', people: ['a', 'b'], origin: { kind: 'facet', facetKind: 'genre', facetId: 'Drama' }, key: 'movie:y' };
+    const state = stateFor('works', { works: { level: 'venn', people: ['a', 'b'] }, tastes: tasteView });
+    const revoked: Snapshot = { ...bookSnapshot, group: { ...availableGroup, members: [availableGroup.members[0], { slotId: 'two', userId: null, name: null, avatarUrl: null, available: false }] } };
+    const next = explorerReducer(state, { type: 'response', seq: 2, result: { ok: true, data: revoked } });
+    expect(next.views).toEqual({ works: { level: 'group' }, tastes: { level: 'group' } }); expect(next.selection).toEqual(['a']);
+  });
+  it('validates the active facet against its own loaded format', () => {
+    const state = stateFor('tastes', { works: { level: 'group' }, tastes: { level: 'facet', people: ['a', 'b'], facetKind: 'genre', facetId: 'Gone' } });
+    expect(explorerReducer(state, { type: 'response', seq: 2, result: { ok: true, data: movieSnapshot } }).views.tastes).toEqual({ level: 'group' });
+  });
+  it('validates a retained destination view on switching sections when its format is already loaded', () => {
+    const state: ExplorerState = { ...stateFor('works', { works: { level: 'group' }, tastes: { level: 'facet', people: ['a', 'b'], facetKind: 'genre', facetId: 'Gone' } }), formats: { works: 'book', tastes: 'book' }, snapshot: { seq: 2, value: bookSnapshot, status: 'ready' } };
+    expect(explorerReducer(state, { type: 'section', section: 'tastes' }).views.tastes).toEqual({ level: 'group' });
+  });
+});
 describe('Explorer request boundaries', () => {
   it('starts with no arbitrary selected group and lets keyboard users create one', () => {
     render(ui([])); expect(screen.getByText('Crea un grupo para empezar a comparar.')).toBeTruthy();

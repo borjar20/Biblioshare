@@ -7,7 +7,7 @@ import { loadComparison } from '@/lib/comparisons/actions';
 import type { Candidate, Format, Group, Result, Snapshot } from '@/lib/comparisons/types';
 import { Button } from '@/components/ui/button';
 import { GroupEditor } from './group-editor';
-import { acceptResponse, changeGroup, changeSelection, clearEvidence, initialState, reconcileView, selectOwnedGroup, setView } from './state';
+import { acceptResponse, changeGroup, changeSelection, clearEvidence, initialState, reconcileParticipants, reconcileView, selectOwnedGroup, setView } from './state';
 import type { ExplorerState, Section, View } from './state';
 
 type Props = { initialGroups: Group[]; candidates: Candidate[]; viewerId: string };
@@ -15,10 +15,16 @@ type Action = { type: 'group'; id: string | null } | { type: 'section'; section:
   | { type: 'format'; format: Format } | { type: 'refresh' }
   | { type: 'loading'; seq: number } | { type: 'response'; seq: number; result: Result<Snapshot> }
   | { type: 'view'; view: View } | { type: 'selection'; people: string[] };
-function reducer(state: ExplorerState, action: Action): ExplorerState {
+export function explorerReducer(state: ExplorerState, action: Action): ExplorerState {
   switch (action.type) {
     case 'group': return changeGroup(state, action.id);
-    case 'section': return { ...(state.formats[state.section] === state.formats[action.section] ? state : clearEvidence(state)), section: action.section };
+    case 'section': {
+      const sameFormat = state.formats[state.section] === state.formats[action.section];
+      const next = sameFormat ? state : clearEvidence(state);
+      return { ...next, section: action.section, views: sameFormat && next.snapshot.value ? {
+        ...next.views, [action.section]: reconcileView(next.views[action.section], next.snapshot.value),
+      } : next.views };
+    }
     case 'format': return { ...clearEvidence(state), formats: { ...state.formats, [state.section]: action.format } };
     case 'refresh': return clearEvidence(state);
     case 'selection': return changeSelection(state, action.people);
@@ -28,7 +34,9 @@ function reducer(state: ExplorerState, action: Action): ExplorerState {
       const snapshot = acceptResponse(state.snapshot, action.seq, action.result);
       if (snapshot === state.snapshot) return state;
       return { ...state, snapshot, loadError: action.result.ok ? null : action.result.code, views: snapshot.value ? {
-        works: reconcileView(state.views.works, snapshot.value), tastes: reconcileView(state.views.tastes, snapshot.value),
+        works: reconcileParticipants(state.views.works, snapshot.value.group),
+        tastes: reconcileParticipants(state.views.tastes, snapshot.value.group),
+        [state.section]: reconcileView(state.views[state.section], snapshot.value),
       } : state.views, selection: snapshot.value ? state.selection.filter(id => snapshot.value!.group.members.some(member => member.available && member.userId === id)) : state.selection };
     }
   }
@@ -84,7 +92,7 @@ function SessionBoundary(props: Props) {
 function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
   const t = useTranslations('comparisons'); const router = useRouter(); const search = useSearchParams();
   const [groups, setGroups] = useState(initialGroups);
-  const [state, dispatch] = useReducer(reducer, viewerId, id => ({ ...initialState(id), groupId: selectOwnedGroup(search.get('group'), initialGroups) }));
+  const [state, dispatch] = useReducer(explorerReducer, viewerId, id => ({ ...initialState(id), groupId: selectOwnedGroup(search.get('group'), initialGroups) }));
   const [editor, setEditor] = useState<{ group: Group | null } | null>(null);
   const [reload, forceReload] = useReducer((value: number) => value + 1, 0);
   const sequence = useRef(0); const initialSignature = useRef(JSON.stringify(initialGroups));

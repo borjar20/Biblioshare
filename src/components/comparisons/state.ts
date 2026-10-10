@@ -49,11 +49,17 @@ export function selectOwnedGroup(value: unknown, groups: Group[]): string | null
   return typeof value === 'string' && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value)
     && groups.some(group => group.id === value) ? value : null;
 }
-/** Retain context only when its participants and evidence still exist in the fresh load. */
-export function reconcileView(view: View, snapshot: Snapshot): View {
+/** Group membership is independent of the snapshot's media filter. */
+export function reconcileParticipants(view: View, group: Group): View {
   if (view.level === 'group') return view;
-  const available = new Set(snapshot.group.members.filter(member => member.available).map(member => member.userId));
+  const available = new Set(group.members.filter(member => member.available && member.userId !== null).map(member => member.userId));
   if (view.people.length < 2 || view.people.length > 10 || new Set(view.people).size !== view.people.length || view.people.some(id => !available.has(id))) return { level: 'group' };
+  return view;
+}
+/** Retain evidence context only against the format loaded for this section. */
+export function reconcileView(view: View, snapshot: Snapshot): View {
+  const valid = reconcileParticipants(view, snapshot.group);
+  if (valid.level === 'group' || view.level === 'group') return valid;
   const facet = (kind: FacetKind, id: string) => facets(snapshot, view.people, kind).find(item => item.id === id);
   if (view.level === 'facet') return facet(view.facetKind, view.facetId) ? view : { level: 'group' };
   if (view.level === 'work' && view.origin.kind === 'facet') {
