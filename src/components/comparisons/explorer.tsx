@@ -113,6 +113,7 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
   const [state, dispatch] = useReducer(explorerReducer, viewerId, id => ({ ...initialState(id), groupId: selectOwnedGroup(search.get('group'), initialGroups) }));
   const [editor, setEditor] = useState<{ group: Group | null } | null>(null);
   const [reload, forceReload] = useReducer((value: number) => value + 1, 0);
+  const [completedHandoff, setCompletedHandoff] = useState<number | null>(null);
   const sequence = useRef(0); const initialSignature = useRef(JSON.stringify(initialGroups));
   const groupSelector = useRef<HTMLSelectElement>(null);
   const observedQuery = useRef(search.get('group'));
@@ -162,6 +163,14 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
     dispatch({ type: 'selection', people: state.selection.includes(userId) ? state.selection.filter(id => id !== userId) : [...state.selection, userId] });
   }
   function setFormat(next: Format) { sequence.current += 1; dispatch({ type: 'format', format: next }); }
+  const workspaceControls = snapshot && <>
+    <div className={styles.workspaceControls}>
+      <h2 className={styles.srOnly}>{snapshot.group.name}</h2>
+      {(state.section === 'tastes' || state.views.works.level !== 'group') && <fieldset className={styles.people}><legend className={styles.srOnly}>{t(state.section === 'works' ? 'selectPair' : 'selectTastes')}</legend>{snapshot.group.members.map(member => member.available && member.userId ? <label key={member.slotId} className={styles.personChip} data-selected={state.selection.includes(member.userId)} style={{ '--person': personColor(snapshot, member.userId) } as CSSProperties}><input type="checkbox" checked={state.selection.includes(member.userId)} onChange={() => togglePerson(member.userId!)}/><span className={styles.personDot} aria-hidden="true"/>{member.name}</label> : <span key={member.slotId} className={styles.unavailable}>{t('unavailablePerson')}</span>)}</fieldset>}
+      <Button variant="ghost" onClick={refresh}>{t('refreshAccess')}</Button>
+    </div>
+    {snapshot.excludedSeriesWithoutEpisodes > 0 && <p className="py-3 text-sm text-muted-foreground" data-comparison-coverage>{t('excludedHistoricalSeries', { count: snapshot.excludedSeriesWithoutEpisodes })}</p>}
+  </>;
   return <div className={styles.explorer}>
     <header className={styles.heading}>
       <div><h1 className={styles.title}>{t('title')}.</h1><p className={styles.intro}>{t('introShared')}<br/>{t('introDifferent')}</p></div>
@@ -185,23 +194,22 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
         </select></label>
       </div>
       <section aria-label={t('canvas')} aria-busy={state.snapshot.status === 'loading'} className={`${styles.workspace} ${state.section === 'tastes' ? styles.tasteWorkspace : ''}`}>
-        {state.snapshot.status === 'loading' && <ComparisonLoading label={t('loading')}/>}
+        {state.snapshot.status === 'loading' && <div className={styles.workspaceLoading}><ComparisonLoading label={t('loading')}/></div>}
         {state.snapshot.status === 'error' && <div role="alert"><p>{t(state.loadError === 'conflict' ? 'loadConflict' : `errors.${state.loadError ?? 'load-failed'}`)}</p><Button variant="secondary" onClick={() => { refresh(); if (state.loadError === 'unavailable' || state.loadError === 'unauthenticated') router.refresh(); }}>{t('reloadComparison')}</Button></div>}
-        {snapshot && <>
-          <div className={styles.workspaceControls}>
-            <h2 className={styles.srOnly}>{snapshot.group.name}</h2>
-            {(state.section === 'tastes' || state.views.works.level !== 'group') && <fieldset className={styles.people}><legend className={styles.srOnly}>{t(state.section === 'works' ? 'selectPair' : 'selectTastes')}</legend>{snapshot.group.members.map(member => member.available && member.userId ? <label key={member.slotId} className={styles.personChip} data-selected={state.selection.includes(member.userId)} style={{ '--person': personColor(snapshot, member.userId) } as CSSProperties}><input type="checkbox" checked={state.selection.includes(member.userId)} onChange={() => togglePerson(member.userId!)}/><span className={styles.personDot} aria-hidden="true"/>{member.name}</label> : <span key={member.slotId} className={styles.unavailable}>{t('unavailablePerson')}</span>)}</fieldset>}
-            <Button variant="ghost" onClick={refresh}>{t('refreshAccess')}</Button>
-          </div>
-          {snapshot.excludedSeriesWithoutEpisodes > 0 && <p className="py-3 text-sm text-muted-foreground" data-comparison-coverage>{t('excludedHistoricalSeries', { count: snapshot.excludedSeriesWithoutEpisodes })}</p>}
-          <div data-comparison-slot={state.section} data-view={state.views[state.section].level} className="min-h-48">
-            {state.section === 'works' && <ComparisonCanvas snapshot={snapshot} selectedPeople={state.selection} onTogglePerson={togglePerson} view={state.views.works} onView={view => {
+        {snapshot && <div key={state.snapshot.seq} className={styles.workspaceContent} data-comparison-reveal>
+          {state.section === 'tastes' && workspaceControls}
+          <div data-comparison-slot={state.section} data-view={state.views[state.section].level} className={styles.canvasSlot}>
+            {state.section === 'works' && <ComparisonCanvas snapshot={snapshot} controls={workspaceControls} selectedPeople={state.selection} onTogglePerson={togglePerson} view={state.views.works} onView={view => {
               if (view.level === 'venn') dispatch({ type: 'selection', people: view.people });
               dispatch({ type: 'view', view });
             }}/>}
             {state.section === 'tastes' && <Tastes snapshot={snapshot} people={state.views.tastes.level === 'group' ? state.selection : state.views.tastes.people} view={state.views.tastes} onView={view => dispatch({ type: 'view', view })} controls={state.tasteControls} onControlsChange={controls => dispatch({ type: 'tasteControls', controls })} onOpenWork={(key, origin) => dispatch({ type: 'view', view: { level: 'work', people: state.views.tastes.level === 'group' ? state.selection : state.views.tastes.people, key, origin } })}/>}
           </div>
-        </>}
+        </div>}
+        {/* Only data-free artwork survives the loading phase; fresh evidence is never delayed. */}
+        {snapshot && completedHandoff !== state.snapshot.seq && <div key={`handoff-${state.snapshot.seq}`} aria-hidden="true" inert className={`${styles.workspaceLoading} ${styles.loadingExit}`} data-comparison-handoff onAnimationEnd={event => {
+          if (event.target === event.currentTarget) setCompletedHandoff(state.snapshot.seq);
+        }}><ComparisonLoading label={t('loading')}/></div>}
       </section>
     </>}
     <footer className={styles.footer}><Icon kind="lock"/>{t('privacyFooter')}</footer>

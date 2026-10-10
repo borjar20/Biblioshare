@@ -3,7 +3,7 @@ import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useCamera } from './use-camera';
 import type { Scene } from './geometry';
-import { sampleMotion, wheelIntent, WheelGesture } from './motion';
+import { sampleMotion } from './motion';
 const start: Scene = { camera: { x: 0, y: 0, scale: .5 }, height: 450, poses: { 'book:a': { x: 100, y: 200, width: 60, height: 87, rotate: -5 } } };
 const end: Scene = { camera: { x: -200, y: -100, scale: 1 }, height: 900, poses: { 'book:a': { x: 400, y: 500, width: 120, height: 174, rotate: 0 } } };
 describe('guided motion', () => {
@@ -27,35 +27,6 @@ describe('guided motion', () => {
     expect(sampleMotion(start, next, 200, 850).poses['book:b']).toEqual(end.poses['book:a']);
     expect(sampleMotion(next, start, 200, 850).poses['book:b']).toEqual(end.poses['book:a']);
     expect(sampleMotion(start, end, 0, 0)).toEqual(end);
-  });
-});
-describe('discrete wheel gesture', () => {
-  it('normalizes pixel, line and page units and ignores invalid/zero values', () => {
-    expect(wheelIntent(-80, 0)).toBe('in'); expect(wheelIntent(5, 1)).toBe('out');
-    expect(wheelIntent(-1, 2)).toBe('in'); expect(wheelIntent(-79, 0)).toBeNull();
-    expect(wheelIntent(NaN, 0)).toBeNull(); expect(wheelIntent(100, 9)).toBeNull();
-  });
-  it('accumulates 80px and emits only one level until both quiet and transition finish', () => {
-    const gesture = new WheelGesture();
-    expect(gesture.push(-30, 0, 0, false)).toBeNull();
-    expect(gesture.push(-50, 0, 10, false)).toBe('in');
-    expect(gesture.push(-500, 0, 50, true)).toBeNull();
-    expect(gesture.push(-500, 0, 240, true)).toBeNull();
-    expect(gesture.push(-80, 0, 300, false)).toBeNull();
-    expect(gesture.push(-80, 0, 481, false)).toBe('in');
-  });
-  it('does not carry accumulation across quiet gestures or opposing directions', () => {
-    const gesture = new WheelGesture();
-    gesture.push(-50, 0, 0, false);
-    expect(gesture.push(-50, 0, 181, false)).toBeNull();
-    expect(gesture.push(40, 0, 200, false)).toBeNull();
-    expect(gesture.push(40, 0, 210, false)).toBe('out');
-  });
-  it('expires a captured gesture before deciding whether an event at a limit can stay native', () => {
-    const gesture = new WheelGesture();
-    gesture.push(-80, 0, 0, false);
-    expect(gesture.isCaptured(500, true)).toBe(true);
-    expect(gesture.isCaptured(500, false)).toBe(false);
   });
 });
 describe('camera clock and lifecycle', () => {

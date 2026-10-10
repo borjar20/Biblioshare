@@ -19,13 +19,25 @@
 .formats { display: flex; gap: 3px; margin-bottom: 9px; flex-wrap: wrap; }
 .formats button { padding: 7px 13px; min-height: 38px; border-radius: 20px; background: transparent; color: var(--muted-foreground); font-size: 12px; font-weight: 600; }
 .formats button[aria-pressed=true] { background: var(--accent); color: var(--accent-foreground); }
-.workspace { min-width: 0; min-height: 390px; background: var(--surface); border-radius: 24px; overflow: clip; }
+.workspace { --comparison-canvas-height: clamp(560px,72svh,720px); position: relative; min-width: 0; height: var(--comparison-canvas-height); background: var(--surface); border-radius: 24px; overflow: clip; }
+.workspaceLoading { height: 100%; display: flex; align-items: center; justify-content: center; }
+.workspaceLoading > div { min-height: 0; height: 100%; width: 100%; }
+.workspaceContent { display: flex; flex-direction: column; height: 100%; min-height: 0; animation: revealWorkspace 420ms cubic-bezier(.22,.61,.36,1) both; }
+.canvasSlot { flex: 1; min-height: 0; }
+.loadingExit { position: absolute; inset: 0; z-index: 1; pointer-events: none; background: var(--surface); animation: dismissLoading 420ms cubic-bezier(.22,.61,.36,1) both; }
+@keyframes revealWorkspace { from { opacity: 0; } to { opacity: 1; } }
+@keyframes dismissLoading { from { opacity: 1; } to { opacity: 0; } }
+@keyframes dismissLoadingReduced { from { opacity: 0; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .workspaceContent { animation: none; } .loadingExit { animation: dismissLoadingReduced 1ms both; } }
 .workspace > [role=status], .workspace > [role=alert] { padding: 28px; }
 .workspaceControls { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px 15px; padding: 14px 22px 0; }
 .workspaceControls h2 { font-family: var(--font-geist-sans), sans-serif; }
 .workspaceControls > button { min-height: 38px; font-size: 11px; padding: 6px 0 6px 12px; margin-left: auto; flex-shrink: 0; }
-.workspace > [data-comparison-coverage] { margin: 0 22px; }
-.tasteWorkspace { background: transparent; overflow: visible; }
+.workspaceContent [data-comparison-coverage] { margin: 0 22px; }
+.tasteWorkspace { height: auto; min-height: 390px; background: transparent; overflow: visible; }
+.tasteWorkspace .workspaceLoading { min-height: 390px; }
+.tasteWorkspace .workspaceContent { height: auto; }
+.tasteWorkspace .canvasSlot { flex: auto; }
 .tasteWorkspace .workspaceControls { padding: 0 0 8px; }
 .people { display: flex; flex: 1; flex-wrap: wrap; gap: 6px; min-width: 0; }
 .personChip { position: relative; display: flex; align-items: center; gap: 6px; min-height: 38px; padding: 6px 11px; background: var(--surface); border: 1px solid var(--border); border-radius: 22px; font-size: 11px; cursor: pointer; }

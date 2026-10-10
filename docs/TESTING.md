@@ -5,6 +5,11 @@
 La primera entrega pasó los gates de CI de PR #1474 y está publicada en producción.
 Las pruebas locales y capturas de la corrección visual se registran por build en
 [el informe visual](testing/2026-10-10-entre-nosotros-visual.md); no acreditan Android.
+La transición de carga, el marco de altura estable y la rueda sin zoom tienen
+[evidencia local propia](testing/2026-10-10-entre-nosotros-stable-canvas.md): el harness
+Chromium comprueba geometría, scroll y foco, sin sustituir el gate con login,
+RLS y Server Actions reales. El runner dedicado descubre 17 casos; el descubrimiento
+no acredita su ejecución ni CI, integración o publicación del ajuste.
 
 Receta y evidencia en [verificación integrada](testing/2026-10-10-entre-nosotros.md).
 Se construye y arranca una build nueva con el mismo backend desechable fijado antes

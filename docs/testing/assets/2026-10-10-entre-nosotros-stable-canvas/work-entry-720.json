@@ -1,0 +1,115 @@
+{
+  "kind": "Harness UI with real Geist font and CI fixture shape; canvas page position calibrated to failure screenshot, no Auth/RLS",
+  "scenarios": [
+    {
+      "width": 1280,
+      "result": "PASS",
+      "pageBeforeWork": 0,
+      "pageAfterWork": 0,
+      "state": {
+        "width": 1280,
+        "height": 720,
+        "pageY": 46,
+        "innerScroll": 52,
+        "canvas": {
+          "x": 90,
+          "y": 181.953125,
+          "width": 1100,
+          "height": 560,
+          "top": 181.953125,
+          "right": 1190,
+          "bottom": 741.953125,
+          "left": 90
+        },
+        "heading": {
+          "x": 98,
+          "y": 673.953125,
+          "width": 1069,
+          "height": 31.1875,
+          "top": 673.953125,
+          "right": 1167,
+          "bottom": 705.140625,
+          "left": 98
+        },
+        "toolbar": {
+          "x": 90,
+          "y": 181.953125,
+          "width": 1085,
+          "height": 70,
+          "top": 181.953125,
+          "right": 1175,
+          "bottom": 251.953125,
+          "left": 90
+        },
+        "back": {
+          "x": 112,
+          "y": 199.953125,
+          "width": 108.921875,
+          "height": 44,
+          "top": 199.953125,
+          "right": 220.921875,
+          "bottom": 243.953125,
+          "left": 112
+        },
+        "backFocused": true,
+        "font": "GeistQA, Arial, sans-serif"
+      },
+      "restoredFocus": true
+    },
+    {
+      "width": 320,
+      "result": "PASS",
+      "pageBeforeWork": 559,
+      "pageAfterWork": 559,
+      "state": {
+        "width": 320,
+        "height": 720,
+        "pageY": 209,
+        "innerScroll": 142,
+        "canvas": {
+          "x": 16,
+          "y": 182.3125,
+          "width": 288,
+          "height": 560,
+          "top": 182.3125,
+          "right": 304,
+          "bottom": 742.3125,
+          "left": 16
+        },
+        "heading": {
+          "x": 24,
+          "y": 617.3125,
+          "width": 257,
+          "height": 27.59375,
+          "top": 617.3125,
+          "right": 281,
+          "bottom": 644.90625,
+          "left": 24
+        },
+        "toolbar": {
+          "x": 16,
+          "y": 182.3125,
+          "width": 273,
+          "height": 93,
+          "top": 182.3125,
+          "right": 289,
+          "bottom": 275.3125,
+          "left": 16
+        },
+        "back": {
+          "x": 30,
+          "y": 198.3125,
+          "width": 108.921875,
+          "height": 44,
+          "top": 198.3125,
+          "right": 138.921875,
+          "bottom": 242.3125,
+          "left": 30
+        },
+        "backFocused": true,
+        "font": "GeistQA, Arial, sans-serif"
+      },
+      "restoredFocus": true
+    }
+  ]
+}

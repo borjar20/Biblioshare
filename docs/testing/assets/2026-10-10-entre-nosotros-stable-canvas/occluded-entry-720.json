@@ -1,0 +1,388 @@
+{
+  "kind": "Harness with real Geist, fixed shell59px and canvas top31.3125px calibrated to CI mobile screenshot, stub actions/Auth",
+  "scenarios": [
+    {
+      "width": 1280,
+      "origin": {
+        "pageY": 197,
+        "inner": 561,
+        "height": 560,
+        "canvas": {
+          "x": 90,
+          "y": 30.953125,
+          "width": 1100,
+          "height": 560,
+          "top": 30.953125,
+          "right": 1190,
+          "bottom": 590.953125,
+          "left": 90
+        },
+        "toolbar": {
+          "x": 90,
+          "y": 30.953125,
+          "width": 1085,
+          "height": 70,
+          "top": 30.953125,
+          "right": 1175,
+          "bottom": 100.953125,
+          "left": 90
+        },
+        "back": {
+          "x": 112,
+          "y": 48.953125,
+          "width": 106.078125,
+          "height": 44,
+          "top": 48.953125,
+          "right": 218.078125,
+          "bottom": 92.953125,
+          "left": 112
+        },
+        "heading": {
+          "x": 112,
+          "y": -338.046875,
+          "width": 1041,
+          "height": 31.1875,
+          "top": -338.046875,
+          "right": 1153,
+          "bottom": -306.859375,
+          "left": 112
+        },
+        "focusKey": null,
+        "backFocused": false
+      },
+      "entered": {
+        "pageY": 175,
+        "inner": 52,
+        "height": 560,
+        "canvas": {
+          "x": 90,
+          "y": 52.953125,
+          "width": 1100,
+          "height": 560,
+          "top": 52.953125,
+          "right": 1190,
+          "bottom": 612.953125,
+          "left": 90
+        },
+        "toolbar": {
+          "x": 90,
+          "y": 52.953125,
+          "width": 1085,
+          "height": 70,
+          "top": 52.953125,
+          "right": 1175,
+          "bottom": 122.953125,
+          "left": 90
+        },
+        "back": {
+          "x": 112,
+          "y": 70.953125,
+          "width": 108.921875,
+          "height": 44,
+          "top": 70.953125,
+          "right": 220.921875,
+          "bottom": 114.953125,
+          "left": 112
+        },
+        "heading": {
+          "x": 98,
+          "y": 544.953125,
+          "width": 1069,
+          "height": 31.1875,
+          "top": 544.953125,
+          "right": 1167,
+          "bottom": 576.140625,
+          "left": 98
+        },
+        "focusKey": null,
+        "backFocused": true
+      },
+      "retapped": {
+        "pageY": 175,
+        "inner": 52,
+        "height": 560,
+        "canvas": {
+          "x": 90,
+          "y": 52.953125,
+          "width": 1100,
+          "height": 560,
+          "top": 52.953125,
+          "right": 1190,
+          "bottom": 612.953125,
+          "left": 90
+        },
+        "toolbar": {
+          "x": 90,
+          "y": 52.953125,
+          "width": 1085,
+          "height": 70,
+          "top": 52.953125,
+          "right": 1175,
+          "bottom": 122.953125,
+          "left": 90
+        },
+        "back": {
+          "x": 112,
+          "y": 70.953125,
+          "width": 108.921875,
+          "height": 44,
+          "top": 70.953125,
+          "right": 220.921875,
+          "bottom": 114.953125,
+          "left": 112
+        },
+        "heading": {
+          "x": 98,
+          "y": 544.953125,
+          "width": 1069,
+          "height": 31.1875,
+          "top": 544.953125,
+          "right": 1167,
+          "bottom": 576.140625,
+          "left": 98
+        },
+        "focusKey": "book:29",
+        "backFocused": false
+      },
+      "returned": {
+        "pageY": 197,
+        "inner": 561,
+        "height": 560,
+        "canvas": {
+          "x": 90,
+          "y": 30.953125,
+          "width": 1100,
+          "height": 560,
+          "top": 30.953125,
+          "right": 1190,
+          "bottom": 590.953125,
+          "left": 90
+        },
+        "toolbar": {
+          "x": 90,
+          "y": 30.953125,
+          "width": 1085,
+          "height": 70,
+          "top": 30.953125,
+          "right": 1175,
+          "bottom": 100.953125,
+          "left": 90
+        },
+        "back": {
+          "x": 112,
+          "y": 48.953125,
+          "width": 106.078125,
+          "height": 44,
+          "top": 48.953125,
+          "right": 218.078125,
+          "bottom": 92.953125,
+          "left": 112
+        },
+        "heading": {
+          "x": 112,
+          "y": -338.046875,
+          "width": 1041,
+          "height": 31.1875,
+          "top": -338.046875,
+          "right": 1153,
+          "bottom": -306.859375,
+          "left": 112
+        },
+        "focusKey": "book:29",
+        "backFocused": false
+      }
+    },
+    {
+      "width": 320,
+      "origin": {
+        "pageY": 360,
+        "inner": 3161,
+        "height": 560,
+        "canvas": {
+          "x": 16,
+          "y": 31.3125,
+          "width": 288,
+          "height": 560,
+          "top": 31.3125,
+          "right": 304,
+          "bottom": 591.3125,
+          "left": 16
+        },
+        "toolbar": {
+          "x": 16,
+          "y": 31.3125,
+          "width": 273,
+          "height": 93,
+          "top": 31.3125,
+          "right": 289,
+          "bottom": 124.3125,
+          "left": 16
+        },
+        "back": {
+          "x": 30,
+          "y": 47.3125,
+          "width": 106.078125,
+          "height": 44,
+          "top": 47.3125,
+          "right": 136.078125,
+          "bottom": 91.3125,
+          "left": 30
+        },
+        "heading": {
+          "x": 30,
+          "y": -2728.6875,
+          "width": 245,
+          "height": 31.1875,
+          "top": -2728.6875,
+          "right": 275,
+          "bottom": -2697.5,
+          "left": 30
+        },
+        "focusKey": null,
+        "backFocused": false
+      },
+      "entered": {
+        "pageY": 336,
+        "inner": 142,
+        "height": 560,
+        "canvas": {
+          "x": 16,
+          "y": 55.3125,
+          "width": 288,
+          "height": 560,
+          "top": 55.3125,
+          "right": 304,
+          "bottom": 615.3125,
+          "left": 16
+        },
+        "toolbar": {
+          "x": 16,
+          "y": 55.3125,
+          "width": 273,
+          "height": 93,
+          "top": 55.3125,
+          "right": 289,
+          "bottom": 148.3125,
+          "left": 16
+        },
+        "back": {
+          "x": 30,
+          "y": 71.3125,
+          "width": 108.921875,
+          "height": 44,
+          "top": 71.3125,
+          "right": 138.921875,
+          "bottom": 115.3125,
+          "left": 30
+        },
+        "heading": {
+          "x": 24,
+          "y": 490.3125,
+          "width": 257,
+          "height": 27.59375,
+          "top": 490.3125,
+          "right": 281,
+          "bottom": 517.90625,
+          "left": 24
+        },
+        "focusKey": null,
+        "backFocused": true
+      },
+      "retapped": {
+        "pageY": 336,
+        "inner": 142,
+        "height": 560,
+        "canvas": {
+          "x": 16,
+          "y": 55.3125,
+          "width": 288,
+          "height": 560,
+          "top": 55.3125,
+          "right": 304,
+          "bottom": 615.3125,
+          "left": 16
+        },
+        "toolbar": {
+          "x": 16,
+          "y": 55.3125,
+          "width": 273,
+          "height": 93,
+          "top": 55.3125,
+          "right": 289,
+          "bottom": 148.3125,
+          "left": 16
+        },
+        "back": {
+          "x": 30,
+          "y": 71.3125,
+          "width": 108.921875,
+          "height": 44,
+          "top": 71.3125,
+          "right": 138.921875,
+          "bottom": 115.3125,
+          "left": 30
+        },
+        "heading": {
+          "x": 24,
+          "y": 490.3125,
+          "width": 257,
+          "height": 27.59375,
+          "top": 490.3125,
+          "right": 281,
+          "bottom": 517.90625,
+          "left": 24
+        },
+        "focusKey": "book:29",
+        "backFocused": false
+      },
+      "returned": {
+        "pageY": 360,
+        "inner": 3161,
+        "height": 560,
+        "canvas": {
+          "x": 16,
+          "y": 31.3125,
+          "width": 288,
+          "height": 560,
+          "top": 31.3125,
+          "right": 304,
+          "bottom": 591.3125,
+          "left": 16
+        },
+        "toolbar": {
+          "x": 16,
+          "y": 31.3125,
+          "width": 273,
+          "height": 93,
+          "top": 31.3125,
+          "right": 289,
+          "bottom": 124.3125,
+          "left": 16
+        },
+        "back": {
+          "x": 30,
+          "y": 47.3125,
+          "width": 106.078125,
+          "height": 44,
+          "top": 47.3125,
+          "right": 136.078125,
+          "bottom": 91.3125,
+          "left": 30
+        },
+        "heading": {
+          "x": 30,
+          "y": -2728.6875,
+          "width": 245,
+          "height": 31.1875,
+          "top": -2728.6875,
+          "right": 275,
+          "bottom": -2697.5,
+          "left": 30
+        },
+        "focusKey": "book:29",
+        "backFocused": false
+      }
+    }
+  ],
+  "result": "PASS"
+}

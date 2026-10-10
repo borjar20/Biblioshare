@@ -90,60 +90,101 @@ test('real cover travels both ways through map, Venn, region and work, and inter
     await page.locator('[data-comparison-stage]').screenshot({ path: info.outputPath('venn-return.png') });
   });
 });
-test('real wheel burst captures one target, releases after quiet and animation, keeps native limits and modifiers', async ({ page }) => {
+test('real wheel bursts keep every level, native canvas scrolling and modifiers uncancelled', async ({ page }, info) => {
   await withComparisonFixture(async fixture => {
     const canvas = await openComparisonFixture(page, fixture); await settled(page); await pair(page);
+    // Opening the A/B pair sets the actual comparison selection to those two,
+    // even though the saved group also contains Carlos. Wheel must preserve it.
+    for (const name of ['Ana QA', 'Beatriz QA']) await expect(page.getByRole('checkbox', { name, exact: true })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: 'Carlos QA', exact: true })).not.toBeChecked();
+    const selections: { phase: string; people: { name: string; checked: boolean }[] }[] = [];
+    const captureSelection = async (phase: string) => {
+      await expect(page.getByRole('checkbox')).toHaveCount(fixture.actors.length);
+      const people = await Promise.all(fixture.actors.map(async actor => ({ name: actor.name, checked: await page.getByRole('checkbox', { name: actor.name, exact: true }).isChecked() })));
+      selections.push({ phase, people }); return people;
+    };
+    const selectedPair = await captureSelection('venn-before-wheel');
+    const preserveSelection = async (phase: string) => expect(await captureSelection(phase)).toEqual(selectedPair);
     const target = page.getByRole('button', { name: 'Abrir región: Ana QA, Beatriz QA; 30 obras', exact: true });
-    await target.scrollIntoViewIfNeeded(); const box = (await target.boundingBox())!;
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-    const scroll = await page.evaluate(() => window.scrollY);
     const wheelEvents = await page.evaluateHandle(() => {
       const cancelled: boolean[] = [];
       const listener = (event: WheelEvent) => cancelled.push(event.defaultPrevented);
-      window.addEventListener('wheel', listener);
+      window.addEventListener('wheel', listener, { passive: true });
       return { cancelled, stop: () => window.removeEventListener('wheel', listener) };
     });
-    await page.mouse.wheel(0, -80);
-    await expect(canvas).toHaveAttribute('data-view', 'region');
-    for (let i = 0; i < 8; i++) await page.mouse.wheel(0, -100);
-    await settled(page);
-    expect(await wheelEvents.evaluate(probe => probe.cancelled.every(Boolean))).toBe(true);
-    expect(await wheelEvents.evaluate(probe => probe.cancelled.length)).toBe(9);
-    await wheelEvents.evaluate(probe => probe.stop());
-    // A shorter destination may lower document.maxScroll; that clamp is layout,
-    // while every captured native wheel event above was actually cancelled.
-    const maxScroll = await page.evaluate(() => document.documentElement.scrollHeight - innerHeight);
-    expect(await page.evaluate(() => window.scrollY)).toBeCloseTo(Math.min(scroll, maxScroll), 0);
-    await expect(canvas).toHaveAttribute('data-view', 'region');
-    await page.waitForTimeout(200);
-    const cover = page.locator(`[data-work-key="book:${fixture.books[0].id}"]`);
-    await cover.scrollIntoViewIfNeeded(); const coverBox = (await cover.boundingBox())!;
-    await page.mouse.move(coverBox.x + coverBox.width / 2, coverBox.y + coverBox.height / 2);
-    await page.mouse.wheel(0, -80); await expect(canvas).toHaveAttribute('data-view', 'work'); await settled(page);
-    await page.waitForTimeout(200);
-    const stage = page.locator('[data-comparison-stage]'); const stageBox = (await stage.boundingBox())!;
-    await page.mouse.move(stageBox.x + 5, Math.max(100, stageBox.y + 350));
-    const beforeLimit = await page.evaluate(() => window.scrollY);
-    await page.mouse.wheel(0, 0); // Zero delta keeps its native path.
-    await page.mouse.wheel(0, -100); await page.waitForTimeout(200);
-    await expect(canvas).toHaveAttribute('data-view', 'work');
-    expect(await page.evaluate(() => window.scrollY)).toBeLessThan(beforeLimit);
-    await page.keyboard.down('Control'); await page.mouse.wheel(0, 120); await page.keyboard.up('Control');
-    await expect(canvas).toHaveAttribute('data-view', 'work');
-    // Event cancellation is also checked directly for line/page modes and Meta.
-    expect(await stage.evaluate(node => node.dispatchEvent(new WheelEvent('wheel', { deltaY: 1, deltaMode: 2, metaKey: true, bubbles: true, cancelable: true })))).toBe(true);
-    await page.getByRole('button', { name: 'Volver al cruce', exact: true }).click(); await settled(page);
-    await page.getByRole('button', { name: 'Volver al Venn', exact: true }).click(); await settled(page);
-    await page.getByRole('button', { name: 'Volver al grupo', exact: true }).click(); await settled(page);
-    const limitScroll = await page.evaluate(() => window.scrollY); const groupStageBox = (await stage.boundingBox())!;
-    await page.mouse.move(groupStageBox.x + 4, groupStageBox.y + 20); await page.mouse.wheel(0, 200); await page.waitForTimeout(200);
-    expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(limitScroll);
-    // A map pile targets its canonical pair; empty canvas does not invent one.
-    const mapCover = page.locator(`[data-work-key="book:${fixture.books[0].id}"]`);
-    await mapCover.scrollIntoViewIfNeeded(); const mapBox = (await mapCover.boundingBox())!;
-    await page.mouse.move(mapBox.x + mapBox.width / 2, mapBox.y + mapBox.height / 2);
-    await page.mouse.wheel(0, -80); await expect(canvas).toHaveAttribute('data-view', 'venn'); await settled(page);
-    await expect(page.getByRole('checkbox', { name: 'Carlos QA', exact: true })).toBeChecked();
+    let wheelFailure: unknown;
+    try {
+      await target.hover();
+      const world = page.locator('[data-comparison-world]');
+      const camera = await world.getAttribute('style');
+      await page.mouse.wheel(0, -80);
+      await expect.poll(() => wheelEvents.evaluate(probe => probe.cancelled.length)).toBe(1);
+      await expect(canvas).toHaveAttribute('data-view', 'venn');
+      await preserveSelection('venn-after-first-wheel');
+      for (let i = 0; i < 8; i++) {
+        await page.mouse.wheel(0, -100);
+        await expect.poll(() => wheelEvents.evaluate(probe => probe.cancelled.length)).toBe(i + 2);
+        await expect(canvas).toHaveAttribute('data-view', 'venn');
+        await preserveSelection(`venn-after-burst-${i + 2}`);
+      }
+      expect(await world.getAttribute('style')).toBe(camera);
+      await target.click(); await settled(page);
+      await preserveSelection('region-before-wheel');
+      const cover = page.locator(`[data-work-key="book:${fixture.books[0].id}"]`);
+      await cover.hover(); await page.mouse.wheel(0, -80);
+      await expect.poll(() => wheelEvents.evaluate(probe => probe.cancelled.length)).toBe(10);
+      await expect(canvas).toHaveAttribute('data-view', 'region');
+      await preserveSelection('region-after-wheel');
+      await cover.click(); await settled(page);
+      await expect(page.getByRole('link', { name: 'Ver ficha', exact: true })).toBeVisible();
+      await preserveSelection('work-before-wheel');
+      await cover.hover(); await page.mouse.wheel(0, 0); await page.mouse.wheel(0, -100);
+      await expect.poll(() => wheelEvents.evaluate(probe => probe.cancelled.length)).toBeGreaterThanOrEqual(11);
+      await expect(canvas).toHaveAttribute('data-view', 'work');
+      await preserveSelection('work-after-wheel');
+      const beforeModifier = await wheelEvents.evaluate(probe => probe.cancelled.length);
+      await page.keyboard.down('Control');
+      try { await page.mouse.wheel(0, 120); }
+      finally { await page.keyboard.up('Control'); }
+      await expect.poll(() => wheelEvents.evaluate(probe => probe.cancelled.length)).toBeGreaterThan(beforeModifier);
+      await expect(canvas).toHaveAttribute('data-view', 'work');
+      await preserveSelection('work-after-control-wheel');
+      // Dispatch verifies cancellation for all delta modes without claiming
+      // synthetic events cause native scrolling or browser zoom.
+      for (const deltaMode of [0, 1, 2]) expect(await canvas.evaluate((node, mode) => node.dispatchEvent(new WheelEvent('wheel', { deltaY: 1, deltaMode: mode, metaKey: true, bubbles: true, cancelable: true })), deltaMode)).toBe(true);
+      await preserveSelection('work-after-delta-modes');
+      await page.getByRole('button', { name: 'Volver al cruce', exact: true }).click(); await settled(page);
+      await page.getByRole('button', { name: 'Volver al Venn', exact: true }).click(); await settled(page);
+      await page.getByRole('button', { name: 'Volver al grupo', exact: true }).click(); await settled(page);
+      await preserveSelection('group-before-wheel');
+      // Map covers intentionally overlap. Hover the frontmost active cover,
+      // rather than asking actionability to expose a cover behind the pile.
+      const mapCover = canvas.locator('button[data-work-key][data-inactive="false"][data-background="false"]').last();
+      await mapCover.hover();
+      const beforeMap = await canvas.evaluate(node => node.scrollTop);
+      const beforeEvents = await wheelEvents.evaluate(probe => probe.cancelled.length);
+      await page.mouse.wheel(0, 200);
+      await expect.poll(() => wheelEvents.evaluate(probe => probe.cancelled.length)).toBeGreaterThan(beforeEvents);
+      await expect.poll(() => canvas.evaluate(node => node.scrollTop)).toBeGreaterThan(beforeMap);
+      await expect(canvas).toHaveAttribute('data-view', 'group');
+      await preserveSelection('group-after-wheel');
+      const cancelled = await wheelEvents.evaluate(probe => probe.cancelled);
+      expect(cancelled.every(value => !value)).toBe(true);
+      const path = info.outputPath('native-wheel-events.json');
+      await writeFile(path, JSON.stringify({ cancelled, beforeMap, afterMap: await canvas.evaluate(node => node.scrollTop), selections }, null, 2));
+      await info.attach('native-wheel-events', { path, contentType: 'application/json' });
+    } catch (error) { wheelFailure = error; throw error; }
+    finally {
+      try { if (!page.isClosed()) await wheelEvents.evaluate(probe => probe.stop()); }
+      catch (cleanupError) {
+        // Closing the browser already discards the listener. Preserve the
+        // assertion/timeout that caused teardown instead of replacing it.
+        if (!page.isClosed()) {
+          if (wheelFailure !== undefined) throw new AggregateError([wheelFailure, cleanupError], 'Wheel verification and listener cleanup failed');
+          throw cleanupError;
+        }
+      }
+    }
   });
 });
 test('reduced motion applies destination directly and Escape returns with focus', async ({ page }) => {
@@ -163,26 +204,32 @@ test('reduced motion applies destination directly and Escape returns with focus'
     await expect(page.locator('[data-map-pair]').first()).toBeFocused();
   });
 });
-test('320px normal page scroll reaches last loaded cover, touch opens actual work and return restores node, batch, scroll and focus', async ({ browser }, info) => {
+test('320px fixed canvas scroll reaches last loaded cover, touch opens actual work and return restores node, batch, scroll and focus', async ({ browser }, info) => {
   const context = await browser.newContext({ viewport: { width: 320, height: 720 }, hasTouch: true }); const page = await context.newPage();
   try {
     await withComparisonFixture(async fixture => {
-      await openComparisonFixture(page, fixture); await settled(page); await pair(page); await region(page);
+      const canvas = await openComparisonFixture(page, fixture); await settled(page); await pair(page); await region(page);
+      const frameHeight = (await canvas.boundingBox())!.height;
       await page.getByRole('button', { name: 'Cargar más', exact: true }).tap(); await settled(page);
       await expect(page.getByText('30 de 30 obras', { exact: true })).toBeVisible();
       const last = page.locator(`[data-work-key="book:${fixture.books.at(-1)!.id}"]`); const node = await last.elementHandle();
       await last.scrollIntoViewIfNeeded(); const scroll = await page.evaluate(() => window.scrollY);
-      expect(scroll).toBeGreaterThan(1500); await expect(last).toBeInViewport();
+      const canvasScroll = await canvas.evaluate(node => node.scrollTop);
+      expect(canvasScroll).toBeGreaterThan(1500); await expect(last).toBeInViewport();
+      expect((await canvas.boundingBox())!.height).toBeCloseTo(frameHeight, 0);
       const firstBox = await last.boundingBox();
       await last.tap(); await settled(page); await expect(last).toBeInViewport();
       expect((await last.boundingBox())!.width).not.toBe(firstBox!.width);
       const entry = await visibleWorkEntry(page, fixture.books.at(-1)!.title);
-      await writeFile(info.outputPath('mobile-entry-visibility.json'), JSON.stringify({ viewport: page.viewportSize(), savedScroll: scroll, entry }, null, 2));
+      await writeFile(info.outputPath('mobile-entry-visibility.json'), JSON.stringify({ viewport: page.viewportSize(), savedScroll: scroll, savedCanvasScroll: canvasScroll, frameHeight, entry }, null, 2));
+      expect((await canvas.boundingBox())!.height).toBeCloseTo(frameHeight, 0);
       await page.screenshot({ path: info.outputPath('mobile-work-destination.png') });
       await last.tap(); // Tapping the current destination must preserve origin scroll.
       await page.getByRole('button', { name: 'Volver al cruce', exact: true }).tap(); await settled(page);
       await expect(last).toBeFocused(); await expect(last).toBeInViewport();
       expect(await page.evaluate(() => window.scrollY)).toBeCloseTo(scroll, 0);
+      expect(await canvas.evaluate(node => node.scrollTop)).toBeCloseTo(canvasScroll, 0);
+      expect((await canvas.boundingBox())!.height).toBeCloseTo(frameHeight, 0);
       expect(await node!.evaluate(original => original.isConnected)).toBe(true);
       await expect(page.getByText('30 de 30 obras', { exact: true })).toBeVisible();
       await page.screenshot({ path: info.outputPath('mobile-last-cover-return.png') });
