@@ -4,7 +4,7 @@ import { useTranslations } from 'next-intl';
 import { findings, regions } from '@/lib/comparisons/derive';
 import type { CatalogWork, Finding, Snapshot, WorkKey } from '@/lib/comparisons/types';
 import type { View } from './state';
-import { layoutScene, mapConnections, personCenter, regionCenter, vennCircles, WORLD_HEIGHT, WORLD_WIDTH, type Scene } from './geometry';
+import { groupMapLayout, layoutScene, mapConnections, personCenter, regionCenter, vennCircles, WORLD_HEIGHT, WORLD_WIDTH, type Scene } from './geometry';
 import { useCamera } from './use-camera';
 import { WheelGesture } from './motion';
 import { WorkDetail } from './work-detail';
@@ -61,6 +61,8 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork }: P
     return () => observer.disconnect();
   }, []);
   const members = snapshot.group.members.filter(member => member.available && member.userId);
+  const mapLayout = groupMapLayout(members.length, width);
+  const worldHeight = view.level === 'group' ? mapLayout.worldHeight : WORLD_HEIGHT;
   const names = (people: string[]) => people.map(id => members.find(member => member.userId === id)?.name ?? t('unavailablePerson')).join(', ');
   const facetMode = view.level === 'facet' || view.level === 'work' && view.origin.kind === 'facet';
   const pairs = facetMode ? [] : mapConnections(snapshot);
@@ -172,11 +174,11 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork }: P
       {!fullKeys.length && <p>{t(signal === 'all' ? 'emptyRegion' : 'emptyFindings')}</p>}
     </header>}
     <div ref={stage} className={styles.stage} style={{ height: stageHeight }} data-comparison-stage data-scene-height={stageHeight}>
-      <div className={styles.world} data-comparison-world style={{ width: WORLD_WIDTH, height: WORLD_HEIGHT, '--camera-scale': scene.camera.scale, transform: `translate(${scene.camera.x}px, ${scene.camera.y}px) scale(${scene.camera.scale})` } as CSSProperties}>
-        <svg className={styles.background} data-focused={!overviewControls} width={WORLD_WIDTH} height={WORLD_HEIGHT} aria-hidden="true">
+      <div className={styles.world} data-comparison-world style={{ width: WORLD_WIDTH, height: worldHeight, '--camera-scale': scene.camera.scale, transform: `translate(${scene.camera.x}px, ${scene.camera.y}px) scale(${scene.camera.scale})` } as CSSProperties}>
+        <svg className={styles.background} data-focused={!overviewControls} width={WORLD_WIDTH} height={worldHeight} aria-hidden="true">
           {view.level === 'group' ? pairs.map(pair => {
-            const start = personCenter(members.findIndex(member => member.userId === pair.people[0]), members.length);
-            const end = personCenter(members.findIndex(member => member.userId === pair.people[1]), members.length);
+            const start = personCenter(members.findIndex(member => member.userId === pair.people[0]), members.length, width);
+            const end = personCenter(members.findIndex(member => member.userId === pair.people[1]), members.length, width);
             return <line key={pair.people.join(':')} x1={start.x} y1={start.y} x2={end.x} y2={end.y} className={styles.connection} strokeWidth={pair.keys.length ? 2 : 1}/>;
           }) : !facetMode && vennCircles(vennPeople.length).map(({ x, y, radius }, index) => <circle key={index} cx={x} cy={y} r={radius} className={styles.vennCircle} data-person={index}/>)}
         </svg>
@@ -199,8 +201,8 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork }: P
       </div>
       {overviewControls && <div className={styles.controls}>
         {view.level === 'group' ? <>
-          {members.map((member, index) => { const point = personCenter(index, members.length); return <span key={member.slotId} className={styles.person} style={{ left: overview.camera.x + point.x * overview.camera.scale, top: point.y * overview.camera.scale }}>{member.name}</span>; })}
-          <div className={styles.shared} style={{ top: 450 * overview.camera.scale + 65 }}><strong>{sharedAll.length}</strong><span>{t(members.length < snapshot.group.members.length ? 'sharedByAvailable' : 'sharedByAll')}</span></div>
+          {members.map((member, index) => { const point = personCenter(index, members.length, width); return <span key={member.slotId} className={styles.person} style={{ left: overview.camera.x + point.x * overview.camera.scale, top: point.y * overview.camera.scale }}>{member.name}</span>; })}
+          <div className={styles.shared} style={{ top: mapLayout.summaryY }}><strong>{sharedAll.length}</strong><span>{t(members.length < snapshot.group.members.length ? 'sharedByAvailable' : 'sharedByAll')}</span></div>
         </> : zones.map(zone => { const point = regionCenter(vennPeople.length, zone.mask); return <button type="button" key={zone.mask} className={styles.region} data-region-mask={zone.mask} data-empty={!zone.keys.length}
           style={{ left: overview.camera.x + point.x * overview.camera.scale, top: point.y * overview.camera.scale + (zone.keys.length ? 48 : 0) }}
           aria-label={t('openRegion', { people: names(zone.people), count: zone.keys.length })} onClick={() => openRegion(zone.mask)}><strong>{zone.keys.length}</strong><span>{names(zone.people)}</span>{signal !== 'all' && <span>{t('matchingCount', { count: matchingKeys(zone.keys, zone.people).length })}</span>}</button>; })}

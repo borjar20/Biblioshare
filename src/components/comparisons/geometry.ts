@@ -17,9 +17,21 @@ export function regionCenter(count: number, mask: number): { x: number; y: numbe
   const [x, y] = centers[mask - 1] ?? [500, 430];
   return { x, y };
 }
-export function personCenter(index: number, count: number) {
-  const angle = index * 2 * Math.PI / Math.max(1, count) - Math.PI / 2;
-  return { x: 500 + 360 * Math.cos(angle), y: 450 + 350 * Math.sin(angle) };
+export function groupMapLayout(count: number, width: number) {
+  const scale = Math.min(1, Math.max(160, width) / WORLD_WIDTH);
+  const dense = width <= 360 && count >= 5;
+  const centerY = dense ? 1700 : 450, radiusY = dense ? 1600 : 350;
+  const summaryY = dense ? (centerY + radiusY) * scale + 40 : centerY * scale + 65;
+  const worldHeight = dense ? 3400 : WORLD_HEIGHT;
+  return { centerY, radiusY, summaryY, worldHeight, height: dense ? Math.ceil(summaryY + 140) : Math.max(360, worldHeight * scale) };
+}
+export function personCenter(index: number, count: number, width = WORLD_WIDTH) {
+  // Break the same-height bottom pair in odd dense maps without changing the
+  // ordinary/wide ring or giving labels and their connections different points.
+  const offset = width <= 360 && count >= 5 && count % 2 ? Math.PI / (2 * count) : 0;
+  const angle = index * 2 * Math.PI / Math.max(1, count) - Math.PI / 2 + offset;
+  const layout = groupMapLayout(count, width);
+  return { x: 500 + 360 * Math.cos(angle), y: layout.centerY + layout.radiusY * Math.sin(angle) };
 }
 export function mapConnections(snapshot: Snapshot): { people: string[]; keys: WorkKey[] }[] {
   const people = snapshot.group.members.filter(member => member.available && member.userId).map(member => member.userId!);
@@ -71,14 +83,16 @@ export function layoutScene(snapshot: Snapshot, view: View, viewport: { width: n
     const zones = view.level === 'venn' ? regions(snapshot, view.people) : [];
     const pairs = view.level === 'group' ? mapConnections(snapshot) : [];
     const members = snapshot.group.members.filter(member => member.available && member.userId);
+    const mapLayout = groupMapLayout(members.length, width);
+    if (view.level === 'group') scene.height = mapLayout.height;
     const taken = new Map<string, number>();
     visibleKeys.forEach((key, index) => {
       const mask = zones.find(zone => zone.keys.includes(key))?.mask ?? 0;
-      let center = mask ? regionCenter(view.level === 'venn' ? view.people.length : 2, mask) : { x: 500, y: 450 };
+      let center = mask ? regionCenter(view.level === 'venn' ? view.people.length : 2, mask) : { x: 500, y: view.level === 'group' ? mapLayout.centerY : 450 };
       if (view.level === 'group' && !members.every(member => snapshot.works.some(work => work.userId === member.userId && work.key === key))) {
         const pair = pairs.find(pair => pair.keys.includes(key));
         if (pair) {
-          const [first, second] = pair.people.map(id => personCenter(members.findIndex(member => member.userId === id), members.length));
+          const [first, second] = pair.people.map(id => personCenter(members.findIndex(member => member.userId === id), members.length, width));
           center = { x: (first.x + second.x) / 2, y: (first.y + second.y) / 2 };
         }
       }

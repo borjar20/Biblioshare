@@ -56,7 +56,7 @@ function SessionBoundary(props: Props) {
     setServerGroups(props.initialGroups); setBlockedGroups(null); setVerification('valid');
   }
   useEffect(() => {
-    let invalidated = false; let disposed = false; let checking = false; let checkSeq = 0;
+    let invalidated = false; let disposed = false; let checking = false; let queued = false; let checkSeq = 0;
     let refreshTimer: ReturnType<typeof setTimeout> | undefined;
     const client = createClient();
     function invalidate() {
@@ -67,15 +67,23 @@ function SessionBoundary(props: Props) {
       refreshTimer = setTimeout(() => router.refresh(), 0);
     }
     function verify() {
-      if (checking || invalidated || disposed) return;
+      if (invalidated || disposed) return;
+      if (checking) { queued = true; checkSeq += 1; return; }
       checking = true; const seq = ++checkSeq; setVerification('checking');
       void client.auth.getUser().then(({ data, error }) => {
-        if (disposed || seq !== checkSeq) return;
+        if (disposed || invalidated) return;
         checking = false;
+        if (queued) { queued = false; verify(); return; }
+        if (seq !== checkSeq) return;
         if (error) setVerification('failed');
         else if (data.user?.id !== props.viewerId) invalidate();
         else setVerification('valid');
-      }).catch(() => { if (!disposed && seq === checkSeq) { checking = false; setVerification('failed'); } });
+      }).catch(() => {
+        if (disposed || invalidated) return;
+        checking = false;
+        if (queued) { queued = false; verify(); return; }
+        if (seq === checkSeq) setVerification('failed');
+      });
     }
     const onVisible = () => { if (document.visibilityState === 'visible') verify(); };
     verifySession.current = verify;

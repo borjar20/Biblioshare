@@ -39,8 +39,9 @@ export function WorkDetail({ snapshot, view, work, onEvidenceHeight }: { snapsho
   const title = work.metadataMissing || !work.title ? t('missingMetadata') : work.title;
   const [media, id] = work.key.split(':') as [Media, string];
   return <section className={styles.detail} aria-label={t('workDetail')} aria-busy={!result}>
+    <div ref={evidence} className={styles.detailContent}>
     <header className={styles.detailHeading}><p>{t(`media.${media}`)}</p><h3>{title}</h3></header>
-    <div ref={evidence} className={styles.detailEvidence}>
+    <div className={styles.detailEvidence}>
       {!result && <p role="status">{t('loadingWork')}</p>}
       {result && !result.ok && <div role="alert"><p>{t('detailFailed')}</p><button type="button" onClick={() => setAttempt(value => value + 1)}>{t('retry')}</button></div>}
       {result?.ok && <>
@@ -54,7 +55,7 @@ export function WorkDetail({ snapshot, view, work, onEvidenceHeight }: { snapsho
             {media === 'series' && person && !person.progress && <small>{t('progressUnavailable')}</small>}
             {person?.progress && <><small>{t('seenEver', { count: person.progress.seenEver })}</small>
               <small>{person.progress.current === null ? t('noCurrentPass') : t('currentProgress', { count: person.progress.current, total: person.progress.aired ?? t('unknownTotal') })}</small>
-              {person.progress.status && <small>{t(`progressStatus.${person.progress.status === 'abandoned' ? 'abandoned' : person.progress.status === 'finished' ? 'finished' : 'active'}`)}</small>}</>}
+              {person.progress.status && <small>{t(`progressStatus.${person.progress.status === 'dropped' ? 'abandoned' : person.progress.status === 'completed' ? 'finished' : 'active'}`)}</small>}</>}
           </dd></div>;
         })}</dl>
         {media === 'series' && <section aria-label={t('commonEpisodes')} className={styles.episodeEvidence}><h4>{t('commonEpisodes')}</h4><p>{t('episodeNotesMeaning')}</p>
@@ -64,6 +65,7 @@ export function WorkDetail({ snapshot, view, work, onEvidenceHeight }: { snapsho
         {media === 'series' && snapshot.excludedSeriesWithoutEpisodes > 0 && <p>{t('excludedHistoricalSeries', { count: snapshot.excludedSeriesWithoutEpisodes })}</p>}
         {!result.data.work.metadataMissing && <a href={itemHref(media, id)}>{t('openItem')}</a>}
       </>}
+    </div>
     </div>
   </section>;
 }
