@@ -367,7 +367,7 @@ npm run test:e2e -- e2e/entre-nosotros.spec.ts e2e/entre-nosotros-motion.spec.ts
 
 **Archivos:** backlog, decisiones, data-model, `docs/ARQUITECTURA.md`, `docs/architecture/graph.json`, `map.html`, informe. **Consume:** evidencia de tarea 9. **Produce:** cambio listo para revisión, con estado real de cada entorno.
 
-- [ ] Revisar diff completo contra spec: ningún umbral inventado, ninguna nota antigua recuperada, ausencia interpretada correctamente, cero consultas con service role en la feature. Revisar columnas/grants e invariantes de DML directo, no solo el camino de UI.
+- [x] Revisar diff completo contra spec: ningún umbral inventado, ninguna nota antigua recuperada, ausencia interpretada correctamente, cero consultas con service role en la feature. Revisar columnas/grants e invariantes de DML directo, no solo el camino de UI.
 - [x] Completar data-model con tablas/RPC/políticas y fecha/entorno efectivamente verificados. Registrar decisiones nuevas al final de decisiones.md, mantener evolución en spec e informe. Añadir nodos/ruta/flujo al mapa y regenerar con su herramienta:
 
 ```powershell
@@ -376,8 +376,8 @@ git diff --check
 ```
 
 - [x] Backlog: marcar implementación solo cuando exista evidencia; distinguir «implementado local/dev» de «activo en producción». Si falta integración/publicación, conservar #1462 abierta con ese estado. Cualquier descubrimiento fuera de alcance se registra como issue con exactamente una etiqueta de área, tipo y prioridad, sin mezclarlo con este cambio.
-- [ ] Revisar de forma independiente el cambio completo y corregir hallazgos antes de entrega, según el método de ejecución elegido. Comprobar worktree y limpieza de fixtures/procesos propios; no cerrar ni borrar trabajo ajeno. Commit `docs: document Entre nosotros implementation and verification`.
-- [ ] Entregar diff e informe. Publicar o aplicar migraciones en producción requiere el paso de entrega correspondiente: antes comprobar dev y objetos reales, preparar instrucciones concretas de despliegue y reversión. Para retirar la UI basta revertir el código; conservar las tablas privadas evita perder selecciones guardadas. Este plan no autoriza borrar datos ni desplegar ahora.
+- [x] Revisar de forma independiente el cambio completo y corregir hallazgos antes de entrega, según el método de ejecución elegido. Comprobar worktree y limpieza de fixtures/procesos propios; no cerrar ni borrar trabajo ajeno. Commit `docs: document Entre nosotros implementation and verification`.
+- [x] Entregar diff e informe. Publicar o aplicar migraciones en producción requiere el paso de entrega correspondiente: antes comprobar dev y objetos reales, preparar instrucciones concretas de despliegue y reversión. Para retirar la UI basta revertir el código; conservar las tablas privadas evita perder selecciones guardadas. Este plan no autoriza borrar datos ni desplegar ahora.
 
 ## Cobertura y cierre del plan
 
@@ -392,3 +392,11 @@ git diff --check
 | §8 aceptación | 1–10, con evidencia final en 9 |
 
 La revisión de este plan debe confirmar el alcance y elegir ejecución: por subagentes con revisión por tarea, o directa en esta sesión con revisión independiente al final. No se ha iniciado ninguna de las dos. Las interfaces y los casos de prueba permiten cualquiera de ellas sin modificar el alcance.
+
+
+Cierre de ejecución (2026-10-10): revisión por tarea, revisión completa y una única
+corrección/re-revisión final realizadas. Candidata local, sin despliegue, push ni
+merge. Restos menores explícitos: #1472 (foco al volver de una región poblada),
+#1473 (dos claves ajenas de traducción); #1471 conserva la investigación de fixture.
+Los checkboxes acreditan la ejecución y disposición de hallazgos, no que esas
+issues estén resueltas. Informe canónico: docs/testing/2026-10-10-entre-nosotros.md.

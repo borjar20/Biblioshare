@@ -7298,3 +7298,10 @@ control superviviente. El borrado inline enfoca Cancelar al abrir y restaura
 Eliminar al cancelar. Los relojes y contratos de movimiento anteriores se
 conservan. Evidencia de esta corrección y límites de ejecución en
 `docs/testing/2026-10-10-entre-nosotros.md`, ronda final de correcciones.
+
+**Aclaración de implementación tras la re-revisión (2026-10-10):** el retorno
+exacto a una región poblada todavía enfoca su primera portada; el resto menor
+está confirmado y seguido en [#1472](https://github.com/borjar20/Biblioshare/issues/1472).
+Se conserva el comportamiento de producto decidido —restaurar su control de
+origen—, pero no consta completamente implementado. Los retornos a pareja,
+categoría, portada y región vacía sí tienen la evidencia descrita en el informe.

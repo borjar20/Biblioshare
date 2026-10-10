@@ -274,3 +274,40 @@ Límites siguen rastreados en #1462 integración/despliegue,
 [#1470](https://github.com/borjar20/Biblioshare/issues/1470) acta offline/polling/realtime,
 y #1471 M3. Deuda #1263/#1463–#1467 conservada. No se atribuyen CI, producción,
 Android, Firefox, WebKit ni lector de pantalla a estas pruebas Chromium locales.
+
+## Cierre de revisión y entorno — 2026-10-10
+
+Las diez tareas tienen revisión independiente. La revisión de la rama completa
+dio lugar a una única ronda de corrección y una re-revisión acotada del rango
+`a481da32..4f6c2fd0`. I1, I2, M1, M2 y M4 están corregidos; M3 tiene la disposición
+explícita de investigación pendiente en [#1471](https://github.com/borjar20/Biblioshare/issues/1471).
+No se encontraron nuevos problemas Critical/Important en la corrección.
+
+M5 quedó parcialmente corregido: pareja, categoría, portada y región vacía
+restauran foco, pero una región poblada enfoca su primera portada en vez del
+control de región. Una reproducción de solo lectura del componente real en
+JSDOM confirma el selector ambiguo. Sigue en
+[#1472](https://github.com/borjar20/Biblioshare/issues/1472); no se presenta como una
+nueva prueba de navegador ni como un retorno completamente resuelto. Las dos
+claves ajenas copiadas a `margin` quedan en
+[#1473](https://github.com/borjar20/Biblioshare/issues/1473). Son restos menores
+registrados al adjudicar el límite de una sola ronda final; no una certificación
+de que todos los hallazgos hayan desaparecido.
+
+La evidencia de producto actual es la build `pOmDFAzwjVIeNxwlt6Cex`, 350 pruebas
+focales en 13 archivos, la posterior comprobación de detalle 10/10, tipos/lint y
+diez recorridos de navegador relevantes pasando en sus tandas documentadas.
+La suite general de 5.610 pruebas pertenece al candidato anterior a esta ronda.
+Los fallos intermedios, abortos, errores de imagen y límites de plataforma siguen
+en el informe. La revisión no repitió las suites: ejecutó solo la reproducción
+focal de M5. [Re-revisión completa](assets/2026-10-10-entre-nosotros/final-fix/root-final-review.md).
+
+El coordinador comprobó directamente el contenedor local propio: cero usuarios
+Auth, perfiles, libros, películas, series, grupos, miembros, pases y episodios
+registrados; sin recuperación de reloj pendiente.
+[Auditoría de cierre](assets/2026-10-10-entre-nosotros/final-fix/root-closing-db-audit.json).
+La instancia `biblioshare-local-5e2cc809` está apagada, sin contenedores propios
+restantes. Puerto 3000 libre, servidores y fixtures propios cerrados, override
+local temporal eliminado; `.env.local` dev y worktree se conservan. Producción,
+push y merge no se realizaron. La rama se entrega como candidata local revisada
+con los restos anteriores explícitos; integración/publicación continúa en #1462.
