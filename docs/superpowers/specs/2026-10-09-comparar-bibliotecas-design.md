@@ -186,3 +186,15 @@ La regla de compatibilidad para registros históricos/importados sin episodios
 detallados y las valoraciones representativas siguen pendientes dentro de #1462.
 La aprobación visual y sus iteraciones constan en
 [la historia del mockup](2026-10-10-entre-nosotros-mockup.md).
+
+## 11. Acuerdo posterior del 2026-10-10: nota de libros y películas
+
+El usuario aprueba que la nota representativa sea la de la última lectura o
+visionado terminado visible para quien consulta. Un 8 anterior y un 6 posterior
+se comparan como 6, sin promediar ambos recorridos. Si el último terminado no
+tiene nota, se muestra «Sin valorar»; no se recupera una valoración antigua.
+Una relectura o nuevo visionado en curso conserva la nota del último terminado.
+
+Este criterio concreta §8.3 para libros y películas. El orden de los registros
+importados sin fecha y el criterio de notas de series se mantienen en el diseño
+pendiente de #1462; no se toma la fecha de importación como fecha de consumo.

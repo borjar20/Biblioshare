@@ -7132,3 +7132,13 @@ Se mantienen las restricciones de visibilidad de quien consulta. La compatibilid
 con registros históricos/importados sin episodios detallados y la elección de
 valoraciones siguen dentro del diseño pendiente de #1462. Esta regla de producto
 no acredita implementación ni modifica los datos existentes.
+
+## 2026-10-10 — Nota representativa de libros y películas en Entre nosotros
+
+El usuario acepta usar la nota de la última lectura o visionado terminado para
+comparar libros y películas. Una valoración posterior sustituye a la anterior;
+no se promedian las distintas lecturas de una persona. Si ese último recorrido
+terminado no tiene nota, se muestra «Sin valorar», sin recuperar una nota antigua.
+Mientras una relectura o nuevo visionado sigue en curso, se conserva la nota del
+último recorrido terminado. La elección se aplica a registros visibles para quien
+consulta. Las valoraciones de series se concretan por separado en #1462.
