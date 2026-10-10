@@ -5,6 +5,7 @@ import { loadComparisonWork } from '@/lib/comparisons/actions';
 import { itemHref } from '@/lib/catalog/item-href';
 import type { CatalogWork, Media, Result, Snapshot, WorkDetail as Detail } from '@/lib/comparisons/types';
 import type { View } from './state';
+import { ComparisonLoading } from './loading';
 import styles from './canvas.module.css';
 
 export function detailPeople(view: Extract<View, { level: 'work' }>): string[] {
@@ -42,7 +43,7 @@ export function WorkDetail({ snapshot, view, work, onEvidenceHeight }: { snapsho
     <div ref={evidence} className={styles.detailContent}>
     <header className={styles.detailHeading}><p>{t(`media.${media}`)}</p><h3>{title}</h3></header>
     <div className={styles.detailEvidence}>
-      {!result && <p role="status">{t('loadingWork')}</p>}
+      {!result && <ComparisonLoading label={t('loadingWork')} compact/>}
       {result && !result.ok && <div role="alert"><p>{t('detailFailed')}</p><button type="button" onClick={() => setAttempt(value => value + 1)}>{t('retry')}</button></div>}
       {result?.ok && <>
         {media === 'series' && <h4>{t('seriesGeneralNotes')}</h4>}

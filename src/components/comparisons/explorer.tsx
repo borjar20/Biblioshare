@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { GroupEditor } from './group-editor';
 import { ComparisonCanvas } from './canvas';
 import { Tastes } from './tastes';
+import { ComparisonLoading } from './loading';
 import { acceptResponse, changeGroup, changeSelection, clearEvidence, initialState, reconcileParticipants, reconcileView, selectOwnedGroup, setView } from './state';
 import type { ExplorerState, Section, TasteControls, View } from './state';
 import { personColor } from './presentation';
@@ -184,7 +185,7 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
         </select></label>
       </div>
       <section aria-label={t('canvas')} aria-busy={state.snapshot.status === 'loading'} className={`${styles.workspace} ${state.section === 'tastes' ? styles.tasteWorkspace : ''}`}>
-        {state.snapshot.status === 'loading' && <p role="status">{t('loading')}</p>}
+        {state.snapshot.status === 'loading' && <ComparisonLoading label={t('loading')}/>}
         {state.snapshot.status === 'error' && <div role="alert"><p>{t(state.loadError === 'conflict' ? 'loadConflict' : `errors.${state.loadError ?? 'load-failed'}`)}</p><Button variant="secondary" onClick={() => { refresh(); if (state.loadError === 'unavailable' || state.loadError === 'unauthenticated') router.refresh(); }}>{t('reloadComparison')}</Button></div>}
         {snapshot && <>
           <div className={styles.workspaceControls}>
