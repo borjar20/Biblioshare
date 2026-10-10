@@ -7493,3 +7493,17 @@ Los docs canónicos dejan de acumular banners «Delta …» al principio: los 40
 (≈300 líneas antes de §0) pasan a «Deltas pendientes de integrar (vigentes)», al final del cuerpo,
 sin cambiar su texto. Siguen siendo vigentes porque algunos describen objetos sin sección propia.
 Un cambio nuevo se documenta en la sección del objeto; la evidencia, en `docs/testing/`.
+
+## 2026-10-10 — Integración de Entre nosotros y gate dedicado
+
+La entrega de Entre nosotros se integra con el main vigente mediante PR #1474.
+El esquema privado aditivo ya está aplicado en producción: catálogo, hashes de
+funciones, ocho políticas, cuatro triggers y grants idénticos a desarrollo; advisors
+sin hallazgos nuevos. No se siembran datos productivos. Una retirada de la UI conserva
+las tablas y selecciones guardadas para evitar pérdida de datos.
+
+CI ejecuta build → smoke → comparaciones con Supabase local, autenticación/acciones/RLS
+reales y 1.205 pases; cada gate posee su servidor de producción, un worker y cero
+reintentos. Los specs usan el origen configurado, sin fijar localhost. Se corrige
+el foco al volver de un cruce poblado (#1472) y se retiran dos claves sobrantes (#1473).
+La ilustración promocional se guarda en docs/marketing como imagen de concepto.

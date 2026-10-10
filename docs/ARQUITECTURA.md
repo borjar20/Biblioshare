@@ -1,6 +1,6 @@
 # Arquitectura
 
-> **[Entre nosotros #1462 · código/local/dev verificados el 2026-10-10; esquema aplicado y verificado en producción. Integración/publicación de código en curso.]**
+> **[Entre nosotros #1462 · código/local/dev verificados el 2026-10-10; esquema aplicado y verificado en producción. Entrega de código: PR #1474; estado de integración y despliegue en GitHub.]**
 
 ## Entre nosotros — selección privada y evidencia bajo permisos vigentes
 

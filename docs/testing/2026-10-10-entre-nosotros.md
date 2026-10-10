@@ -1,6 +1,6 @@
 # Entre nosotros — verificación integrada
 
-> [Canónico · evidencia local y revisión final del 2026-10-10; esquema aplicado y verificado en producción. Corte previo sobre cd43ce9bffbbcdceca92c22509794f1f3044fca0/build AzNCV4SAaUJ6YTFacyCNy conservado; ronda final sobre base a481da32/build pOmDFAzwjVIeNxwlt6Cex al final. Integración de código/CI en curso.]
+> [Canónico · evidencia local y revisión final del 2026-10-10; esquema aplicado y verificado en producción. Corte previo sobre cd43ce9bffbbcdceca92c22509794f1f3044fca0/build AzNCV4SAaUJ6YTFacyCNy conservado; ronda final sobre base a481da32/build pOmDFAzwjVIeNxwlt6Cex al final. Entrega de código y CI: PR #1474 (estado en GitHub).]
 
 ## Fronteras y reproducción
 
@@ -311,3 +311,27 @@ restantes. Puerto 3000 libre, servidores y fixtures propios cerrados, override
 local temporal eliminado; `.env.local` dev y worktree se conservan. Producción,
 push y merge no se realizaron. La rama se entrega como candidata local revisada
 con los restos anteriores explícitos; integración/publicación continúa en #1462.
+
+## Integración con main y producción — 2026-10-10
+
+PR de entrega: [#1474](https://github.com/borjar20/Biblioshare/pull/1474).
+Los checks y el despliegue asociados al commit integrado se consultan en esa PR;
+esta sección conserva la evidencia obtenida antes del merge.
+
+- Main integrado: 46c52724ccdfbbca411f8f62d7b106532aeea28a; ambos conflictos
+  documentales conservan las secciones y decisiones de las dos ramas.
+- Remates #1472/#1473 y nuevo gate CI revisados independientemente, sin hallazgos
+  abiertos. Regresión del foco poblado RED/GREEN y comprobación de claves de mensajes.
+- Ejecución fresca: Canvas/motion/Tastes, 36/36 PASS; typecheck sin incremental PASS.
+- Config CI: discovery 15 pruebas/2 specs; rechazos de backend/web remotos y ausencia
+  de clave local. HTTP/RLS del cableado completo se verifica en CI, no se deduce de discovery.
+- Migración 20261010084120 aplicada en producción, sin fixtures: tablas/RLS, funciones,
+  hashes, políticas, constraints, triggers y grants coinciden exactamente con dev.
+  Advisors seguridad: seis antes/seis después, sin nuevos hallazgos. Recibo en
+  [schema-production.json](assets/2026-10-10-entre-nosotros/integration/schema-production.json).
+- Imagen editorial en [docs/marketing](../marketing/entre-nosotros-promocion.png).
+  Ilustra el concepto; no acredita una captura de producto ni cuentas reales.
+
+La evidencia SQL previa de roles/rollback/concurrencia sigue siendo local/dev;
+la lectura del catálogo productivo no sustituye esas pruebas ni ejecuta DML de usuarios.
+Las limitaciones de plataformas, escala y DNS conservan sus issues existentes.
