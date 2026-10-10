@@ -1,0 +1,2137 @@
+{
+  "kind": "Isolated real-component browser harness, not authenticated product flow or production QA",
+  "date": "2026-10-10T20:08:25.499Z",
+  "sourceFiles": [
+    {
+      "path": "src/components/comparisons/loading.tsx",
+      "sha256": "743efc440bad01fb18ae1234e0b88b239d700adcb56e5decbf683d20d03ac15c"
+    },
+    {
+      "path": "src/components/comparisons/loading.module.css",
+      "sha256": "f784ae57227991bab13280e638420a3098faed80c68b9a5896c0b555a7f26428"
+    },
+    {
+      "path": "src/components/comparisons/explorer.module.css",
+      "sha256": "e72860ec966b2cf285a6faced6d04b92927c3a1dbadb967c6fb015f6c9d75618"
+    },
+    {
+      "path": "src/components/comparisons/canvas.module.css",
+      "sha256": "b668f89db8f35c25d0771fdfc55f4edd05c3d3c0f3c8562fe9cc4d0ed6df86ac"
+    },
+    {
+      "path": "src/app/globals.css",
+      "sha256": "39ad0b37c6c4eeb90abefd3405ff4a76357aa95877ef4e0fda8122b354b342f8"
+    }
+  ],
+  "scenarios": [
+    {
+      "width": 1280,
+      "theme": "light",
+      "variant": "full",
+      "states": [
+        {
+          "time": 0,
+          "overflow": 0,
+          "statusCount": 1,
+          "text": "Cargando comparación…",
+          "svgAriaHidden": "true",
+          "svgFocusable": "false",
+          "statusBounds": {
+            "x": 90,
+            "y": 30,
+            "width": 1100,
+            "height": 390
+          },
+          "svgBounds": {
+            "x": 500,
+            "y": 100.59375,
+            "width": 280,
+            "height": 210
+          },
+          "labelBounds": {
+            "x": 565.921875,
+            "y": 328.59375,
+            "width": 148.140625,
+            "height": 20.796875
+          },
+          "labelFont": "13px",
+          "labelColor": "rgb(107, 98, 85)",
+          "surface": "#fffdf8",
+          "motions": [
+            {
+              "animation": "loading_gatherBook",
+              "transform": "matrix(0.961262, -0.275637, 0.275637, 0.961262, 0, 0)",
+              "bounds": {
+                "x": 557.8063354492188,
+                "y": 141.60073852539062,
+                "width": 48.3873291015625,
+                "height": 57.98602294921875
+              }
+            },
+            {
+              "animation": "loading_gatherMovie",
+              "transform": "matrix(0.970296, 0.241922, -0.241922, 0.970296, 0, 0)",
+              "bounds": {
+                "x": 668.4866333007812,
+                "y": 141.9817657470703,
+                "width": 47.0267333984375,
+                "height": 57.223968505859375
+              }
+            },
+            {
+              "animation": "loading_gatherSeries",
+              "transform": "matrix(1, 0, 0, 1, 0, 0)",
+              "bounds": {
+                "x": 622,
+                "y": 241.59375,
+                "width": 36,
+                "height": 50
+              }
+            }
+          ]
+        },
+        {
+          "time": 1000,
+          "overflow": 0,
+          "statusCount": 1,
+          "text": "Cargando comparación…",
+          "svgAriaHidden": "true",
+          "svgFocusable": "false",
+          "statusBounds": {
+            "x": 90,
+            "y": 30,
+            "width": 1100,
+            "height": 390
+          },
+          "svgBounds": {
+            "x": 500,
+            "y": 100.59375,
+            "width": 280,
+            "height": 210
+          },
+          "labelBounds": {
+            "x": 565.921875,
+            "y": 328.59375,
+            "width": 148.140625,
+            "height": 20.796875
+          },
+          "labelFont": "13px",
+          "labelColor": "rgb(107, 98, 85)",
+          "surface": "#fffdf8",
+          "motions": [
+            {
+              "animation": "loading_gatherBook",
+              "transform": "matrix(0.977035, -0.213081, 0.213081, 0.977035, 24.647, 13.5559)",
+              "bounds": {
+                "x": 583.7333984375,
+                "y": 155.8883056640625,
+                "width": 45.8272705078125,
+                "height": 56.52262878417969
+              }
+            },
+            {
+              "animation": "loading_gatherMovie",
+              "transform": "matrix(0.979802, 0.199972, -0.199972, 0.979802, -27.1117, 15.4044)",
+              "bounds": {
+                "x": 642.2525634765625,
+                "y": 157.9036102294922,
+                "width": 45.27142333984375,
+                "height": 56.18907165527344
+              }
+            },
+            {
+              "animation": "loading_gatherSeries",
+              "transform": "matrix(1, 0, 0, 1, 0, -25.2632)",
+              "bounds": {
+                "x": 622,
+                "y": 216.33053588867188,
+                "width": 36,
+                "height": 50
+              }
+            }
+          ]
+        },
+        {
+          "time": 2200,
+          "overflow": 0,
+          "statusCount": 1,
+          "text": "Cargando comparación…",
+          "svgAriaHidden": "true",
+          "svgFocusable": "false",
+          "statusBounds": {
+            "x": 90,
+            "y": 30,
+            "width": 1100,
+            "height": 390
+          },
+          "svgBounds": {
+            "x": 500,
+            "y": 100.59375,
+            "width": 280,
+            "height": 210
+          },
+          "labelBounds": {
+            "x": 565.921875,
+            "y": 328.59375,
+            "width": 148.140625,
+            "height": 20.796875
+          },
+          "labelFont": "13px",
+          "labelColor": "rgb(107, 98, 85)",
+          "surface": "#fffdf8",
+          "motions": [
+            {
+              "animation": "loading_gatherBook",
+              "transform": "matrix(0.984808, -0.173648, 0.173648, 0.984808, 40, 22)",
+              "bounds": {
+                "x": 599.9322509765625,
+                "y": 164.84788513183594,
+                "width": 44.135498046875,
+                "height": 55.491729736328125
+              }
+            },
+            {
+              "animation": "loading_gatherMovie",
+              "transform": "matrix(0.984808, 0.173648, -0.173648, 0.984808, -44, 25)",
+              "bounds": {
+                "x": 625.9322509765625,
+                "y": 167.84788513183594,
+                "width": 44.135498046875,
+                "height": 55.491729736328125
+              }
+            },
+            {
+              "animation": "loading_gatherSeries",
+              "transform": "matrix(1, 0, 0, 1, 0, -41)",
+              "bounds": {
+                "x": 622,
+                "y": 200.59375,
+                "width": 36,
+                "height": 50
+              }
+            }
+          ]
+        },
+        {
+          "time": 4400,
+          "overflow": 0,
+          "statusCount": 1,
+          "text": "Cargando comparación…",
+          "svgAriaHidden": "true",
+          "svgFocusable": "false",
+          "statusBounds": {
+            "x": 90,
+            "y": 30,
+            "width": 1100,
+            "height": 390
+          },
+          "svgBounds": {
+            "x": 500,
+            "y": 100.59375,
+            "width": 280,
+            "height": 210
+          },
+          "labelBounds": {
+            "x": 565.921875,
+            "y": 328.59375,
+            "width": 148.140625,
+            "height": 20.796875
+          },
+          "labelFont": "13px",
+          "labelColor": "rgb(107, 98, 85)",
+          "surface": "#fffdf8",
+          "motions": [
+            {
+              "animation": "loading_gatherBook",
+              "transform": "matrix(0.961262, -0.275637, 0.275637, 0.961262, 0, 0)",
+              "bounds": {
+                "x": 557.8063354492188,
+                "y": 141.60073852539062,
+                "width": 48.3873291015625,
+                "height": 57.98602294921875
+              }
+            },
+            {
+              "animation": "loading_gatherMovie",
+              "transform": "matrix(0.970296, 0.241922, -0.241922, 0.970296, 0, 0)",
+              "bounds": {
+                "x": 668.4866333007812,
+                "y": 141.9817657470703,
+                "width": 47.0267333984375,
+                "height": 57.223968505859375
+              }
+            },
+            {
+              "animation": "loading_gatherSeries",
+              "transform": "matrix(1, 0, 0, 1, 0, 0)",
+              "bounds": {
+                "x": 622,
+                "y": 241.59375,
+                "width": 36,
+                "height": 50
+              }
+            }
+          ]
+        }
+      ],
+      "reducedMotion": {
+        "static": true,
+        "animationCount": 0,
+        "overflow": 0
+      },
+      "consoleErrors": [],
+      "failedRequests": [],
+      "externalRequests": [],
+      "result": "PASS"
+    },
+    {
+      "width": 1280,
+      "theme": "light",
+      "variant": "compact",
+      "states": [
+        {
+          "time": 0,
+          "overflow": 0,
+          "statusCount": 1,
+          "text": "Cargando detalle…",
+          "svgAriaHidden": "true",
+          "svgFocusable": "false",
+          "statusBounds": {
+            "x": 90,
+            "y": 54,
+            "width": 1100,
+            "height": 110
+          },
+          "svgBounds": {
+            "x": 90,
+            "y": 71.5,
+            "width": 100,
+            "height": 75
+          },
+          "labelBounds": {
+            "x": 206,
+            "y": 98.59375,
+            "width": 112.03125,
+            "height": 20.796875
+          },
+          "labelFont": "13px",
+          "labelColor": "rgb(107, 98, 85)",
+          "surface": "#fffdf8",
+          "motions": [
+            {
+              "animation": "loading_gatherBook",
+              "transform": "matrix(0.961262, -0.275637, 0.275637, 0.961262, 0, 0)",
+              "bounds": {
+                "x": 110.64512634277344,
+                "y": 86.14535522460938,
+                "width": 17.281173706054688,
+                "height": 20.70928955078125
+              }
+            },
+            {
+              "animation": "loading_gatherMovie",
+              "transform": "matrix(0.970296, 0.241922, -0.241922, 0.970296, 0, 0)",
+              "bounds": {
+                "x": 150.17379760742188,
+                "y": 86.28143310546875,
+                "width": 16.795257568359375,
+                "height": 20.4371337890625
+              }
+            },
+            {
+              "animation": "loading_gatherSeries",
+              "transform": "matrix(1, 0, 0, 1, 0, 0)",
+              "bounds": {
+                "x": 133.57142639160156,
+                "y": 121.85714721679688,
+                "width": 12.857147216796875,
+                "height": 17.857147216796875
+              }
+            }
+          ]
+        },
+        {
+          "time": 1000,
+          "overflow": 0,
+          "statusCount": 1,
+          "text": "Cargando detalle…",
+          "svgAriaHidden": "true",
+          "svgFocusable": "false",
+          "statusBounds": {
+            "x": 90,
+            "y": 54,
+            "width": 1100,
+            "height": 110
+          },
+          "svgBounds": {
+            "x": 90,
+            "y": 71.5,
+            "width": 100,
+            "height": 75
+          },
+          "labelBounds": {
+            "x": 206,
+            "y": 98.59375,
+            "width": 112.03125,
+            "height": 20.796875
+          },
+          "labelFont": "13px",
+          "labelColor": "rgb(107, 98, 85)",
+          "surface": "#fffdf8",
+          "motions": [
+            {
+              "animation": "loading_gatherBook",
+              "transform": "matrix(0.977035, -0.213081, 0.213081, 0.977035, 24.647, 13.5559)",
+              "bounds": {
+                "x": 119.90478515625,
+                "y": 91.24805450439453,
+                "width": 16.36688232421875,
+                "height": 20.18665313720703
+              }
+            },
+            {
+              "animation": "loading_gatherMovie",
+              "transform": "matrix(0.979802, 0.199972, -0.199972, 0.979802, -27.1117, 15.4044)",
+              "bounds": {
+                "x": 140.80447387695312,
+                "y": 91.96780395507812,
+                "width": 16.168380737304688,
+                "height": 20.067527770996094
+              }
+            },
+            {
+              "animation": "loading_gatherSeries",
+              "transform": "matrix(1, 0, 0, 1, 0, -25.2632)",
+              "bounds": {
+                "x": 133.57142639160156,
+                "y": 112.83456420898438,
+                "width": 12.857147216796875,
+                "height": 17.857147216796875
+              }
+            }
+          ]
+        },
+        {
+          "time": 2200,
+          "overflow": 0,
+          "statusCount": 1,
+          "text": "Cargando detalle…",
+          "svgAriaHidden": "true",
+          "svgFocusable": "false",
+          "statusBounds": {
+            "x": 90,
+            "y": 54,
+            "width": 1100,
+            "height": 110
+          },
+          "svgBounds": {
+            "x": 90,
+            "y": 71.5,
+            "width": 100,
+            "height": 75
+          },
+          "labelBounds": {
+            "x": 206,
+            "y": 98.59375,
+            "width": 112.03125,
+            "height": 20.796875
+          },
+          "labelFont": "13px",
+          "labelColor": "rgb(107, 98, 85)",
+          "surface": "#fffdf8",
+          "motions": [
+            {
+              "animation": "loading_gatherBook",
+              "transform": "matrix(0.984808, -0.173648, 0.173648, 0.984808, 40, 22)",
+              "bounds": {
+                "x": 125.69009399414062,
+                "y": 94.44790649414062,
+                "width": 15.762664794921875,
+                "height": 19.81847381591797
+              }
+            },
+            {
+              "animation": "loading_gatherMovie",
+              "transform": "matrix(0.984808, 0.173648, -0.173648, 0.984808, -44, 25)",
+              "bounds": {
+                "x": 134.97579956054688,
+                "y": 95.51933288574219,
+                "width": 15.762680053710938,
+                "height": 19.8184814453125
+              }
+            },
+            {
+              "animation": "loading_gatherSeries",
+              "transform": "matrix(1, 0, 0, 1, 0, -41)",
+              "bounds": {
+                "x": 133.57142639160156,
+                "y": 107.21428680419922,
+                "width": 12.857147216796875,
+                "height": 17.857139587402344
+              }
+            }
+          ]
+        },
+        {
+          "time": 4400,
+          "overflow": 0,
+          "statusCount": 1,
+          "text": "Cargando detalle…",
+          "svgAriaHidden": "true",
+          "svgFocusable": "false",
+          "statusBounds": {
+            "x": 90,
+            "y": 54,
+            "width": 1100,
+            "height": 110
+          },
+          "svgBounds": {
+            "x": 90,
+            "y": 71.5,
+            "width": 100,
+            "height": 75
+          },
+          "labelBounds": {
+            "x": 206,
+            "y": 98.59375,
+            "width": 112.03125,
+            "height": 20.796875
+          },
+          "labelFont": "13px",
+          "labelColor": "rgb(107, 98, 85)",
+          "surface": "#fffdf8",
+          "motions": [
+            {
+              "animation": "loading_gatherBook",
+              "transform": "matrix(0.961262, -0.275637, 0.275637, 0.961262, 0, 0)",
+              "bounds": {
+                "x": 110.64512634277344,
+                "y": 86.14535522460938,
+                "width": 17.281173706054688,
+                "height": 20.70928955078125
+              }
+            },
+            {
+              "animation": "loading_gatherMovie",
+              "transform": "matrix(0.970296, 0.241922, -0.241922, 0.970296, 0, 0)",
+              "bounds": {
+                "x": 150.17379760742188,
+                "y": 86.28143310546875,
+                "width": 16.795257568359375,
+                "height": 20.4371337890625
+              }
+            },
+            {
+              "animation": "loading_gatherSeries",
+              "transform": "matrix(1, 0, 0, 1, 0, 0)",
+              "bounds": {
+                "x": 133.57142639160156,
+                "y": 121.85714721679688,
+                "width": 12.857147216796875,
+                "height": 17.857147216796875
+              }
+            }
+          ]
+        }
+      ],
+      "reducedMotion": {
+        "static": true,
+        "animationCount": 0,
+        "overflow": 0
+      },
+      "consoleErrors": [],
+      "failedRequests": [],
+      "externalRequests": [],
+      "result": "PASS"
+    },
+    {
+      "width": 1280,
+      "theme": "dark",
+      "variant": "full",
+      "states": [
+        {
+          "time": 0,
+          "overflow": 0,
+          "statusCount": 1,
+          "text": "Cargando comparación…",
+          "svgAriaHidden": "true",
+          "svgFocusable": "false",
+          "statusBounds": {
+            "x": 90,
+            "y": 30,
+            "width": 1100,
+            "height": 390
+          },
+          "svgBounds": {
+            "x": 500,
+            "y": 100.59375,
+            "width": 280,
+            "height": 210
+          },
+          "labelBounds": {
+            "x": 565.921875,
+            "y": 328.59375,
+            "width": 148.140625,
+            "height": 20.796875
+          },
+          "labelFont": "13px",
+          "labelColor": "rgb(169, 158, 140)",
+          "surface": "#2a231d",
+          "motions": [
+            {
+              "animation": "loading_gatherBook",
+              "transform": "matrix(0.961262, -0.275637, 0.275637, 0.961262, 0, 0)",
+              "bounds": {
+                "x": 557.8063354492188,
+                "y": 141.60073852539062,
+                "width": 48.3873291015625,
+                "height": 57.98602294921875
+              }
+            },
+            {
+              "animation": "loading_gatherMovie",
+              "transform": "matrix(0.970296, 0.241922, -0.241922, 0.970296, 0, 0)",
+              "bounds": {
+                "x": 668.4866333007812,
+                "y": 141.9817657470703,
+                "width": 47.0267333984375,
+                "height": 57.223968505859375
+              }
+            },
+            {
+              "animation": "loading_gatherSeries",
+              "transform": "matrix(1, 0, 0, 1, 0, 0)",
+              "bounds": {
+                "x": 622,
+                "y": 241.59375,
+                "width": 36,
+                "height": 50
+              }
+            }
+          ]
+        },
+        {
+          "time": 1000,
+          "overflow": 0,
+          "statusCount": 1,
+          "text": "Cargando comparación…",
+          "svgAriaHidden": "true",
+          "svgFocusable": "false",
+          "statusBounds": {
+            "x": 90,
+            "y": 30,
+            "width": 1100,
+            "height": 390
+          },
+          "svgBounds": {
+            "x": 500,
+            "y": 100.59375,
+            "width": 280,
+            "height": 210
+          },
+          "labelBounds": {
+            "x": 565.921875,
+            "y": 328.59375,
+            "width": 148.140625,
+            "height": 20.796875
+          },
+          "labelFont": "13px",
+          "labelColor": "rgb(169, 158, 140)",
+          "surface": "#2a231d",
+          "motions": [
+            {
+              "animation": "loading_gatherBook",
+              "transform": "matrix(0.977035, -0.213081, 0.213081, 0.977035, 24.647, 13.5559)",
+              "bounds": {
+                "x": 583.7333984375,
+                "y": 155.8883056640625,
+                "width": 45.8272705078125,
+                "height": 56.52262878417969
+              }
+            },
+            {
+              "animation": "loading_gatherMovie",
+              "transform": "matrix(0.979802, 0.199972, -0.199972, 0.979802, -27.1117, 15.4044)",
+              "bounds": {
+                "x": 642.2525634765625,
+                "y": 157.9036102294922,
+                "width": 45.27142333984375,
+                "height": 56.18907165527344
+              }
+            },
+            {
+              "animation": "loading_gatherSeries",
+              "transform": "matrix(1, 0, 0, 1, 0, -25.2632)",
+              "bounds": {
+                "x": 622,
+                "y": 216.33053588867188,
+                "width": 36,
+                "height": 50
+              }
+            }
+          ]
+        },
+        {
+          "time": 2200,
+          "overflow": 0,
+          "statusCount": 1,
+          "text": "Cargando comparación…",
+          "svgAriaHidden": "true",
+          "svgFocusable": "false",
+          "statusBounds": {
+            "x": 90,
+            "y": 30,
+            "width": 1100,
+            "height": 390
+          },
+          "svgBounds": {
+            "x": 500,
+            "y": 100.59375,
+            "width": 280,
+            "height": 210
+          },
+          "labelBounds": {
+            "x": 565.921875,
+            "y": 328.59375,
+            "width": 148.140625,
+            "height": 20.796875
+          },
+          "labelFont": "13px",
+          "labelColor": "rgb(169, 158, 140)",
+          "surface": "#2a231d",
+          "motions": [
+            {
+              "animation": "loading_gatherBook",
+              "transform": "matrix(0.984808, -0.173648, 0.173648, 0.984808, 40, 22)",
+              "bounds": {
+                "x": 599.9322509765625,
+                "y": 164.84788513183594,
+                "width": 44.135498046875,
+                "height": 55.491729736328125
+              }
+            },
+            {
+              "animation": "loading_gatherMovie",
+              "transform": "matrix(0.984808, 0.173648, -0.173648, 0.984808, -44, 25)",
+              "bounds": {
+                "x": 625.9322509765625,
+                "y": 167.84788513183594,
+                "width": 44.135498046875,
+                "height": 55.491729736328125
+              }
+            },
+            {
+              "animation": "loading_gatherSeries",
+              "transform": "matrix(1, 0, 0, 1, 0, -41)",
+              "bounds": {
+                "x": 622,
+                "y": 200.59375,
+                "width": 36,
+                "height": 50
+              }
+            }
+          ]
+        },
+        {
+          "time": 4400,
+          "overflow": 0,
+          "statusCount": 1,
+          "text": "Cargando comparación…",
+          "svgAriaHidden": "true",
+          "svgFocusable": "false",
+          "statusBounds": {
+            "x": 90,
+            "y": 30,
+            "width": 1100,
+            "height": 390
+          },
+          "svgBounds": {
+            "x": 500,
+            "y": 100.59375,
+            "width": 280,
+            "height": 210
+          },
+          "labelBounds": {
+            "x": 565.921875,
+            "y": 328.59375,
+            "width": 148.140625,
+            "height": 20.796875
+          },
+          "labelFont": "13px",
+          "labelColor": "rgb(169, 158, 140)",
+          "surface": "#2a231d",
+          "motions": [
+            {
+              "animation": "loading_gatherBook",
+              "transform": "matrix(0.961262, -0.275637, 0.275637, 0.961262, 0, 0)",
+              "bounds": {
+                "x": 557.8063354492188,
+                "y": 141.60073852539062,
+                "width": 48.3873291015625,
+                "height": 57.98602294921875
+              }
+            },
+            {
+              "animation": "loading_gatherMovie",
+              "transform": "matrix(0.970296, 0.241922, -0.241922, 0.970296, 0, 0)",
+              "bounds": {
+                "x": 668.4866333007812,
+                "y": 141.9817657470703,
+                "width": 47.0267333984375,
+                "height": 57.223968505859375
+              }
+            },
+            {
+              "animation": "loading_gatherSeries",
+              "transform": "matrix(1, 0, 0, 1, 0, 0)",
+              "bounds": {
+                "x": 622,
+                "y": 241.59375,
+                "width": 36,
+                "height": 50
+              }
+            }
+          ]
+        }
+      ],
+      "reducedMotion": {
+        "static": true,
+        "animationCount": 0,
+        "overflow": 0
+      },
+      "consoleErrors": [],
+      "failedRequests": [],
+      "externalRequests": [],
+      "result": "PASS"
+    },
+    {
+      "width": 1280,
+      "theme": "dark",
+      "variant": "compact",
+      "states": [
+        {
+          "time": 0,
+          "overflow": 0,
+          "statusCount": 1,
+          "text": "Cargando detalle…",
+          "svgAriaHidden": "true",
+          "svgFocusable": "false",
+          "statusBounds": {
+            "x": 90,
+            "y": 54,
+            "width": 1100,
+            "height": 110
+          },
+          "svgBounds": {
+            "x": 90,
+            "y": 71.5,
+            "width": 100,
+            "height": 75
+          },
+          "labelBounds": {
+            "x": 206,
+            "y": 98.59375,
+            "width": 112.03125,
+            "height": 20.796875
+          },
+          "labelFont": "13px",
+          "labelColor": "rgb(169, 158, 140)",
+          "surface": "#2a231d",
+          "motions": [
+            {
+              "animation": "loading_gatherBook",
+              "transform": "matrix(0.961262, -0.275637, 0.275637, 0.961262, 0, 0)",
+              "bounds": {
+                "x": 110.64512634277344,
+                "y": 86.14535522460938,
+                "width": 17.281173706054688,
+                "height": 20.70928955078125
+              }
+            },
+            {
+              "animation": "loading_gatherMovie",
+              "transform": "matrix(0.970296, 0.241922, -0.241922, 0.970296, 0, 0)",
+              "bounds": {
+                "x": 150.17379760742188,
+                "y": 86.28143310546875,
+                "width": 16.795257568359375,
+                "height": 20.4371337890625
+              }
+            },
+            {
+              "animation": "loading_gatherSeries",
+              "transform": "matrix(1, 0, 0, 1, 0, 0)",
+              "bounds": {
+                "x": 133.57142639160156,
+                "y": 121.85714721679688,
+                "width": 12.857147216796875,
+                "height": 17.857147216796875
+              }
+            }
+          ]
+        },
+        {
+          "time": 1000,
+          "overflow": 0,
+          "statusCount": 1,
+          "text": "Cargando detalle…",
+          "svgAriaHidden": "true",
+          "svgFocusable": "false",
+          "statusBounds": {
+            "x": 90,
+            "y": 54,
+            "width": 1100,
+            "height": 110
+          },
+          "svgBounds": {
+            "x": 90,
+            "y": 71.5,
+            "width": 100,
+            "height": 75
+          },
+          "labelBounds": {
+            "x": 206,
+            "y": 98.59375,
+            "width": 112.03125,
+            "height": 20.796875
+          },
+          "labelFont": "13px",
+          "labelColor": "rgb(169, 158, 140)",
+          "surface": "#2a231d",
+          "motions": [
+            {
+              "animation": "loading_gatherBook",
+              "transform": "matrix(0.977035, -0.213081, 0.213081, 0.977035, 24.647, 13.5559)",
+              "bounds": {
+                "x": 119.90478515625,
+                "y": 91.24805450439453,
+                "width": 16.36688232421875,
+                "height": 20.18665313720703
+              }
+            },
+            {
+              "animation": "loading_gatherMovie",
+              "transform": "matrix(0.979802, 0.199972, -0.199972, 0.979802, -27.1117, 15.4044)",
+              "bounds": {
+                "x": 140.80447387695312,
+                "y": 91.96780395507812,
+                "width": 16.168380737304688,
+                "height": 20.067527770996094
+              }
+            },
+            {
+              "animation": "loading_gatherSeries",
+              "transform": "matrix(1, 0, 0, 1, 0, -25.2632)",
+              "bounds": {
+                "x": 133.57142639160156,
+                "y": 112.83456420898438,
+                "width": 12.857147216796875,
+                "height": 17.857147216796875
+              }
+            }
+          ]
+        },
+        {
+          "time": 2200,
+          "overflow": 0,
+          "statusCount": 1,
+          "text": "Cargando detalle…",
+          "svgAriaHidden": "true",
+          "svgFocusable": "false",
+          "statusBounds": {
+            "x": 90,
+            "y": 54,
+            "width": 1100,
+            "height": 110
+          },
+          "svgBounds": {
+            "x": 90,
+            "y": 71.5,
+            "width": 100,
+            "height": 75
+          },
+          "labelBounds": {
+            "x": 206,
+            "y": 98.59375,
+            "width": 112.03125,
+            "height": 20.796875
+          },
+          "labelFont": "13px",
+          "labelColor": "rgb(169, 158, 140)",
+          "surface": "#2a231d",
+          "motions": [
+            {
+              "animation": "loading_gatherBook",
+              "transform": "matrix(0.984808, -0.173648, 0.173648, 0.984808, 40, 22)",
+              "bounds": {
+                "x": 125.69009399414062,
+                "y": 94.44790649414062,
+                "width": 15.762664794921875,
+                "height": 19.81847381591797
+              }
+            },
+            {
+              "animation": "loading_gatherMovie",
+              "transform": "matrix(0.984808, 0.173648, -0.173648, 0.984808, -44, 25)",
+              "bounds": {
+                "x": 134.97579956054688,
+                "y": 95.51933288574219,
+                "width": 15.762680053710938,
+                "height": 19.8184814453125
+              }
+            },
+            {
+              "animation": "loading_gatherSeries",
+              "transform": "matrix(1, 0, 0, 1, 0, -41)",
+              "bounds": {
+                "x": 133.57142639160156,
+                "y": 107.21428680419922,
+                "width": 12.857147216796875,
+                "height": 17.857139587402344
+              }
+            }
+          ]
+        },
+        {
+          "time": 4400,
+          "overflow": 0,
+          "statusCount": 1,
+          "text": "Cargando detalle…",
+          "svgAriaHidden": "true",
+          "svgFocusable": "false",
+          "statusBounds": {
+            "x": 90,
+            "y": 54,
+            "width": 1100,
+            "height": 110
+          },
+          "svgBounds": {
+            "x": 90,
+            "y": 71.5,
+            "width": 100,
+            "height": 75
+          },
+          "labelBounds": {
+            "x": 206,
+            "y": 98.59375,
+            "width": 112.03125,
+            "height": 20.796875
+          },
+          "labelFont": "13px",
+          "labelColor": "rgb(169, 158, 140)",
+          "surface": "#2a231d",
+          "motions": [
+            {
+              "animation": "loading_gatherBook",
+              "transform": "matrix(0.961262, -0.275637, 0.275637, 0.961262, 0, 0)",
+              "bounds": {
+                "x": 110.64512634277344,
+                "y": 86.14535522460938,
+                "width": 17.281173706054688,
+                "height": 20.70928955078125
+              }
+            },
+            {
+              "animation": "loading_gatherMovie",
+              "transform": "matrix(0.970296, 0.241922, -0.241922, 0.970296, 0, 0)",
+              "bounds": {
+                "x": 150.17379760742188,
+                "y": 86.28143310546875,
+                "width": 16.795257568359375,
+                "height": 20.4371337890625
+              }
+            },
+            {
+              "animation": "loading_gatherSeries",
+              "transform": "matrix(1, 0, 0, 1, 0, 0)",
+              "bounds": {
+                "x": 133.57142639160156,
+                "y": 121.85714721679688,
+                "width": 12.857147216796875,
+                "height": 17.857147216796875
+              }
+            }
+          ]
+        }
+      ],
+      "reducedMotion": {
+        "static": true,
+        "animationCount": 0,
+        "overflow": 0
+      },
+      "consoleErrors": [],
+      "failedRequests": [],
+      "externalRequests": [],
+      "result": "PASS"
+    },
+    {
+      "width": 320,
+      "theme": "light",
+      "variant": "full",
+      "states": [
+        {
+          "time": 0,
+          "overflow": 0,
+          "statusCount": 1,
+          "text": "Cargando comparación…",
+          "svgAriaHidden": "true",
+          "svgFocusable": "false",
+          "statusBounds": {
+            "x": 16,
+            "y": 22,
+            "width": 288,
+            "height": 390
+          },
+          "svgBounds": {
+            "x": 44,
+            "y": 110.59375,
+            "width": 232,
+            "height": 174
+          },
+          "labelBounds": {
+            "x": 85.921875,
+            "y": 302.59375,
+            "width": 148.140625,
+            "height": 20.796875
+          },
+          "labelFont": "13px",
+          "labelColor": "rgb(107, 98, 85)",
+          "surface": "#fffdf8",
+          "motions": [
+            {
+              "animation": "loading_gatherBook",
+              "transform": "matrix(0.961262, -0.275637, 0.275637, 0.961262, 0, 0)",
+              "bounds": {
+                "x": 91.89669799804688,
+                "y": 144.5709686279297,
+                "width": 40.092315673828125,
+                "height": 48.045562744140625
+              }
+            },
+            {
+              "animation": "loading_gatherMovie",
+              "transform": "matrix(0.970296, 0.241922, -0.241922, 0.970296, 0, 0)",
+              "bounds": {
+                "x": 183.60321044921875,
+                "y": 144.8866729736328,
+                "width": 38.96501159667969,
+                "height": 47.41413879394531
+              }
+            },
+            {
+              "animation": "loading_gatherSeries",
+              "transform": "matrix(1, 0, 0, 1, 0, 0)",
+              "bounds": {
+                "x": 145.08572387695312,
+                "y": 227.42233276367188,
+                "width": 29.828567504882812,
+                "height": 41.428558349609375
+              }
+            }
+          ]
+        },
+        {
+          "time": 1000,
+          "overflow": 0,
+          "statusCount": 1,
+          "text": "Cargando comparación…",
+          "svgAriaHidden": "true",
+          "svgFocusable": "false",
+          "statusBounds": {
+            "x": 16,
+            "y": 22,
+            "width": 288,
+            "height": 390
+          },
+          "svgBounds": {
+            "x": 44,
+            "y": 110.59375,
+            "width": 232,
+            "height": 174
+          },
+          "labelBounds": {
+            "x": 85.921875,
+            "y": 302.59375,
+            "width": 148.140625,
+            "height": 20.796875
+          },
+          "labelFont": "13px",
+          "labelColor": "rgb(107, 98, 85)",
+          "surface": "#fffdf8",
+          "motions": [
+            {
+              "animation": "loading_gatherBook",
+              "transform": "matrix(0.977035, -0.213081, 0.213081, 0.977035, 24.647, 13.5559)",
+              "bounds": {
+                "x": 113.37909698486328,
+                "y": 156.40924072265625,
+                "width": 37.971168518066406,
+                "height": 46.833038330078125
+              }
+            },
+            {
+              "animation": "loading_gatherMovie",
+              "transform": "matrix(0.979802, 0.199972, -0.199972, 0.979802, -27.1117, 15.4044)",
+              "bounds": {
+                "x": 161.86639404296875,
+                "y": 158.07907104492188,
+                "width": 37.5106201171875,
+                "height": 46.556640625
+              }
+            },
+            {
+              "animation": "loading_gatherSeries",
+              "transform": "matrix(1, 0, 0, 1, 0, -25.2632)",
+              "bounds": {
+                "x": 145.08572387695312,
+                "y": 206.48995971679688,
+                "width": 29.828567504882812,
+                "height": 41.428558349609375
+              }
+            }
+          ]
+        },
+        {
+          "time": 2200,
+          "overflow": 0,
+          "statusCount": 1,
+          "text": "Cargando comparación…",
+          "svgAriaHidden": "true",
+          "svgFocusable": "false",
+          "statusBounds": {
+            "x": 16,
+            "y": 22,
+            "width": 288,
+            "height": 390
+          },
+          "svgBounds": {
+            "x": 44,
+            "y": 110.59375,
+            "width": 232,
+            "height": 174
+          },
+          "labelBounds": {
+            "x": 85.921875,
+            "y": 302.59375,
+            "width": 148.140625,
+            "height": 20.796875
+          },
+          "labelFont": "13px",
+          "labelColor": "rgb(107, 98, 85)",
+          "surface": "#fffdf8",
+          "motions": [
+            {
+              "animation": "loading_gatherBook",
+              "transform": "matrix(0.984808, -0.173648, 0.173648, 0.984808, 40, 22)",
+              "bounds": {
+                "x": 126.80101776123047,
+                "y": 163.8328857421875,
+                "width": 36.56940460205078,
+                "height": 45.97886657714844
+              }
+            },
+            {
+              "animation": "loading_gatherMovie",
+              "transform": "matrix(0.984808, 0.173648, -0.173648, 0.984808, -44, 25)",
+              "bounds": {
+                "x": 148.3438720703125,
+                "y": 166.318603515625,
+                "width": 36.56941223144531,
+                "height": 45.97886657714844
+              }
+            },
+            {
+              "animation": "loading_gatherSeries",
+              "transform": "matrix(1, 0, 0, 1, 0, -41)",
+              "bounds": {
+                "x": 145.08572387695312,
+                "y": 193.45089721679688,
+                "width": 29.828567504882812,
+                "height": 41.428558349609375
+              }
+            }
+          ]
+        },
+        {
+          "time": 4400,
+          "overflow": 0,
+          "statusCount": 1,
+          "text": "Cargando comparación…",
+          "svgAriaHidden": "true",
+          "svgFocusable": "false",
+          "statusBounds": {
+            "x": 16,
+            "y": 22,
+            "width": 288,
+            "height": 390
+          },
+          "svgBounds": {
+            "x": 44,
+            "y": 110.59375,
+            "width": 232,
+            "height": 174
+          },
+          "labelBounds": {
+            "x": 85.921875,
+            "y": 302.59375,
+            "width": 148.140625,
+            "height": 20.796875
+          },
+          "labelFont": "13px",
+          "labelColor": "rgb(107, 98, 85)",
+          "surface": "#fffdf8",
+          "motions": [
+            {
+              "animation": "loading_gatherBook",
+              "transform": "matrix(0.961262, -0.275637, 0.275637, 0.961262, 0, 0)",
+              "bounds": {
+                "x": 91.89669799804688,
+                "y": 144.5709686279297,
+                "width": 40.092315673828125,
+                "height": 48.045562744140625
+              }
+            },
+            {
+              "animation": "loading_gatherMovie",
+              "transform": "matrix(0.970296, 0.241922, -0.241922, 0.970296, 0, 0)",
+              "bounds": {
+                "x": 183.60321044921875,
+                "y": 144.8866729736328,
+                "width": 38.96501159667969,
+                "height": 47.41413879394531
+              }
+            },
+            {
+              "animation": "loading_gatherSeries",
+              "transform": "matrix(1, 0, 0, 1, 0, 0)",
+              "bounds": {
+                "x": 145.08572387695312,
+                "y": 227.42233276367188,
+                "width": 29.828567504882812,
+                "height": 41.428558349609375
+              }
+            }
+          ]
+        }
+      ],
+      "reducedMotion": {
+        "static": true,
+        "animationCount": 0,
+        "overflow": 0
+      },
+      "consoleErrors": [],
+      "failedRequests": [],
+      "externalRequests": [],
+      "result": "PASS"
+    },
+    {
+      "width": 320,
+      "theme": "light",
+      "variant": "compact",
+      "states": [
+        {
+          "time": 0,
+          "overflow": 0,
+          "statusCount": 1,
+          "text": "Cargando detalle…",
+          "svgAriaHidden": "true",
+          "svgFocusable": "false",
+          "statusBounds": {
+            "x": 16,
+            "y": 46,
+            "width": 288,
+            "height": 110
+          },
+          "svgBounds": {
+            "x": 16,
+            "y": 63.5,
+            "width": 100,
+            "height": 75
+          },
+          "labelBounds": {
+            "x": 132,
+            "y": 90.59375,
+            "width": 112.03125,
+            "height": 20.796875
+          },
+          "labelFont": "13px",
+          "labelColor": "rgb(107, 98, 85)",
+          "surface": "#fffdf8",
+          "motions": [
+            {
+              "animation": "loading_gatherBook",
+              "transform": "matrix(0.961262, -0.275637, 0.275637, 0.961262, 0, 0)",
+              "bounds": {
+                "x": 36.64512634277344,
+                "y": 78.14535522460938,
+                "width": 17.281173706054688,
+                "height": 20.70928955078125
+              }
+            },
+            {
+              "animation": "loading_gatherMovie",
+              "transform": "matrix(0.970296, 0.241922, -0.241922, 0.970296, 0, 0)",
+              "bounds": {
+                "x": 76.17379760742188,
+                "y": 78.28143310546875,
+                "width": 16.795265197753906,
+                "height": 20.4371337890625
+              }
+            },
+            {
+              "animation": "loading_gatherSeries",
+              "transform": "matrix(1, 0, 0, 1, 0, 0)",
+              "bounds": {
+                "x": 59.57143020629883,
+                "y": 113.85714721679688,
+                "width": 12.85714340209961,
+                "height": 17.857147216796875
+              }
+            }
+          ]
+        },
+        {
+          "time": 1000,
+          "overflow": 0,
+          "statusCount": 1,
+          "text": "Cargando detalle…",
+          "svgAriaHidden": "true",
+          "svgFocusable": "false",
+          "statusBounds": {
+            "x": 16,
+            "y": 46,
+            "width": 288,
+            "height": 110
+          },
+          "svgBounds": {
+            "x": 16,
+            "y": 63.5,
+            "width": 100,
+            "height": 75
+          },
+          "labelBounds": {
+            "x": 132,
+            "y": 90.59375,
+            "width": 112.03125,
+            "height": 20.796875
+          },
+          "labelFont": "13px",
+          "labelColor": "rgb(107, 98, 85)",
+          "surface": "#fffdf8",
+          "motions": [
+            {
+              "animation": "loading_gatherBook",
+              "transform": "matrix(0.977035, -0.213081, 0.213081, 0.977035, 24.647, 13.5559)",
+              "bounds": {
+                "x": 45.90478515625,
+                "y": 83.24805450439453,
+                "width": 16.36688232421875,
+                "height": 20.18665313720703
+              }
+            },
+            {
+              "animation": "loading_gatherMovie",
+              "transform": "matrix(0.979802, 0.199972, -0.199972, 0.979802, -27.1117, 15.4044)",
+              "bounds": {
+                "x": 66.80448150634766,
+                "y": 83.96780395507812,
+                "width": 16.168373107910156,
+                "height": 20.067527770996094
+              }
+            },
+            {
+              "animation": "loading_gatherSeries",
+              "transform": "matrix(1, 0, 0, 1, 0, -25.2632)",
+              "bounds": {
+                "x": 59.57143020629883,
+                "y": 104.83456420898438,
+                "width": 12.85714340209961,
+                "height": 17.857147216796875
+              }
+            }
+          ]
+        },
+        {
+          "time": 2200,
+          "overflow": 0,
+          "statusCount": 1,
+          "text": "Cargando detalle…",
+          "svgAriaHidden": "true",
+          "svgFocusable": "false",
+          "statusBounds": {
+            "x": 16,
+            "y": 46,
+            "width": 288,
+            "height": 110
+          },
+          "svgBounds": {
+            "x": 16,
+            "y": 63.5,
+            "width": 100,
+            "height": 75
+          },
+          "labelBounds": {
+            "x": 132,
+            "y": 90.59375,
+            "width": 112.03125,
+            "height": 20.796875
+          },
+          "labelFont": "13px",
+          "labelColor": "rgb(107, 98, 85)",
+          "surface": "#fffdf8",
+          "motions": [
+            {
+              "animation": "loading_gatherBook",
+              "transform": "matrix(0.984808, -0.173648, 0.173648, 0.984808, 40, 22)",
+              "bounds": {
+                "x": 51.690093994140625,
+                "y": 86.44790649414062,
+                "width": 15.762672424316406,
+                "height": 19.81847381591797
+              }
+            },
+            {
+              "animation": "loading_gatherMovie",
+              "transform": "matrix(0.984808, 0.173648, -0.173648, 0.984808, -44, 25)",
+              "bounds": {
+                "x": 60.975807189941406,
+                "y": 87.51933288574219,
+                "width": 15.762672424316406,
+                "height": 19.8184814453125
+              }
+            },
+            {
+              "animation": "loading_gatherSeries",
+              "transform": "matrix(1, 0, 0, 1, 0, -41)",
+              "bounds": {
+                "x": 59.57143020629883,
+                "y": 99.21428680419922,
+                "width": 12.85714340209961,
+                "height": 17.857139587402344
+              }
+            }
+          ]
+        },
+        {
+          "time": 4400,
+          "overflow": 0,
+          "statusCount": 1,
+          "text": "Cargando detalle…",
+          "svgAriaHidden": "true",
+          "svgFocusable": "false",
+          "statusBounds": {
+            "x": 16,
+            "y": 46,
+            "width": 288,
+            "height": 110
+          },
+          "svgBounds": {
+            "x": 16,
+            "y": 63.5,
+            "width": 100,
+            "height": 75
+          },
+          "labelBounds": {
+            "x": 132,
+            "y": 90.59375,
+            "width": 112.03125,
+            "height": 20.796875
+          },
+          "labelFont": "13px",
+          "labelColor": "rgb(107, 98, 85)",
+          "surface": "#fffdf8",
+          "motions": [
+            {
+              "animation": "loading_gatherBook",
+              "transform": "matrix(0.961262, -0.275637, 0.275637, 0.961262, 0, 0)",
+              "bounds": {
+                "x": 36.64512634277344,
+                "y": 78.14535522460938,
+                "width": 17.281173706054688,
+                "height": 20.70928955078125
+              }
+            },
+            {
+              "animation": "loading_gatherMovie",
+              "transform": "matrix(0.970296, 0.241922, -0.241922, 0.970296, 0, 0)",
+              "bounds": {
+                "x": 76.17379760742188,
+                "y": 78.28143310546875,
+                "width": 16.795265197753906,
+                "height": 20.4371337890625
+              }
+            },
+            {
+              "animation": "loading_gatherSeries",
+              "transform": "matrix(1, 0, 0, 1, 0, 0)",
+              "bounds": {
+                "x": 59.57143020629883,
+                "y": 113.85714721679688,
+                "width": 12.85714340209961,
+                "height": 17.857147216796875
+              }
+            }
+          ]
+        }
+      ],
+      "reducedMotion": {
+        "static": true,
+        "animationCount": 0,
+        "overflow": 0
+      },
+      "consoleErrors": [],
+      "failedRequests": [],
+      "externalRequests": [],
+      "result": "PASS"
+    },
+    {
+      "width": 320,
+      "theme": "dark",
+      "variant": "full",
+      "states": [
+        {
+          "time": 0,
+          "overflow": 0,
+          "statusCount": 1,
+          "text": "Cargando comparación…",
+          "svgAriaHidden": "true",
+          "svgFocusable": "false",
+          "statusBounds": {
+            "x": 16,
+            "y": 22,
+            "width": 288,
+            "height": 390
+          },
+          "svgBounds": {
+            "x": 44,
+            "y": 110.59375,
+            "width": 232,
+            "height": 174
+          },
+          "labelBounds": {
+            "x": 85.921875,
+            "y": 302.59375,
+            "width": 148.140625,
+            "height": 20.796875
+          },
+          "labelFont": "13px",
+          "labelColor": "rgb(169, 158, 140)",
+          "surface": "#2a231d",
+          "motions": [
+            {
+              "animation": "loading_gatherBook",
+              "transform": "matrix(0.961262, -0.275637, 0.275637, 0.961262, 0, 0)",
+              "bounds": {
+                "x": 91.89669799804688,
+                "y": 144.5709686279297,
+                "width": 40.092315673828125,
+                "height": 48.045562744140625
+              }
+            },
+            {
+              "animation": "loading_gatherMovie",
+              "transform": "matrix(0.970296, 0.241922, -0.241922, 0.970296, 0, 0)",
+              "bounds": {
+                "x": 183.60321044921875,
+                "y": 144.8866729736328,
+                "width": 38.96501159667969,
+                "height": 47.41413879394531
+              }
+            },
+            {
+              "animation": "loading_gatherSeries",
+              "transform": "matrix(1, 0, 0, 1, 0, 0)",
+              "bounds": {
+                "x": 145.08572387695312,
+                "y": 227.42233276367188,
+                "width": 29.828567504882812,
+                "height": 41.428558349609375
+              }
+            }
+          ]
+        },
+        {
+          "time": 1000,
+          "overflow": 0,
+          "statusCount": 1,
+          "text": "Cargando comparación…",
+          "svgAriaHidden": "true",
+          "svgFocusable": "false",
+          "statusBounds": {
+            "x": 16,
+            "y": 22,
+            "width": 288,
+            "height": 390
+          },
+          "svgBounds": {
+            "x": 44,
+            "y": 110.59375,
+            "width": 232,
+            "height": 174
+          },
+          "labelBounds": {
+            "x": 85.921875,
+            "y": 302.59375,
+            "width": 148.140625,
+            "height": 20.796875
+          },
+          "labelFont": "13px",
+          "labelColor": "rgb(169, 158, 140)",
+          "surface": "#2a231d",
+          "motions": [
+            {
+              "animation": "loading_gatherBook",
+              "transform": "matrix(0.977035, -0.213081, 0.213081, 0.977035, 24.647, 13.5559)",
+              "bounds": {
+                "x": 113.37909698486328,
+                "y": 156.40924072265625,
+                "width": 37.971168518066406,
+                "height": 46.833038330078125
+              }
+            },
+            {
+              "animation": "loading_gatherMovie",
+              "transform": "matrix(0.979802, 0.199972, -0.199972, 0.979802, -27.1117, 15.4044)",
+              "bounds": {
+                "x": 161.86639404296875,
+                "y": 158.07907104492188,
+                "width": 37.5106201171875,
+                "height": 46.556640625
+              }
+            },
+            {
+              "animation": "loading_gatherSeries",
+              "transform": "matrix(1, 0, 0, 1, 0, -25.2632)",
+              "bounds": {
+                "x": 145.08572387695312,
+                "y": 206.48995971679688,
+                "width": 29.828567504882812,
+                "height": 41.428558349609375
+              }
+            }
+          ]
+        },
+        {
+          "time": 2200,
+          "overflow": 0,
+          "statusCount": 1,
+          "text": "Cargando comparación…",
+          "svgAriaHidden": "true",
+          "svgFocusable": "false",
+          "statusBounds": {
+            "x": 16,
+            "y": 22,
+            "width": 288,
+            "height": 390
+          },
+          "svgBounds": {
+            "x": 44,
+            "y": 110.59375,
+            "width": 232,
+            "height": 174
+          },
+          "labelBounds": {
+            "x": 85.921875,
+            "y": 302.59375,
+            "width": 148.140625,
+            "height": 20.796875
+          },
+          "labelFont": "13px",
+          "labelColor": "rgb(169, 158, 140)",
+          "surface": "#2a231d",
+          "motions": [
+            {
+              "animation": "loading_gatherBook",
+              "transform": "matrix(0.984808, -0.173648, 0.173648, 0.984808, 40, 22)",
+              "bounds": {
+                "x": 126.80101776123047,
+                "y": 163.8328857421875,
+                "width": 36.56940460205078,
+                "height": 45.97886657714844
+              }
+            },
+            {
+              "animation": "loading_gatherMovie",
+              "transform": "matrix(0.984808, 0.173648, -0.173648, 0.984808, -44, 25)",
+              "bounds": {
+                "x": 148.3438720703125,
+                "y": 166.318603515625,
+                "width": 36.56941223144531,
+                "height": 45.97886657714844
+              }
+            },
+            {
+              "animation": "loading_gatherSeries",
+              "transform": "matrix(1, 0, 0, 1, 0, -41)",
+              "bounds": {
+                "x": 145.08572387695312,
+                "y": 193.45089721679688,
+                "width": 29.828567504882812,
+                "height": 41.428558349609375
+              }
+            }
+          ]
+        },
+        {
+          "time": 4400,
+          "overflow": 0,
+          "statusCount": 1,
+          "text": "Cargando comparación…",
+          "svgAriaHidden": "true",
+          "svgFocusable": "false",
+          "statusBounds": {
+            "x": 16,
+            "y": 22,
+            "width": 288,
+            "height": 390
+          },
+          "svgBounds": {
+            "x": 44,
+            "y": 110.59375,
+            "width": 232,
+            "height": 174
+          },
+          "labelBounds": {
+            "x": 85.921875,
+            "y": 302.59375,
+            "width": 148.140625,
+            "height": 20.796875
+          },
+          "labelFont": "13px",
+          "labelColor": "rgb(169, 158, 140)",
+          "surface": "#2a231d",
+          "motions": [
+            {
+              "animation": "loading_gatherBook",
+              "transform": "matrix(0.961262, -0.275637, 0.275637, 0.961262, 0, 0)",
+              "bounds": {
+                "x": 91.89669799804688,
+                "y": 144.5709686279297,
+                "width": 40.092315673828125,
+                "height": 48.045562744140625
+              }
+            },
+            {
+              "animation": "loading_gatherMovie",
+              "transform": "matrix(0.970296, 0.241922, -0.241922, 0.970296, 0, 0)",
+              "bounds": {
+                "x": 183.60321044921875,
+                "y": 144.8866729736328,
+                "width": 38.96501159667969,
+                "height": 47.41413879394531
+              }
+            },
+            {
+              "animation": "loading_gatherSeries",
+              "transform": "matrix(1, 0, 0, 1, 0, 0)",
+              "bounds": {
+                "x": 145.08572387695312,
+                "y": 227.42233276367188,
+                "width": 29.828567504882812,
+                "height": 41.428558349609375
+              }
+            }
+          ]
+        }
+      ],
+      "reducedMotion": {
+        "static": true,
+        "animationCount": 0,
+        "overflow": 0
+      },
+      "consoleErrors": [],
+      "failedRequests": [],
+      "externalRequests": [],
+      "result": "PASS"
+    },
+    {
+      "width": 320,
+      "theme": "dark",
+      "variant": "compact",
+      "states": [
+        {
+          "time": 0,
+          "overflow": 0,
+          "statusCount": 1,
+          "text": "Cargando detalle…",
+          "svgAriaHidden": "true",
+          "svgFocusable": "false",
+          "statusBounds": {
+            "x": 16,
+            "y": 46,
+            "width": 288,
+            "height": 110
+          },
+          "svgBounds": {
+            "x": 16,
+            "y": 63.5,
+            "width": 100,
+            "height": 75
+          },
+          "labelBounds": {
+            "x": 132,
+            "y": 90.59375,
+            "width": 112.03125,
+            "height": 20.796875
+          },
+          "labelFont": "13px",
+          "labelColor": "rgb(169, 158, 140)",
+          "surface": "#2a231d",
+          "motions": [
+            {
+              "animation": "loading_gatherBook",
+              "transform": "matrix(0.961262, -0.275637, 0.275637, 0.961262, 0, 0)",
+              "bounds": {
+                "x": 36.64512634277344,
+                "y": 78.14535522460938,
+                "width": 17.281173706054688,
+                "height": 20.70928955078125
+              }
+            },
+            {
+              "animation": "loading_gatherMovie",
+              "transform": "matrix(0.970296, 0.241922, -0.241922, 0.970296, 0, 0)",
+              "bounds": {
+                "x": 76.17379760742188,
+                "y": 78.28143310546875,
+                "width": 16.795265197753906,
+                "height": 20.4371337890625
+              }
+            },
+            {
+              "animation": "loading_gatherSeries",
+              "transform": "matrix(1, 0, 0, 1, 0, 0)",
+              "bounds": {
+                "x": 59.57143020629883,
+                "y": 113.85714721679688,
+                "width": 12.85714340209961,
+                "height": 17.857147216796875
+              }
+            }
+          ]
+        },
+        {
+          "time": 1000,
+          "overflow": 0,
+          "statusCount": 1,
+          "text": "Cargando detalle…",
+          "svgAriaHidden": "true",
+          "svgFocusable": "false",
+          "statusBounds": {
+            "x": 16,
+            "y": 46,
+            "width": 288,
+            "height": 110
+          },
+          "svgBounds": {
+            "x": 16,
+            "y": 63.5,
+            "width": 100,
+            "height": 75
+          },
+          "labelBounds": {
+            "x": 132,
+            "y": 90.59375,
+            "width": 112.03125,
+            "height": 20.796875
+          },
+          "labelFont": "13px",
+          "labelColor": "rgb(169, 158, 140)",
+          "surface": "#2a231d",
+          "motions": [
+            {
+              "animation": "loading_gatherBook",
+              "transform": "matrix(0.977035, -0.213081, 0.213081, 0.977035, 24.647, 13.5559)",
+              "bounds": {
+                "x": 45.90478515625,
+                "y": 83.24805450439453,
+                "width": 16.36688232421875,
+                "height": 20.18665313720703
+              }
+            },
+            {
+              "animation": "loading_gatherMovie",
+              "transform": "matrix(0.979802, 0.199972, -0.199972, 0.979802, -27.1117, 15.4044)",
+              "bounds": {
+                "x": 66.80448150634766,
+                "y": 83.96780395507812,
+                "width": 16.168373107910156,
+                "height": 20.067527770996094
+              }
+            },
+            {
+              "animation": "loading_gatherSeries",
+              "transform": "matrix(1, 0, 0, 1, 0, -25.2632)",
+              "bounds": {
+                "x": 59.57143020629883,
+                "y": 104.83456420898438,
+                "width": 12.85714340209961,
+                "height": 17.857147216796875
+              }
+            }
+          ]
+        },
+        {
+          "time": 2200,
+          "overflow": 0,
+          "statusCount": 1,
+          "text": "Cargando detalle…",
+          "svgAriaHidden": "true",
+          "svgFocusable": "false",
+          "statusBounds": {
+            "x": 16,
+            "y": 46,
+            "width": 288,
+            "height": 110
+          },
+          "svgBounds": {
+            "x": 16,
+            "y": 63.5,
+            "width": 100,
+            "height": 75
+          },
+          "labelBounds": {
+            "x": 132,
+            "y": 90.59375,
+            "width": 112.03125,
+            "height": 20.796875
+          },
+          "labelFont": "13px",
+          "labelColor": "rgb(169, 158, 140)",
+          "surface": "#2a231d",
+          "motions": [
+            {
+              "animation": "loading_gatherBook",
+              "transform": "matrix(0.984808, -0.173648, 0.173648, 0.984808, 40, 22)",
+              "bounds": {
+                "x": 51.690093994140625,
+                "y": 86.44790649414062,
+                "width": 15.762672424316406,
+                "height": 19.81847381591797
+              }
+            },
+            {
+              "animation": "loading_gatherMovie",
+              "transform": "matrix(0.984808, 0.173648, -0.173648, 0.984808, -44, 25)",
+              "bounds": {
+                "x": 60.975807189941406,
+                "y": 87.51933288574219,
+                "width": 15.762672424316406,
+                "height": 19.8184814453125
+              }
+            },
+            {
+              "animation": "loading_gatherSeries",
+              "transform": "matrix(1, 0, 0, 1, 0, -41)",
+              "bounds": {
+                "x": 59.57143020629883,
+                "y": 99.21428680419922,
+                "width": 12.85714340209961,
+                "height": 17.857139587402344
+              }
+            }
+          ]
+        },
+        {
+          "time": 4400,
+          "overflow": 0,
+          "statusCount": 1,
+          "text": "Cargando detalle…",
+          "svgAriaHidden": "true",
+          "svgFocusable": "false",
+          "statusBounds": {
+            "x": 16,
+            "y": 46,
+            "width": 288,
+            "height": 110
+          },
+          "svgBounds": {
+            "x": 16,
+            "y": 63.5,
+            "width": 100,
+            "height": 75
+          },
+          "labelBounds": {
+            "x": 132,
+            "y": 90.59375,
+            "width": 112.03125,
+            "height": 20.796875
+          },
+          "labelFont": "13px",
+          "labelColor": "rgb(169, 158, 140)",
+          "surface": "#2a231d",
+          "motions": [
+            {
+              "animation": "loading_gatherBook",
+              "transform": "matrix(0.961262, -0.275637, 0.275637, 0.961262, 0, 0)",
+              "bounds": {
+                "x": 36.64512634277344,
+                "y": 78.14535522460938,
+                "width": 17.281173706054688,
+                "height": 20.70928955078125
+              }
+            },
+            {
+              "animation": "loading_gatherMovie",
+              "transform": "matrix(0.970296, 0.241922, -0.241922, 0.970296, 0, 0)",
+              "bounds": {
+                "x": 76.17379760742188,
+                "y": 78.28143310546875,
+                "width": 16.795265197753906,
+                "height": 20.4371337890625
+              }
+            },
+            {
+              "animation": "loading_gatherSeries",
+              "transform": "matrix(1, 0, 0, 1, 0, 0)",
+              "bounds": {
+                "x": 59.57143020629883,
+                "y": 113.85714721679688,
+                "width": 12.85714340209961,
+                "height": 17.857147216796875
+              }
+            }
+          ]
+        }
+      ],
+      "reducedMotion": {
+        "static": true,
+        "animationCount": 0,
+        "overflow": 0
+      },
+      "consoleErrors": [],
+      "failedRequests": [],
+      "externalRequests": [],
+      "result": "PASS"
+    }
+  ],
+  "liveMotion": {
+    "first": [
+      "matrix(0.961267, -0.27562, 0.27562, 0.961267, 0.0068452, 0.00376486)",
+      "matrix(0.970299, 0.24191, -0.24191, 0.970299, -0.00752972, 0.00427825)",
+      "matrix(1, 0, 0, 1, 0, -0.00701633)"
+    ],
+    "second": [
+      "matrix(0.977725, -0.209892, 0.209892, 0.977725, 25.8931, 14.2412)",
+      "matrix(0.980234, 0.19784, -0.19784, 0.980234, -28.4824, 16.1832)",
+      "matrix(1, 0, 0, 1, 0, -26.5404)"
+    ],
+    "elapsedMs": 1000,
+    "allCoversMoved": true
+  },
+  "limitations": [
+    "No Preview MCP tools available in this session. Real Chromium via Playwright.",
+    "Harness reuses actual loading/explorer/canvas CSS Modules and root/dark tokens; no auth, backend, production account, or data fixtures.",
+    "Geist font is not served by the isolated harness; sans-serif fallback used.",
+    "Chromium emitted internal GPU SharedImageManager mailbox warnings in debug.log; application console and page errors remained0. Raw browser log retained in ignored .superpowers/loading/chromium-debug.log."
+  ],
+  "cleanup": {
+    "databaseWrites": 0,
+    "externalRequests": 0,
+    "serverStopped": true,
+    "browserClosed": true,
+    "testDataCreated": false,
+    "accountChanges": false
+  },
+  "result": "PASS"
+}

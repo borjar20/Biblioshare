@@ -7528,3 +7528,13 @@ La composición vive en CSS Modules locales, sin cambiar estilos globales, fuent
 dependencias, lectores ni permisos. El contraste visual se verifica con la app en
 build/start y capturas a 1280, 430 y 320 px en claro y oscuro. Evidencia y límites en
 `docs/testing/2026-10-10-entre-nosotros-visual.md`.
+
+## 2026-10-10 — Carga visual de Entre nosotros
+
+La comparación y el detalle de obra usan una misma ilustración de carga: tres
+círculos translúcidos y portadas simbólicas que se reúnen suavemente en el cruce.
+Se dibuja con SVG y CSS Modules, sin imágenes remotas, dependencias, temporizadores
+ni porcentajes inventados. El componente no recibe participantes ni obras: la
+invalidación de evidencia al cambiar grupo, formato o permisos sigue intacta.
+El detalle usa la variante compacta. Se conservan las etiquetas traducidas en una
+región de estado y la preferencia de movimiento reducido deja un dibujo estático.

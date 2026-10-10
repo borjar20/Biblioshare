@@ -24,6 +24,12 @@ editor, selección, formato y respuestas mediante secuencias; la frontera de ses
 oculta evidencia durante comprobaciones y descarta auth/respuestas antiguas. El
 detalle se carga por obra y participantes disponibles, sin reseñas ni motivos privados.
 
+`loading.tsx` reemplaza el mensaje aislado de carga de comparación y detalle por
+una ilustración SVG de círculos y portadas simbólicas que convergen mediante CSS.
+No recibe datos del grupo ni conserva evidencia anterior; reutiliza las etiquetas
+traducidas con `role="status"` y oculta el gráfico a lectores de pantalla. El detalle
+usa una versión compacta y `prefers-reduced-motion` deja la composición estática.
+
 `canvas.tsx`, `geometry.ts`, `motion.ts` y `use-camera.ts` mantienen la portada original
 en el recorrido general → cruce completo → obra: 720 ms entre niveles y 850 ms
 mapa/Venn, retorno simétrico y movimiento reducido. No hay arrastre libre,
