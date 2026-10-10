@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useReducer, useRef, useState } from 'react';
+import { useEffect, useReducer, useRef, useState, type CSSProperties } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
@@ -11,6 +11,12 @@ import { ComparisonCanvas } from './canvas';
 import { Tastes } from './tastes';
 import { acceptResponse, changeGroup, changeSelection, clearEvidence, initialState, reconcileParticipants, reconcileView, selectOwnedGroup, setView } from './state';
 import type { ExplorerState, Section, TasteControls, View } from './state';
+import { personColor } from './presentation';
+import styles from './explorer.module.css';
+
+function Icon({ kind }: { kind: 'works' | 'tastes' | 'lock' | 'edit' | 'plus' }) {
+  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{kind === 'works' ? <><circle cx="9" cy="10" r="6"/><circle cx="15" cy="14" r="6"/></> : kind === 'tastes' ? <><path d="m12 3 2.6 6.4L21 12l-6.4 2.6L12 21l-2.6-6.4L3 12l6.4-2.6Z"/><path d="M20 2v4m-2-2h4"/></> : kind === 'lock' ? <><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></> : kind === 'edit' ? <><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2" fill="var(--surface)"/><circle cx="16" cy="12" r="2" fill="var(--surface)"/><circle cx="8" cy="18" r="2" fill="var(--surface)"/></> : <path d="M12 5v14M5 12h14"/>}</svg>;
+}
 
 type Props = { initialGroups: Group[]; candidates: Candidate[]; viewerId: string };
 type Action = { type: 'group'; id: string | null } | { type: 'section'; section: Section }
@@ -151,33 +157,44 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
     // Even a same-group save invalidates the old revision and permissions.
     forceReload();
   }
-  return <div className="flex flex-col gap-5">
-    <div className="flex flex-wrap items-end gap-3">
-      <label className="flex min-w-0 basis-full flex-col gap-2 text-sm font-medium sm:flex-1 sm:basis-60">{t('group')}<select ref={groupSelector} className="min-h-11 rounded-md border border-border bg-surface px-3 text-foreground" value={state.groupId ?? ''} onChange={event => selectGroup(selectOwnedGroup(event.target.value, groups))}>
+  function togglePerson(userId: string) {
+    dispatch({ type: 'selection', people: state.selection.includes(userId) ? state.selection.filter(id => id !== userId) : [...state.selection, userId] });
+  }
+  function setFormat(next: Format) { sequence.current += 1; dispatch({ type: 'format', format: next }); }
+  return <div className={styles.explorer}>
+    <header className={styles.heading}>
+      <div><h1 className={styles.title}>{t('title')}.</h1><p className={styles.intro}>{t('introShared')}<br/>{t('introDifferent')}</p></div>
+      <div className={styles.groupControls}>
+      <div className={styles.groupPicker}><span className={styles.private}><Icon kind="lock"/>{t('privateSelection')}</span>
+      <label><span className={styles.srOnly}>{t('group')}</span><select ref={groupSelector} className={styles.groupSelect} value={state.groupId ?? ''} onChange={event => selectGroup(selectOwnedGroup(event.target.value, groups))}>
         <option value="">{t('chooseGroup')}</option>{groups.map(group => <option key={group.id} value={group.id}>{group.name}</option>)}
-      </select></label>
-      <Button onClick={() => setEditor({ group: null })}>{t('createGroup')}</Button>
-      {active && <Button variant="secondary" onClick={() => setEditor({ group: active })}>{t('editGroup')}</Button>}
-    </div>
+      </select></label></div>
+      {active && <button type="button" className={styles.iconButton} aria-label={t('editGroup')} title={t('editGroup')} onClick={() => setEditor({ group: active })}><Icon kind="edit"/></button>}
+      <button type="button" className={styles.iconButton} aria-label={t('createGroup')} title={t('createGroup')} onClick={() => setEditor({ group: null })}><Icon kind="plus"/></button>
+      </div>
+    </header>
     {editor && <GroupEditor key={editor.group?.id ?? 'new'} group={editor.group} candidates={candidates} onSaved={onSaved} onDeleted={id => { setGroups(current => current.filter(group => group.id !== id)); selectGroup(null); }} onCancel={() => { setEditor(null); groupSelector.current?.focus(); }} onReload={() => { setEditor(null); groupSelector.current?.focus(); refresh(); router.refresh(); }}/>}
     {!groups.length && !editor && <p className="py-10 text-muted-foreground">{t('noGroups')}</p>}
     {active && <>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border">
-        <nav aria-label={t('sections')} className="flex gap-5">{(['works', 'tastes'] as const).map(section => <button key={section} type="button" aria-pressed={state.section === section} onClick={() => dispatch({ type: 'section', section })} className={`min-h-11 border-b-2 font-serif text-lg ${state.section === section ? 'border-accent text-foreground' : 'border-transparent text-muted-foreground'}`}>{t(section)}</button>)}</nav>
-        <label className="flex items-center gap-2 text-sm">{t('format')}<select className="min-h-11 rounded-md border border-border bg-surface px-2" value={format} onChange={event => { sequence.current += 1; dispatch({ type: 'format', format: event.target.value as Format }); }}>
+      <div className={styles.toolbar}>
+        <nav aria-label={t('sections')} className={styles.tabs}>{(['works', 'tastes'] as const).map(section => <button key={section} type="button" aria-pressed={state.section === section} onClick={() => dispatch({ type: 'section', section })} className={styles.tab}><Icon kind={section}/>{t(section)}</button>)}</nav>
+        <div className={styles.formats} role="group" aria-label={t('formatPills')}>{(['all', 'book', 'movie', 'series'] as const).map(next => <button key={next} type="button" aria-pressed={format === next} onClick={() => setFormat(next)}>{t(next === 'all' ? 'allFormatsShort' : `formats.${next}`)}</button>)}</div>
+        <label className={styles.srOnly}>{t('format')}<select value={format} onChange={event => setFormat(event.target.value as Format)}>
           {(['all', 'book', 'movie', 'series'] as const).map(format => <option key={format} value={format}>{t(`formats.${format}`)}</option>)}
         </select></label>
       </div>
-      <section aria-label={t('canvas')} aria-busy={state.snapshot.status === 'loading'} className="min-h-72 rounded-lg border border-border bg-surface p-4 sm:p-6">
+      <section aria-label={t('canvas')} aria-busy={state.snapshot.status === 'loading'} className={`${styles.workspace} ${state.section === 'tastes' ? styles.tasteWorkspace : ''}`}>
         {state.snapshot.status === 'loading' && <p role="status">{t('loading')}</p>}
         {state.snapshot.status === 'error' && <div role="alert"><p>{t(state.loadError === 'conflict' ? 'loadConflict' : `errors.${state.loadError ?? 'load-failed'}`)}</p><Button variant="secondary" onClick={() => { refresh(); if (state.loadError === 'unavailable' || state.loadError === 'unauthenticated') router.refresh(); }}>{t('reloadComparison')}</Button></div>}
         {snapshot && <>
-          <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-serif text-xl font-semibold">{snapshot.group.name}</h2><Button variant="ghost" onClick={refresh}>{t('refreshAccess')}</Button></div>
+          <div className={styles.workspaceControls}>
+            <h2 className={styles.srOnly}>{snapshot.group.name}</h2>
+            {(state.section === 'tastes' || state.views.works.level !== 'group') && <fieldset className={styles.people}><legend className={styles.srOnly}>{t(state.section === 'works' ? 'selectPair' : 'selectTastes')}</legend>{snapshot.group.members.map(member => member.available && member.userId ? <label key={member.slotId} className={styles.personChip} data-selected={state.selection.includes(member.userId)} style={{ '--person': personColor(snapshot, member.userId) } as CSSProperties}><input type="checkbox" checked={state.selection.includes(member.userId)} onChange={() => togglePerson(member.userId!)}/><span className={styles.personDot} aria-hidden="true"/>{member.name}</label> : <span key={member.slotId} className={styles.unavailable}>{t('unavailablePerson')}</span>)}</fieldset>}
+            <Button variant="ghost" onClick={refresh}>{t('refreshAccess')}</Button>
+          </div>
           {snapshot.excludedSeriesWithoutEpisodes > 0 && <p className="py-3 text-sm text-muted-foreground" data-comparison-coverage>{t('excludedHistoricalSeries', { count: snapshot.excludedSeriesWithoutEpisodes })}</p>}
-          <fieldset className="my-4 flex flex-wrap gap-3"><legend className="mb-2 text-sm text-muted-foreground">{t(state.section === 'works' ? 'selectPair' : 'selectTastes')}</legend>{snapshot.group.members.map(member => member.available && member.userId ? <label key={member.slotId} className="flex min-h-11 items-center gap-2"><input type="checkbox" checked={state.selection.includes(member.userId)} onChange={event => dispatch({ type: 'selection', people: event.target.checked ? [...state.selection, member.userId!] : state.selection.filter(id => id !== member.userId) })}/>{member.name}</label> : <span key={member.slotId} className="flex min-h-11 items-center text-sm text-muted-foreground">{t('unavailablePerson')}</span>)}</fieldset>
           <div data-comparison-slot={state.section} data-view={state.views[state.section].level} className="min-h-48">
-            {state.section === 'works' && <Button variant="secondary" disabled={state.selection.length < 2 || state.selection.length > 3} onClick={() => dispatch({ type: 'view', view: { level: 'venn', people: [...state.selection] } })}>{t('compareSelection')}</Button>}
-            {state.section === 'works' && <ComparisonCanvas snapshot={snapshot} view={state.views.works} onView={view => {
+            {state.section === 'works' && <ComparisonCanvas snapshot={snapshot} selectedPeople={state.selection} onTogglePerson={togglePerson} view={state.views.works} onView={view => {
               if (view.level === 'venn') dispatch({ type: 'selection', people: view.people });
               dispatch({ type: 'view', view });
             }}/>}
@@ -186,5 +203,6 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
         </>}
       </section>
     </>}
+    <footer className={styles.footer}><Icon kind="lock"/>{t('privacyFooter')}</footer>
   </div>;
 }

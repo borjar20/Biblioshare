@@ -22,6 +22,17 @@ function Harness({ snapshot = data, people = ['0', '1'] }: { snapshot?: Snapshot
 beforeEach(() => { vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })); vi.stubGlobal('scrollTo', vi.fn()); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 describe('tastes evidence', () => {
+  it('shows consumption and ratings together on their own scales without inventing affinity', () => {
+    render(<Harness/>);
+    const consumed = screen.getByRole('region', { name: 'Lo que consumimos' });
+    const rated = screen.getByRole('region', { name: 'Lo que nos gusta' });
+    expect(within(consumed).getByRole('button', { name: 'Explorar Drama' })).toBeTruthy();
+    expect(within(rated).getByText('Media sobre 10')).toBeTruthy();
+    expect(within(rated).getByLabelText('3 obras valoradas').textContent).toBe('9.0');
+    expect(within(rated).getByLabelText('2 obras valoradas').textContent).toBe('8.0');
+    expect(within(rated).getByText(/No es un porcentaje de afinidad/)).toBeTruthy();
+    expect(screen.getByText('Ana: metadatos en 3 de 3 obras elegibles')).toBeTruthy();
+  });
   it('restores the exact category after Canvas unmounts and falls back when it disappears', () => {
     const { rerender } = render(<Harness/>);
     fireEvent.click(screen.getByRole('button', { name: 'Explorar Misterio' }));
@@ -39,6 +50,19 @@ describe('tastes evidence', () => {
     expect(parseFloat(bubbles[0].style.width) ** 2 / (parseFloat(bubbles[1].style.width) ** 2)).toBeCloseTo(3);
     rerender(<Harness snapshot={{ ...snapshot, works: snapshot.works.filter(row => row.userId === '0') }}/>);
     expect(container.querySelector<HTMLElement>('[data-consumption-count="0"]')?.style.width).toBe('0px');
+  });
+  it('sizes category bubbles by distinct works rather than summing people or repeated records', () => {
+    const snapshot: Snapshot = { ...data,
+      catalog: data.catalog.slice(0, 4).map((work, i) => ({ ...work, genres: i === 0 ? ['Drama', 'Misterio'] : ['Drama'] })),
+      works: [...data.works.slice(0, 3), { ...data.works[0], userId: '1' }, { ...data.works[3] }, data.works[0]],
+    };
+    render(<Harness snapshot={snapshot}/>);
+    const consumed = screen.getByRole('region', { name: 'Lo que consumimos' });
+    const drama = within(consumed).getByRole('button', { name: 'Explorar Drama' });
+    const mystery = within(consumed).getByRole('button', { name: 'Explorar Misterio' });
+    expect(drama.textContent).toContain('4 obras distintas');
+    expect(mystery.textContent).toContain('1 obra distinta');
+    expect(Number(drama.style.getPropertyValue('--bubble-ratio')) ** 2 / Number(mystery.style.getPropertyValue('--bubble-ratio')) ** 2).toBe(4);
   });
   it('shows individual means and samples at three/two without a joint trend', () => {
     render(<Harness/>); fireEvent.click(screen.getByRole('button', { name: 'Lo que valoráis' }));

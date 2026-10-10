@@ -2248,9 +2248,11 @@
       "label": "components/comparisons",
       "layer": "ui",
       "kind": "ui",
-      "summary": "Obras/Gustos, editor privado, mapa de grupo y Venn exacto de pareja/trío; general → cruce completo → obra con portada original, 720 ms/850 ms y scroll móvil.",
+      "summary": "Obras/Gustos con composición del prototipo: avatares seleccionables, curvas y pilas; Venn exacto de pareja/trío; general → cruce completo → obra con portada original, 720 ms/850 ms y scroll móvil.",
       "files": [
         "src/components/comparisons/explorer.tsx",
+        "src/components/comparisons/explorer.module.css",
+        "src/components/comparisons/presentation.ts",
         "src/components/comparisons/state.ts",
         "src/components/comparisons/group-editor.tsx",
         "src/components/comparisons/canvas.tsx",
@@ -2259,10 +2261,12 @@
         "src/components/comparisons/motion.ts",
         "src/components/comparisons/use-camera.ts",
         "src/components/comparisons/work-detail.tsx",
-        "src/components/comparisons/tastes.tsx"
+        "src/components/comparisons/tastes.tsx",
+        "src/components/comparisons/tastes.module.css"
       ],
       "gotchas": [
         "Sin arrastre libre ni paneles/modales de evidencia; crece el lienzo y usa scroll normal.",
+        "Centro = unión de coincidencias de parejas; estante = intersección de todos los disponibles. Colores por puesto guardado; Gustos separa consumo único y notas 0–10 con muestras/rangos.",
         "La frontera de sesión oculta evidencia durante getUser; focus nuevo invalida resultado en vuelo y solicita comprobación fresca. Actor distinto/ausente desmonta contexto, respuestas antiguas no restauran datos.",
         "Tendencias: tres obras únicas valoradas por cada persona mencionada; los umbrales de obras no se aplican a medias de categorías."
       ]

@@ -1,0 +1,21 @@
+{
+  "box": {
+    "x": 134.20286560058594,
+    "y": 754.5252685546875,
+    "width": 51.59425354003906,
+    "height": 65.5694580078125
+  },
+  "stage": {
+    "x": 16,
+    "y": 447.3125,
+    "width": 288,
+    "height": 680
+  },
+  "opacity": "1",
+  "visibility": "visible",
+  "filter": "none",
+  "connected": true,
+  "imageLoaded": true,
+  "hitWithin": true,
+  "scrollY": 183
+}

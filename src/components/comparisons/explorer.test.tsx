@@ -289,4 +289,15 @@ describe('Explorer request boundaries', () => {
     expect((screen.getByLabelText('Formato') as HTMLSelectElement).value).toBe('book');
     await waitFor(() => expect(mocks.load).toHaveBeenLastCalledWith(first.id, 'book'));
   });
+  it('keeps visible format pills and the native selector synchronized through one request state', async () => {
+    mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('checkbox', { name: 'Ana' });
+    const pills = screen.getByRole('group', { name: 'Filtrar por tipo de obra' });
+    fireEvent.click(within(pills).getByRole('button', { name: 'Películas' }));
+    expect((screen.getByLabelText('Formato') as HTMLSelectElement).value).toBe('movie');
+    await waitFor(() => expect(mocks.load).toHaveBeenLastCalledWith(first.id, 'movie'));
+    fireEvent.change(screen.getByLabelText('Formato'), { target: { value: 'series' } });
+    expect(within(pills).getByRole('button', { name: 'Series' }).getAttribute('aria-pressed')).toBe('true');
+    expect(within(pills).getByRole('button', { name: 'Películas' }).getAttribute('aria-pressed')).toBe('false');
+    await waitFor(() => expect(mocks.load).toHaveBeenLastCalledWith(first.id, 'series'));
+  });
 });

@@ -9,10 +9,12 @@ import type { View } from './state';
 const load = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/comparisons/actions', () => ({ loadComparisonWork: load }));
 import { ComparisonCanvas } from './canvas';
+import { layoutScene } from './geometry';
 const snapshot: Snapshot = { group: { id: 'g', name: 'Grupo', revision: 1, members: ['Ana', 'Bea', 'Carlos'].map((name, i) => ({ slotId: `${i}`, userId: `${i}`, name, avatarUrl: null, available: true })) }, format: 'all', catalog: Array.from({ length: 83 }, (_, i) => ({ key: `book:${i}` as WorkKey, title: `Libro ${String(i).padStart(2, '0')}`, coverUrl: '/cover.jpg', genres: [], creators: [] })), works: Array.from({ length: 83 }, (_, i) => ['0', '1'].map(userId => ({ key: `book:${i}` as WorkKey, userId, rating: null, orderUnknown: false, progress: null }))).flat(), excludedSeriesWithoutEpisodes: 0 };
-function Harness({ initial = { level: 'venn', people: ['0', '1', '2'] }, data = snapshot }: { initial?: View; data?: Snapshot }) {
+function Harness({ initial = { level: 'venn', people: ['0', '1', '2'] }, data = snapshot, selection = false }: { initial?: View; data?: Snapshot; selection?: boolean }) {
   const [view, setView] = useState<View>(initial);
-  return <NextIntlClientProvider locale="es" messages={messages}><ComparisonCanvas snapshot={data} view={view} onView={setView} facetKeys={initial.level === 'facet' ? data.catalog.map(work => work.key) : undefined} onOpenFacetWork={key => { if (view.level === 'facet') setView({ level: 'work', people: view.people, key, origin: { kind: 'facet', facetKind: view.facetKind, facetId: view.facetId } }); }}/></NextIntlClientProvider>;
+  const [selected, setSelected] = useState<string[]>([]);
+  return <NextIntlClientProvider locale="es" messages={messages}><ComparisonCanvas snapshot={data} view={view} onView={setView} selectedPeople={selection ? selected : undefined} onTogglePerson={selection ? id => setSelected(current => current.includes(id) ? current.filter(person => person !== id) : [...current, id]) : undefined} facetKeys={initial.level === 'facet' ? data.catalog.map(work => work.key) : undefined} onOpenFacetWork={key => { if (view.level === 'facet') setView({ level: 'work', people: view.people, key, origin: { kind: 'facet', facetKind: view.facetKind, facetId: view.facetId } }); }}/></NextIntlClientProvider>;
 }
 beforeEach(() => {
   // These scaffold assertions inspect final geometry; motion has dedicated
@@ -23,6 +25,67 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 describe('comparison canvas', () => {
+  it.each([2, 3])('returns focus to Compare selection after opening a %i-person Venn', count => {
+    const data = { ...snapshot, group: { ...snapshot.group, members: Array.from({ length: 10 }, (_, i) => ({ slotId: String(i), userId: String(i), name: `Persona ${i}`, avatarUrl: null, available: true })) } };
+    const { container } = render(<Harness initial={{ level: 'group' }} data={data} selection/>);
+    const disclosure = container.querySelector('details')!;
+    act(() => { disclosure.open = true; fireEvent(disclosure, new Event('toggle')); });
+    for (let index = 0; index < count; index++) fireEvent.click(screen.getByRole('checkbox', { name: `Persona ${index}` }));
+    fireEvent.click(screen.getByRole('button', { name: messages.comparisons.compareSelection }));
+    fireEvent.click(screen.getByRole('button', { name: 'Volver al grupo' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: messages.comparisons.compareSelection }));
+    expect(container.querySelector('details')!.open).toBe(true);
+  });
+  it('recenters the real group fan after returning from a restored Venn with 83 stories', () => {
+    const data: Snapshot = { ...snapshot, group: { ...snapshot.group, members: Array.from({ length: 10 }, (_, i) => ({ slotId: String(i), userId: String(i), name: `Persona ${i}`, avatarUrl: null, available: true })) }, works: [
+      ...snapshot.works,
+      ...snapshot.catalog.slice(50).flatMap(work => ['8', '9'].map(userId => ({ key: work.key, userId, rating: null, orderUnknown: false, progress: null }))),
+    ] };
+    const { container } = render(<Harness initial={{ level: 'venn', people: ['8', '9'] }} data={data}/>);
+    fireEvent.click(screen.getByRole('button', { name: 'Volver al grupo' }));
+    const first = container.querySelector<HTMLElement>('[data-work-key="book:0"]')!;
+    const expected = layoutScene(data, { level: 'group' }, { width: 640, height: 500 }, ['book:0', 'book:1', 'book:2']);
+    expect(first.style.left).toBe(`${expected.poses['book:0'].x}px`);
+    expect(first.style.top).toBe(`${expected.poses['book:0'].y}px`);
+  });
+  it('counts the union of shared stories separately from works shared by everyone', () => {
+    const data: Snapshot = { ...snapshot, catalog: snapshot.catalog.slice(0, 3), works: [
+      ...['0', '1'].map(userId => ({ ...snapshot.works[0], userId, key: 'book:0' as WorkKey })),
+      ...['0', '2'].map(userId => ({ ...snapshot.works[0], userId, key: 'book:1' as WorkKey })),
+      ...['0', '1', '2'].map(userId => ({ ...snapshot.works[0], userId, key: 'book:2' as WorkKey })),
+    ] };
+    render(<Harness initial={{ level: 'group' }} data={data}/>);
+    const center = screen.getByText('historias os conectan').parentElement!;
+    expect(center.querySelector('strong')!.textContent).toBe('3');
+    const shelf = screen.getByRole('heading', { name: messages.comparisons.sharedShelf }).closest('section')!;
+    expect(shelf.querySelector('ul')!.children).toHaveLength(1);
+    expect(shelf.querySelector('header p')!.textContent).toMatch(/^1\s/);
+  });
+  it('selects native avatar checkboxes and opens the matching pair from the map', () => {
+    render(<Harness initial={{ level: 'group' }} selection/>);
+    const compare = screen.getByRole('button', { name: messages.comparisons.compareSelection });
+    expect((compare as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Ana' }));
+    expect((compare as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Bea' }));
+    expect((compare as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(compare);
+    expect(screen.getAllByRole('button', { name: /Abrir región:/ })).toHaveLength(3);
+    expect(screen.getByRole('button', { name: 'Abrir región: Ana, Bea; 83 obras' })).toBeTruthy();
+  });
+  it('folds a ten-person map and restores the expanded origin pair on return', () => {
+    const data = { ...snapshot, group: { ...snapshot.group, members: Array.from({ length: 10 }, (_, i) => ({ slotId: String(i), userId: String(i), name: `Persona ${i}`, avatarUrl: null, available: true })) } };
+    const { container } = render(<Harness initial={{ level: 'group' }} data={data}/>);
+    const disclosure = container.querySelector('details')!;
+    expect(disclosure.open).toBe(false);
+    expect(container.querySelectorAll('[data-map-pair]')).toHaveLength(45);
+    act(() => { disclosure.open = true; fireEvent(disclosure, new Event('toggle')); });
+    const pair = screen.getByRole('button', { name: 'Persona 8, Persona 9 0 obras comunes' });
+    fireEvent.click(pair);
+    fireEvent.click(screen.getByRole('button', { name: 'Volver al grupo' }));
+    expect(container.querySelector('details')!.open).toBe(true);
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Persona 8, Persona 9 0 obras comunes' }));
+  });
   it('falls back to a surviving map control when refresh removes the origin pair', () => {
     const { rerender } = render(<Harness initial={{ level: 'group' }}/>);
     fireEvent.click(screen.getByRole('button', { name: 'Bea, Carlos 0 obras comunes' }));

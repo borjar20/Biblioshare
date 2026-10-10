@@ -5,6 +5,7 @@ import { groupMapLayout, personCenter, layoutScene, mapConnections, regionCenter
 const keys = Array.from({ length: 83 }, (_, index) => `book:${index}` as WorkKey);
 const snapshot: Snapshot = { group: { id: 'g', name: 'Grupo', revision: 1, members: Array.from({ length: 10 }, (_, i) => ({ slotId: `${i}`, userId: `${i}`, name: `Persona ${i}`, avatarUrl: null, available: true })) }, format: 'all', catalog: keys.map(key => ({ key, title: key, coverUrl: null, genres: [], creators: [] })), works: keys.flatMap(key => ['0', '1', '2'].map(userId => ({ key, userId, rating: null, orderUnknown: false, progress: null }))), excludedSeriesWithoutEpisodes: 0 };
 type Point = { x: number; y: number };
+const nodeEnvelope = (width: number) => ({ width: width <= 300 ? 68 : width <= 600 ? 84 : 100, height: 110 });
 function corners(pose: Pose): Point[] {
   const angle = pose.rotate * Math.PI / 180;
   return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([x, y]) => ({
@@ -33,10 +34,28 @@ function exactZones(count: number, samples: number) {
   return { data, entries, people };
 }
 describe('comparison world geometry', () => {
+  it.each([320, 640, 1280])('keeps 83 retained map slots in the three-position fan at %i px', width => {
+    const scene = layoutScene(snapshot, { level: 'group' }, { width, height: 500 }, keys);
+    const positions = new Set(Object.values(scene.poses).map(pose => `${pose.x}:${pose.y}:${pose.rotate}`));
+    expect(positions.size).toBe(3);
+    for (const pose of Object.values(scene.poses)) for (const point of corners(pose)) {
+      expect(scene.camera.x + point.x * scene.camera.scale).toBeGreaterThanOrEqual(0);
+      expect(scene.camera.x + point.x * scene.camera.scale).toBeLessThanOrEqual(width);
+    }
+  });
+  it.each([5, 6, 7, 8, 9, 10].flatMap(count => [254, 320, 430, 560, 599, 600, 601, 768, 1000, 1280].map(width => [count, width])))('keeps the union summary clear of %i avatar/name footprints at %i px', (count, width) => {
+    const layout = groupMapLayout(count, width), scale = Math.min(.6, width / 1000), envelope = nodeEnvelope(width);
+    const summary = { left: 500 * scale - (width <= 300 ? 49 : 64), right: 500 * scale + (width <= 300 ? 49 : 64), top: layout.summaryY, bottom: layout.summaryY + 80 };
+    for (let index = 0; index < count; index++) {
+      const point = personCenter(index, count, width);
+      const chip = { left: point.x * scale - envelope.width / 2, right: point.x * scale + envelope.width / 2, top: point.y * scale - envelope.height / 2, bottom: point.y * scale + envelope.height / 2 };
+      expect(Math.max(0, Math.min(chip.right, summary.right) - Math.max(chip.left, summary.left)) * Math.max(0, Math.min(chip.bottom, summary.bottom) - Math.max(chip.top, summary.top)), `summary/label ${index}`).toBe(0);
+    }
+  });
   it.each([5, 6, 7, 8, 9, 10].flatMap(count => [254, 299, 300, 301, 364, 400, 599, 600, 601, 959, 960, 961, 1000].map(width => [count, width])))('keeps two-line names clear of representative footprints for %i people at %i px', (count, width) => {
     const data = { ...snapshot, group: { ...snapshot.group, members: snapshot.group.members.slice(0, count) } };
     const scene = layoutScene(data, { level: 'group' }, { width, height: 800 }, keys.slice(0, width <= 360 ? 1 : 3));
-    const scale = scene.camera.scale; const labelWidth = width <= 300 ? 68 : 110, labelHeight = width <= 300 ? 41 : 48;
+    const scale = scene.camera.scale; const { width: labelWidth, height: labelHeight } = nodeEnvelope(width);
     for (let index = 0; index < count; index++) {
       const point = personCenter(index, count, width);
       const label = { left: point.x * scale - labelWidth / 2, right: point.x * scale + labelWidth / 2, top: point.y * scale - labelHeight / 2, bottom: point.y * scale + labelHeight / 2 };
@@ -47,7 +66,7 @@ describe('comparison world geometry', () => {
     }
   });
   it.each([5, 6, 7, 8, 9, 10].flatMap(count => [299, 300, 301, 359, 360, 361, 364, 400, 599, 600, 601, 959, 960, 961, 1000].map(width => [count, width])))('fits two-line labels for %i people at stage %i px', (count, width) => {
-    const scale = width / 1000; const envelope = width <= 300 ? { width: 68, height: 41 } : { width: 110, height: 48 };
+    const scale = Math.min(.6, width / 1000); const envelope = nodeEnvelope(width);
     const points = Array.from({ length: count }, (_, i) => personCenter(i, count, width));
     for (let i = 0; i < points.length; i++) for (let j = i + 1; j < points.length; j++) {
       expect(Math.abs(points[i].x - points[j].x) * scale >= envelope.width || Math.abs(points[i].y - points[j].y) * scale >= envelope.height, `${i}/${j} overlap`).toBe(true);
@@ -57,11 +76,13 @@ describe('comparison world geometry', () => {
     const width = 254, scale = width / 1000, layout = groupMapLayout(count, width);
     const chips = Array.from({ length: count }, (_, index) => {
       const point = personCenter(index, count, width);
-      return { left: point.x * scale - 34, right: point.x * scale + 34, top: point.y * scale - 23.5, bottom: point.y * scale + 23.5 };
+      return { left: point.x * scale - 34, right: point.x * scale + 34, top: point.y * scale - 55, bottom: point.y * scale + 55 };
     });
     for (const chip of chips) {
       expect(chip.left).toBeGreaterThanOrEqual(0); expect(chip.right).toBeLessThanOrEqual(width);
-      expect(chip.top).toBeGreaterThanOrEqual(0); expect(chip.bottom).toBeLessThan(layout.summaryY);
+      expect(chip.top).toBeGreaterThanOrEqual(0); expect(chip.bottom).toBeLessThanOrEqual(layout.height);
+      const summary = { left: width / 2 - 49, right: width / 2 + 49, top: layout.summaryY, bottom: layout.summaryY + 116 };
+      expect(Math.max(0, Math.min(chip.right, summary.right) - Math.max(chip.left, summary.left)) * Math.max(0, Math.min(chip.bottom, summary.bottom) - Math.max(chip.top, summary.top))).toBe(0);
     }
     for (let a = 0; a < count; a++) for (let b = a + 1; b < count; b++) {
       expect(Math.max(0, Math.min(chips[a].right, chips[b].right) - Math.max(chips[a].left, chips[b].left))
@@ -71,15 +92,16 @@ describe('comparison world geometry', () => {
     const data = { ...snapshot, group: { ...snapshot.group, members: snapshot.group.members.slice(0, count) } };
     const scene = layoutScene(data, { level: 'group' }, { width, height: 500 }, [keys[0]]);
     expect(scene.height).toBe(layout.height);
-    const first = personCenter(0, count, width), second = personCenter(1, count, width);
     const pose = scene.poses[keys[0]];
-    expect(pose.x + pose.width / 2).toBeCloseTo((first.x + second.x) / 2);
-    expect(pose.y + pose.height / 2).toBeCloseTo((first.y + second.y) / 2);
+    expect(pose.x + pose.width / 2).toBeCloseTo(500);
+    expect(pose.y + pose.height / 2).toBeCloseTo(layout.centerY);
   });
-  it('preserves the original wide map and the pair/trio coordinate system', () => {
-    expect(groupMapLayout(10, 1280)).toMatchObject({ centerY: 450, radiusY: 350, worldHeight: 900 });
-    expect(groupMapLayout(3, 254)).toMatchObject({ centerY: 450, radiusY: 350, worldHeight: 900 });
-    expect(personCenter(0, 10, 1280)).toEqual({ x: 500, y: 100 });
+  it('keeps the dense wide map under 560px without changing the pair/trio coordinate system', () => {
+    expect(groupMapLayout(10, 1280)).toMatchObject({ centerY: 465, radiusY: 370, worldHeight: 930 });
+    expect(groupMapLayout(3, 254)).toMatchObject({ height: 460, compactRing: false });
+    expect(layoutScene(snapshot, { level: 'group' }, { width: 1280, height: 800 }, [])).toMatchObject({ height: 558, camera: { scale: .6 } });
+    expect(layoutScene(snapshot, { level: 'venn', people: ['0', '1'] }, { width: 1280, height: 800 }, [])).toMatchObject({ height: 540, camera: { scale: .6 } });
+    expect(personCenter(0, 10, 1280)).toEqual({ x: 500, y: 95 });
   });
   it('footprint oracle catches excluded circles crossing an edge when every corner is outside', () => {
     const polygon = corners({ x: 0, y: 0, width: 100, height: 100, rotate: 0 });

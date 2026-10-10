@@ -1,8 +1,10 @@
 # Testing manual / con agentes
 
-> **[Delta Entre nosotros #1462 · contrato y ejecución local verificados el 2026-10-10; no acredita CI integrada, Android ni producción.]**
-
 ## Gate aislado de Entre nosotros
+
+La primera entrega pasó los gates de CI de PR #1474 y está publicada en producción.
+Las pruebas locales y capturas de la corrección visual se registran por build en
+[el informe visual](testing/2026-10-10-entre-nosotros-visual.md); no acreditan Android.
 
 Receta y evidencia en [verificación integrada](testing/2026-10-10-entre-nosotros.md).
 Se construye y arranca una build nueva con el mismo backend desechable fijado antes
