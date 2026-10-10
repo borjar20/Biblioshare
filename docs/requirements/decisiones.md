@@ -7099,3 +7099,13 @@ amplían la altura del lienzo para mantener todas las portadas accesibles median
 el desplazamiento normal de la página. Se conservan rueda por niveles, clic,
 movimiento reducido y paleta. Sigue siendo una prueba en Sites; #1462 mantiene
 pendiente la implementación en Biblioshare.
+
+## 2026-10-10 — Un único recorrido entre la pila del Venn y el cruce completo
+
+La revisión de la maqueta identifica saltos al sustituir las pilas y recalcular
+el diagrama antes de animar la cámara. Se conserva la geometría del mundo entre
+niveles y se coordinan durante 720 ms el zoom, la altura visible y el despliegue
+de cada portada desde la pila. El regreso recorre esa transformación al revés;
+si se interrumpe, continúa desde las posiciones visibles. Las colecciones móviles
+siguen creciendo en altura y el zoom a una obra conserva su destino. Es una
+corrección de continuidad en el mockup de Sites; la feature sigue en #1462.

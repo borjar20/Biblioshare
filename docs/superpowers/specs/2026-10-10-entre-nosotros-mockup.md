@@ -315,3 +315,34 @@ publica. Con movimiento reducido, ida y vuelta llegan directamente a sus destino
 sin fotogramas de cámara intermedios; se conservan las 20 portadas vecinas de la
 pareja. No aparecen errores de consola. Solo cambia el mockup, con integración
 pendiente en #1462.
+
+## Corrección del 2026-10-10: continuidad entre Venn general y cruce
+
+La revisión detecta que la cámara se animaba sobre un diagrama reconstruido con
+otra geometría: la altura pasaba de 530 a 630 px y las pilas se sustituían por la
+colección antes del primer fotograma. En el trío de escritorio, La llegada saltaba
+unos 115 px al entrar; los círculos también cambiaban de tamaño inmediatamente.
+
+Se fija la geometría del mundo independientemente de la altura visible. Durante
+720 ms, cámara, altura del lienzo, posición, tamaño y giro de las portadas avanzan
+con la misma interpolación. Las obras adicionales salen de la pila; al regresar
+se recogen en ella y quedan las muestras originales. El desenfoque acompaña el
+recorrido. Una inversión antes de terminar parte de las posiciones visibles,
+sin reiniciar desde un extremo. Las copias de transición no son interactivas ni
+accesibles y se retiran al terminar; el encuadre sigue sin permitir arrastre.
+
+Verificación en el HTML exportado: continuidad del primer fotograma con error
+inferior a 0,04 px en ida/vuelta del trío; altura inicial sin salto y posiciones
+intermedias registradas. A 320 px, las 21 portadas de la pareja caben en el lienzo
+de 838 px, que crece desde 460 px progresivamente, sin recortes ni desbordamiento
+horizontal. Invertir a los 300 ms conserva cámara, altura y portada (error menor
+de 0,01 px) y no deja copias temporales. Abrir La llegada conserva sus 12 vecinas
+difuminadas y devuelve la cámara exacta del cruce. Con movimiento reducido,
+la entrada muestra las 21 obras sin fotogramas de cámara intermedios ni copias
+animadas. No se registran errores de consola.
+
+El nuevo test `checks/level-transition.test.mjs` comprueba la reversibilidad de
+portadas, altura y cámara en coordenadas de pantalla, el reinicio desde una pose
+intermedia y el foco de obra con distintas alturas de lienzo. Siguen pasando los
+tests de cámara y eco de guardado. Se conservan iframe y ambas CSP; el arnés de
+medición temporal no se publica. La integración sigue pendiente en #1462.
