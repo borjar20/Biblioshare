@@ -168,7 +168,7 @@ describe('facets', () => {
     expect(facets(data, ['a', 'b'], 'director').map(({ id }) => id)).toEqual(['director-1']);
   });
 
-  it('ranks rated evidence above consumption without notes', () => {
+  it('orders category evidence by the requested consumption or valuation signal', () => {
     const data = snapshot([
       work('a', 'book:seen-a'), work('b', 'book:seen-b'),
       work('a', 'book:rated', 8), work('b', 'book:rated', 9),
@@ -176,7 +176,26 @@ describe('facets', () => {
       catalog('book:seen-a', 'A', ['Absence']), catalog('book:seen-b', 'B', ['Absence']),
       catalog('book:rated', 'C', ['Rated']),
     ]);
-    expect(facets(data, ['a', 'b'], 'genre').map(({ id }) => id)).toEqual(['Rated', 'Absence']);
+    expect(facets(data, ['a', 'b'], 'genre').map(({ id }) => id)).toEqual(['Absence', 'Rated']);
+    expect(facets(data, ['a', 'b'], 'genre', 'consumed').map(({ id }) => id))
+      .toEqual(['Absence', 'Rated']);
+    expect(facets(data, ['a', 'b'], 'genre', 'rated').map(({ id }) => id))
+      .toEqual(['Rated', 'Absence']);
+  });
+
+  it('uses every eligible work as the consumption denominator, including absent metadata', () => {
+    const data = snapshot([
+      work('a', 'book:mystery', 8), work('a', 'book:drama', 7),
+      work('a', 'book:uncatalogued', 9), work('b', 'movie:uncatalogued'),
+    ], [
+      catalog('book:mystery', 'Mystery', ['Mystery']),
+      catalog('book:drama', 'Drama', ['Drama']),
+    ]);
+    expect(facets(data, ['a', 'b'], 'genre').find(({ id }) => id === 'Mystery')?.people)
+      .toMatchObject([
+        { userId: 'a', consumed: ['book:mystery'], eligibleTotal: 3 },
+        { userId: 'b', consumed: [], eligibleTotal: 1 },
+      ]);
   });
 
   it('ignores absent metadata and returns no facets for empty sets', () => {

@@ -76,7 +76,8 @@ function facetCategories(work: CatalogWork, kind: FacetKind): { id: string; labe
     .map((creator) => ({ id: creator.id, label: creator.name }));
 }
 
-export function facets(snapshot: Snapshot, people: string[], kind: FacetKind): Facet[] {
+export function facets(snapshot: Snapshot, people: string[], kind: FacetKind,
+  signal: 'consumed' | 'rated' = 'consumed'): Facet[] {
   validatePeople(snapshot, people, 10);
   const catalog = catalogByKey(snapshot);
   const byPerson = worksByPerson(snapshot, people);
@@ -107,11 +108,11 @@ export function facets(snapshot: Snapshot, people: string[], kind: FacetKind): F
         notes.reduce((sum, note) => sum + note, 0) / notes.length : null,
       min: notes.length ? Math.min(...notes) : null,
       max: notes.length ? Math.max(...notes) : null,
-      eligibleTotal: consumed.length };
+      eligibleTotal: byPerson.get(userId)?.size ?? 0 };
     }),
   })).toSorted((a, b) => {
-    const participation = (facet: Facet) => facet.people.filter((person) => person.rated.length > 0).length;
-    const minimum = (facet: Facet) => Math.min(...facet.people.map((person) => person.rated.length));
+    const participation = (facet: Facet) => facet.people.filter((person) => person[signal].length > 0).length;
+    const minimum = (facet: Facet) => Math.min(...facet.people.map((person) => person[signal].length));
     return participation(b) - participation(a) || minimum(b) - minimum(a) ||
       a.label.localeCompare(b.label) || a.id.localeCompare(b.id);
   });
