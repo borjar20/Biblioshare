@@ -1,6 +1,6 @@
 {
   "kind": "Harness UI de Explorer completo con Chromium real; acciones/Auth simulados. No QA de integración/producción.",
-  "date": "2026-10-10T20:46:45.714Z",
+  "date": "2026-10-10T21:15:50.058Z",
   "limitations": [
     "No Preview MCP disponible. Chromium mediante Playwright.",
     "Next navigation, loadComparison/loadComparisonWork y Supabase Auth sustituidos por stubs, sin solicitudes a DB ni writes.",
@@ -18,7 +18,7 @@
     },
     {
       "path": "src/components/comparisons/canvas.tsx",
-      "sha256": "d00683dcac75d7fd78d15d7ef209af4c3061028fbc2e5f9fd8dbdc045d254ec7"
+      "sha256": "21bea0296c66b9ee531c1a8f4a877744a45ed18f35ac10766ba93c4a68821a5f"
     },
     {
       "path": "src/components/comparisons/canvas.module.css",
@@ -37,66 +37,66 @@
       "result": "PASS",
       "handoffSamples": [
         {
-          "elapsed": 38.19999999925494,
+          "elapsed": 41.19999999925494,
           "content": 0,
           "overlay": 1,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 85.19999999925494,
-          "content": 0.318724,
-          "overlay": 0.681276,
+          "elapsed": 92.59999999962747,
+          "content": 0.318364,
+          "overlay": 0.681636,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 152.19999999925494,
-          "content": 0.639335,
-          "overlay": 0.360665,
+          "elapsed": 159.40000000037253,
+          "content": 0.639479,
+          "overlay": 0.360521,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 219.59999999962747,
-          "content": 0.82505,
-          "overlay": 0.17495,
+          "elapsed": 225.09999999962747,
+          "content": 0.825129,
+          "overlay": 0.174871,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 284.59999999962747,
-          "content": 0.925387,
-          "overlay": 0.0746133,
+          "elapsed": 291.90000000037253,
+          "content": 0.925321,
+          "overlay": 0.0746787,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 351.69999999925494,
-          "content": 0.976505,
-          "overlay": 0.0234947,
+          "elapsed": 359.40000000037253,
+          "content": 0.976474,
+          "overlay": 0.0235256,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 418.59999999962747,
-          "content": 0.997413,
-          "overlay": 0.00258751,
+          "elapsed": 425.90000000037253,
+          "content": 0.997418,
+          "overlay": 0.00258182,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 486.19999999925494,
+          "elapsed": 492.80000000074506,
           "content": 1,
           "overlay": null
         },
         {
-          "elapsed": 552.0999999996275,
+          "elapsed": 559.5999999996275,
           "content": 1,
           "overlay": null
         },
         {
-          "elapsed": 619.7999999998137,
+          "elapsed": 626.6999999992549,
           "content": 1,
           "overlay": null
         }
@@ -268,21 +268,21 @@
         },
         "toolbar": {
           "x": 90,
-          "y": 323.953125,
+          "y": 227.953125,
           "width": 1085,
           "height": 70,
-          "bottom": 393.953125
+          "bottom": 297.953125
         },
         "focus": {
           "x": 112,
-          "y": 341.953125,
+          "y": 245.953125,
           "width": 106.703125,
           "height": 44,
-          "bottom": 385.953125
+          "bottom": 289.953125
         },
         "focusKey": null,
         "focusLabel": "Volver al cruce",
-        "scroll": 0,
+        "scroll": 96,
         "scrollHeight": 926,
         "pageY": 0,
         "overflow": 0
@@ -305,21 +305,21 @@
         },
         "toolbar": {
           "x": 90,
-          "y": 323.953125,
+          "y": 227.953125,
           "width": 1085,
           "height": 70,
-          "bottom": 393.953125
+          "bottom": 297.953125
         },
         "focus": {
           "x": 112,
-          "y": 341.953125,
+          "y": 245.953125,
           "width": 106.703125,
           "height": 44,
-          "bottom": 385.953125
+          "bottom": 289.953125
         },
         "focusKey": null,
         "focusLabel": "Volver al cruce",
-        "scroll": 0,
+        "scroll": 96,
         "scrollHeight": 4856,
         "pageY": 0,
         "overflow": 0
@@ -937,7 +937,7 @@
         }
       ],
       "raf": {
-        "samples": 667,
+        "samples": 672,
         "frameDrift": 0,
         "canvasDrift": 0
       },
@@ -960,66 +960,66 @@
       "result": "PASS",
       "handoffSamples": [
         {
-          "elapsed": 40.299999999813735,
-          "content": 0,
-          "overlay": 1,
+          "elapsed": 0.3999999985098839,
+          "content": null,
+          "overlay": null
+        },
+        {
+          "elapsed": 67.39999999850988,
+          "content": 0.217062,
+          "overlay": 0.782938,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 91.40000000037253,
-          "content": 0.318606,
-          "overlay": 0.681394,
+          "elapsed": 133.69999999925494,
+          "content": 0.573413,
+          "overlay": 0.426587,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 157.70000000018626,
-          "content": 0.63963,
-          "overlay": 0.36037,
+          "elapsed": 201.59999999962747,
+          "content": 0.78864,
+          "overlay": 0.21136,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 225.59999999962747,
-          "content": 0.825009,
-          "overlay": 0.174991,
+          "elapsed": 267.8999999985099,
+          "content": 0.905875,
+          "overlay": 0.0941255,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 291.09999999962747,
-          "content": 0.925365,
-          "overlay": 0.0746347,
+          "elapsed": 334,
+          "content": 0.967061,
+          "overlay": 0.0329386,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 357.5,
-          "content": 0.976495,
-          "overlay": 0.0235048,
+          "elapsed": 401.3999999985099,
+          "content": 0.994332,
+          "overlay": 0.00566809,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 425.59999999962747,
-          "content": 0.99741,
-          "overlay": 0.00259043,
+          "elapsed": 467,
+          "content": 1,
+          "overlay": 0,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 491.79999999981374,
+          "elapsed": 533.2999999988824,
           "content": 1,
           "overlay": null
         },
         {
-          "elapsed": 557.9000000003725,
-          "content": 1,
-          "overlay": null
-        },
-        {
-          "elapsed": 625.7000000001863,
+          "elapsed": 600.5999999996275,
           "content": 1,
           "overlay": null
         }
@@ -1191,21 +1191,21 @@
         },
         "toolbar": {
           "x": 90,
-          "y": 323.953125,
+          "y": 227.953125,
           "width": 1085,
           "height": 70,
-          "bottom": 393.953125
+          "bottom": 297.953125
         },
         "focus": {
           "x": 112,
-          "y": 341.953125,
+          "y": 245.953125,
           "width": 106.703125,
           "height": 44,
-          "bottom": 385.953125
+          "bottom": 289.953125
         },
         "focusKey": null,
         "focusLabel": "Volver al cruce",
-        "scroll": 0,
+        "scroll": 96,
         "scrollHeight": 926,
         "pageY": 0,
         "overflow": 0
@@ -1228,21 +1228,21 @@
         },
         "toolbar": {
           "x": 90,
-          "y": 323.953125,
+          "y": 227.953125,
           "width": 1085,
           "height": 70,
-          "bottom": 393.953125
+          "bottom": 297.953125
         },
         "focus": {
           "x": 112,
-          "y": 341.953125,
+          "y": 245.953125,
           "width": 106.703125,
           "height": 44,
-          "bottom": 385.953125
+          "bottom": 289.953125
         },
         "focusKey": null,
         "focusLabel": "Volver al cruce",
-        "scroll": 0,
+        "scroll": 96,
         "scrollHeight": 4856,
         "pageY": 0,
         "overflow": 0
@@ -1860,7 +1860,7 @@
         }
       ],
       "raf": {
-        "samples": 670,
+        "samples": 684,
         "frameDrift": 0,
         "canvasDrift": 0
       },
@@ -1883,66 +1883,66 @@
       "result": "PASS",
       "handoffSamples": [
         {
-          "elapsed": 42.80000000074506,
+          "elapsed": 32.09999999962747,
           "content": 0,
           "overlay": 1,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 82.6000000005588,
-          "content": 0.318299,
-          "overlay": 0.681701,
+          "elapsed": 77.19999999925494,
+          "content": 0.318837,
+          "overlay": 0.681163,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 149.40000000037253,
-          "content": 0.639438,
-          "overlay": 0.360562,
+          "elapsed": 143.5,
+          "content": 0.639774,
+          "overlay": 0.360226,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 216.1000000005588,
-          "content": 0.825107,
-          "overlay": 0.174893,
+          "elapsed": 211,
+          "content": 0.825088,
+          "overlay": 0.174912,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 282.70000000018626,
-          "content": 0.925417,
-          "overlay": 0.0745833,
+          "elapsed": 277.69999999925494,
+          "content": 0.925407,
+          "overlay": 0.0745929,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 348.80000000074506,
-          "content": 0.976469,
-          "overlay": 0.0235312,
+          "elapsed": 344.09999999962747,
+          "content": 0.976464,
+          "overlay": 0.0235357,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 415.80000000074506,
-          "content": 0.997417,
-          "overlay": 0.00258342,
+          "elapsed": 410.90000000037253,
+          "content": 0.997415,
+          "overlay": 0.00258473,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 482.90000000037253,
+          "elapsed": 477.5,
           "content": 1,
           "overlay": null
         },
         {
-          "elapsed": 548.8000000007451,
+          "elapsed": 543.6999999992549,
           "content": 1,
           "overlay": null
         },
         {
-          "elapsed": 616.7000000001863,
+          "elapsed": 610.3000000007451,
           "content": 1,
           "overlay": null
         }
@@ -2114,21 +2114,21 @@
         },
         "toolbar": {
           "x": 16,
-          "y": 18.453125,
+          "y": -79.546875,
           "width": 383,
           "height": 91,
-          "bottom": 109.453125
+          "bottom": 11.453125
         },
         "focus": {
           "x": 30,
-          "y": 34.453125,
+          "y": -63.546875,
           "width": 106.703125,
           "height": 44,
-          "bottom": 78.453125
+          "bottom": -19.546875
         },
         "focusKey": null,
         "focusLabel": "Volver al cruce",
-        "scroll": 0,
+        "scroll": 98,
         "scrollHeight": 949,
         "pageY": 427,
         "overflow": 0
@@ -2151,21 +2151,21 @@
         },
         "toolbar": {
           "x": 16,
-          "y": 18.453125,
+          "y": -79.546875,
           "width": 383,
           "height": 91,
-          "bottom": 109.453125
+          "bottom": 11.453125
         },
         "focus": {
           "x": 30,
-          "y": 34.453125,
+          "y": -63.546875,
           "width": 106.703125,
           "height": 44,
-          "bottom": 78.453125
+          "bottom": -19.546875
         },
         "focusKey": null,
         "focusLabel": "Volver al cruce",
-        "scroll": 0,
+        "scroll": 98,
         "scrollHeight": 5076,
         "pageY": 427,
         "overflow": 0
@@ -2783,7 +2783,7 @@
         }
       ],
       "raf": {
-        "samples": 664,
+        "samples": 669,
         "frameDrift": 0,
         "canvasDrift": 0
       },
@@ -2806,66 +2806,66 @@
       "result": "PASS",
       "handoffSamples": [
         {
-          "elapsed": 39.799999999813735,
+          "elapsed": 36.59999999962747,
           "content": 0,
           "overlay": 1,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 89.3999999994412,
-          "content": 0.318418,
-          "overlay": 0.681583,
+          "elapsed": 79.90000000037253,
+          "content": 0.318612,
+          "overlay": 0.681388,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 155.69999999925494,
-          "content": 0.639512,
-          "overlay": 0.360488,
+          "elapsed": 147.69999999925494,
+          "content": 0.639265,
+          "overlay": 0.360735,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 222.69999999925494,
-          "content": 0.824945,
-          "overlay": 0.175055,
+          "elapsed": 213.2999999988824,
+          "content": 0.825214,
+          "overlay": 0.174786,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 289.79999999981374,
-          "content": 0.925331,
-          "overlay": 0.074669,
+          "elapsed": 279.7999999988824,
+          "content": 0.925366,
+          "overlay": 0.0746337,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 355.79999999981374,
-          "content": 0.976479,
-          "overlay": 0.023521,
+          "elapsed": 346.7999999988824,
+          "content": 0.976445,
+          "overlay": 0.023555,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 422.5,
-          "content": 0.997405,
-          "overlay": 0.0025951,
+          "elapsed": 413.90000000037253,
+          "content": 0.99741,
+          "overlay": 0.00259028,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 489.8999999994412,
+          "elapsed": 480.09999999962747,
           "content": 1,
           "overlay": null
         },
         {
-          "elapsed": 556.1999999992549,
+          "elapsed": 546.2999999988824,
           "content": 1,
           "overlay": null
         },
         {
-          "elapsed": 622.6999999992549,
+          "elapsed": 614.1999999992549,
           "content": 1,
           "overlay": null
         }
@@ -3037,21 +3037,21 @@
         },
         "toolbar": {
           "x": 16,
-          "y": 391.453125,
+          "y": 161.453125,
           "width": 383,
           "height": 91,
-          "bottom": 482.453125
+          "bottom": 252.453125
         },
         "focus": {
           "x": 30,
-          "y": 407.453125,
+          "y": 177.453125,
           "width": 106.703125,
           "height": 44,
-          "bottom": 451.453125
+          "bottom": 221.453125
         },
         "focusKey": null,
         "focusLabel": "Volver al cruce",
-        "scroll": 0,
+        "scroll": 230,
         "scrollHeight": 1081,
         "pageY": 186,
         "overflow": 0
@@ -3074,21 +3074,21 @@
         },
         "toolbar": {
           "x": 16,
-          "y": 391.453125,
+          "y": 161.453125,
           "width": 383,
           "height": 91,
-          "bottom": 482.453125
+          "bottom": 252.453125
         },
         "focus": {
           "x": 30,
-          "y": 407.453125,
+          "y": 177.453125,
           "width": 106.703125,
           "height": 44,
-          "bottom": 451.453125
+          "bottom": 221.453125
         },
         "focusKey": null,
         "focusLabel": "Volver al cruce",
-        "scroll": 0,
+        "scroll": 230,
         "scrollHeight": 5208,
         "pageY": 186,
         "overflow": 0
@@ -3706,7 +3706,7 @@
         }
       ],
       "raf": {
-        "samples": 670,
+        "samples": 664,
         "frameDrift": 0,
         "canvasDrift": 0
       },
@@ -3729,66 +3729,66 @@
       "result": "PASS",
       "handoffSamples": [
         {
-          "elapsed": 39.59999999962747,
+          "elapsed": 32.600000001490116,
           "content": 0,
           "overlay": 1,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 92.19999999925494,
-          "content": 0.318754,
-          "overlay": 0.681246,
+          "elapsed": 78.30000000074506,
+          "content": 0.318736,
+          "overlay": 0.681264,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 160,
-          "content": 0.639353,
-          "overlay": 0.360647,
+          "elapsed": 144.2000000011176,
+          "content": 0.639711,
+          "overlay": 0.360289,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 225.5,
-          "content": 0.82506,
-          "overlay": 0.17494,
+          "elapsed": 211.2000000011176,
+          "content": 0.825054,
+          "overlay": 0.174946,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 291.8999999994412,
-          "content": 0.925392,
-          "overlay": 0.074608,
+          "elapsed": 277.40000000037253,
+          "content": 0.925389,
+          "overlay": 0.0746112,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 358.5,
-          "content": 0.976457,
-          "overlay": 0.0235428,
+          "elapsed": 344.2000000011176,
+          "content": 0.976506,
+          "overlay": 0.0234937,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 425.3999999994412,
+          "elapsed": 410.7000000011176,
           "content": 0.997413,
-          "overlay": 0.00258678,
+          "overlay": 0.00258721,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 492.3999999994412,
+          "elapsed": 477.2000000011176,
           "content": 1,
           "overlay": null
         },
         {
-          "elapsed": 559.7999999998137,
+          "elapsed": 543.7000000011176,
           "content": 1,
           "overlay": null
         },
         {
-          "elapsed": 626.0999999996275,
+          "elapsed": 610.8000000007451,
           "content": 1,
           "overlay": null
         }
@@ -3960,21 +3960,21 @@
         },
         "toolbar": {
           "x": 16,
-          "y": 18.453125,
+          "y": -79.546875,
           "width": 383,
           "height": 91,
-          "bottom": 109.453125
+          "bottom": 11.453125
         },
         "focus": {
           "x": 30,
-          "y": 34.453125,
+          "y": -63.546875,
           "width": 106.703125,
           "height": 44,
-          "bottom": 78.453125
+          "bottom": -19.546875
         },
         "focusKey": null,
         "focusLabel": "Volver al cruce",
-        "scroll": 0,
+        "scroll": 98,
         "scrollHeight": 949,
         "pageY": 427,
         "overflow": 0
@@ -3997,21 +3997,21 @@
         },
         "toolbar": {
           "x": 16,
-          "y": 18.453125,
+          "y": -79.546875,
           "width": 383,
           "height": 91,
-          "bottom": 109.453125
+          "bottom": 11.453125
         },
         "focus": {
           "x": 30,
-          "y": 34.453125,
+          "y": -63.546875,
           "width": 106.703125,
           "height": 44,
-          "bottom": 78.453125
+          "bottom": -19.546875
         },
         "focusKey": null,
         "focusLabel": "Volver al cruce",
-        "scroll": 0,
+        "scroll": 98,
         "scrollHeight": 5076,
         "pageY": 427,
         "overflow": 0
@@ -4629,7 +4629,7 @@
         }
       ],
       "raf": {
-        "samples": 663,
+        "samples": 665,
         "frameDrift": 0,
         "canvasDrift": 0
       },
@@ -4652,66 +4652,66 @@
       "result": "PASS",
       "handoffSamples": [
         {
-          "elapsed": 35.90000000037253,
+          "elapsed": 39.5,
           "content": 0,
           "overlay": 1,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 88.5,
-          "content": 0.319025,
-          "overlay": 0.680975,
+          "elapsed": 82.30000000074506,
+          "content": 0.318689,
+          "overlay": 0.681311,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 154.79999999981374,
-          "content": 0.639523,
-          "overlay": 0.360477,
+          "elapsed": 149.5,
+          "content": 0.639682,
+          "overlay": 0.360318,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 221.40000000037253,
-          "content": 0.825153,
-          "overlay": 0.174847,
+          "elapsed": 215.69999999925494,
+          "content": 0.82524,
+          "overlay": 0.17476,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 288.20000000018626,
-          "content": 0.925334,
-          "overlay": 0.0746658,
+          "elapsed": 283.09999999962747,
+          "content": 0.92538,
+          "overlay": 0.0746197,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 355.20000000018626,
-          "content": 0.97648,
-          "overlay": 0.0235195,
+          "elapsed": 349.80000000074506,
+          "content": 0.976452,
+          "overlay": 0.0235484,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 421.20000000018626,
-          "content": 0.99742,
-          "overlay": 0.00258007,
+          "elapsed": 415.59999999962747,
+          "content": 0.997412,
+          "overlay": 0.00258838,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 489,
+          "elapsed": 482.69999999925494,
           "content": 1,
           "overlay": null
         },
         {
-          "elapsed": 555.5,
+          "elapsed": 548.9000000003725,
           "content": 1,
           "overlay": null
         },
         {
-          "elapsed": 621.5999999996275,
+          "elapsed": 615.9000000003725,
           "content": 1,
           "overlay": null
         }
@@ -4883,21 +4883,21 @@
         },
         "toolbar": {
           "x": 16,
-          "y": 391.453125,
+          "y": 161.453125,
           "width": 383,
           "height": 91,
-          "bottom": 482.453125
+          "bottom": 252.453125
         },
         "focus": {
           "x": 30,
-          "y": 407.453125,
+          "y": 177.453125,
           "width": 106.703125,
           "height": 44,
-          "bottom": 451.453125
+          "bottom": 221.453125
         },
         "focusKey": null,
         "focusLabel": "Volver al cruce",
-        "scroll": 0,
+        "scroll": 230,
         "scrollHeight": 1081,
         "pageY": 186,
         "overflow": 0
@@ -4920,21 +4920,21 @@
         },
         "toolbar": {
           "x": 16,
-          "y": 391.453125,
+          "y": 161.453125,
           "width": 383,
           "height": 91,
-          "bottom": 482.453125
+          "bottom": 252.453125
         },
         "focus": {
           "x": 30,
-          "y": 407.453125,
+          "y": 177.453125,
           "width": 106.703125,
           "height": 44,
-          "bottom": 451.453125
+          "bottom": 221.453125
         },
         "focusKey": null,
         "focusLabel": "Volver al cruce",
-        "scroll": 0,
+        "scroll": 230,
         "scrollHeight": 5208,
         "pageY": 186,
         "overflow": 0
@@ -5552,7 +5552,7 @@
         }
       ],
       "raf": {
-        "samples": 669,
+        "samples": 667,
         "frameDrift": 0,
         "canvasDrift": 0
       },
@@ -5575,66 +5575,66 @@
       "result": "PASS",
       "handoffSamples": [
         {
-          "elapsed": 33.700000000186265,
+          "elapsed": 33.5,
           "content": 0,
           "overlay": 1,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 79.59999999962747,
-          "content": 0.318494,
-          "overlay": 0.681506,
+          "elapsed": 75.59999999962747,
+          "content": 0.318606,
+          "overlay": 0.681394,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 146.3999999994412,
-          "content": 0.63956,
-          "overlay": 0.36044,
+          "elapsed": 141.2999999988824,
+          "content": 0.639261,
+          "overlay": 0.360739,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 212.8999999994412,
-          "content": 0.825173,
-          "overlay": 0.174827,
+          "elapsed": 208.39999999850988,
+          "content": 0.825009,
+          "overlay": 0.174991,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 280.20000000018626,
-          "content": 0.925345,
-          "overlay": 0.0746551,
+          "elapsed": 274.7999999988824,
+          "content": 0.925365,
+          "overlay": 0.0746347,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 346.09999999962747,
-          "content": 0.976486,
-          "overlay": 0.0235144,
+          "elapsed": 343.19999999925494,
+          "content": 0.976495,
+          "overlay": 0.0235048,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 413.29999999981374,
-          "content": 0.997407,
-          "overlay": 0.0025932,
+          "elapsed": 409.5,
+          "content": 0.99741,
+          "overlay": 0.00259043,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 479.8999999994412,
+          "elapsed": 475,
           "content": 1,
           "overlay": null
         },
         {
-          "elapsed": 546.5,
+          "elapsed": 541.8999999985099,
           "content": 1,
           "overlay": null
         },
         {
-          "elapsed": 612.7000000001863,
+          "elapsed": 607.8999999985099,
           "content": 1,
           "overlay": null
         }
@@ -5806,21 +5806,21 @@
         },
         "toolbar": {
           "x": 16,
-          "y": 64.3125,
+          "y": -77.6875,
           "width": 273,
           "height": 91,
-          "bottom": 155.3125
+          "bottom": 13.3125
         },
         "focus": {
           "x": 30,
-          "y": 80.3125,
+          "y": -61.6875,
           "width": 106.703125,
           "height": 44,
-          "bottom": 124.3125
+          "bottom": -17.6875
         },
         "focusKey": null,
         "focusLabel": "Volver al cruce",
-        "scroll": 0,
+        "scroll": 142,
         "scrollHeight": 993,
         "pageY": 469,
         "overflow": 0
@@ -5843,21 +5843,21 @@
         },
         "toolbar": {
           "x": 16,
-          "y": 64.3125,
+          "y": -77.6875,
           "width": 273,
           "height": 91,
-          "bottom": 155.3125
+          "bottom": 13.3125
         },
         "focus": {
           "x": 30,
-          "y": 80.3125,
+          "y": -61.6875,
           "width": 106.703125,
           "height": 44,
-          "bottom": 124.3125
+          "bottom": -17.6875
         },
         "focusKey": null,
         "focusLabel": "Volver al cruce",
-        "scroll": 0,
+        "scroll": 142,
         "scrollHeight": 5095,
         "pageY": 469,
         "overflow": 0
@@ -6475,7 +6475,7 @@
         }
       ],
       "raf": {
-        "samples": 663,
+        "samples": 666,
         "frameDrift": 0,
         "canvasDrift": 0
       },
@@ -6498,66 +6498,68 @@
       "result": "PASS",
       "handoffSamples": [
         {
-          "elapsed": 36.700000000186265,
+          "elapsed": 36.09999999962747,
           "content": 0,
           "overlay": 1,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 85.90000000037253,
-          "content": 0.318512,
-          "overlay": 0.681488,
+          "elapsed": 74.80000000074506,
+          "content": 0.216974,
+          "overlay": 0.783026,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 152.90000000037253,
-          "content": 0.639202,
-          "overlay": 0.360798,
+          "elapsed": 140.90000000037253,
+          "content": 0.573354,
+          "overlay": 0.426646,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 219.70000000018626,
-          "content": 0.825179,
-          "overlay": 0.174821,
+          "elapsed": 208.2000000011176,
+          "content": 0.788607,
+          "overlay": 0.211393,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 287.20000000018626,
-          "content": 0.925348,
-          "overlay": 0.0746519,
+          "elapsed": 273.7000000011176,
+          "content": 0.905983,
+          "overlay": 0.0940168,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 353,
-          "content": 0.976487,
-          "overlay": 0.0235129,
+          "elapsed": 340.90000000037253,
+          "content": 0.967053,
+          "overlay": 0.0329473,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 419.29999999981374,
-          "content": 0.997422,
-          "overlay": 0.00257817,
+          "elapsed": 407.30000000074506,
+          "content": 0.994329,
+          "overlay": 0.00567121,
           "overlayInert": true,
           "overlayHidden": "true"
         },
         {
-          "elapsed": 485.5,
+          "elapsed": 473.90000000037253,
+          "content": 1,
+          "overlay": 0,
+          "overlayInert": true,
+          "overlayHidden": "true"
+        },
+        {
+          "elapsed": 540.2000000011176,
           "content": 1,
           "overlay": null
         },
         {
-          "elapsed": 553.0999999996275,
-          "content": 1,
-          "overlay": null
-        },
-        {
-          "elapsed": 619.5999999996275,
+          "elapsed": 607.3000000007451,
           "content": 1,
           "overlay": null
         }
@@ -6729,27 +6731,1725 @@
         },
         "toolbar": {
           "x": 16,
-          "y": 207.3125,
+          "y": -66.6875,
           "width": 273,
           "height": 91,
-          "bottom": 298.3125
+          "bottom": 24.3125
         },
         "focus": {
           "x": 30,
-          "y": 223.3125,
+          "y": -50.6875,
           "width": 106.703125,
           "height": 44,
-          "bottom": 267.3125
+          "bottom": -6.6875
         },
         "focusKey": null,
         "focusLabel": "Volver al cruce",
-        "scroll": 0,
+        "scroll": 274,
         "scrollHeight": 1125,
         "pageY": 458,
         "overflow": 0
       },
       "workLoaded": {
         "view": "work",
+        "frame": {
+          "x": 16,
+          "y": -66.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 509.3125
+        },
+        "canvas": {
+          "x": 16,
+          "y": -66.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 509.3125
+        },
+        "toolbar": {
+          "x": 16,
+          "y": -66.6875,
+          "width": 273,
+          "height": 91,
+          "bottom": 24.3125
+        },
+        "focus": {
+          "x": 30,
+          "y": -50.6875,
+          "width": 106.703125,
+          "height": 44,
+          "bottom": -6.6875
+        },
+        "focusKey": null,
+        "focusLabel": "Volver al cruce",
+        "scroll": 274,
+        "scrollHeight": 5227,
+        "pageY": 458,
+        "overflow": 0
+      },
+      "returnRegion": {
+        "view": "region",
+        "frame": {
+          "x": 16,
+          "y": -66.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 509.3125
+        },
+        "canvas": {
+          "x": 16,
+          "y": -66.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 509.3125
+        },
+        "toolbar": {
+          "x": 16,
+          "y": 67.3125,
+          "width": 273,
+          "height": 91,
+          "bottom": 158.3125
+        },
+        "focus": {
+          "x": 41.998626708984375,
+          "y": 355.5,
+          "width": 100.49812316894531,
+          "height": 145.7222900390625,
+          "bottom": 501.2222900390625
+        },
+        "focusKey": "series:qa-series",
+        "focusLabel": "Abrir obra: AA Serie cuarenta episodios",
+        "scroll": 140,
+        "scrollHeight": 5732,
+        "pageY": 458,
+        "overflow": 0
+      },
+      "originLater": {
+        "view": "region",
+        "frame": {
+          "x": 16,
+          "y": -66.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 509.3125
+        },
+        "canvas": {
+          "x": 16,
+          "y": -66.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 509.3125
+        },
+        "toolbar": {
+          "x": 16,
+          "y": -66.6875,
+          "width": 273,
+          "height": 91,
+          "bottom": 24.3125
+        },
+        "focus": {
+          "x": 41.998626708984375,
+          "y": -1899.5,
+          "width": 100.49812316894531,
+          "height": 145.7222900390625,
+          "bottom": -1753.7777099609375
+        },
+        "focusKey": "series:qa-series",
+        "focusLabel": "Abrir obra: AA Serie cuarenta episodios",
+        "scroll": 2395,
+        "scrollHeight": 5732,
+        "pageY": 458,
+        "overflow": 0
+      },
+      "returnedLater": {
+        "view": "region",
+        "frame": {
+          "x": 16,
+          "y": -66.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 509.3125
+        },
+        "canvas": {
+          "x": 16,
+          "y": -66.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 509.3125
+        },
+        "toolbar": {
+          "x": 16,
+          "y": -66.6875,
+          "width": 273,
+          "height": 91,
+          "bottom": 24.3125
+        },
+        "focus": {
+          "x": 41.998626708984375,
+          "y": 197.75,
+          "width": 100.49812316894531,
+          "height": 145.722412109375,
+          "bottom": 343.472412109375
+        },
+        "focusKey": "book:20",
+        "focusLabel": "Abrir obra: Libro 20",
+        "scroll": 2395,
+        "scrollHeight": 5732,
+        "pageY": 458,
+        "overflow": 0
+      },
+      "returnVenn": {
+        "view": "venn",
+        "frame": {
+          "x": 16,
+          "y": -66.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 509.3125
+        },
+        "canvas": {
+          "x": 16,
+          "y": -66.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 509.3125
+        },
+        "toolbar": {
+          "x": 16,
+          "y": -66.6875,
+          "width": 273,
+          "height": 91,
+          "bottom": 24.3125
+        },
+        "focus": {
+          "x": 155.5,
+          "y": 207.96875,
+          "width": 44,
+          "height": 44,
+          "bottom": 251.96875
+        },
+        "focusKey": null,
+        "focusLabel": "Abrir región: Ana, Bea; 83 obras",
+        "scroll": 313,
+        "scrollHeight": 889,
+        "pageY": 458,
+        "overflow": 0
+      },
+      "returnMap": {
+        "view": "group",
+        "frame": {
+          "x": 16,
+          "y": 0.3125,
+          "width": 288,
+          "height": 576,
+          "bottom": 576.3125
+        },
+        "canvas": {
+          "x": 16,
+          "y": 0.3125,
+          "width": 288,
+          "height": 576,
+          "bottom": 576.3125
+        },
+        "toolbar": {
+          "x": 16,
+          "y": 0.3125,
+          "width": 273,
+          "height": 75,
+          "bottom": 75.3125
+        },
+        "focus": {
+          "x": 30,
+          "y": 271.3125,
+          "width": 245,
+          "height": 116,
+          "bottom": 387.3125
+        },
+        "focusKey": null,
+        "focusLabel": "Ana, Bea 83 obras comunes",
+        "scroll": 655,
+        "scrollHeight": 1435,
+        "pageY": 391,
+        "overflow": 0
+      },
+      "wheels": [
+        {
+          "defaultPrevented": false,
+          "viewBefore": "group",
+          "viewAfter": "group"
+        },
+        {
+          "defaultPrevented": false,
+          "viewBefore": "venn",
+          "viewAfter": "venn"
+        },
+        {
+          "defaultPrevented": false,
+          "viewBefore": "work",
+          "viewAfter": "work"
+        }
+      ],
+      "episodeEvidence": {
+        "count": 40,
+        "last": "Temporada 1 · episodio 40",
+        "lastBox": {
+          "x": 24,
+          "y": 330.5,
+          "width": 257,
+          "height": 15,
+          "top": 330.5,
+          "right": 281,
+          "bottom": 345.5,
+          "left": 24
+        },
+        "canvasBox": {
+          "x": 16,
+          "y": -66.6875,
+          "width": 288,
+          "height": 576,
+          "top": -66.6875,
+          "right": 304,
+          "bottom": 509.3125,
+          "left": 16
+        }
+      },
+      "keyboardFocusChecks": [
+        {
+          "key": "book:17",
+          "focus": {
+            "x": 162.49826049804688,
+            "y": 40.2982177734375,
+            "width": 100.49813842773438,
+            "height": 145.7222900390625,
+            "bottom": 186.0205078125
+          },
+          "toolbar": {
+            "x": 16,
+            "y": -66.6875,
+            "width": 273,
+            "height": 91,
+            "bottom": 24.3125
+          },
+          "canvas": {
+            "x": 16,
+            "y": -66.6875,
+            "width": 288,
+            "height": 576,
+            "bottom": 509.3125
+          }
+        },
+        {
+          "key": "book:16",
+          "focus": {
+            "x": 41.998626708984375,
+            "y": 40.2982177734375,
+            "width": 100.49812316894531,
+            "height": 145.7222900390625,
+            "bottom": 186.0205078125
+          },
+          "toolbar": {
+            "x": 16,
+            "y": -66.6875,
+            "width": 273,
+            "height": 91,
+            "bottom": 24.3125
+          },
+          "canvas": {
+            "x": 16,
+            "y": -66.6875,
+            "width": 288,
+            "height": 576,
+            "bottom": 509.3125
+          }
+        },
+        {
+          "key": "book:15",
+          "focus": {
+            "x": 162.49826049804688,
+            "y": 197.5745849609375,
+            "width": 100.49813842773438,
+            "height": 145.7222900390625,
+            "bottom": 343.296875
+          },
+          "toolbar": {
+            "x": 16,
+            "y": -66.6875,
+            "width": 273,
+            "height": 91,
+            "bottom": 24.3125
+          },
+          "canvas": {
+            "x": 16,
+            "y": -66.6875,
+            "width": 288,
+            "height": 576,
+            "bottom": 509.3125
+          }
+        },
+        {
+          "key": "book:14",
+          "focus": {
+            "x": 41.998626708984375,
+            "y": 197.5745849609375,
+            "width": 100.49812316894531,
+            "height": 145.7222900390625,
+            "bottom": 343.296875
+          },
+          "toolbar": {
+            "x": 16,
+            "y": -66.6875,
+            "width": 273,
+            "height": 91,
+            "bottom": 24.3125
+          },
+          "canvas": {
+            "x": 16,
+            "y": -66.6875,
+            "width": 288,
+            "height": 576,
+            "bottom": 509.3125
+          }
+        },
+        {
+          "key": "book:13",
+          "focus": {
+            "x": 162.49826049804688,
+            "y": 39.8465576171875,
+            "width": 100.49813842773438,
+            "height": 145.7222900390625,
+            "bottom": 185.56884765625
+          },
+          "toolbar": {
+            "x": 16,
+            "y": -66.6875,
+            "width": 273,
+            "height": 91,
+            "bottom": 24.3125
+          },
+          "canvas": {
+            "x": 16,
+            "y": -66.6875,
+            "width": 288,
+            "height": 576,
+            "bottom": 509.3125
+          }
+        },
+        {
+          "key": "book:12",
+          "focus": {
+            "x": 41.998626708984375,
+            "y": 39.8465576171875,
+            "width": 100.49812316894531,
+            "height": 145.7222900390625,
+            "bottom": 185.56884765625
+          },
+          "toolbar": {
+            "x": 16,
+            "y": -66.6875,
+            "width": 273,
+            "height": 91,
+            "bottom": 24.3125
+          },
+          "canvas": {
+            "x": 16,
+            "y": -66.6875,
+            "width": 288,
+            "height": 576,
+            "bottom": 509.3125
+          }
+        },
+        {
+          "key": "book:11",
+          "focus": {
+            "x": 162.49826049804688,
+            "y": 198.122802734375,
+            "width": 100.49813842773438,
+            "height": 145.7222900390625,
+            "bottom": 343.8450927734375
+          },
+          "toolbar": {
+            "x": 16,
+            "y": -66.6875,
+            "width": 273,
+            "height": 91,
+            "bottom": 24.3125
+          },
+          "canvas": {
+            "x": 16,
+            "y": -66.6875,
+            "width": 288,
+            "height": 576,
+            "bottom": 509.3125
+          }
+        },
+        {
+          "key": "book:10",
+          "focus": {
+            "x": 41.998626708984375,
+            "y": 198.122802734375,
+            "width": 100.49812316894531,
+            "height": 145.7222900390625,
+            "bottom": 343.8450927734375
+          },
+          "toolbar": {
+            "x": 16,
+            "y": -66.6875,
+            "width": 273,
+            "height": 91,
+            "bottom": 24.3125
+          },
+          "canvas": {
+            "x": 16,
+            "y": -66.6875,
+            "width": 288,
+            "height": 576,
+            "bottom": 509.3125
+          }
+        },
+        {
+          "key": "book:9",
+          "focus": {
+            "x": 162.49826049804688,
+            "y": 40.399169921875,
+            "width": 100.49813842773438,
+            "height": 145.72216796875,
+            "bottom": 186.121337890625
+          },
+          "toolbar": {
+            "x": 16,
+            "y": -66.6875,
+            "width": 273,
+            "height": 91,
+            "bottom": 24.3125
+          },
+          "canvas": {
+            "x": 16,
+            "y": -66.6875,
+            "width": 288,
+            "height": 576,
+            "bottom": 509.3125
+          }
+        },
+        {
+          "key": "book:8",
+          "focus": {
+            "x": 41.998626708984375,
+            "y": 40.399169921875,
+            "width": 100.49812316894531,
+            "height": 145.72216796875,
+            "bottom": 186.121337890625
+          },
+          "toolbar": {
+            "x": 16,
+            "y": -66.6875,
+            "width": 273,
+            "height": 91,
+            "bottom": 24.3125
+          },
+          "canvas": {
+            "x": 16,
+            "y": -66.6875,
+            "width": 288,
+            "height": 576,
+            "bottom": 509.3125
+          }
+        },
+        {
+          "key": "book:7",
+          "focus": {
+            "x": 162.49826049804688,
+            "y": 197.671142578125,
+            "width": 100.49813842773438,
+            "height": 145.7222900390625,
+            "bottom": 343.3934326171875
+          },
+          "toolbar": {
+            "x": 16,
+            "y": -66.6875,
+            "width": 273,
+            "height": 91,
+            "bottom": 24.3125
+          },
+          "canvas": {
+            "x": 16,
+            "y": -66.6875,
+            "width": 288,
+            "height": 576,
+            "bottom": 509.3125
+          }
+        },
+        {
+          "key": "book:6",
+          "focus": {
+            "x": 41.998626708984375,
+            "y": 197.671142578125,
+            "width": 100.49812316894531,
+            "height": 145.7222900390625,
+            "bottom": 343.3934326171875
+          },
+          "toolbar": {
+            "x": 16,
+            "y": -66.6875,
+            "width": 273,
+            "height": 91,
+            "bottom": 24.3125
+          },
+          "canvas": {
+            "x": 16,
+            "y": -66.6875,
+            "width": 288,
+            "height": 576,
+            "bottom": 509.3125
+          }
+        },
+        {
+          "key": "book:5",
+          "focus": {
+            "x": 162.49826049804688,
+            "y": 39.947418212890625,
+            "width": 100.49813842773438,
+            "height": 145.72225952148438,
+            "bottom": 185.669677734375
+          },
+          "toolbar": {
+            "x": 16,
+            "y": -66.6875,
+            "width": 273,
+            "height": 91,
+            "bottom": 24.3125
+          },
+          "canvas": {
+            "x": 16,
+            "y": -66.6875,
+            "width": 288,
+            "height": 576,
+            "bottom": 509.3125
+          }
+        },
+        {
+          "key": "book:4",
+          "focus": {
+            "x": 41.998626708984375,
+            "y": 39.947418212890625,
+            "width": 100.49812316894531,
+            "height": 145.72225952148438,
+            "bottom": 185.669677734375
+          },
+          "toolbar": {
+            "x": 16,
+            "y": -66.6875,
+            "width": 273,
+            "height": 91,
+            "bottom": 24.3125
+          },
+          "canvas": {
+            "x": 16,
+            "y": -66.6875,
+            "width": 288,
+            "height": 576,
+            "bottom": 509.3125
+          }
+        },
+        {
+          "key": "book:3",
+          "focus": {
+            "x": 162.49826049804688,
+            "y": 198.22372436523438,
+            "width": 100.49813842773438,
+            "height": 145.7222900390625,
+            "bottom": 343.9460144042969
+          },
+          "toolbar": {
+            "x": 16,
+            "y": -66.6875,
+            "width": 273,
+            "height": 91,
+            "bottom": 24.3125
+          },
+          "canvas": {
+            "x": 16,
+            "y": -66.6875,
+            "width": 288,
+            "height": 576,
+            "bottom": 509.3125
+          }
+        },
+        {
+          "key": "book:2",
+          "focus": {
+            "x": 41.998626708984375,
+            "y": 198.22372436523438,
+            "width": 100.49812316894531,
+            "height": 145.7222900390625,
+            "bottom": 343.9460144042969
+          },
+          "toolbar": {
+            "x": 16,
+            "y": -66.6875,
+            "width": 273,
+            "height": 91,
+            "bottom": 24.3125
+          },
+          "canvas": {
+            "x": 16,
+            "y": -66.6875,
+            "width": 288,
+            "height": 576,
+            "bottom": 509.3125
+          }
+        }
+      ],
+      "raf": {
+        "samples": 668,
+        "frameDrift": 0,
+        "canvasDrift": 0
+      },
+      "nativeWheelPage": {
+        "yBefore": 391,
+        "yAfter": 871
+      },
+      "reduced": {
+        "overlay": false,
+        "opacity": "1"
+      },
+      "consoleErrors": [],
+      "failedRequests": [],
+      "externalRequests": []
+    },
+    {
+      "width": 320,
+      "people": 3,
+      "theme": "dark",
+      "result": "PASS",
+      "handoffSamples": [
+        {
+          "elapsed": 32.5,
+          "content": 0,
+          "overlay": 1,
+          "overlayInert": true,
+          "overlayHidden": "true"
+        },
+        {
+          "elapsed": 81,
+          "content": 0.318524,
+          "overlay": 0.681476,
+          "overlayInert": true,
+          "overlayHidden": "true"
+        },
+        {
+          "elapsed": 147.30000000074506,
+          "content": 0.639578,
+          "overlay": 0.360422,
+          "overlayInert": true,
+          "overlayHidden": "true"
+        },
+        {
+          "elapsed": 214.30000000074506,
+          "content": 0.824981,
+          "overlay": 0.175019,
+          "overlayInert": true,
+          "overlayHidden": "true"
+        },
+        {
+          "elapsed": 281.19999999925494,
+          "content": 0.92535,
+          "overlay": 0.0746498,
+          "overlayInert": true,
+          "overlayHidden": "true"
+        },
+        {
+          "elapsed": 347.80000000074506,
+          "content": 0.976488,
+          "overlay": 0.0235119,
+          "overlayInert": true,
+          "overlayHidden": "true"
+        },
+        {
+          "elapsed": 414.09999999962747,
+          "content": 0.997408,
+          "overlay": 0.00259247,
+          "overlayInert": true,
+          "overlayHidden": "true"
+        },
+        {
+          "elapsed": 481,
+          "content": 1,
+          "overlay": null
+        },
+        {
+          "elapsed": 547.6999999992549,
+          "content": 1,
+          "overlay": null
+        },
+        {
+          "elapsed": 614.4000000003725,
+          "content": 1,
+          "overlay": null
+        }
+      ],
+      "loadingHeight": 576,
+      "map": {
+        "view": "group",
+        "frame": {
+          "x": 16,
+          "y": 391.3125,
+          "width": 288,
+          "height": 576,
+          "bottom": 967.3125
+        },
+        "canvas": {
+          "x": 16,
+          "y": 391.3125,
+          "width": 288,
+          "height": 576,
+          "bottom": 967.3125
+        },
+        "toolbar": {
+          "x": 16,
+          "y": 443.3125,
+          "width": 273,
+          "height": 75,
+          "bottom": 518.3125
+        },
+        "focus": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 1947.3125,
+          "bottom": 1947.3125
+        },
+        "focusKey": null,
+        "focusLabel": "Entre nosotros.Las historias que compartís.Las miradas que os hacen diferentes.Selección personal guardadaGrupoElige un grupoGrupo QA sintéticoObrasGustosTodosLibrosPelículasSeriesFormatoTodos los formatosLibrosPelículasSeriesGrupo QA sintéticoActualizar accesoAbre una pareja o elige dos o tres personas para explorar sus obras.GrupoVenn generalCruceObraAA Serie cuarenta episodiosLibro 01Libro 02AAna83 obrasBBea83 obrasCCarlos11 obras83historias os conectanElige dos o tres personas para ver su cruce.Comparar selecciónAna, Bea83 obras comunesAA Serie cuarenta episodiosLibro 01Libro 02↗Ana, Carlos11 obras comunesLibro 72Libro 73Libro 74↗Bea, Carlos11 obras comunesLibro 72Libro 73Libro 74↗Lo que compartís11 obras comunesLibro 72Libro 73Libro 74Libro 75Libro 76Libro 77Las posiciones y los círculos son esquemáticos. Las cantidades cuentan obras únicas con registros elegibles visibles.Solo obras visibles para ti. Tu selección no se comparte.Fin de página QA",
+        "scroll": 0,
+        "scrollHeight": 1514,
+        "pageY": 0,
+        "overflow": 0
+      },
+      "venn": {
+        "view": "venn",
+        "frame": {
+          "x": 16,
+          "y": 391.3125,
+          "width": 288,
+          "height": 576,
+          "bottom": 967.3125
+        },
+        "canvas": {
+          "x": 16,
+          "y": 391.3125,
+          "width": 288,
+          "height": 576,
+          "bottom": 967.3125
+        },
+        "toolbar": {
+          "x": 16,
+          "y": 533.3125,
+          "width": 273,
+          "height": 91,
+          "bottom": 624.3125
+        },
+        "focus": {
+          "x": 30,
+          "y": 549.3125,
+          "width": 108.0625,
+          "height": 44,
+          "bottom": 593.3125
+        },
+        "focusKey": null,
+        "focusLabel": "Volver al grupo",
+        "scroll": 0,
+        "scrollHeight": 757,
+        "pageY": 0,
+        "overflow": 0
+      },
+      "region": {
+        "view": "region",
+        "frame": {
+          "x": 16,
+          "y": -77.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 498.3125
+        },
+        "canvas": {
+          "x": 16,
+          "y": -77.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 498.3125
+        },
+        "toolbar": {
+          "x": 16,
+          "y": 64.3125,
+          "width": 273,
+          "height": 91,
+          "bottom": 155.3125
+        },
+        "focus": {
+          "x": 30,
+          "y": 80.3125,
+          "width": 104.734375,
+          "height": 44,
+          "bottom": 124.3125
+        },
+        "focusKey": null,
+        "focusLabel": "Volver al Venn",
+        "scroll": 0,
+        "scrollHeight": 3083,
+        "pageY": 469,
+        "overflow": 0
+      },
+      "afterMore": {
+        "view": "region",
+        "frame": {
+          "x": 16,
+          "y": -77.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 498.3125
+        },
+        "canvas": {
+          "x": 16,
+          "y": -77.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 498.3125
+        },
+        "toolbar": {
+          "x": 16,
+          "y": -77.6875,
+          "width": 273,
+          "height": 91,
+          "bottom": 13.3125
+        },
+        "focus": {
+          "x": 151.40625,
+          "y": 2894.890625,
+          "width": 111.578125,
+          "height": 44,
+          "bottom": 2938.890625
+        },
+        "focusKey": null,
+        "focusLabel": "Cargar más",
+        "scroll": 2507,
+        "scrollHeight": 5600,
+        "pageY": 469,
+        "overflow": 0
+      },
+      "workPending": {
+        "view": "work",
+        "frame": {
+          "x": 16,
+          "y": -77.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 498.3125
+        },
+        "canvas": {
+          "x": 16,
+          "y": -77.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 498.3125
+        },
+        "toolbar": {
+          "x": 16,
+          "y": -77.6875,
+          "width": 273,
+          "height": 91,
+          "bottom": 13.3125
+        },
+        "focus": {
+          "x": 30,
+          "y": -61.6875,
+          "width": 106.703125,
+          "height": 44,
+          "bottom": -17.6875
+        },
+        "focusKey": null,
+        "focusLabel": "Volver al cruce",
+        "scroll": 142,
+        "scrollHeight": 993,
+        "pageY": 469,
+        "overflow": 0
+      },
+      "workLoaded": {
+        "view": "work",
+        "frame": {
+          "x": 16,
+          "y": -77.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 498.3125
+        },
+        "canvas": {
+          "x": 16,
+          "y": -77.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 498.3125
+        },
+        "toolbar": {
+          "x": 16,
+          "y": -77.6875,
+          "width": 273,
+          "height": 91,
+          "bottom": 13.3125
+        },
+        "focus": {
+          "x": 30,
+          "y": -61.6875,
+          "width": 106.703125,
+          "height": 44,
+          "bottom": -17.6875
+        },
+        "focusKey": null,
+        "focusLabel": "Volver al cruce",
+        "scroll": 142,
+        "scrollHeight": 5095,
+        "pageY": 469,
+        "overflow": 0
+      },
+      "returnRegion": {
+        "view": "region",
+        "frame": {
+          "x": 16,
+          "y": -77.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 498.3125
+        },
+        "canvas": {
+          "x": 16,
+          "y": -77.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 498.3125
+        },
+        "toolbar": {
+          "x": 16,
+          "y": 56.3125,
+          "width": 273,
+          "height": 91,
+          "bottom": 147.3125
+        },
+        "focus": {
+          "x": 41.998626708984375,
+          "y": 344.5,
+          "width": 100.49812316894531,
+          "height": 145.7222900390625,
+          "bottom": 490.2222900390625
+        },
+        "focusKey": "series:qa-series",
+        "focusLabel": "Abrir obra: AA Serie cuarenta episodios",
+        "scroll": 8,
+        "scrollHeight": 5600,
+        "pageY": 469,
+        "overflow": 0
+      },
+      "originLater": {
+        "view": "region",
+        "frame": {
+          "x": 16,
+          "y": -77.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 498.3125
+        },
+        "canvas": {
+          "x": 16,
+          "y": -77.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 498.3125
+        },
+        "toolbar": {
+          "x": 16,
+          "y": -77.6875,
+          "width": 273,
+          "height": 91,
+          "bottom": 13.3125
+        },
+        "focus": {
+          "x": 41.998626708984375,
+          "y": -1910.5,
+          "width": 100.49812316894531,
+          "height": 145.7222900390625,
+          "bottom": -1764.7777099609375
+        },
+        "focusKey": "series:qa-series",
+        "focusLabel": "Abrir obra: AA Serie cuarenta episodios",
+        "scroll": 2263,
+        "scrollHeight": 5600,
+        "pageY": 469,
+        "overflow": 0
+      },
+      "returnedLater": {
+        "view": "region",
+        "frame": {
+          "x": 16,
+          "y": -77.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 498.3125
+        },
+        "canvas": {
+          "x": 16,
+          "y": -77.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 498.3125
+        },
+        "toolbar": {
+          "x": 16,
+          "y": -77.6875,
+          "width": 273,
+          "height": 91,
+          "bottom": 13.3125
+        },
+        "focus": {
+          "x": 41.998626708984375,
+          "y": 186.75,
+          "width": 100.49812316894531,
+          "height": 145.722412109375,
+          "bottom": 332.472412109375
+        },
+        "focusKey": "book:20",
+        "focusLabel": "Abrir obra: Libro 20",
+        "scroll": 2263,
+        "scrollHeight": 5600,
+        "pageY": 469,
+        "overflow": 0
+      },
+      "returnVenn": {
+        "view": "venn",
+        "frame": {
+          "x": 16,
+          "y": -77.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 498.3125
+        },
+        "canvas": {
+          "x": 16,
+          "y": -77.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 498.3125
+        },
+        "toolbar": {
+          "x": 16,
+          "y": -55.6875,
+          "width": 273,
+          "height": 91,
+          "bottom": 35.3125
+        },
+        "focus": {
+          "x": 155.5,
+          "y": 257.96875,
+          "width": 44,
+          "height": 44,
+          "bottom": 301.96875
+        },
+        "focusKey": null,
+        "focusLabel": "Abrir región: Ana, Bea; 83 obras",
+        "scroll": 120,
+        "scrollHeight": 757,
+        "pageY": 469,
+        "overflow": 0
+      },
+      "returnMap": {
+        "view": "group",
+        "frame": {
+          "x": 16,
+          "y": 0.3125,
+          "width": 288,
+          "height": 576,
+          "bottom": 576.3125
+        },
+        "canvas": {
+          "x": 16,
+          "y": 0.3125,
+          "width": 288,
+          "height": 576,
+          "bottom": 576.3125
+        },
+        "toolbar": {
+          "x": 16,
+          "y": 0.3125,
+          "width": 273,
+          "height": 75,
+          "bottom": 75.3125
+        },
+        "focus": {
+          "x": 30,
+          "y": 271.3125,
+          "width": 245,
+          "height": 116,
+          "bottom": 387.3125
+        },
+        "focusKey": null,
+        "focusLabel": "Ana, Bea 83 obras comunes",
+        "scroll": 435,
+        "scrollHeight": 1514,
+        "pageY": 391,
+        "overflow": 0
+      },
+      "wheels": [
+        {
+          "defaultPrevented": false,
+          "viewBefore": "group",
+          "viewAfter": "group"
+        },
+        {
+          "defaultPrevented": false,
+          "viewBefore": "venn",
+          "viewAfter": "venn"
+        },
+        {
+          "defaultPrevented": false,
+          "viewBefore": "work",
+          "viewAfter": "work"
+        }
+      ],
+      "episodeEvidence": {
+        "count": 40,
+        "last": "Temporada 1 · episodio 40",
+        "lastBox": {
+          "x": 24,
+          "y": 319.5,
+          "width": 257,
+          "height": 15,
+          "top": 319.5,
+          "right": 281,
+          "bottom": 334.5,
+          "left": 24
+        },
+        "canvasBox": {
+          "x": 16,
+          "y": -77.6875,
+          "width": 288,
+          "height": 576,
+          "top": -77.6875,
+          "right": 304,
+          "bottom": 498.3125,
+          "left": 16
+        }
+      },
+      "keyboardFocusChecks": [
+        {
+          "key": "book:17",
+          "focus": {
+            "x": 162.49826049804688,
+            "y": 29.2982177734375,
+            "width": 100.49813842773438,
+            "height": 145.7222900390625,
+            "bottom": 175.0205078125
+          },
+          "toolbar": {
+            "x": 16,
+            "y": -77.6875,
+            "width": 273,
+            "height": 91,
+            "bottom": 13.3125
+          },
+          "canvas": {
+            "x": 16,
+            "y": -77.6875,
+            "width": 288,
+            "height": 576,
+            "bottom": 498.3125
+          }
+        },
+        {
+          "key": "book:16",
+          "focus": {
+            "x": 41.998626708984375,
+            "y": 29.2982177734375,
+            "width": 100.49812316894531,
+            "height": 145.7222900390625,
+            "bottom": 175.0205078125
+          },
+          "toolbar": {
+            "x": 16,
+            "y": -77.6875,
+            "width": 273,
+            "height": 91,
+            "bottom": 13.3125
+          },
+          "canvas": {
+            "x": 16,
+            "y": -77.6875,
+            "width": 288,
+            "height": 576,
+            "bottom": 498.3125
+          }
+        },
+        {
+          "key": "book:15",
+          "focus": {
+            "x": 162.49826049804688,
+            "y": 186.5745849609375,
+            "width": 100.49813842773438,
+            "height": 145.7222900390625,
+            "bottom": 332.296875
+          },
+          "toolbar": {
+            "x": 16,
+            "y": -77.6875,
+            "width": 273,
+            "height": 91,
+            "bottom": 13.3125
+          },
+          "canvas": {
+            "x": 16,
+            "y": -77.6875,
+            "width": 288,
+            "height": 576,
+            "bottom": 498.3125
+          }
+        },
+        {
+          "key": "book:14",
+          "focus": {
+            "x": 41.998626708984375,
+            "y": 186.5745849609375,
+            "width": 100.49812316894531,
+            "height": 145.7222900390625,
+            "bottom": 332.296875
+          },
+          "toolbar": {
+            "x": 16,
+            "y": -77.6875,
+            "width": 273,
+            "height": 91,
+            "bottom": 13.3125
+          },
+          "canvas": {
+            "x": 16,
+            "y": -77.6875,
+            "width": 288,
+            "height": 576,
+            "bottom": 498.3125
+          }
+        },
+        {
+          "key": "book:13",
+          "focus": {
+            "x": 162.49826049804688,
+            "y": 28.8465576171875,
+            "width": 100.49813842773438,
+            "height": 145.7222900390625,
+            "bottom": 174.56884765625
+          },
+          "toolbar": {
+            "x": 16,
+            "y": -77.6875,
+            "width": 273,
+            "height": 91,
+            "bottom": 13.3125
+          },
+          "canvas": {
+            "x": 16,
+            "y": -77.6875,
+            "width": 288,
+            "height": 576,
+            "bottom": 498.3125
+          }
+        },
+        {
+          "key": "book:12",
+          "focus": {
+            "x": 41.998626708984375,
+            "y": 28.8465576171875,
+            "width": 100.49812316894531,
+            "height": 145.7222900390625,
+            "bottom": 174.56884765625
+          },
+          "toolbar": {
+            "x": 16,
+            "y": -77.6875,
+            "width": 273,
+            "height": 91,
+            "bottom": 13.3125
+          },
+          "canvas": {
+            "x": 16,
+            "y": -77.6875,
+            "width": 288,
+            "height": 576,
+            "bottom": 498.3125
+          }
+        },
+        {
+          "key": "book:11",
+          "focus": {
+            "x": 162.49826049804688,
+            "y": 187.122802734375,
+            "width": 100.49813842773438,
+            "height": 145.7222900390625,
+            "bottom": 332.8450927734375
+          },
+          "toolbar": {
+            "x": 16,
+            "y": -77.6875,
+            "width": 273,
+            "height": 91,
+            "bottom": 13.3125
+          },
+          "canvas": {
+            "x": 16,
+            "y": -77.6875,
+            "width": 288,
+            "height": 576,
+            "bottom": 498.3125
+          }
+        },
+        {
+          "key": "book:10",
+          "focus": {
+            "x": 41.998626708984375,
+            "y": 187.122802734375,
+            "width": 100.49812316894531,
+            "height": 145.7222900390625,
+            "bottom": 332.8450927734375
+          },
+          "toolbar": {
+            "x": 16,
+            "y": -77.6875,
+            "width": 273,
+            "height": 91,
+            "bottom": 13.3125
+          },
+          "canvas": {
+            "x": 16,
+            "y": -77.6875,
+            "width": 288,
+            "height": 576,
+            "bottom": 498.3125
+          }
+        },
+        {
+          "key": "book:9",
+          "focus": {
+            "x": 162.49826049804688,
+            "y": 29.399169921875,
+            "width": 100.49813842773438,
+            "height": 145.72216796875,
+            "bottom": 175.121337890625
+          },
+          "toolbar": {
+            "x": 16,
+            "y": -77.6875,
+            "width": 273,
+            "height": 91,
+            "bottom": 13.3125
+          },
+          "canvas": {
+            "x": 16,
+            "y": -77.6875,
+            "width": 288,
+            "height": 576,
+            "bottom": 498.3125
+          }
+        },
+        {
+          "key": "book:8",
+          "focus": {
+            "x": 41.998626708984375,
+            "y": 29.399169921875,
+            "width": 100.49812316894531,
+            "height": 145.72216796875,
+            "bottom": 175.121337890625
+          },
+          "toolbar": {
+            "x": 16,
+            "y": -77.6875,
+            "width": 273,
+            "height": 91,
+            "bottom": 13.3125
+          },
+          "canvas": {
+            "x": 16,
+            "y": -77.6875,
+            "width": 288,
+            "height": 576,
+            "bottom": 498.3125
+          }
+        },
+        {
+          "key": "book:7",
+          "focus": {
+            "x": 162.49826049804688,
+            "y": 186.671142578125,
+            "width": 100.49813842773438,
+            "height": 145.7222900390625,
+            "bottom": 332.3934326171875
+          },
+          "toolbar": {
+            "x": 16,
+            "y": -77.6875,
+            "width": 273,
+            "height": 91,
+            "bottom": 13.3125
+          },
+          "canvas": {
+            "x": 16,
+            "y": -77.6875,
+            "width": 288,
+            "height": 576,
+            "bottom": 498.3125
+          }
+        },
+        {
+          "key": "book:6",
+          "focus": {
+            "x": 41.998626708984375,
+            "y": 186.671142578125,
+            "width": 100.49812316894531,
+            "height": 145.7222900390625,
+            "bottom": 332.3934326171875
+          },
+          "toolbar": {
+            "x": 16,
+            "y": -77.6875,
+            "width": 273,
+            "height": 91,
+            "bottom": 13.3125
+          },
+          "canvas": {
+            "x": 16,
+            "y": -77.6875,
+            "width": 288,
+            "height": 576,
+            "bottom": 498.3125
+          }
+        },
+        {
+          "key": "book:5",
+          "focus": {
+            "x": 162.49826049804688,
+            "y": 28.947418212890625,
+            "width": 100.49813842773438,
+            "height": 145.72225952148438,
+            "bottom": 174.669677734375
+          },
+          "toolbar": {
+            "x": 16,
+            "y": -77.6875,
+            "width": 273,
+            "height": 91,
+            "bottom": 13.3125
+          },
+          "canvas": {
+            "x": 16,
+            "y": -77.6875,
+            "width": 288,
+            "height": 576,
+            "bottom": 498.3125
+          }
+        },
+        {
+          "key": "book:4",
+          "focus": {
+            "x": 41.998626708984375,
+            "y": 28.947418212890625,
+            "width": 100.49812316894531,
+            "height": 145.72225952148438,
+            "bottom": 174.669677734375
+          },
+          "toolbar": {
+            "x": 16,
+            "y": -77.6875,
+            "width": 273,
+            "height": 91,
+            "bottom": 13.3125
+          },
+          "canvas": {
+            "x": 16,
+            "y": -77.6875,
+            "width": 288,
+            "height": 576,
+            "bottom": 498.3125
+          }
+        },
+        {
+          "key": "book:3",
+          "focus": {
+            "x": 162.49826049804688,
+            "y": 187.22372436523438,
+            "width": 100.49813842773438,
+            "height": 145.7222900390625,
+            "bottom": 332.9460144042969
+          },
+          "toolbar": {
+            "x": 16,
+            "y": -77.6875,
+            "width": 273,
+            "height": 91,
+            "bottom": 13.3125
+          },
+          "canvas": {
+            "x": 16,
+            "y": -77.6875,
+            "width": 288,
+            "height": 576,
+            "bottom": 498.3125
+          }
+        },
+        {
+          "key": "book:2",
+          "focus": {
+            "x": 41.998626708984375,
+            "y": 187.22372436523438,
+            "width": 100.49812316894531,
+            "height": 145.7222900390625,
+            "bottom": 332.9460144042969
+          },
+          "toolbar": {
+            "x": 16,
+            "y": -77.6875,
+            "width": 273,
+            "height": 91,
+            "bottom": 13.3125
+          },
+          "canvas": {
+            "x": 16,
+            "y": -77.6875,
+            "width": 288,
+            "height": 576,
+            "bottom": 498.3125
+          }
+        }
+      ],
+      "raf": {
+        "samples": 664,
+        "frameDrift": 0,
+        "canvasDrift": 0
+      },
+      "nativeWheelPage": {
+        "yBefore": 391,
+        "yAfter": 871
+      },
+      "reduced": {
+        "overlay": false,
+        "opacity": "1"
+      },
+      "consoleErrors": [],
+      "failedRequests": [],
+      "externalRequests": []
+    },
+    {
+      "width": 320,
+      "people": 10,
+      "theme": "dark",
+      "result": "PASS",
+      "handoffSamples": [
+        {
+          "elapsed": 40.09999999962747,
+          "content": 0,
+          "overlay": 1,
+          "overlayInert": true,
+          "overlayHidden": "true"
+        },
+        {
+          "elapsed": 91.90000000037253,
+          "content": 0.318565,
+          "overlay": 0.681435,
+          "overlayInert": true,
+          "overlayHidden": "true"
+        },
+        {
+          "elapsed": 158.90000000037253,
+          "content": 0.639604,
+          "overlay": 0.360396,
+          "overlayInert": true,
+          "overlayHidden": "true"
+        },
+        {
+          "elapsed": 224.80000000074506,
+          "content": 0.824995,
+          "overlay": 0.175005,
+          "overlayInert": true,
+          "overlayHidden": "true"
+        },
+        {
+          "elapsed": 292.5,
+          "content": 0.925358,
+          "overlay": 0.0746422,
+          "overlayInert": true,
+          "overlayHidden": "true"
+        },
+        {
+          "elapsed": 358.69999999925494,
+          "content": 0.976441,
+          "overlay": 0.0235591,
+          "overlayInert": true,
+          "overlayHidden": "true"
+        },
+        {
+          "elapsed": 425.19999999925494,
+          "content": 0.997409,
+          "overlay": 0.00259145,
+          "overlayInert": true,
+          "overlayHidden": "true"
+        },
+        {
+          "elapsed": 492.5,
+          "content": 1,
+          "overlay": null
+        },
+        {
+          "elapsed": 558.3000000007451,
+          "content": 1,
+          "overlay": null
+        },
+        {
+          "elapsed": 624.8000000007451,
+          "content": 1,
+          "overlay": null
+        }
+      ],
+      "loadingHeight": 576,
+      "map": {
+        "view": "group",
+        "frame": {
+          "x": 16,
+          "y": 391.3125,
+          "width": 288,
+          "height": 576,
+          "bottom": 967.3125
+        },
+        "canvas": {
+          "x": 16,
+          "y": 391.3125,
+          "width": 288,
+          "height": 576,
+          "bottom": 967.3125
+        },
+        "toolbar": {
+          "x": 16,
+          "y": 443.3125,
+          "width": 273,
+          "height": 75,
+          "bottom": 518.3125
+        },
+        "focus": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 1947.3125,
+          "bottom": 1947.3125
+        },
+        "focusKey": null,
+        "focusLabel": "Entre nosotros.Las historias que compartís.Las miradas que os hacen diferentes.Selección personal guardadaGrupoElige un grupoGrupo QA sintéticoObrasGustosTodosLibrosPelículasSeriesFormatoTodos los formatosLibrosPelículasSeriesGrupo QA sintéticoActualizar accesoAbre una pareja o elige dos o tres personas para explorar sus obras.GrupoVenn generalCruceObraAA Serie cuarenta episodiosLibro 01Libro 02AAna83 obrasBBea83 obrasCCarlos11 obrasDDiana0 obrasEEva0 obrasFFran0 obrasGGabriel0 obrasHHugo0 obrasIInés0 obrasJJulia0 obras83historias os conectanElige dos o tres personas para ver su cruce.Comparar selecciónAna, Bea83 obras comunesAA Serie cuarenta episodiosLibro 01Libro 02↗Ana, Carlos11 obras comunesLibro 72Libro 73Libro 74↗Bea, Carlos11 obras comunesLibro 72Libro 73Libro 74↗42 conexiones másAna, Diana 0 obras comunesAna, Eva 0 obras comunesAna, Fran 0 obras comunesAna, Gabriel 0 obras comunesAna, Hugo 0 obras comunesAna, Inés 0 obras comunesAna, Julia 0 obras comunesBea, Diana 0 obras comunesBea, Eva 0 obras comunesBea, Fran 0 obras comunesBea, Gabriel 0 obras comunesBea, Hugo 0 obras comunesBea, Inés 0 obras comunesBea, Julia 0 obras comunesCarlos, Diana 0 obras comunesCarlos, Eva 0 obras comunesCarlos, Fran 0 obras comunesCarlos, Gabriel 0 obras comunesCarlos, Hugo 0 obras comunesCarlos, Inés 0 obras comunesCarlos, Julia 0 obras comunesDiana, Eva 0 obras comunesDiana, Fran 0 obras comunesDiana, Gabriel 0 obras comunesDiana, Hugo 0 obras comunesDiana, Inés 0 obras comunesDiana, Julia 0 obras comunesEva, Fran 0 obras comunesEva, Gabriel 0 obras comunesEva, Hugo 0 obras comunesEva, Inés 0 obras comunesEva, Julia 0 obras comunesFran, Gabriel 0 obras comunesFran, Hugo 0 obras comunesFran, Inés 0 obras comunesFran, Julia 0 obras comunesGabriel, Hugo 0 obras comunesGabriel, Inés 0 obras comunesGabriel, Julia 0 obras comunesHugo, Inés 0 obras comunesHugo, Julia 0 obras comunesInés, Julia 0 obras comunesLas posiciones y los círculos son esquemáticos. Las cantidades cuentan obras únicas con registros elegibles visibles.Solo obras visibles para ti. Tu selección no se comparte.Fin de página QA",
+        "scroll": 0,
+        "scrollHeight": 1435,
+        "pageY": 0,
+        "overflow": 0
+      },
+      "venn": {
+        "view": "venn",
         "frame": {
           "x": 16,
           "y": -66.6875,
@@ -6774,13 +8474,161 @@
         "focus": {
           "x": 30,
           "y": 223.3125,
-          "width": 106.703125,
+          "width": 108.0625,
           "height": 44,
           "bottom": 267.3125
         },
         "focusKey": null,
-        "focusLabel": "Volver al cruce",
+        "focusLabel": "Volver al grupo",
         "scroll": 0,
+        "scrollHeight": 889,
+        "pageY": 458,
+        "overflow": 0
+      },
+      "region": {
+        "view": "region",
+        "frame": {
+          "x": 16,
+          "y": -66.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 509.3125
+        },
+        "canvas": {
+          "x": 16,
+          "y": -66.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 509.3125
+        },
+        "toolbar": {
+          "x": 16,
+          "y": 207.3125,
+          "width": 273,
+          "height": 91,
+          "bottom": 298.3125
+        },
+        "focus": {
+          "x": 30,
+          "y": 223.3125,
+          "width": 104.734375,
+          "height": 44,
+          "bottom": 267.3125
+        },
+        "focusKey": null,
+        "focusLabel": "Volver al Venn",
+        "scroll": 0,
+        "scrollHeight": 3215,
+        "pageY": 458,
+        "overflow": 0
+      },
+      "afterMore": {
+        "view": "region",
+        "frame": {
+          "x": 16,
+          "y": -66.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 509.3125
+        },
+        "canvas": {
+          "x": 16,
+          "y": -66.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 509.3125
+        },
+        "toolbar": {
+          "x": 16,
+          "y": -66.6875,
+          "width": 273,
+          "height": 91,
+          "bottom": 24.3125
+        },
+        "focus": {
+          "x": 151.40625,
+          "y": 2905.890625,
+          "width": 111.578125,
+          "height": 44,
+          "bottom": 2949.890625
+        },
+        "focusKey": null,
+        "focusLabel": "Cargar más",
+        "scroll": 2639,
+        "scrollHeight": 5732,
+        "pageY": 458,
+        "overflow": 0
+      },
+      "workPending": {
+        "view": "work",
+        "frame": {
+          "x": 16,
+          "y": -66.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 509.3125
+        },
+        "canvas": {
+          "x": 16,
+          "y": -66.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 509.3125
+        },
+        "toolbar": {
+          "x": 16,
+          "y": -66.6875,
+          "width": 273,
+          "height": 91,
+          "bottom": 24.3125
+        },
+        "focus": {
+          "x": 30,
+          "y": -50.6875,
+          "width": 106.703125,
+          "height": 44,
+          "bottom": -6.6875
+        },
+        "focusKey": null,
+        "focusLabel": "Volver al cruce",
+        "scroll": 274,
+        "scrollHeight": 1125,
+        "pageY": 458,
+        "overflow": 0
+      },
+      "workLoaded": {
+        "view": "work",
+        "frame": {
+          "x": 16,
+          "y": -66.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 509.3125
+        },
+        "canvas": {
+          "x": 16,
+          "y": -66.6875,
+          "width": 288,
+          "height": 576,
+          "bottom": 509.3125
+        },
+        "toolbar": {
+          "x": 16,
+          "y": -66.6875,
+          "width": 273,
+          "height": 91,
+          "bottom": 24.3125
+        },
+        "focus": {
+          "x": 30,
+          "y": -50.6875,
+          "width": 106.703125,
+          "height": 44,
+          "bottom": -6.6875
+        },
+        "focusKey": null,
+        "focusLabel": "Volver al cruce",
+        "scroll": 274,
         "scrollHeight": 5227,
         "pageY": 458,
         "overflow": 0
@@ -7399,1852 +9247,6 @@
       ],
       "raf": {
         "samples": 665,
-        "frameDrift": 0,
-        "canvasDrift": 0
-      },
-      "nativeWheelPage": {
-        "yBefore": 391,
-        "yAfter": 871
-      },
-      "reduced": {
-        "overlay": false,
-        "opacity": "1"
-      },
-      "consoleErrors": [],
-      "failedRequests": [],
-      "externalRequests": []
-    },
-    {
-      "width": 320,
-      "people": 3,
-      "theme": "dark",
-      "result": "PASS",
-      "handoffSamples": [
-        {
-          "elapsed": 36.299999999813735,
-          "content": 0,
-          "overlay": 1,
-          "overlayInert": true,
-          "overlayHidden": "true"
-        },
-        {
-          "elapsed": 76.5,
-          "content": 0.319055,
-          "overlay": 0.680945,
-          "overlayInert": true,
-          "overlayHidden": "true"
-        },
-        {
-          "elapsed": 142.8999999994412,
-          "content": 0.639542,
-          "overlay": 0.360458,
-          "overlayInert": true,
-          "overlayHidden": "true"
-        },
-        {
-          "elapsed": 208,
-          "content": 0.824961,
-          "overlay": 0.175039,
-          "overlayInert": true,
-          "overlayHidden": "true"
-        },
-        {
-          "elapsed": 275.79999999981374,
-          "content": 0.92534,
-          "overlay": 0.0746605,
-          "overlayInert": true,
-          "overlayHidden": "true"
-        },
-        {
-          "elapsed": 342.09999999962747,
-          "content": 0.976483,
-          "overlay": 0.023517,
-          "overlayInert": true,
-          "overlayHidden": "true"
-        },
-        {
-          "elapsed": 408.29999999981374,
-          "content": 0.997421,
-          "overlay": 0.00257934,
-          "overlayInert": true,
-          "overlayHidden": "true"
-        },
-        {
-          "elapsed": 474.79999999981374,
-          "content": 1,
-          "overlay": null
-        },
-        {
-          "elapsed": 541.6999999992549,
-          "content": 1,
-          "overlay": null
-        },
-        {
-          "elapsed": 609.3999999994412,
-          "content": 1,
-          "overlay": null
-        }
-      ],
-      "loadingHeight": 576,
-      "map": {
-        "view": "group",
-        "frame": {
-          "x": 16,
-          "y": 391.3125,
-          "width": 288,
-          "height": 576,
-          "bottom": 967.3125
-        },
-        "canvas": {
-          "x": 16,
-          "y": 391.3125,
-          "width": 288,
-          "height": 576,
-          "bottom": 967.3125
-        },
-        "toolbar": {
-          "x": 16,
-          "y": 443.3125,
-          "width": 273,
-          "height": 75,
-          "bottom": 518.3125
-        },
-        "focus": {
-          "x": 0,
-          "y": 0,
-          "width": 320,
-          "height": 1947.3125,
-          "bottom": 1947.3125
-        },
-        "focusKey": null,
-        "focusLabel": "Entre nosotros.Las historias que compartís.Las miradas que os hacen diferentes.Selección personal guardadaGrupoElige un grupoGrupo QA sintéticoObrasGustosTodosLibrosPelículasSeriesFormatoTodos los formatosLibrosPelículasSeriesGrupo QA sintéticoActualizar accesoAbre una pareja o elige dos o tres personas para explorar sus obras.GrupoVenn generalCruceObraAA Serie cuarenta episodiosLibro 01Libro 02AAna83 obrasBBea83 obrasCCarlos11 obras83historias os conectanElige dos o tres personas para ver su cruce.Comparar selecciónAna, Bea83 obras comunesAA Serie cuarenta episodiosLibro 01Libro 02↗Ana, Carlos11 obras comunesLibro 72Libro 73Libro 74↗Bea, Carlos11 obras comunesLibro 72Libro 73Libro 74↗Lo que compartís11 obras comunesLibro 72Libro 73Libro 74Libro 75Libro 76Libro 77Las posiciones y los círculos son esquemáticos. Las cantidades cuentan obras únicas con registros elegibles visibles.Solo obras visibles para ti. Tu selección no se comparte.Fin de página QA",
-        "scroll": 0,
-        "scrollHeight": 1514,
-        "pageY": 0,
-        "overflow": 0
-      },
-      "venn": {
-        "view": "venn",
-        "frame": {
-          "x": 16,
-          "y": 391.3125,
-          "width": 288,
-          "height": 576,
-          "bottom": 967.3125
-        },
-        "canvas": {
-          "x": 16,
-          "y": 391.3125,
-          "width": 288,
-          "height": 576,
-          "bottom": 967.3125
-        },
-        "toolbar": {
-          "x": 16,
-          "y": 533.3125,
-          "width": 273,
-          "height": 91,
-          "bottom": 624.3125
-        },
-        "focus": {
-          "x": 30,
-          "y": 549.3125,
-          "width": 108.0625,
-          "height": 44,
-          "bottom": 593.3125
-        },
-        "focusKey": null,
-        "focusLabel": "Volver al grupo",
-        "scroll": 0,
-        "scrollHeight": 757,
-        "pageY": 0,
-        "overflow": 0
-      },
-      "region": {
-        "view": "region",
-        "frame": {
-          "x": 16,
-          "y": -77.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 498.3125
-        },
-        "canvas": {
-          "x": 16,
-          "y": -77.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 498.3125
-        },
-        "toolbar": {
-          "x": 16,
-          "y": 64.3125,
-          "width": 273,
-          "height": 91,
-          "bottom": 155.3125
-        },
-        "focus": {
-          "x": 30,
-          "y": 80.3125,
-          "width": 104.734375,
-          "height": 44,
-          "bottom": 124.3125
-        },
-        "focusKey": null,
-        "focusLabel": "Volver al Venn",
-        "scroll": 0,
-        "scrollHeight": 3083,
-        "pageY": 469,
-        "overflow": 0
-      },
-      "afterMore": {
-        "view": "region",
-        "frame": {
-          "x": 16,
-          "y": -77.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 498.3125
-        },
-        "canvas": {
-          "x": 16,
-          "y": -77.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 498.3125
-        },
-        "toolbar": {
-          "x": 16,
-          "y": -77.6875,
-          "width": 273,
-          "height": 91,
-          "bottom": 13.3125
-        },
-        "focus": {
-          "x": 151.40625,
-          "y": 2894.890625,
-          "width": 111.578125,
-          "height": 44,
-          "bottom": 2938.890625
-        },
-        "focusKey": null,
-        "focusLabel": "Cargar más",
-        "scroll": 2507,
-        "scrollHeight": 5600,
-        "pageY": 469,
-        "overflow": 0
-      },
-      "workPending": {
-        "view": "work",
-        "frame": {
-          "x": 16,
-          "y": -77.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 498.3125
-        },
-        "canvas": {
-          "x": 16,
-          "y": -77.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 498.3125
-        },
-        "toolbar": {
-          "x": 16,
-          "y": 64.3125,
-          "width": 273,
-          "height": 91,
-          "bottom": 155.3125
-        },
-        "focus": {
-          "x": 30,
-          "y": 80.3125,
-          "width": 106.703125,
-          "height": 44,
-          "bottom": 124.3125
-        },
-        "focusKey": null,
-        "focusLabel": "Volver al cruce",
-        "scroll": 0,
-        "scrollHeight": 993,
-        "pageY": 469,
-        "overflow": 0
-      },
-      "workLoaded": {
-        "view": "work",
-        "frame": {
-          "x": 16,
-          "y": -77.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 498.3125
-        },
-        "canvas": {
-          "x": 16,
-          "y": -77.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 498.3125
-        },
-        "toolbar": {
-          "x": 16,
-          "y": 64.3125,
-          "width": 273,
-          "height": 91,
-          "bottom": 155.3125
-        },
-        "focus": {
-          "x": 30,
-          "y": 80.3125,
-          "width": 106.703125,
-          "height": 44,
-          "bottom": 124.3125
-        },
-        "focusKey": null,
-        "focusLabel": "Volver al cruce",
-        "scroll": 0,
-        "scrollHeight": 5095,
-        "pageY": 469,
-        "overflow": 0
-      },
-      "returnRegion": {
-        "view": "region",
-        "frame": {
-          "x": 16,
-          "y": -77.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 498.3125
-        },
-        "canvas": {
-          "x": 16,
-          "y": -77.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 498.3125
-        },
-        "toolbar": {
-          "x": 16,
-          "y": 56.3125,
-          "width": 273,
-          "height": 91,
-          "bottom": 147.3125
-        },
-        "focus": {
-          "x": 41.998626708984375,
-          "y": 344.5,
-          "width": 100.49812316894531,
-          "height": 145.7222900390625,
-          "bottom": 490.2222900390625
-        },
-        "focusKey": "series:qa-series",
-        "focusLabel": "Abrir obra: AA Serie cuarenta episodios",
-        "scroll": 8,
-        "scrollHeight": 5600,
-        "pageY": 469,
-        "overflow": 0
-      },
-      "originLater": {
-        "view": "region",
-        "frame": {
-          "x": 16,
-          "y": -77.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 498.3125
-        },
-        "canvas": {
-          "x": 16,
-          "y": -77.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 498.3125
-        },
-        "toolbar": {
-          "x": 16,
-          "y": -77.6875,
-          "width": 273,
-          "height": 91,
-          "bottom": 13.3125
-        },
-        "focus": {
-          "x": 41.998626708984375,
-          "y": -1910.5,
-          "width": 100.49812316894531,
-          "height": 145.7222900390625,
-          "bottom": -1764.7777099609375
-        },
-        "focusKey": "series:qa-series",
-        "focusLabel": "Abrir obra: AA Serie cuarenta episodios",
-        "scroll": 2263,
-        "scrollHeight": 5600,
-        "pageY": 469,
-        "overflow": 0
-      },
-      "returnedLater": {
-        "view": "region",
-        "frame": {
-          "x": 16,
-          "y": -77.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 498.3125
-        },
-        "canvas": {
-          "x": 16,
-          "y": -77.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 498.3125
-        },
-        "toolbar": {
-          "x": 16,
-          "y": -77.6875,
-          "width": 273,
-          "height": 91,
-          "bottom": 13.3125
-        },
-        "focus": {
-          "x": 41.998626708984375,
-          "y": 186.75,
-          "width": 100.49812316894531,
-          "height": 145.722412109375,
-          "bottom": 332.472412109375
-        },
-        "focusKey": "book:20",
-        "focusLabel": "Abrir obra: Libro 20",
-        "scroll": 2263,
-        "scrollHeight": 5600,
-        "pageY": 469,
-        "overflow": 0
-      },
-      "returnVenn": {
-        "view": "venn",
-        "frame": {
-          "x": 16,
-          "y": -77.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 498.3125
-        },
-        "canvas": {
-          "x": 16,
-          "y": -77.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 498.3125
-        },
-        "toolbar": {
-          "x": 16,
-          "y": -55.6875,
-          "width": 273,
-          "height": 91,
-          "bottom": 35.3125
-        },
-        "focus": {
-          "x": 155.5,
-          "y": 257.96875,
-          "width": 44,
-          "height": 44,
-          "bottom": 301.96875
-        },
-        "focusKey": null,
-        "focusLabel": "Abrir región: Ana, Bea; 83 obras",
-        "scroll": 120,
-        "scrollHeight": 757,
-        "pageY": 469,
-        "overflow": 0
-      },
-      "returnMap": {
-        "view": "group",
-        "frame": {
-          "x": 16,
-          "y": 0.3125,
-          "width": 288,
-          "height": 576,
-          "bottom": 576.3125
-        },
-        "canvas": {
-          "x": 16,
-          "y": 0.3125,
-          "width": 288,
-          "height": 576,
-          "bottom": 576.3125
-        },
-        "toolbar": {
-          "x": 16,
-          "y": 0.3125,
-          "width": 273,
-          "height": 75,
-          "bottom": 75.3125
-        },
-        "focus": {
-          "x": 30,
-          "y": 271.3125,
-          "width": 245,
-          "height": 116,
-          "bottom": 387.3125
-        },
-        "focusKey": null,
-        "focusLabel": "Ana, Bea 83 obras comunes",
-        "scroll": 435,
-        "scrollHeight": 1514,
-        "pageY": 391,
-        "overflow": 0
-      },
-      "wheels": [
-        {
-          "defaultPrevented": false,
-          "viewBefore": "group",
-          "viewAfter": "group"
-        },
-        {
-          "defaultPrevented": false,
-          "viewBefore": "venn",
-          "viewAfter": "venn"
-        },
-        {
-          "defaultPrevented": false,
-          "viewBefore": "work",
-          "viewAfter": "work"
-        }
-      ],
-      "episodeEvidence": {
-        "count": 40,
-        "last": "Temporada 1 · episodio 40",
-        "lastBox": {
-          "x": 24,
-          "y": 319.5,
-          "width": 257,
-          "height": 15,
-          "top": 319.5,
-          "right": 281,
-          "bottom": 334.5,
-          "left": 24
-        },
-        "canvasBox": {
-          "x": 16,
-          "y": -77.6875,
-          "width": 288,
-          "height": 576,
-          "top": -77.6875,
-          "right": 304,
-          "bottom": 498.3125,
-          "left": 16
-        }
-      },
-      "keyboardFocusChecks": [
-        {
-          "key": "book:17",
-          "focus": {
-            "x": 162.49826049804688,
-            "y": 29.2982177734375,
-            "width": 100.49813842773438,
-            "height": 145.7222900390625,
-            "bottom": 175.0205078125
-          },
-          "toolbar": {
-            "x": 16,
-            "y": -77.6875,
-            "width": 273,
-            "height": 91,
-            "bottom": 13.3125
-          },
-          "canvas": {
-            "x": 16,
-            "y": -77.6875,
-            "width": 288,
-            "height": 576,
-            "bottom": 498.3125
-          }
-        },
-        {
-          "key": "book:16",
-          "focus": {
-            "x": 41.998626708984375,
-            "y": 29.2982177734375,
-            "width": 100.49812316894531,
-            "height": 145.7222900390625,
-            "bottom": 175.0205078125
-          },
-          "toolbar": {
-            "x": 16,
-            "y": -77.6875,
-            "width": 273,
-            "height": 91,
-            "bottom": 13.3125
-          },
-          "canvas": {
-            "x": 16,
-            "y": -77.6875,
-            "width": 288,
-            "height": 576,
-            "bottom": 498.3125
-          }
-        },
-        {
-          "key": "book:15",
-          "focus": {
-            "x": 162.49826049804688,
-            "y": 186.5745849609375,
-            "width": 100.49813842773438,
-            "height": 145.7222900390625,
-            "bottom": 332.296875
-          },
-          "toolbar": {
-            "x": 16,
-            "y": -77.6875,
-            "width": 273,
-            "height": 91,
-            "bottom": 13.3125
-          },
-          "canvas": {
-            "x": 16,
-            "y": -77.6875,
-            "width": 288,
-            "height": 576,
-            "bottom": 498.3125
-          }
-        },
-        {
-          "key": "book:14",
-          "focus": {
-            "x": 41.998626708984375,
-            "y": 186.5745849609375,
-            "width": 100.49812316894531,
-            "height": 145.7222900390625,
-            "bottom": 332.296875
-          },
-          "toolbar": {
-            "x": 16,
-            "y": -77.6875,
-            "width": 273,
-            "height": 91,
-            "bottom": 13.3125
-          },
-          "canvas": {
-            "x": 16,
-            "y": -77.6875,
-            "width": 288,
-            "height": 576,
-            "bottom": 498.3125
-          }
-        },
-        {
-          "key": "book:13",
-          "focus": {
-            "x": 162.49826049804688,
-            "y": 28.8465576171875,
-            "width": 100.49813842773438,
-            "height": 145.7222900390625,
-            "bottom": 174.56884765625
-          },
-          "toolbar": {
-            "x": 16,
-            "y": -77.6875,
-            "width": 273,
-            "height": 91,
-            "bottom": 13.3125
-          },
-          "canvas": {
-            "x": 16,
-            "y": -77.6875,
-            "width": 288,
-            "height": 576,
-            "bottom": 498.3125
-          }
-        },
-        {
-          "key": "book:12",
-          "focus": {
-            "x": 41.998626708984375,
-            "y": 28.8465576171875,
-            "width": 100.49812316894531,
-            "height": 145.7222900390625,
-            "bottom": 174.56884765625
-          },
-          "toolbar": {
-            "x": 16,
-            "y": -77.6875,
-            "width": 273,
-            "height": 91,
-            "bottom": 13.3125
-          },
-          "canvas": {
-            "x": 16,
-            "y": -77.6875,
-            "width": 288,
-            "height": 576,
-            "bottom": 498.3125
-          }
-        },
-        {
-          "key": "book:11",
-          "focus": {
-            "x": 162.49826049804688,
-            "y": 187.122802734375,
-            "width": 100.49813842773438,
-            "height": 145.7222900390625,
-            "bottom": 332.8450927734375
-          },
-          "toolbar": {
-            "x": 16,
-            "y": -77.6875,
-            "width": 273,
-            "height": 91,
-            "bottom": 13.3125
-          },
-          "canvas": {
-            "x": 16,
-            "y": -77.6875,
-            "width": 288,
-            "height": 576,
-            "bottom": 498.3125
-          }
-        },
-        {
-          "key": "book:10",
-          "focus": {
-            "x": 41.998626708984375,
-            "y": 187.122802734375,
-            "width": 100.49812316894531,
-            "height": 145.7222900390625,
-            "bottom": 332.8450927734375
-          },
-          "toolbar": {
-            "x": 16,
-            "y": -77.6875,
-            "width": 273,
-            "height": 91,
-            "bottom": 13.3125
-          },
-          "canvas": {
-            "x": 16,
-            "y": -77.6875,
-            "width": 288,
-            "height": 576,
-            "bottom": 498.3125
-          }
-        },
-        {
-          "key": "book:9",
-          "focus": {
-            "x": 162.49826049804688,
-            "y": 29.399169921875,
-            "width": 100.49813842773438,
-            "height": 145.72216796875,
-            "bottom": 175.121337890625
-          },
-          "toolbar": {
-            "x": 16,
-            "y": -77.6875,
-            "width": 273,
-            "height": 91,
-            "bottom": 13.3125
-          },
-          "canvas": {
-            "x": 16,
-            "y": -77.6875,
-            "width": 288,
-            "height": 576,
-            "bottom": 498.3125
-          }
-        },
-        {
-          "key": "book:8",
-          "focus": {
-            "x": 41.998626708984375,
-            "y": 29.399169921875,
-            "width": 100.49812316894531,
-            "height": 145.72216796875,
-            "bottom": 175.121337890625
-          },
-          "toolbar": {
-            "x": 16,
-            "y": -77.6875,
-            "width": 273,
-            "height": 91,
-            "bottom": 13.3125
-          },
-          "canvas": {
-            "x": 16,
-            "y": -77.6875,
-            "width": 288,
-            "height": 576,
-            "bottom": 498.3125
-          }
-        },
-        {
-          "key": "book:7",
-          "focus": {
-            "x": 162.49826049804688,
-            "y": 186.671142578125,
-            "width": 100.49813842773438,
-            "height": 145.7222900390625,
-            "bottom": 332.3934326171875
-          },
-          "toolbar": {
-            "x": 16,
-            "y": -77.6875,
-            "width": 273,
-            "height": 91,
-            "bottom": 13.3125
-          },
-          "canvas": {
-            "x": 16,
-            "y": -77.6875,
-            "width": 288,
-            "height": 576,
-            "bottom": 498.3125
-          }
-        },
-        {
-          "key": "book:6",
-          "focus": {
-            "x": 41.998626708984375,
-            "y": 186.671142578125,
-            "width": 100.49812316894531,
-            "height": 145.7222900390625,
-            "bottom": 332.3934326171875
-          },
-          "toolbar": {
-            "x": 16,
-            "y": -77.6875,
-            "width": 273,
-            "height": 91,
-            "bottom": 13.3125
-          },
-          "canvas": {
-            "x": 16,
-            "y": -77.6875,
-            "width": 288,
-            "height": 576,
-            "bottom": 498.3125
-          }
-        },
-        {
-          "key": "book:5",
-          "focus": {
-            "x": 162.49826049804688,
-            "y": 28.947418212890625,
-            "width": 100.49813842773438,
-            "height": 145.72225952148438,
-            "bottom": 174.669677734375
-          },
-          "toolbar": {
-            "x": 16,
-            "y": -77.6875,
-            "width": 273,
-            "height": 91,
-            "bottom": 13.3125
-          },
-          "canvas": {
-            "x": 16,
-            "y": -77.6875,
-            "width": 288,
-            "height": 576,
-            "bottom": 498.3125
-          }
-        },
-        {
-          "key": "book:4",
-          "focus": {
-            "x": 41.998626708984375,
-            "y": 28.947418212890625,
-            "width": 100.49812316894531,
-            "height": 145.72225952148438,
-            "bottom": 174.669677734375
-          },
-          "toolbar": {
-            "x": 16,
-            "y": -77.6875,
-            "width": 273,
-            "height": 91,
-            "bottom": 13.3125
-          },
-          "canvas": {
-            "x": 16,
-            "y": -77.6875,
-            "width": 288,
-            "height": 576,
-            "bottom": 498.3125
-          }
-        },
-        {
-          "key": "book:3",
-          "focus": {
-            "x": 162.49826049804688,
-            "y": 187.22372436523438,
-            "width": 100.49813842773438,
-            "height": 145.7222900390625,
-            "bottom": 332.9460144042969
-          },
-          "toolbar": {
-            "x": 16,
-            "y": -77.6875,
-            "width": 273,
-            "height": 91,
-            "bottom": 13.3125
-          },
-          "canvas": {
-            "x": 16,
-            "y": -77.6875,
-            "width": 288,
-            "height": 576,
-            "bottom": 498.3125
-          }
-        },
-        {
-          "key": "book:2",
-          "focus": {
-            "x": 41.998626708984375,
-            "y": 187.22372436523438,
-            "width": 100.49812316894531,
-            "height": 145.7222900390625,
-            "bottom": 332.9460144042969
-          },
-          "toolbar": {
-            "x": 16,
-            "y": -77.6875,
-            "width": 273,
-            "height": 91,
-            "bottom": 13.3125
-          },
-          "canvas": {
-            "x": 16,
-            "y": -77.6875,
-            "width": 288,
-            "height": 576,
-            "bottom": 498.3125
-          }
-        }
-      ],
-      "raf": {
-        "samples": 672,
-        "frameDrift": 0,
-        "canvasDrift": 0
-      },
-      "nativeWheelPage": {
-        "yBefore": 391,
-        "yAfter": 871
-      },
-      "reduced": {
-        "overlay": false,
-        "opacity": "1"
-      },
-      "consoleErrors": [],
-      "failedRequests": [],
-      "externalRequests": []
-    },
-    {
-      "width": 320,
-      "people": 10,
-      "theme": "dark",
-      "result": "PASS",
-      "handoffSamples": [
-        {
-          "elapsed": 43.10000000055879,
-          "content": 0,
-          "overlay": 1,
-          "overlayInert": true,
-          "overlayHidden": "true"
-        },
-        {
-          "elapsed": 93.30000000074506,
-          "content": 0.318595,
-          "overlay": 0.681405,
-          "overlayInert": true,
-          "overlayHidden": "true"
-        },
-        {
-          "elapsed": 160.20000000018626,
-          "content": 0.639254,
-          "overlay": 0.360746,
-          "overlayInert": true,
-          "overlayHidden": "true"
-        },
-        {
-          "elapsed": 227.20000000018626,
-          "content": 0.825208,
-          "overlay": 0.174792,
-          "overlayInert": true,
-          "overlayHidden": "true"
-        },
-        {
-          "elapsed": 293.6000000005588,
-          "content": 0.925256,
-          "overlay": 0.0747441,
-          "overlayInert": true,
-          "overlayHidden": "true"
-        },
-        {
-          "elapsed": 359.70000000018626,
-          "content": 0.976443,
-          "overlay": 0.0235565,
-          "overlayInert": true,
-          "overlayHidden": "true"
-        },
-        {
-          "elapsed": 426.90000000037253,
-          "content": 0.997409,
-          "overlay": 0.00259072,
-          "overlayInert": true,
-          "overlayHidden": "true"
-        },
-        {
-          "elapsed": 493.1000000005588,
-          "content": 1,
-          "overlay": null
-        },
-        {
-          "elapsed": 559.9000000003725,
-          "content": 1,
-          "overlay": null
-        },
-        {
-          "elapsed": 626.7000000001863,
-          "content": 1,
-          "overlay": null
-        }
-      ],
-      "loadingHeight": 576,
-      "map": {
-        "view": "group",
-        "frame": {
-          "x": 16,
-          "y": 391.3125,
-          "width": 288,
-          "height": 576,
-          "bottom": 967.3125
-        },
-        "canvas": {
-          "x": 16,
-          "y": 391.3125,
-          "width": 288,
-          "height": 576,
-          "bottom": 967.3125
-        },
-        "toolbar": {
-          "x": 16,
-          "y": 443.3125,
-          "width": 273,
-          "height": 75,
-          "bottom": 518.3125
-        },
-        "focus": {
-          "x": 0,
-          "y": 0,
-          "width": 320,
-          "height": 1947.3125,
-          "bottom": 1947.3125
-        },
-        "focusKey": null,
-        "focusLabel": "Entre nosotros.Las historias que compartís.Las miradas que os hacen diferentes.Selección personal guardadaGrupoElige un grupoGrupo QA sintéticoObrasGustosTodosLibrosPelículasSeriesFormatoTodos los formatosLibrosPelículasSeriesGrupo QA sintéticoActualizar accesoAbre una pareja o elige dos o tres personas para explorar sus obras.GrupoVenn generalCruceObraAA Serie cuarenta episodiosLibro 01Libro 02AAna83 obrasBBea83 obrasCCarlos11 obrasDDiana0 obrasEEva0 obrasFFran0 obrasGGabriel0 obrasHHugo0 obrasIInés0 obrasJJulia0 obras83historias os conectanElige dos o tres personas para ver su cruce.Comparar selecciónAna, Bea83 obras comunesAA Serie cuarenta episodiosLibro 01Libro 02↗Ana, Carlos11 obras comunesLibro 72Libro 73Libro 74↗Bea, Carlos11 obras comunesLibro 72Libro 73Libro 74↗42 conexiones másAna, Diana 0 obras comunesAna, Eva 0 obras comunesAna, Fran 0 obras comunesAna, Gabriel 0 obras comunesAna, Hugo 0 obras comunesAna, Inés 0 obras comunesAna, Julia 0 obras comunesBea, Diana 0 obras comunesBea, Eva 0 obras comunesBea, Fran 0 obras comunesBea, Gabriel 0 obras comunesBea, Hugo 0 obras comunesBea, Inés 0 obras comunesBea, Julia 0 obras comunesCarlos, Diana 0 obras comunesCarlos, Eva 0 obras comunesCarlos, Fran 0 obras comunesCarlos, Gabriel 0 obras comunesCarlos, Hugo 0 obras comunesCarlos, Inés 0 obras comunesCarlos, Julia 0 obras comunesDiana, Eva 0 obras comunesDiana, Fran 0 obras comunesDiana, Gabriel 0 obras comunesDiana, Hugo 0 obras comunesDiana, Inés 0 obras comunesDiana, Julia 0 obras comunesEva, Fran 0 obras comunesEva, Gabriel 0 obras comunesEva, Hugo 0 obras comunesEva, Inés 0 obras comunesEva, Julia 0 obras comunesFran, Gabriel 0 obras comunesFran, Hugo 0 obras comunesFran, Inés 0 obras comunesFran, Julia 0 obras comunesGabriel, Hugo 0 obras comunesGabriel, Inés 0 obras comunesGabriel, Julia 0 obras comunesHugo, Inés 0 obras comunesHugo, Julia 0 obras comunesInés, Julia 0 obras comunesLas posiciones y los círculos son esquemáticos. Las cantidades cuentan obras únicas con registros elegibles visibles.Solo obras visibles para ti. Tu selección no se comparte.Fin de página QA",
-        "scroll": 0,
-        "scrollHeight": 1435,
-        "pageY": 0,
-        "overflow": 0
-      },
-      "venn": {
-        "view": "venn",
-        "frame": {
-          "x": 16,
-          "y": -66.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 509.3125
-        },
-        "canvas": {
-          "x": 16,
-          "y": -66.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 509.3125
-        },
-        "toolbar": {
-          "x": 16,
-          "y": 207.3125,
-          "width": 273,
-          "height": 91,
-          "bottom": 298.3125
-        },
-        "focus": {
-          "x": 30,
-          "y": 223.3125,
-          "width": 108.0625,
-          "height": 44,
-          "bottom": 267.3125
-        },
-        "focusKey": null,
-        "focusLabel": "Volver al grupo",
-        "scroll": 0,
-        "scrollHeight": 889,
-        "pageY": 458,
-        "overflow": 0
-      },
-      "region": {
-        "view": "region",
-        "frame": {
-          "x": 16,
-          "y": -66.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 509.3125
-        },
-        "canvas": {
-          "x": 16,
-          "y": -66.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 509.3125
-        },
-        "toolbar": {
-          "x": 16,
-          "y": 207.3125,
-          "width": 273,
-          "height": 91,
-          "bottom": 298.3125
-        },
-        "focus": {
-          "x": 30,
-          "y": 223.3125,
-          "width": 104.734375,
-          "height": 44,
-          "bottom": 267.3125
-        },
-        "focusKey": null,
-        "focusLabel": "Volver al Venn",
-        "scroll": 0,
-        "scrollHeight": 3215,
-        "pageY": 458,
-        "overflow": 0
-      },
-      "afterMore": {
-        "view": "region",
-        "frame": {
-          "x": 16,
-          "y": -66.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 509.3125
-        },
-        "canvas": {
-          "x": 16,
-          "y": -66.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 509.3125
-        },
-        "toolbar": {
-          "x": 16,
-          "y": -66.6875,
-          "width": 273,
-          "height": 91,
-          "bottom": 24.3125
-        },
-        "focus": {
-          "x": 151.40625,
-          "y": 2905.890625,
-          "width": 111.578125,
-          "height": 44,
-          "bottom": 2949.890625
-        },
-        "focusKey": null,
-        "focusLabel": "Cargar más",
-        "scroll": 2639,
-        "scrollHeight": 5732,
-        "pageY": 458,
-        "overflow": 0
-      },
-      "workPending": {
-        "view": "work",
-        "frame": {
-          "x": 16,
-          "y": -66.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 509.3125
-        },
-        "canvas": {
-          "x": 16,
-          "y": -66.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 509.3125
-        },
-        "toolbar": {
-          "x": 16,
-          "y": 207.3125,
-          "width": 273,
-          "height": 91,
-          "bottom": 298.3125
-        },
-        "focus": {
-          "x": 30,
-          "y": 223.3125,
-          "width": 106.703125,
-          "height": 44,
-          "bottom": 267.3125
-        },
-        "focusKey": null,
-        "focusLabel": "Volver al cruce",
-        "scroll": 0,
-        "scrollHeight": 1125,
-        "pageY": 458,
-        "overflow": 0
-      },
-      "workLoaded": {
-        "view": "work",
-        "frame": {
-          "x": 16,
-          "y": -66.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 509.3125
-        },
-        "canvas": {
-          "x": 16,
-          "y": -66.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 509.3125
-        },
-        "toolbar": {
-          "x": 16,
-          "y": 207.3125,
-          "width": 273,
-          "height": 91,
-          "bottom": 298.3125
-        },
-        "focus": {
-          "x": 30,
-          "y": 223.3125,
-          "width": 106.703125,
-          "height": 44,
-          "bottom": 267.3125
-        },
-        "focusKey": null,
-        "focusLabel": "Volver al cruce",
-        "scroll": 0,
-        "scrollHeight": 5227,
-        "pageY": 458,
-        "overflow": 0
-      },
-      "returnRegion": {
-        "view": "region",
-        "frame": {
-          "x": 16,
-          "y": -66.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 509.3125
-        },
-        "canvas": {
-          "x": 16,
-          "y": -66.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 509.3125
-        },
-        "toolbar": {
-          "x": 16,
-          "y": 67.3125,
-          "width": 273,
-          "height": 91,
-          "bottom": 158.3125
-        },
-        "focus": {
-          "x": 41.998626708984375,
-          "y": 355.5,
-          "width": 100.49812316894531,
-          "height": 145.7222900390625,
-          "bottom": 501.2222900390625
-        },
-        "focusKey": "series:qa-series",
-        "focusLabel": "Abrir obra: AA Serie cuarenta episodios",
-        "scroll": 140,
-        "scrollHeight": 5732,
-        "pageY": 458,
-        "overflow": 0
-      },
-      "originLater": {
-        "view": "region",
-        "frame": {
-          "x": 16,
-          "y": -66.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 509.3125
-        },
-        "canvas": {
-          "x": 16,
-          "y": -66.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 509.3125
-        },
-        "toolbar": {
-          "x": 16,
-          "y": -66.6875,
-          "width": 273,
-          "height": 91,
-          "bottom": 24.3125
-        },
-        "focus": {
-          "x": 41.998626708984375,
-          "y": -1899.5,
-          "width": 100.49812316894531,
-          "height": 145.7222900390625,
-          "bottom": -1753.7777099609375
-        },
-        "focusKey": "series:qa-series",
-        "focusLabel": "Abrir obra: AA Serie cuarenta episodios",
-        "scroll": 2395,
-        "scrollHeight": 5732,
-        "pageY": 458,
-        "overflow": 0
-      },
-      "returnedLater": {
-        "view": "region",
-        "frame": {
-          "x": 16,
-          "y": -66.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 509.3125
-        },
-        "canvas": {
-          "x": 16,
-          "y": -66.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 509.3125
-        },
-        "toolbar": {
-          "x": 16,
-          "y": -66.6875,
-          "width": 273,
-          "height": 91,
-          "bottom": 24.3125
-        },
-        "focus": {
-          "x": 41.998626708984375,
-          "y": 197.75,
-          "width": 100.49812316894531,
-          "height": 145.722412109375,
-          "bottom": 343.472412109375
-        },
-        "focusKey": "book:20",
-        "focusLabel": "Abrir obra: Libro 20",
-        "scroll": 2395,
-        "scrollHeight": 5732,
-        "pageY": 458,
-        "overflow": 0
-      },
-      "returnVenn": {
-        "view": "venn",
-        "frame": {
-          "x": 16,
-          "y": -66.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 509.3125
-        },
-        "canvas": {
-          "x": 16,
-          "y": -66.6875,
-          "width": 288,
-          "height": 576,
-          "bottom": 509.3125
-        },
-        "toolbar": {
-          "x": 16,
-          "y": -66.6875,
-          "width": 273,
-          "height": 91,
-          "bottom": 24.3125
-        },
-        "focus": {
-          "x": 155.5,
-          "y": 207.96875,
-          "width": 44,
-          "height": 44,
-          "bottom": 251.96875
-        },
-        "focusKey": null,
-        "focusLabel": "Abrir región: Ana, Bea; 83 obras",
-        "scroll": 313,
-        "scrollHeight": 889,
-        "pageY": 458,
-        "overflow": 0
-      },
-      "returnMap": {
-        "view": "group",
-        "frame": {
-          "x": 16,
-          "y": 0.3125,
-          "width": 288,
-          "height": 576,
-          "bottom": 576.3125
-        },
-        "canvas": {
-          "x": 16,
-          "y": 0.3125,
-          "width": 288,
-          "height": 576,
-          "bottom": 576.3125
-        },
-        "toolbar": {
-          "x": 16,
-          "y": 0.3125,
-          "width": 273,
-          "height": 75,
-          "bottom": 75.3125
-        },
-        "focus": {
-          "x": 30,
-          "y": 271.3125,
-          "width": 245,
-          "height": 116,
-          "bottom": 387.3125
-        },
-        "focusKey": null,
-        "focusLabel": "Ana, Bea 83 obras comunes",
-        "scroll": 655,
-        "scrollHeight": 1435,
-        "pageY": 391,
-        "overflow": 0
-      },
-      "wheels": [
-        {
-          "defaultPrevented": false,
-          "viewBefore": "group",
-          "viewAfter": "group"
-        },
-        {
-          "defaultPrevented": false,
-          "viewBefore": "venn",
-          "viewAfter": "venn"
-        },
-        {
-          "defaultPrevented": false,
-          "viewBefore": "work",
-          "viewAfter": "work"
-        }
-      ],
-      "episodeEvidence": {
-        "count": 40,
-        "last": "Temporada 1 · episodio 40",
-        "lastBox": {
-          "x": 24,
-          "y": 330.5,
-          "width": 257,
-          "height": 15,
-          "top": 330.5,
-          "right": 281,
-          "bottom": 345.5,
-          "left": 24
-        },
-        "canvasBox": {
-          "x": 16,
-          "y": -66.6875,
-          "width": 288,
-          "height": 576,
-          "top": -66.6875,
-          "right": 304,
-          "bottom": 509.3125,
-          "left": 16
-        }
-      },
-      "keyboardFocusChecks": [
-        {
-          "key": "book:17",
-          "focus": {
-            "x": 162.49826049804688,
-            "y": 40.2982177734375,
-            "width": 100.49813842773438,
-            "height": 145.7222900390625,
-            "bottom": 186.0205078125
-          },
-          "toolbar": {
-            "x": 16,
-            "y": -66.6875,
-            "width": 273,
-            "height": 91,
-            "bottom": 24.3125
-          },
-          "canvas": {
-            "x": 16,
-            "y": -66.6875,
-            "width": 288,
-            "height": 576,
-            "bottom": 509.3125
-          }
-        },
-        {
-          "key": "book:16",
-          "focus": {
-            "x": 41.998626708984375,
-            "y": 40.2982177734375,
-            "width": 100.49812316894531,
-            "height": 145.7222900390625,
-            "bottom": 186.0205078125
-          },
-          "toolbar": {
-            "x": 16,
-            "y": -66.6875,
-            "width": 273,
-            "height": 91,
-            "bottom": 24.3125
-          },
-          "canvas": {
-            "x": 16,
-            "y": -66.6875,
-            "width": 288,
-            "height": 576,
-            "bottom": 509.3125
-          }
-        },
-        {
-          "key": "book:15",
-          "focus": {
-            "x": 162.49826049804688,
-            "y": 197.5745849609375,
-            "width": 100.49813842773438,
-            "height": 145.7222900390625,
-            "bottom": 343.296875
-          },
-          "toolbar": {
-            "x": 16,
-            "y": -66.6875,
-            "width": 273,
-            "height": 91,
-            "bottom": 24.3125
-          },
-          "canvas": {
-            "x": 16,
-            "y": -66.6875,
-            "width": 288,
-            "height": 576,
-            "bottom": 509.3125
-          }
-        },
-        {
-          "key": "book:14",
-          "focus": {
-            "x": 41.998626708984375,
-            "y": 197.5745849609375,
-            "width": 100.49812316894531,
-            "height": 145.7222900390625,
-            "bottom": 343.296875
-          },
-          "toolbar": {
-            "x": 16,
-            "y": -66.6875,
-            "width": 273,
-            "height": 91,
-            "bottom": 24.3125
-          },
-          "canvas": {
-            "x": 16,
-            "y": -66.6875,
-            "width": 288,
-            "height": 576,
-            "bottom": 509.3125
-          }
-        },
-        {
-          "key": "book:13",
-          "focus": {
-            "x": 162.49826049804688,
-            "y": 39.8465576171875,
-            "width": 100.49813842773438,
-            "height": 145.7222900390625,
-            "bottom": 185.56884765625
-          },
-          "toolbar": {
-            "x": 16,
-            "y": -66.6875,
-            "width": 273,
-            "height": 91,
-            "bottom": 24.3125
-          },
-          "canvas": {
-            "x": 16,
-            "y": -66.6875,
-            "width": 288,
-            "height": 576,
-            "bottom": 509.3125
-          }
-        },
-        {
-          "key": "book:12",
-          "focus": {
-            "x": 41.998626708984375,
-            "y": 39.8465576171875,
-            "width": 100.49812316894531,
-            "height": 145.7222900390625,
-            "bottom": 185.56884765625
-          },
-          "toolbar": {
-            "x": 16,
-            "y": -66.6875,
-            "width": 273,
-            "height": 91,
-            "bottom": 24.3125
-          },
-          "canvas": {
-            "x": 16,
-            "y": -66.6875,
-            "width": 288,
-            "height": 576,
-            "bottom": 509.3125
-          }
-        },
-        {
-          "key": "book:11",
-          "focus": {
-            "x": 162.49826049804688,
-            "y": 198.122802734375,
-            "width": 100.49813842773438,
-            "height": 145.7222900390625,
-            "bottom": 343.8450927734375
-          },
-          "toolbar": {
-            "x": 16,
-            "y": -66.6875,
-            "width": 273,
-            "height": 91,
-            "bottom": 24.3125
-          },
-          "canvas": {
-            "x": 16,
-            "y": -66.6875,
-            "width": 288,
-            "height": 576,
-            "bottom": 509.3125
-          }
-        },
-        {
-          "key": "book:10",
-          "focus": {
-            "x": 41.998626708984375,
-            "y": 198.122802734375,
-            "width": 100.49812316894531,
-            "height": 145.7222900390625,
-            "bottom": 343.8450927734375
-          },
-          "toolbar": {
-            "x": 16,
-            "y": -66.6875,
-            "width": 273,
-            "height": 91,
-            "bottom": 24.3125
-          },
-          "canvas": {
-            "x": 16,
-            "y": -66.6875,
-            "width": 288,
-            "height": 576,
-            "bottom": 509.3125
-          }
-        },
-        {
-          "key": "book:9",
-          "focus": {
-            "x": 162.49826049804688,
-            "y": 40.399169921875,
-            "width": 100.49813842773438,
-            "height": 145.72216796875,
-            "bottom": 186.121337890625
-          },
-          "toolbar": {
-            "x": 16,
-            "y": -66.6875,
-            "width": 273,
-            "height": 91,
-            "bottom": 24.3125
-          },
-          "canvas": {
-            "x": 16,
-            "y": -66.6875,
-            "width": 288,
-            "height": 576,
-            "bottom": 509.3125
-          }
-        },
-        {
-          "key": "book:8",
-          "focus": {
-            "x": 41.998626708984375,
-            "y": 40.399169921875,
-            "width": 100.49812316894531,
-            "height": 145.72216796875,
-            "bottom": 186.121337890625
-          },
-          "toolbar": {
-            "x": 16,
-            "y": -66.6875,
-            "width": 273,
-            "height": 91,
-            "bottom": 24.3125
-          },
-          "canvas": {
-            "x": 16,
-            "y": -66.6875,
-            "width": 288,
-            "height": 576,
-            "bottom": 509.3125
-          }
-        },
-        {
-          "key": "book:7",
-          "focus": {
-            "x": 162.49826049804688,
-            "y": 197.671142578125,
-            "width": 100.49813842773438,
-            "height": 145.7222900390625,
-            "bottom": 343.3934326171875
-          },
-          "toolbar": {
-            "x": 16,
-            "y": -66.6875,
-            "width": 273,
-            "height": 91,
-            "bottom": 24.3125
-          },
-          "canvas": {
-            "x": 16,
-            "y": -66.6875,
-            "width": 288,
-            "height": 576,
-            "bottom": 509.3125
-          }
-        },
-        {
-          "key": "book:6",
-          "focus": {
-            "x": 41.998626708984375,
-            "y": 197.671142578125,
-            "width": 100.49812316894531,
-            "height": 145.7222900390625,
-            "bottom": 343.3934326171875
-          },
-          "toolbar": {
-            "x": 16,
-            "y": -66.6875,
-            "width": 273,
-            "height": 91,
-            "bottom": 24.3125
-          },
-          "canvas": {
-            "x": 16,
-            "y": -66.6875,
-            "width": 288,
-            "height": 576,
-            "bottom": 509.3125
-          }
-        },
-        {
-          "key": "book:5",
-          "focus": {
-            "x": 162.49826049804688,
-            "y": 39.947418212890625,
-            "width": 100.49813842773438,
-            "height": 145.72225952148438,
-            "bottom": 185.669677734375
-          },
-          "toolbar": {
-            "x": 16,
-            "y": -66.6875,
-            "width": 273,
-            "height": 91,
-            "bottom": 24.3125
-          },
-          "canvas": {
-            "x": 16,
-            "y": -66.6875,
-            "width": 288,
-            "height": 576,
-            "bottom": 509.3125
-          }
-        },
-        {
-          "key": "book:4",
-          "focus": {
-            "x": 41.998626708984375,
-            "y": 39.947418212890625,
-            "width": 100.49812316894531,
-            "height": 145.72225952148438,
-            "bottom": 185.669677734375
-          },
-          "toolbar": {
-            "x": 16,
-            "y": -66.6875,
-            "width": 273,
-            "height": 91,
-            "bottom": 24.3125
-          },
-          "canvas": {
-            "x": 16,
-            "y": -66.6875,
-            "width": 288,
-            "height": 576,
-            "bottom": 509.3125
-          }
-        },
-        {
-          "key": "book:3",
-          "focus": {
-            "x": 162.49826049804688,
-            "y": 198.22372436523438,
-            "width": 100.49813842773438,
-            "height": 145.7222900390625,
-            "bottom": 343.9460144042969
-          },
-          "toolbar": {
-            "x": 16,
-            "y": -66.6875,
-            "width": 273,
-            "height": 91,
-            "bottom": 24.3125
-          },
-          "canvas": {
-            "x": 16,
-            "y": -66.6875,
-            "width": 288,
-            "height": 576,
-            "bottom": 509.3125
-          }
-        },
-        {
-          "key": "book:2",
-          "focus": {
-            "x": 41.998626708984375,
-            "y": 198.22372436523438,
-            "width": 100.49812316894531,
-            "height": 145.7222900390625,
-            "bottom": 343.9460144042969
-          },
-          "toolbar": {
-            "x": 16,
-            "y": -66.6875,
-            "width": 273,
-            "height": 91,
-            "bottom": 24.3125
-          },
-          "canvas": {
-            "x": 16,
-            "y": -66.6875,
-            "width": 288,
-            "height": 576,
-            "bottom": 509.3125
-          }
-        }
-      ],
-      "raf": {
-        "samples": 666,
         "frameDrift": 0,
         "canvasDrift": 0
       },

@@ -7553,3 +7553,11 @@ la ilustración decorativa y presenta los datos nuevos, sin retrasar la petició
 retener evidencia invalidada. La salida se acota a la secuencia de carga y el
 movimiento reducido muestra el resultado directamente. Los gráficos de Gustos
 conservan su altura natural; sus exploraciones usan el mismo marco de lienzo.
+
+## 2026-10-10 — Entrada a obra en pantallas de poca altura
+
+El marco fijo no debe dejar la portada o el título debajo de los controles de
+participantes. Al entrar en una obra se mide la posición natural de su barra de
+retorno y se desplaza únicamente el contenido del lienzo hasta ella, tanto al
+comenzar como al acabar la transición. La banda de selección sigue accesible por
+encima. El scroll de la página no cambia y volver recupera la posición del cruce.

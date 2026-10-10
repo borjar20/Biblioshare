@@ -38,6 +38,7 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, nav
   const entry = useRef<HTMLDivElement>(null);
   const backButton = useRef<HTMLButtonElement>(null);
   const selectionButton = useRef<HTMLButtonElement>(null);
+  const workEntryScroll = useRef(0);
   const returnTo = useRef<{ key: WorkKey; scroll: number } | null>(null);
   const focusAfter = useRef<'work' | 'return' | 'back' | 'origin' | null>(null);
   useLayoutEffect(() => {
@@ -149,12 +150,17 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, nav
   }
   useLayoutEffect(() => {
     // Only the inner viewport moves. The page and its fixed frame stay put.
-    if (host.current) host.current.scrollTop = 0;
-  }, [viewId]);
+    const viewport = host.current; if (!viewport) return;
+    viewport.scrollTop = 0;
+    // Start the item at its return toolbar, leaving participant controls
+    // reachable above it without pushing the cover and title below the frame.
+    workEntryScroll.current = Math.max(0, (entry.current?.getBoundingClientRect().top ?? 0) - viewport.getBoundingClientRect().top);
+    if (view.level === 'work') viewport.scrollTop = workEntryScroll.current;
+  }, [viewId, view.level]);
   useEffect(() => {
     if (moving || !focusAfter.current) return;
     const viewport = host.current;
-    if (viewport) viewport.scrollTop = view.level === 'work' ? 0 : navigationRef.current.scroll[viewId] ?? 0;
+    if (viewport) viewport.scrollTop = view.level === 'work' ? workEntryScroll.current : navigationRef.current.scroll[viewId] ?? 0;
     let focused: HTMLElement | null = null;
     if (focusAfter.current === 'return' && returnTo.current) {
       const target = Array.from(host.current?.querySelectorAll<HTMLButtonElement>('[data-work-key]') ?? []).find(node => node.dataset.workKey === returnTo.current!.key);

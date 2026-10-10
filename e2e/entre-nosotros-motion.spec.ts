@@ -100,6 +100,7 @@ test('real wheel bursts keep every level, native canvas scrolling and modifiers 
       window.addEventListener('wheel', listener, { passive: true });
       return { cancelled, stop: () => window.removeEventListener('wheel', listener) };
     });
+    let wheelFailure: unknown;
     try {
       await target.hover();
       const world = page.locator('[data-comparison-world]');
@@ -135,7 +136,9 @@ test('real wheel bursts keep every level, native canvas scrolling and modifiers 
       await page.getByRole('button', { name: 'Volver al cruce', exact: true }).click(); await settled(page);
       await page.getByRole('button', { name: 'Volver al Venn', exact: true }).click(); await settled(page);
       await page.getByRole('button', { name: 'Volver al grupo', exact: true }).click(); await settled(page);
-      const mapCover = page.locator(`[data-work-key="book:${fixture.books[0].id}"]`);
+      // Map covers intentionally overlap. Hover the frontmost active cover,
+      // rather than asking actionability to expose a cover behind the pile.
+      const mapCover = canvas.locator('button[data-work-key][data-inactive="false"][data-background="false"]').last();
       await mapCover.hover();
       const beforeMap = await canvas.evaluate(node => node.scrollTop);
       const beforeEvents = await wheelEvents.evaluate(probe => probe.cancelled.length);
@@ -149,7 +152,18 @@ test('real wheel bursts keep every level, native canvas scrolling and modifiers 
       await writeFile(path, JSON.stringify({ cancelled, beforeMap, afterMap: await canvas.evaluate(node => node.scrollTop) }, null, 2));
       await info.attach('native-wheel-events', { path, contentType: 'application/json' });
       await expect(page.getByRole('checkbox', { name: 'Carlos QA', exact: true })).toBeChecked();
-    } finally { await wheelEvents.evaluate(probe => probe.stop()); }
+    } catch (error) { wheelFailure = error; throw error; }
+    finally {
+      try { if (!page.isClosed()) await wheelEvents.evaluate(probe => probe.stop()); }
+      catch (cleanupError) {
+        // Closing the browser already discards the listener. Preserve the
+        // assertion/timeout that caused teardown instead of replacing it.
+        if (!page.isClosed()) {
+          if (wheelFailure !== undefined) throw new AggregateError([wheelFailure, cleanupError], 'Wheel verification and listener cleanup failed');
+          throw cleanupError;
+        }
+      }
+    }
   });
 });
 test('reduced motion applies destination directly and Escape returns with focus', async ({ page }) => {

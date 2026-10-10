@@ -25,6 +25,20 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 describe('comparison canvas', () => {
+  it('opens item content at its return toolbar without moving the surrounding page', async () => {
+    const { container } = render(<Harness initial={{ level: 'region', people: ['0', '1'], mask: 3 }}/>);
+    const viewport = container.querySelector<HTMLElement>('[data-camera-moving]')!;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      return this.hasAttribute('data-canvas-toolbar') ? new DOMRect(0, 150, 640, 90) : new DOMRect(0, 100, 640, 500);
+    });
+    viewport.scrollTop = 1400;
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir obra: Libro 20' }));
+    expect(viewport.scrollTop).toBe(50);
+    expect(window.scrollTo).not.toHaveBeenCalled();
+    await screen.findByRole('link', { name: 'Ver ficha' });
+    expect(viewport.scrollTop).toBe(50);
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Volver al cruce' }));
+  });
   it('does not displace restored region scroll when its sticky back button receives focus', () => {
     const { container } = render(<Harness initial={{ level: 'venn', people: ['0', '1'] }}/>);
     const viewport = container.querySelector<HTMLElement>('[data-camera-moving]')!;

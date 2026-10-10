@@ -41,6 +41,8 @@ El marco exterior mantiene una altura responsive constante entre carga y niveles
 las filas y los detalles largos crecen dentro de un área con scroll nativo. La
 barra de retorno permanece accesible y se restauran foco y desplazamiento interior
 al regresar. La rueda no controla el zoom: los niveles se abren por clic o teclado.
+Al abrir una obra, el scroll interior comienza en su barra de retorno, dejando los
+selectores accesibles por encima sin empujar la portada y el título fuera del marco.
 
 La composición visual sigue el prototipo aprobado de Sites: hero y controles compactos,
 avatares seleccionables, enlaces curvos y pilas de portadas. `presentation.ts` asigna
