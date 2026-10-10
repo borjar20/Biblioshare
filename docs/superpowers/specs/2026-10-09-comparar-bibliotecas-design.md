@@ -198,3 +198,18 @@ Una relectura o nuevo visionado en curso conserva la nota del último terminado.
 Este criterio concreta §8.3 para libros y películas. El orden de los registros
 importados sin fecha y el criterio de notas de series se mantienen en el diseño
 pendiente de #1462; no se toma la fecha de importación como fecha de consumo.
+
+## 12. Acuerdo posterior del 2026-10-10: valoraciones de series
+
+El usuario aprueba dos señales separadas:
+
+- Nota general explícita de la serie, si existe, acompañada del progreso personal.
+- Comparación de notas de episodios vistos y puntuados por ambas personas,
+  mostrando el tamaño de la muestra compartida.
+
+Con tres temporadas vistas por una persona y una por otra, solo los episodios
+compartidos y valorados por ambas pueden sustentar la comparación por episodios.
+El rótulo identifica su alcance, por ejemplo «Coincidencias en 6 episodios».
+Estas notas no se convierten en una valoración de toda la serie. La ausencia de
+nota sigue siendo falta de información, nunca cero. La implementación permanece
+en #1462; los umbrales para describir patrones de gustos aún deben concretarse.

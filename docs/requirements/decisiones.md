@@ -7142,3 +7142,13 @@ terminado no tiene nota, se muestra «Sin valorar», sin recuperar una nota anti
 Mientras una relectura o nuevo visionado sigue en curso, se conserva la nota del
 último recorrido terminado. La elección se aplica a registros visibles para quien
 consulta. Las valoraciones de series se concretan por separado en #1462.
+
+## 2026-10-10 — Separar nota general y comparación de episodios en Entre nosotros
+
+El usuario aprueba mostrar la nota general explícita de una serie, cuando exista,
+junto al progreso de cada persona. Las notas de episodios forman una comparación
+separada: solo se comparan episodios vistos y puntuados por ambas personas, con
+el número de episodios que sustenta el hallazgo. «Coincidencias en 6 episodios»
+no equivale a una valoración de la serie completa; no se transforma la media de
+episodios en una nota general ni se interpreta la ausencia de nota como cero.
+Esta regla concreta el diseño de #1462; su implementación sigue pendiente.
