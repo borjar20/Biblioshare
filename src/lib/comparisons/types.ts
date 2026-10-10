@@ -15,6 +15,7 @@ export type Member = { slotId: string; userId: string | null; name: string | nul
 export type Group = { id: string; name: string; revision: number; members: Member[] };
 export type Candidate = { userId: string; name: string; avatarUrl: string | null };
 export type CatalogWork = { key: WorkKey; title: string; coverUrl: string | null;
+  metadataMissing?: boolean;
   genres: string[]; creators: { id: string; name: string; role: 'author' | 'director' }[] };
 export type EpisodeNote = { season: number; episode: number; rating: number | null };
 export type SeriesProgress = { seenEver: number; current: number | null;
