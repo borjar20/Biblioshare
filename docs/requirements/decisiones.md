@@ -7070,3 +7070,18 @@ La posición se conserva al volver de una obra y al restaurar la maqueta. Siguen
 vigentes la paleta, la navegación dentro del lienzo, la separación entre consumo
 y gustos y las reglas de visibilidad. Es una prueba de interacción en Sites;
 la evaluación e integración de la feature continúan en #1462.
+
+## 2026-10-10 — Tres niveles de exploración con rueda en Entre nosotros
+
+Tras probar el zoom continuo, el usuario prefiere tres destinos estables: Venn
+general, cruce con todas sus obras y detalle de una obra. Esta dirección sustituye
+el revelado progresivo por escala de la iteración anterior. La rueda entra en el
+cruce bajo el cursor y, desde él, abre la portada señalada. En sentido contrario
+se retrocede un nivel. Un gesto continuo no puede encadenar varios saltos.
+
+El arrastre mueve la colección sin cambiar de cruce. Las portadas se distribuyen
+para caber juntas en escritorio; en pantallas estrechas se conserva un tamaño
+legible y se arrastra para recorrer la colección completa. Siguen vigentes las
+transiciones suaves, el desenfoque del contexto y la navegación dentro del lienzo.
+La implementación y evaluación de la feature continúan en #1462; esta decisión
+solo cambia la maqueta publicada en Sites.

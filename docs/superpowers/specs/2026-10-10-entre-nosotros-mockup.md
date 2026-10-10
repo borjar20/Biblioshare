@@ -246,3 +246,36 @@ inyectados en el arnés local, que no se publica. Pasan los tests de anclaje del
 cursor, límites, restauración inválida, revelado y eco de guardado. CSP y sandbox
 se conservan. La sensación con ratón físico forma parte de la evaluación del
 prototipo de #1462; no se ha integrado la feature en la app.
+
+## Iteración del 2026-10-10: rueda por niveles semánticos
+
+El usuario conserva la rueda pero cambia el modelo a tres estados: Venn general,
+cruce completo y obra. El segundo nivel incluye todas las obras del cruce exacto,
+sin tramos de seis/diez portadas. La escala de la cámara solo tiene dos destinos
+(1 y 1,85); el tercero es la escena de obra existente. Los estados guardados con
+escala continua se normalizan al nivel correspondiente. La interfaz identifica
+el nivel, no un porcentaje de ampliación.
+
+La rueda hacia dentro toma el cruce bajo el cursor. En el segundo nivel exige
+una portada bajo el cursor para abrir su obra. Hacia fuera vuelve al cruce y luego
+al Venn. Se acumulan deltas pequeños, se bloquea la inercia del mismo gesto y se
+protege la transición durante 720 ms. Los botones y el clic en pilas/portadas
+ofrecen el mismo recorrido. Ctrl + rueda conserva el zoom del navegador.
+
+El arrastre mantiene región y nivel. La colección se ajusta a las dimensiones
+del lienzo; en móvil, cuando no cabe, empieza por su primera fila y permite
+recorrer el resto arrastrando. El detalle conserva el punto de regreso. El fondo
+sigue desenfocado al entrar en un cruce y se aclara al volver al Venn general.
+
+Verificación: navegador con 13 obras de tres personas y 21 de una pareja, entrada
+en obra y regreso, cruce vacío, restauración y 320 px sin desbordamiento horizontal
+(273 px de ancho y scrollWidth). Un arnés temporal dispara WheelEvent y PointerEvent
+contra los manejadores reales: una ráfaga de 16 eventos queda en el segundo nivel,
+otro gesto abre Piranesi, y los gestos inversos vuelven un nivel cada vez. Arrastrar
+conserva las 13 portadas y su región sin abrir una obra. Los tests cubren migración
+de escala antigua, colección completa, inercia, deltas pequeños, regreso, ajuste
+de la colección y eco de guardado. Con movimiento reducido se recorren los tres
+niveles con las 21 obras y cero animaciones. No aparecen errores de consola.
+Se conservan CSP, sandbox y paleta. El arnés no
+se publica. La sensación física de rueda sigue siendo parte de la evaluación del
+mockup; no se ha integrado la feature en la app.
