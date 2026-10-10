@@ -1,5 +1,41 @@
 # Arquitectura
 
+> **[Delta Entre nosotros #1462 · verificado contra código y local/dev el 2026-10-10; producción e integración/publicación pendientes.]**
+
+## Entre nosotros — selección privada y evidencia bajo permisos vigentes
+
+`/comunidad/entre-nosotros` se abre desde Comunidad. Su `page.tsx` resuelve la sesión,
+los grupos y los candidatos bajo `Suspense`; `layout.tsx` entrega únicamente el namespace
+`comparisons`. El provider anidado reemplaza los mensajes del padre, por lo que esta
+isla usa sus propias traducciones. `error.tsx` ofrece recuperación de la ruta.
+
+`src/lib/comparisons/groups.ts` pagina seguimientos aceptados del dueño e identidades
+visibles; `actions.ts` autentica cada llamada y valida entradas antes de leer o invocar
+las RPC. `load.ts` lee todas las páginas de `passes` y `episode_watches`, incluidos
+episodios sin pase, y obtiene catálogo/créditos por lotes. Después revalida grupo y
+disponibilidad: una revisión distinta devuelve conflicto; un puesto revocado conserva
+solo `slotId` y se retiran sus hechos, catálogo exclusivo y contribución a cobertura.
+Metadatos ausentes conservan pertenencia con `metadataMissing`, sin hidratar catálogo.
+
+`normalize.ts` y `derive.ts` son funciones puras de historial, regiones exactas,
+hallazgos y facetas. `components/comparisons/explorer.tsx` coordina Obras/Gustos,
+editor, selección, formato y respuestas mediante secuencias; la frontera de sesión
+oculta evidencia durante comprobaciones y descarta auth/respuestas antiguas. El
+detalle se carga por obra y participantes disponibles, sin reseñas ni motivos privados.
+
+`canvas.tsx`, `geometry.ts`, `motion.ts` y `use-camera.ts` mantienen la portada original
+en el recorrido general → cruce completo → obra: 720 ms entre niveles y 850 ms
+mapa/Venn, retorno simétrico y movimiento reducido. No hay arrastre libre,
+desplazamiento por flechas, modales ni paneles laterales para explorar evidencia.
+En móvil crece la altura del lienzo y se usa el scroll normal de la página.
+
+Las dos tablas nuevas solo guardan selecciones del dueño; `passes` y `episode_watches`
+siguen siendo las fuentes de consumo. Cliente de petición con sesión/RLS; sin
+`use cache`, cliente sin sesión, localStorage ni persistencia compartida de evidencia.
+El esquema está verificado en local/dev, sin aplicación en producción. La evidencia
+integrada y sus límites están en [el informe](testing/2026-10-10-entre-nosotros.md);
+la entrega continúa en [#1462](https://github.com/borjar20/Biblioshare/issues/1462).
+
 > **Delta Novedades 2026-10-06 · código y esquema local/dev:** `/novedades`
 > combina exploración pública y selección privada; `components/releases` y
 > `lib/releases` separan obra, lanzamiento y elección de aviso. `/admin/novedades`

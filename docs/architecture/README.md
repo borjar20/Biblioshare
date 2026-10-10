@@ -1,5 +1,10 @@
 # Mapa de arquitectura (máquina + humano)
 
+> **[Delta Entre nosotros #1462 · 2026-10-10: nodos r-comparisons, c-comparisons,
+> a-comparisons, m-comparisons, d-comparisons y t-comparisons; flujo flow-comparison.
+> Código y esquema/grants local/dev verificados; build/start final y rondas exactas en
+> [el informe](../testing/2026-10-10-entre-nosotros.md). Producción e integración/publicación pendientes.]**
+
 > **[Delta filtros agrupados Paper #1450 · 2026-10-07: panel único para tipos,
 > mercado y vistas con contadores; 69 unitarios focales, 27 recorridos build/start y
 > 548 archivos/5442 unitarios PASS. Diez capturas con metadatos públicos reales.

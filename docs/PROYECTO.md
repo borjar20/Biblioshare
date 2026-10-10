@@ -1,5 +1,33 @@
 # Biblioshare — qué existe hoy
 
+> **[Delta Entre nosotros #1462 · implementación verificada contra código y local/dev el 2026-10-10; esquema productivo e integración/publicación pendientes.]**
+
+## Entre nosotros — candidato implementado local/dev
+
+Comunidad enlaza `/comunidad/entre-nosotros`. Permite guardar grupos de **2 a 10
+participantes, contando al dueño si está incluido**; el tamaño habitual previsto es
+5–10. Para añadir a otra persona se exige un seguimiento aceptado del dueño hacia
+ella; no hace falta reciprocidad. El dueño puede incluirse, pero también puede
+comparar únicamente a otras personas. Guardar una persona no concede acceso a su biblioteca.
+
+Obras muestra el mapa completo y regiones Venn exactas respecto a la pareja o trío
+activo. Libros y películas entran al terminarlos al menos una vez; series, al registrar
+al menos un episodio, incluidas abandonadas. Cada obra cuenta una vez por persona.
+La nota de libros/películas es la del último terminado; una ausente no recupera una
+anterior. Series y episodios conservan notas separadas y progreso explícito.
+
+Gustos separa consumo y valoración con géneros, autores y directores, cobertura y
+obras de apoyo. Tendencias exigen tres obras únicas valoradas por cada persona
+mencionada. Los hallazgos de una obra usan «Os encantó» (cada nota ≥8), «Notas parecidas»
+(máximo−mínimo ≤1) y «Diferencia de opinión» (máximo−mínimo ≥3); no hay compatibilidad
+global ni se aplican esos umbrales a medias de categorías.
+
+El lienzo conserva crema, espresso, terracota y portadas reales, con exploración
+general → cruce completo → obra y scroll normal en móvil. Evidencia y limitaciones:
+[verificación integrada](testing/2026-10-10-entre-nosotros.md). Los pendientes y
+«Lo que esperamos juntos» quedan fuera de esta entrega y siguen registrados en
+[#1462](https://github.com/borjar20/Biblioshare/issues/1462).
+
 > **[Delta filtros agrupados Paper #1450 · 2026-10-07 · candidato de PR #1455; integración/publicación pendientes.]**
 
 > **[Canónico · verificado contra código el 2026-08-19]**

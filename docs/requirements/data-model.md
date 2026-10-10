@@ -51,6 +51,48 @@ id, dueño, revisión y timestamps quedan gestionados por la base. Tipos generad
 local y dev fusionados solo para estas tablas/RPC; se conserva la extensión manual de
 argumentos nulos de creación. El resto del modelo mantiene sus verificaciones anteriores.
 
+### Políticas, funciones y alcance verificado (2026-10-10)
+
+Las cuatro policies de grupos son `comparison_groups_owner_select`,
+`comparison_groups_owner_insert`, `comparison_groups_owner_update` y
+`comparison_groups_owner_delete`; las cuatro de miembros siguen el mismo sufijo
+con prefijo `comparison_group_members_owner_`. Todas se limitan a authenticated:
+grupos compara `owner_id=auth.uid()`; miembros exige padre propio visible por RLS.
+Los triggers `comparison_group_touch`, `comparison_member_guard`,
+`comparison_groups_size` y `comparison_members_size` ejecutan las tres funciones
+`comparison_group_touch`, `comparison_member_guard` y `comparison_group_size_check`.
+Las cinco funciones, incluidas ambas RPC, son invoker con ruta de búsqueda vacía.
+Los triggers no tienen EXECUTE directo concedido a authenticated/anon.
+
+Verificación contra `pg_class`, columnas, constraints, `pg_proc`, `pg_policies` y ACL
+en local/dev: objetos y hashes de definiciones idénticos, ocho policies, dos tablas
+con RLS y grants finos 6/1/1 y 4/3/1. El contrato SQL real prueba también DML directo,
+identidad/bloqueo, columnas inmutables, unicidad y cardinalidad diferibles; dos
+conexiones locales prueban bloqueo, ganador único y rechazo de un miembro undécimo.
+Bootstrap completo de 307 pasos y verificador local PASS con recibo de coordinación
+auténtico. Las comprobaciones no se deducen del ledger. Producción permanece intacta:
+este delta solo acredita local y biblioshare-dev.
+
+### Lectura de evidencia y contrato de respuesta
+
+El consumo se deriva de `passes` y `episode_watches`, nunca `library_entries`.
+Historial completo paginado; libros/películas elegibles al menos una vez terminados,
+nota del último terminado sin recuperar una anterior ausente; series con al menos
+un episodio, incluso abandonadas, deduplicadas por temporada/episodio entre pases.
+Progreso del pase actual y nota general de serie se mantienen separados de las
+notas de episodios. Una obra cuenta una vez por persona.
+
+Después de consultar fuentes/catálogo se revalidan grupo y disponibilidad; cambio
+de revisión devuelve `conflict` para recargar, no interpreta miembros nuevos sin
+lectura como cero obras. Una revocación retira hechos, catálogo exclusivo y cobertura;
+un puesto que recupera acceso durante la carga espera a la siguiente lectura.
+Metadatos perdidos conservan obra/pertenencia con `metadataMissing`, título vacío,
+portada nula y facetas ausentes, sin hidratación. El detalle admite 1–10 personas
+disponibles distintas y exige algún consumidor elegible; los episodios comunes
+requieren ≥2 personas y nota de todas. El DTO no contiene filas crudas, reseñas,
+spoilers ni motivos de abandono. Sesión/RLS actual en cada action, sin service role
+ni caché compartida. Evidencia: [verificación integrada](../testing/2026-10-10-entre-nosotros.md).
+
 > **Delta 2026-10-07 (calidad de Novedades; código verificado; esquema aplicado y verificado en local/dev/producción; entrega de código en PR #1452):**
 > `20261007075832_cultural_release_information_quality.sql` añade `synopsis_language`,
 > con grants explícitos, y conserva portada/sinopsis conocidas cuando el proveedor omite metadatos.

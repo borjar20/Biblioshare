@@ -1,5 +1,30 @@
 # Testing manual / con agentes
 
+> **[Delta Entre nosotros #1462 · contrato y ejecución local verificados el 2026-10-10; no acredita CI integrada, Android ni producción.]**
+
+## Gate aislado de Entre nosotros
+
+Receta y evidencia en [verificación integrada](testing/2026-10-10-entre-nosotros.md).
+Se construye y arranca una build nueva con el mismo backend desechable fijado antes
+de `npm run build`, `npm run start` y Playwright; `.env.local` remoto se preserva.
+La configuración `playwright.comparisons.config.ts` no lanza servidor ni globalSetup/sweep.
+El runner general excluye ambos specs; el dedicado sobrescribe `testIgnore: []`.
+El caso de 1.205 pases exige el backend local exacto y nunca usa producción.
+
+```powershell
+npm run test:e2e -- e2e/entre-nosotros.spec.ts e2e/entre-nosotros-motion.spec.ts --config playwright.comparisons.config.ts --workers=1 --retries=0
+# Descubrimiento sin ejecución ni fixtures:
+npm run test:e2e -- --list
+npm run test:e2e -- --config playwright.comparisons.config.ts --list
+```
+
+Login, cookies, RLS y Server Actions son reales. Solo imágenes reciben bytes guardados;
+auth/actions pueden interceptarse para retener o reenviar HTTP original, sin sesiones
+simuladas ni DTO sustituidos. Las mediciones distinguen build y ronda, incluido el
+gate final de 11 PASS + repetición focal de 1280 px PASS en la misma build; no es una
+tanda única de 12/12. Limpieza REST exacta antes/después conserva cuentas persistentes.
+El informe guarda abortos, DNS de fixture y stream-close #1263 sin declarar logs limpios.
+
 > **[Canónico · verificado contra código el 2026-08-19; arranque, Ajustes, retorno administrativo, recursos y contrato de pruebas del hero, zoom, errores y checkpoints finales/anteriores del entrenamiento, lecturas previas de pases y contrato histórico de replay verificados el 2026-10-01 (#1073/#1274/#1271/#1208/#1278/#1287/#1171/#1281/#1284/#1110/#1116); frontera de endpoints de OpenLibrary verificada localmente y en CI/CodeQL el 2026-10-02 (#1292); filtros de tipo verificados contra código y navegador local el 2026-10-02 (#1295); cuota de altas Google Books verificada en local/dev, SQL en prod y CI el 2026-10-02 (#1237); cobertura del pipeline de abandonos #773 y alias del perfil propio #1325 verificados el 2026-10-03 (38 unitarios focales y ocho casos nativos, respectivamente); edición de pases por la vista autorizada #1345 verificada el 2026-10-03 (55 unitarios focales, 29 comprobaciones SQL con rollback, navegador dev, TypeScript y ESLint); cabecera y notificaciones #1349 verificadas el 2026-10-04 (build Next 16.3.8, siete E2E focales build/start local PASS, 17 unitarios focales y suite general 459 archivos/4565 pruebas PASS; candidato local); fixture de ronda #405 verificado con nueve contratos Node del caller real, tipos y lint el 2026-10-04, sin navegador/SQL]**
 
 ## Cuenta de desarrollo persistente

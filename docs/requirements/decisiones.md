@@ -7210,3 +7210,72 @@ el lienzo visual aprobado. El plan en `docs/superpowers/plans/2026-10-10-entre-n
 separa dominio, persistencia, lecturas autorizadas, interfaz, movimiento y pruebas.
 Sus detalles de implementación quedan para revisión; no registra código ejecutado,
 migraciones aplicadas ni publicación. #1462 conserva el trabajo pendiente.
+
+
+## 2026-10-10 — Entre nosotros: selecciones privadas y lectura bajo permisos vigentes (#1462)
+
+La implementación concreta el diseño en grupos guardados de 2 a 10 participantes,
+contando al dueño si está incluido; el tamaño habitual previsto sigue siendo 5–10.
+El dueño puede comparar únicamente a otras personas. Añadir otra persona exige
+seguimiento aceptado del dueño hacia ella, sin reciprocidad ni admisión por perfil
+público solamente. Guardar una persona no concede acceso a su biblioteca.
+
+Se usan dos tablas privadas con RLS del dueño y RPC invoker. Lock del padre,
+revisión opaca, grants por columna y constraints diferibles mantienen las garantías
+también con DML directo. El UUID de miembro no tiene FK de Auth: eliminar una cuenta
+conserva un puesto no disponible; el lector entrega solo su slotId sin identidad,
+nombre ni avatar. Retirar/reordenar no exige recuperar el follow; el reemplazo
+atómico sí revalida todas sus altas, incluso las que permanecen en la lista.
+
+La lectura pagina `passes` y `episode_watches` bajo sesión/RLS y revalida al terminar.
+Cambio de revisión durante la carga devuelve conflicto: no presenta miembros nuevos
+no leídos como cero obras. Los revocados pierden evidencia/catálogo exclusivo y
+contribución a cobertura. Acceso recuperado durante la carga espera a una lectura
+nueva. Metadatos ausentes conservan pertenencia con `metadataMissing` y copy de
+respaldo, sin hidratar catálogo. Cada action autentica; no hay service role,
+cliente sin sesión, `use cache`, localStorage ni persistencia compartida de evidencia.
+
+## 2026-10-10 — Entre nosotros: historial, regiones y muestras explícitas (#1462)
+
+Libros/películas se incluyen al terminarse al menos una vez; series al registrar
+al menos un episodio, incluidas abandonadas. Una obra cuenta una vez por persona.
+Último terminado decide la nota de libro/película; una nota ausente no recupera
+la anterior. Si falta una fecha se declara orden incierto; el desempate usa fecha
+de finalización conocida, creación e id. Series conservan nota general del pase
+activo en curso o último cerrado, y notas de episodios por separado; el último
+visionado de cada episodio conserva también una nota nula. Episodios sin pase
+cuentan; progreso actual cuenta episodios distintos del pase activo no pendiente.
+
+Las regiones Venn son exactas respecto a la pareja o trío activo, aunque otra
+persona del grupo haya consumido la obra. Notas ausentes no alteran pertenencia
+ni se interpretan como cero. «Os encantó» exige cada nota ≥8, «Notas parecidas»
+máximo−mínimo ≤1 y «Diferencia de opinión» máximo−mínimo ≥3. Episodios comunes
+requieren notas de cada persona seleccionada y al menos dos personas; una región
+individual no produce una comparación de episodios.
+
+Tendencias exigen tres obras únicas valoradas por cada persona mencionada dentro
+de la categoría. Sin muestra suficiente se muestran hechos sin generalizar.
+Consumo y valoración se ordenan por su propia evidencia; `eligibleTotal` cuenta
+todas las obras elegibles de la persona, incluso fuera de la categoría o sin
+metadatos. No hay porcentaje global de compatibilidad ni se aplican umbrales de
+hallazgos por obra a medias de categorías.
+
+## 2026-10-10 — Entre nosotros: continuidad del lienzo y frontera de sesión (#1462)
+
+La portada original acompaña general → cruce completo → obra: 720 ms entre niveles,
+850 ms mapa/Venn, retorno simétrico y movimiento reducido. Sin arrastre libre,
+desplazamiento por flechas, modales ni paneles laterales para explorar evidencia.
+En móvil crece la altura del lienzo y se usa el scroll normal de la página;
+crema, espresso, terracota y portadas reales mantienen la paleta de Biblioshare.
+
+La frontera de sesión oculta evidencia al comprobar identidad. Un focus/visibility
+nuevo invalida el resultado auth en vuelo y pide una comprobación fresca tras
+terminar; máximo una petición auth activa. Actor distinto o ausente desmonta
+el contexto; el mismo actor lo conserva. Respuestas antiguas de auth/acciones no
+restauran evidencia de otra identidad. Unmount no crea trabajo en cola.
+
+Estado: código, esquema y grants verificados en local/dev el 2026-10-10;
+producción intacta e integración/publicación pendientes. Estas decisiones
+concretan las entradas de diseño anteriores; evidencia y rondas en
+`docs/testing/2026-10-10-entre-nosotros.md`. Los pendientes y «Lo que esperamos
+juntos» no entran en esta entrega y siguen registrados en #1462.
