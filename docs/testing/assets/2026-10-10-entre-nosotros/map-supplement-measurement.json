@@ -1,0 +1,14 @@
+{
+  "buildId": "AzNCV4SAaUJ6YTFacyCNy",
+  "round": "map full-page evidence supplement, one local-volume test only",
+  "measurement": {
+    "backend": "local54321",
+    "members": 10,
+    "historicalBookPassesForPrivateMember": 1205,
+    "catalogWorks": 1207,
+    "personWorks": 1292,
+    "elapsedLoginCreateAndLoadMs": 9858,
+    "refreshMs": 3247,
+    "uncompressedActionResponseBytes": 361170
+  }
+}

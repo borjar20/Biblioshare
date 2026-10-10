@@ -1,0 +1,13 @@
+{
+  "backend": "disposable-local-54321",
+  "counts": {
+    "profiles": 0,
+    "books": 0,
+    "movies": 0,
+    "series": 0,
+    "comparison_groups": 0,
+    "passes": 0,
+    "episode_watches": 0,
+    "ownedAuth": 0
+  }
+}

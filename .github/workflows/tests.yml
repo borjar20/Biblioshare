@@ -52,6 +52,8 @@ jobs:
       - run: npm run test:db:local -- --club-rounds-ci-exclusive
       - run: node scripts/ci-local.mjs build
       - run: node scripts/ci-local.mjs smoke
+      - name: Entre nosotros con autenticación, acciones y RLS reales
+        run: node scripts/ci-local.mjs comparisons
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: failure()
         with:

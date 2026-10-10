@@ -22,6 +22,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      comparison_group_members: {
+        Row: { group_id: string; id: string; position: number; user_id: string }
+        Insert: { group_id: string; id?: string; position: number; user_id: string }
+        Update: { group_id?: string; id?: string; position?: number; user_id?: string }
+        Relationships: [{
+          foreignKeyName: "comparison_group_members_group_id_fkey"
+          columns: ["group_id"]
+          isOneToOne: false
+          referencedRelation: "comparison_groups"
+          referencedColumns: ["id"]
+        }]
+      }
+      comparison_groups: {
+        Row: { created_at: string; id: string; name: string; owner_id: string; revision: number; updated_at: string }
+        Insert: { created_at?: string; id?: string; name: string; owner_id?: string; revision?: number; updated_at?: string }
+        Update: { created_at?: string; id?: string; name?: string; owner_id?: string; revision?: number; updated_at?: string }
+        Relationships: []
+      }
       cultural_releases: {
         Row: ReleaseDatabaseRow
         Insert: Pick<ReleaseDatabaseRow, "work_key" | "source" | "source_key" | "item_type" | "modality" | "market" | "title" | "source_name" | "source_url"> & Partial<ReleaseDatabaseRow>
@@ -3898,6 +3916,16 @@ export type Database = {
       }
     }
     Functions: {
+      save_comparison_group: {
+        // SQL intentionally accepts NULL id/revision for creation; generator omits argument nullability.
+        Args: { p_id: string | null; p_name: string; p_user_ids: string[]; p_expected_revision: number | null }
+        Returns: Database["public"]["Tables"]["comparison_groups"]["Row"]
+        SetofOptions: { from: "*"; to: "comparison_groups"; isOneToOne: true; isSetofReturn: false }
+      }
+      delete_comparison_group: {
+        Args: { p_id: string; p_expected_revision: number }
+        Returns: boolean
+      }
       release_set_subscription: {
         Args: { p_release_id: string; p_active: boolean }
         Returns: ReleaseSubscriptionRow[]

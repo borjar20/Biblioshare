@@ -7076,6 +7076,370 @@ al abrirlo de nuevo. Plegar no aplica filtros, no cambia URL, vista ni período 
 introduce persistencia o consultas. Estado: candidato en PR #1455; publicación
 pendiente en #1450. Evidencia en docs/testing/2026-10-07-novedades-calendar.md.
 
+## 2026-10-09 — Comparar bibliotecas: Obras y Gustos como perspectivas separadas
+
+En el brainstorming de §7.25, el usuario elige partir del grupo completo y explorar
+parejas o tríos dentro de una selección personal guardada. El grupo no es un club
+ni un espacio compartido con invitaciones. La entrada reúne libros, películas y
+series, con filtros posteriores por formato.
+
+Se separan **Obras** (coincidencias de títulos concretos, Venn y notas por obra) y
+**Gustos** (conexiones por autores, directores y géneros). En Gustos se distinguen
+explícitamente consumo y preferencia según valoraciones: consumir algo no significa
+que guste. La afinidad se expresa mediante hallazgos respaldados por obras, sin
+porcentaje global en esta propuesta.
+
+El recorrido de libros y películas es lo terminado; el usuario acepta una excepción
+para las series en curso. Pendientes y «Lo que esperamos juntos» quedan como posible
+experiencia separada. Los criterios precisos de series, notas repetidas, muestras y
+presentación permanecen en el diseño pendiente, no son contratos de implementación.
+
+Estado: acuerdos de producto documentados, propuesta escrita pendiente de revisión;
+sin cambios de aplicación ni esquema. Seguimiento en #1462 y detalle en
+docs/superpowers/specs/2026-10-09-comparar-bibliotecas-design.md.
+
+## 2026-10-10 — Comparación de bibliotecas con identidad visual propia
+
+El usuario pide una sección especialmente visual e impactante y autoriza apartarse
+del diseño actual para conseguirlo. Se presenta una maqueta interactiva llamada
+«Entre nosotros», con mapa del grupo, cruces Venn y perspectivas de consumo y notas.
+La libertad visual es una decisión del usuario; la composición concreta sigue siendo
+una propuesta para revisar. No se implementa la feature ni se cambian reglas de datos.
+
+Detalle y comprobación en
+docs/superpowers/specs/2026-10-10-entre-nosotros-mockup.md. Seguimiento en #1462.
+
+## 2026-10-10 — Probar pilas de portadas dentro del Venn
+
+El usuario pide probar en la maqueta las portadas dentro de las intersecciones y
+actualizar el mismo sitio. Cada zona muestra una muestra de hasta tres portadas y
+el recuento total; la pila seleccionada se abre en abanico. En móvil se reduce a
+una portada por zona. Las obras se abren desde una selección inmediatamente debajo
+del diagrama, conservando notas y contexto. El Venn ocupa el ancho disponible.
+
+Es una prueba visual solicitada, no la aprobación del diseño final ni una nueva
+regla de afinidad. Se mantienen áreas esquemáticas, filtros y cruces exactos.
+Seguimiento y revisión dentro de #1462.
+
+## 2026-10-10 — Libertad de composición, paleta de Biblioshare
+
+El usuario precisa que apartarse del estilo actual buscaba quitar sobriedad, pero
+la sección debe conservar los colores de la app. La libertad anterior se refiere
+a composición y expresividad, no a sustituir su identidad cromática.
+
+La maqueta Entre nosotros adopta los valores de `src/app/globals.css`: papel cálido,
+superficie crema y terracota en claro; espresso y terracota luminosa en oscuro.
+Los colores para distinguir personas usan los acentos secundarios de la app.
+Se mantienen la composición, tipografía expresiva, pilas e interacciones. #1462.
+
+## 2026-10-10 — Evaluar el Venn con portadas reales y transiciones
+
+El usuario pide portadas reales para valorar mejor la composición del Venn y
+animaciones entre estados. La maqueta incorpora las 26 portadas, manteniendo
+los colores de Biblioshare en la interfaz. El movimiento ayuda a seguir las
+selecciones y cambios de contenido; se desactiva con movimiento reducido.
+
+Es una iteración de la maqueta: conserva datos ficticios, reglas ilustrativas,
+iframe aislado y CSP, sin implementar la feature ni conectar datos de usuarios.
+La procedencia de las imágenes se conserva en el proyecto del sitio. #1462.
+
+## 2026-10-10 — Continuidad de las portadas al explorar un cruce
+
+El usuario quiere reconocer cómo las historias del mapa se distribuyen al abrir
+el Venn y pide suavizar los cambios. La maqueta conserva la identidad de cada
+portada durante el recorrido, desde una muestra central de los cruces seleccionados
+hasta su región exacta. La transición dura aproximadamente un segundo, con salida
+y llegada graduales, y respeta movimiento reducido. Se mantiene la posición de
+la página al explorar para no interrumpir visualmente el recorrido.
+
+Es una decisión de interacción para evaluar en la maqueta, sin modificar las reglas
+de consumo o afinidad ni implementar todavía la feature. Seguimiento en #1462.
+
+## 2026-10-10 — Recorrido reversible y velocidad intermedia en la maqueta
+
+El usuario pide que las portadas regresen a la pila al volver al mapa y un ritmo
+intermedio entre las primeras transiciones y la versión de 1,1 segundos. La maqueta
+usa recorridos de 850 ms en ambos sentidos, con un escalonado breve y la misma
+curva suave. Se conserva la identidad de las obras y se limpia el movimiento al
+interrumpirlo. Las propuestas para aprovechar el espacio libre siguen abiertas;
+no se da por aprobado un rediseño de la composición. Seguimiento en #1462.
+
+## 2026-10-10 — Probar detalle lateral y zoom guiado en Entre nosotros
+
+El usuario pide materializar las propuestas de composición y plantea acercarse
+a las zonas para revelar el resto de portadas. La maqueta amplía su ancho en
+escritorio, sitúa el detalle junto al Venn y añade hallazgos con evidencia visual.
+Se prueba una navegación por niveles (pilas, seis portadas, todas) con vuelta
+explícita al Venn completo. Así cada acercamiento conserva un cruce identificado
+y portadas legibles, sin introducir todavía zoom o desplazamiento libre.
+
+Los hallazgos de consumo se mantienen en Obras; los acuerdos y diferencias de
+valoración, con sus notas y muestra, aparecen en Gustos. La propuesta está
+materializada para evaluación, no constituye la implementación ni la aprobación
+definitiva de la feature. Seguimiento en #1462.
+
+## 2026-10-10 — Mantener la exploración de Entre nosotros dentro del lienzo
+
+Por indicación del usuario, el prototipo abandona el detalle lateral de la
+iteración anterior. Grupo, Venn, despliegue de portadas y detalle de obra son
+estados de un mismo lienzo. Los hallazgos se integran en su superficie y las
+obras se abren con una transición de portada; el regreso conserva el cruce y el
+zoom. No se abren modales de obras ni del editor de selección. El detalle desde
+Gustos sigue la misma interacción, con vuelta a su conexión anterior.
+
+Se mantiene el zoom guiado por niveles, la separación entre consumo y valoración
+y las reglas de visibilidad. Es la dirección de exploración de la maqueta;
+la implementación en la app sigue pendiente en #1462.
+
+## 2026-10-10 — Probar cámara libre y foco visual en el Venn
+
+El usuario amplía la exploración: rueda para acercarse, arrastre para desplazar
+el lienzo y desenfoque del contexto al elegir un cruce. La maqueta sustituye el
+zoom exclusivamente guiado por una cámara continua, manteniendo botones de zoom
+y encuadre. Las portadas aparecen por tramos de proximidad y conservan el vínculo
+espacial con su región. Se mantiene nítida la selección y se difuminan los demás
+cruces. El arrastre dentro de una colección no cambia su foco ni abre obras.
+
+La posición se conserva al volver de una obra y al restaurar la maqueta. Siguen
+vigentes la paleta, la navegación dentro del lienzo, la separación entre consumo
+y gustos y las reglas de visibilidad. Es una prueba de interacción en Sites;
+la evaluación e integración de la feature continúan en #1462.
+
+## 2026-10-10 — Tres niveles de exploración con rueda en Entre nosotros
+
+Tras probar el zoom continuo, el usuario prefiere tres destinos estables: Venn
+general, cruce con todas sus obras y detalle de una obra. Esta dirección sustituye
+el revelado progresivo por escala de la iteración anterior. La rueda entra en el
+cruce bajo el cursor y, desde él, abre la portada señalada. En sentido contrario
+se retrocede un nivel. Un gesto continuo no puede encadenar varios saltos.
+
+El arrastre mueve la colección sin cambiar de cruce. Las portadas se distribuyen
+para caber juntas en escritorio; en pantallas estrechas se conserva un tamaño
+legible y se arrastra para recorrer la colección completa. Siguen vigentes las
+transiciones suaves, el desenfoque del contexto y la navegación dentro del lienzo.
+La implementación y evaluación de la feature continúan en #1462; esta decisión
+solo cambia la maqueta publicada en Sites.
+
+## 2026-10-10 — Acercar la cámara a la portada y retirar el arrastre libre
+
+El usuario mantiene los tres niveles y pide que el detalle se alcance acercando
+la cámara a la portada dentro de su colección. Las demás portadas permanecen
+en sus posiciones, desenfocadas detrás; regresar recorre el mismo trayecto en
+sentido inverso. El detalle ya no sustituye la colección por una escena sin ella.
+
+Se retira el desplazamiento libre del lienzo, tanto por arrastre como por flechas:
+el encuadre se calcula a partir del cruce o de la obra. Las colecciones estrechas
+amplían la altura del lienzo para mantener todas las portadas accesibles mediante
+el desplazamiento normal de la página. Se conservan rueda por niveles, clic,
+movimiento reducido y paleta. Sigue siendo una prueba en Sites; #1462 mantiene
+pendiente la implementación en Biblioshare.
+
+## 2026-10-10 — Un único recorrido entre la pila del Venn y el cruce completo
+
+La revisión de la maqueta identifica saltos al sustituir las pilas y recalcular
+el diagrama antes de animar la cámara. Se conserva la geometría del mundo entre
+niveles y se coordinan durante 720 ms el zoom, la altura visible y el despliegue
+de cada portada desde la pila. El regreso recorre esa transformación al revés;
+si se interrumpe, continúa desde las posiciones visibles. Las colecciones móviles
+siguen creciendo en altura y el zoom a una obra conserva su destino. Es una
+corrección de continuidad en el mockup de Sites; la feature sigue en #1462.
+
+## 2026-10-10 — Diseño visual de Entre nosotros validado
+
+Tras revisar la transición entre Venn general y cruce, el usuario confirma:
+«Ok veo bien el diseño». Queda validada como referencia visual la versión 14 del
+[mockup publicado](https://biblioshare-entre-nosotros.borjar20.chatgpt.site): paleta
+de Biblioshare, pilas de portadas reales, exploración dentro del lienzo por niveles
+general/cruce/obra, transiciones reversibles y fondo difuminado, sin arrastre libre.
+La aprobación corresponde al diseño y la interacción del prototipo. La integración
+con datos reales y las reglas de producto pendientes continúan en #1462.
+
+## 2026-10-10 — Elegibilidad del recorrido en Entre nosotros
+
+El usuario acepta la propuesta de contar libros y películas terminados al menos
+una vez y series desde el primer episodio visto, incluidas las abandonadas.
+Las series muestran el progreso y su estado: compartir título no implica haber
+visto los mismos episodios. Cada obra cuenta una sola vez por persona, aunque
+tenga varias lecturas o visionados. Los pendientes no entran en estos conjuntos.
+
+Se mantienen las restricciones de visibilidad de quien consulta. La compatibilidad
+con registros históricos/importados sin episodios detallados y la elección de
+valoraciones siguen dentro del diseño pendiente de #1462. Esta regla de producto
+no acredita implementación ni modifica los datos existentes.
+
+## 2026-10-10 — Nota representativa de libros y películas en Entre nosotros
+
+El usuario acepta usar la nota de la última lectura o visionado terminado para
+comparar libros y películas. Una valoración posterior sustituye a la anterior;
+no se promedian las distintas lecturas de una persona. Si ese último recorrido
+terminado no tiene nota, se muestra «Sin valorar», sin recuperar una nota antigua.
+Mientras una relectura o nuevo visionado sigue en curso, se conserva la nota del
+último recorrido terminado. La elección se aplica a registros visibles para quien
+consulta. Las valoraciones de series se concretan por separado en #1462.
+
+## 2026-10-10 — Separar nota general y comparación de episodios en Entre nosotros
+
+El usuario aprueba mostrar la nota general explícita de una serie, cuando exista,
+junto al progreso de cada persona. Las notas de episodios forman una comparación
+separada: solo se comparan episodios vistos y puntuados por ambas personas, con
+el número de episodios que sustenta el hallazgo. «Coincidencias en 6 episodios»
+no equivale a una valoración de la serie completa; no se transforma la media de
+episodios en una nota general ni se interpreta la ausencia de nota como cero.
+Esta regla concreta el diseño de #1462; su implementación sigue pendiente.
+
+## 2026-10-10 — Muestra mínima para tendencias de gustos en Entre nosotros
+
+El usuario aprueba exigir al menos tres obras valoradas por persona dentro del
+género, autor o director analizado para presentar una tendencia de gustos. Las
+personas pueden haber valorado títulos distintos dentro de ese ámbito. Este
+mínimo habilita el análisis; por sí solo no demuestra afinidad ni entusiasmo.
+
+Una sola obra compartida puede sustentar un hallazgo concreto con sus notas.
+Con una o dos obras se muestran los datos y coincidencias sin generalizar sobre
+preferencias. Los recuentos de consumo siguen disponibles con cualquier tamaño
+de muestra y aunque no existan valoraciones. La feature continúa en #1462.
+
+## 2026-10-10 — Umbrales de hallazgos sobre una obra en Entre nosotros
+
+El usuario aprueba estos criterios en escala de 1 a 10 para las personas
+mencionadas en un hallazgo sobre una misma obra:
+
+- «Os encantó»: todas le dieron al menos un 8.
+- «Notas parecidas»: diferencia máxima de un punto entre la nota mayor y la menor.
+- «Diferencia de opinión»: diferencia de al menos tres puntos entre esas notas.
+
+Cada hallazgo muestra sus personas y notas. «Notas parecidas» puede expresar
+también una valoración baja compartida; no equivale a entusiasmo. Se necesitan
+notas existentes de todas las personas incluidas en la afirmación. Son criterios
+para obras concretas, no un porcentaje global de compatibilidad ni una fórmula
+de tendencias por género o creador. La implementación permanece en #1462.
+
+## 2026-10-10 — Selecciones de Entre nosotros limitadas a personas seguidas
+
+El usuario limita la elección de otras personas a aquellas a las que sigue.
+El selector usa seguimientos aceptados; no permite añadir cualquier perfil
+público por el mero hecho de ser visible ni solicitudes todavía pendientes.
+No se exige seguimiento mutuo. Se conserva la posibilidad de incluir al dueño
+de la selección o comparar solo a otros amigos, y de guardar distintas
+selecciones personales. Los datos consultados respetan los permisos vigentes
+del observador. La implementación de esta regla continúa en #1462.
+
+## 2026-10-10 — Entre nosotros pensado para grupos de cinco a diez personas
+
+El usuario prevé grupos habituales de entre cinco y diez personas. El mapa debe
+permitir entender ese grupo completo y profundizar en dos o tres participantes
+mediante el Venn. Este tamaño orienta el diseño; no equivale a aprobar todavía
+un límite máximo obligatorio.
+
+La especificación `docs/superpowers/specs/2026-10-10-entre-nosotros-design.md` reúne
+los acuerdos y distingue las propuestas nuevas para revisión. La feature sigue
+sin implementar, con seguimiento en #1462.
+
+## 2026-10-10 — Plan de implementación de Entre nosotros
+
+Tras recibir la especificación consolidada, el usuario pide preparar el plan.
+La especificación del 2026-10-10 pasa a ser su base: selecciones privadas de dos a
+diez participantes seguidos, Venn de dos o tres, reglas de consumo/valoración y
+el lienzo visual aprobado. El plan en `docs/superpowers/plans/2026-10-10-entre-nosotros.md`
+separa dominio, persistencia, lecturas autorizadas, interfaz, movimiento y pruebas.
+Sus detalles de implementación quedan para revisión; no registra código ejecutado,
+migraciones aplicadas ni publicación. #1462 conserva el trabajo pendiente.
+
+
+## 2026-10-10 — Entre nosotros: selecciones privadas y lectura bajo permisos vigentes (#1462)
+
+La implementación concreta el diseño en grupos guardados de 2 a 10 participantes,
+contando al dueño si está incluido; el tamaño habitual previsto sigue siendo 5–10.
+El dueño puede comparar únicamente a otras personas. Añadir otra persona exige
+seguimiento aceptado del dueño hacia ella, sin reciprocidad ni admisión por perfil
+público solamente. Guardar una persona no concede acceso a su biblioteca.
+
+Se usan dos tablas privadas con RLS del dueño y RPC invoker. Lock del padre,
+revisión opaca, grants por columna y constraints diferibles mantienen las garantías
+también con DML directo. El UUID de miembro no tiene FK de Auth: eliminar una cuenta
+conserva un puesto no disponible; el lector entrega solo su slotId sin identidad,
+nombre ni avatar. Retirar/reordenar no exige recuperar el follow; el reemplazo
+atómico sí revalida todas sus altas, incluso las que permanecen en la lista.
+
+La lectura pagina `passes` y `episode_watches` bajo sesión/RLS y revalida al terminar.
+Cambio de revisión durante la carga devuelve conflicto: no presenta miembros nuevos
+no leídos como cero obras. Los revocados pierden evidencia/catálogo exclusivo y
+contribución a cobertura. Acceso recuperado durante la carga espera a una lectura
+nueva. Metadatos ausentes conservan pertenencia con `metadataMissing` y copy de
+respaldo, sin hidratar catálogo. Cada action autentica; no hay service role,
+cliente sin sesión, `use cache`, localStorage ni persistencia compartida de evidencia.
+
+## 2026-10-10 — Entre nosotros: historial, regiones y muestras explícitas (#1462)
+
+Libros/películas se incluyen al terminarse al menos una vez; series al registrar
+al menos un episodio, incluidas abandonadas. Una obra cuenta una vez por persona.
+Último terminado decide la nota de libro/película; una nota ausente no recupera
+la anterior. Si falta una fecha se declara orden incierto; el desempate usa fecha
+de finalización conocida, creación e id. Series conservan nota general del pase
+activo en curso o último cerrado, y notas de episodios por separado; el último
+visionado de cada episodio conserva también una nota nula. Episodios sin pase
+cuentan; progreso actual cuenta episodios distintos del pase activo no pendiente.
+
+Las regiones Venn son exactas respecto a la pareja o trío activo, aunque otra
+persona del grupo haya consumido la obra. Notas ausentes no alteran pertenencia
+ni se interpretan como cero. «Os encantó» exige cada nota ≥8, «Notas parecidas»
+máximo−mínimo ≤1 y «Diferencia de opinión» máximo−mínimo ≥3. Episodios comunes
+requieren notas de cada persona seleccionada y al menos dos personas; una región
+individual no produce una comparación de episodios.
+
+Tendencias exigen tres obras únicas valoradas por cada persona mencionada dentro
+de la categoría. Sin muestra suficiente se muestran hechos sin generalizar.
+Consumo y valoración se ordenan por su propia evidencia; `eligibleTotal` cuenta
+todas las obras elegibles de la persona, incluso fuera de la categoría o sin
+metadatos. No hay porcentaje global de compatibilidad ni se aplican umbrales de
+hallazgos por obra a medias de categorías.
+
+## 2026-10-10 — Entre nosotros: continuidad del lienzo y frontera de sesión (#1462)
+
+La portada original acompaña general → cruce completo → obra: 720 ms entre niveles,
+850 ms mapa/Venn, retorno simétrico y movimiento reducido. Sin arrastre libre,
+desplazamiento por flechas, modales ni paneles laterales para explorar evidencia.
+En móvil crece la altura del lienzo y se usa el scroll normal de la página;
+crema, espresso, terracota y portadas reales mantienen la paleta de Biblioshare.
+
+La frontera de sesión oculta evidencia al comprobar identidad. Un focus/visibility
+nuevo invalida el resultado auth en vuelo y pide una comprobación fresca tras
+terminar; máximo una petición auth activa. Actor distinto o ausente desmonta
+el contexto; el mismo actor lo conserva. Respuestas antiguas de auth/acciones no
+restauran evidencia de otra identidad. Unmount no crea trabajo en cola.
+
+Estado: código, esquema y grants verificados en local/dev el 2026-10-10;
+producción intacta e integración/publicación pendientes. Estas decisiones
+concretan las entradas de diseño anteriores; evidencia y rondas en
+`docs/testing/2026-10-10-entre-nosotros.md`. Los pendientes y «Lo que esperamos
+juntos» no entran en esta entrega y siguen registrados en #1462.
+
+
+## 2026-10-10 — Entre nosotros: espacio real de etiquetas y retorno al origen (#1462)
+
+El mapa reserva el tamaño CSS de las etiquetas de dos líneas y la huella de
+las portadas rotadas. La anchura medida del lienzo determina tanto el tamaño
+compacto de nombre como sus coordenadas; el radio horizontal respeta sus bordes
+y el radio vertical crece hasta que la disposición ordinaria dispone del espacio
+necesario. La altura se recorre mediante scroll normal. Nombres, conexiones y
+pilas continúan usando una única fuente de coordenadas. El pequeño desplazamiento
+de las tres portadas de una pila del mapa cabe también en esa reserva.
+
+El retorno por teclado recuerda la pareja no inicial, región o categoría que
+abrió la evidencia. Gustos restaura su categoría en el padre que sobrevive al
+desmontaje del lienzo; si una recarga elimina el origen, el foco alcanza un
+control superviviente. El borrado inline enfoca Cancelar al abrir y restaura
+Eliminar al cancelar. Los relojes y contratos de movimiento anteriores se
+conservan. Evidencia de esta corrección y límites de ejecución en
+`docs/testing/2026-10-10-entre-nosotros.md`, ronda final de correcciones.
+
+**Aclaración de implementación tras la re-revisión (2026-10-10):** el retorno
+exacto a una región poblada todavía enfoca su primera portada; el resto menor
+está confirmado y seguido en [#1472](https://github.com/borjar20/Biblioshare/issues/1472).
+Se conserva el comportamiento de producto decidido —restaurar su control de
+origen—, pero no consta completamente implementado. Los retornos a pareja,
+categoría, portada y región vacía sí tienen la evidencia descrita en el informe.
+
 ## 2026-10-07 — Crónica a ancho completo y novedades Paper en Inicio (#1457)
 
 Al abrir Sale esta semana bajo 1100 px, Tu crónica ensancha de media fila a
@@ -7129,3 +7493,17 @@ Los docs canónicos dejan de acumular banners «Delta …» al principio: los 40
 (≈300 líneas antes de §0) pasan a «Deltas pendientes de integrar (vigentes)», al final del cuerpo,
 sin cambiar su texto. Siguen siendo vigentes porque algunos describen objetos sin sección propia.
 Un cambio nuevo se documenta en la sección del objeto; la evidencia, en `docs/testing/`.
+
+## 2026-10-10 — Integración de Entre nosotros y gate dedicado
+
+La entrega de Entre nosotros se integra con el main vigente mediante PR #1474.
+El esquema privado aditivo ya está aplicado en producción: catálogo, hashes de
+funciones, ocho políticas, cuatro triggers y grants idénticos a desarrollo; advisors
+sin hallazgos nuevos. No se siembran datos productivos. Una retirada de la UI conserva
+las tablas y selecciones guardadas para evitar pérdida de datos.
+
+CI ejecuta build → smoke → comparaciones con Supabase local, autenticación/acciones/RLS
+reales y 1.205 pases; cada gate posee su servidor de producción, un worker y cero
+reintentos. Los specs usan el origen configurado, sin fijar localhost. Se corrige
+el foco al volver de un cruce poblado (#1472) y se retiran dos claves sobrantes (#1473).
+La ilustración promocional se guarda en docs/marketing como imagen de concepto.

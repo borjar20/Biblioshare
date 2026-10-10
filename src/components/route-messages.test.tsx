@@ -56,6 +56,16 @@ describe("Mensajes de cliente de la nueva navegación", () => {
     expect(t("club.memberCount", { count: 3 })).not.toContain("club.memberCount");
   });
 
+  it("la entrada directa a Entre nosotros declara el namespace del explorador y del editor", async () => {
+    const t = await translatorFor("/comunidad/entre-nosotros");
+    expect(t("comparisons.createGroup")).toBe(messages.comparisons.createGroup);
+    expect(t("comparisons.loadConflict")).toBe(messages.comparisons.loadConflict);
+    expect(t("comparisons.errors.load-failed")).toBe(messages.comparisons.errors["load-failed"]);
+    const payload = await clientMessagesFor("/comunidad/entre-nosotros");
+    expect(payload.club).toBeUndefined();
+    expect(t("nav.moreLabel")).toBe(messages.nav.moreLabel);
+  });
+
   it.each(["/coleccion/rincon", "/comunidad", "/comunidad?tab=personas"])(
     "%s conserva el menú global de opciones al reemplazar el provider padre",
     async (pathname) => {

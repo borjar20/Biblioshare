@@ -2,8 +2,8 @@
   "meta": {
     "project": "Biblioshare",
     "description": "Mapa de arquitectura legible por agentes: nodos (capas), aristas (dependencias reales) y flujos (recorridos end-to-end con pasos y ficheros). Derivado del código, no de la doc.",
-    "generatedAt": "2026-10-07",
-    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09 · delta ISBN canónico #906 desde codex/catalog-isbn-906, 2026-09-30 · delta de reanudación de sesión #737, fusionado en PR #1245, 2026-09-30 · continuidad de timeline #696 desde código y pruebas focalizadas, 2026-09-30 · frontera SSR de Supabase #895, desarrollo verificado y build final pendiente de repetir, 2026-09-30; el resto conserva las fuentes anteriores · despacho autenticado e invalidación por lotes de ZIP #1250, código, unitarios y smoke de producción local verificados el 2026-10-01 · economía y fondos R5 desde codex/bellotas-r5-resumed: código, SQL con rollback local/dev y tienda/concurrencia contra build local verificados el 2026-10-01 · retorno administrativo al login #1271 desde codex/admin-login-return-1271, código y pruebas focalizadas el 2026-10-01 · delta de hidratación Google-only #1290 desde codex/google-books-hydration-1290: código, unitarios focales y revisión estática independiente verificados el 2026-10-02; el resto conserva sus fuentes anteriores · delta de reemplazo de partida #964 y configuración exacta de reloj/selector compartido #995 desde código, unitarios y build/start local verificados el 2026-10-02 · delta de convergencia de créditos de autor #633 desde código, unitarios y contrato nativo de PostgREST local verificados el 2026-10-02 · utilidad compartida de vibración #996 desde código, equivalencia literal de función y nueve unitarios existentes verificados el 2026-10-02 · delta de publicación confirmada del Reloj #1313 desde candidato r3: código, 163 unitarios (25 durables) y revisión independiente (6 + 5 diagnósticos) verificados el 2026-10-03; 19 casos Clock nativos PASS en build nuevo (18 iniciales + 1 recuperación focal); tanda conjunta y FAIL global de POST conservados en #1328/#1301; CI exigida en la PR · delta de reporte push #1052 desde commit 4419656: 116 unitarios pertinentes, revisión independiente sin hallazgos (1.144 escenarios) y primera CI 4.201 unitarios/123 recorridos; accepted es ACK del proveedor, errores resueltos/rechazados de health observados sin invalidar aceptación (#1329; 51 pruebas focales y tres diagnósticos independientes PASS), 2026-10-03 · Experiencias #1293 desde codex/experiencias, código y esquema local/dev 2026-10-02; ocho migraciones aplicadas y objetos/definiciones/ACL verificados en producción 2026-10-03 a las 10:04 UTC; integración y despliegue seguidos en PR #1323 y #1293 · álbum social de Experiencias desde codex/experiencias: captura breve y composición contextual, código, controles y navegador local verificados el 2026-10-03; publicación seguida en PR #1323 y #1293 · navegación por áreas desde codex/experiencias: cinco destinos, Comunidad y herramientas de Biblioteca, código, unitarios focales e integridad del mapa verificados el 2026-10-03; 11 recorridos funcionales, 32 vistas y 8 menús verificados contra build/start local; 437 archivos y 4304 unitarios PASS · providers de ruta de Comunidad y Rincón desde código y unitarios focales (6/6) verificados el 2026-10-03 · Recursos #1328/#1007: 57 unitarios, revisión del coordinador y ocho casos nativos de Recursos más un contexto visual PASS en build w0f/base4a, 2026-10-03; integración con maina0b0/Experiencias exige nueva QA y CI · gate actual de Recursos/Colecciones sobre main a0b0/Experiencias: 95 unitarios focales y nueve recorridos funcionales PASS en build zOSPb8W0Exp_IruBgC7iv/backend282 el 2026-10-03; auditoría global FAIL de tres POST conservada en #1301/#1334, sin efecto RPC por petición acreditado; CI final exigida en la PR · delta documental BiblioPlay #937/#938: referencia de esquema inexistente retirada y recorrido de crear, jugar, resumir y guardar contrastado estáticamente con rutas, imports y persistencia en main e4f33f2, 2026-10-03; sin nueva ejecución funcional, de navegador o de backend; las demás fuentes se conservan · cabecera y panel de notificaciones #1349: composición móvil, tema en Más, región acotada al viewport y cierre por Escape/puntero verificados contra código, build Next 16.3.8 y siete E2E focales build/start local el 2026-10-04 (19,7 s, cero reintentos/skip/flaky; cinco nuevos y dos de navegación/avatar; 320/360/390/412/768 px, claro/oscuro y 320×360 px); lista larga de 20 avisos sintéticos solo en respuesta de lectura: último aviso/footer dentro de la región y scroll alcanzable, sin acreditar ausencia de oclusiones; cero errores de consola en los cinco nuevos, ERR_ABORTED conservados; 17 unitarios focales PASS (incluido cierre por foco fuera con foco real en NotificationBell) y suite general de 459 archivos/4565 pruebas PASS (233,52 s); verificación sobre candidato local; integración/publicación rastreadas en PR #1351 (https://github.com/borjar20/Biblioshare/pull/1351); las demás fuentes conservan su alcance · delta reseñas por momento de Experiencias (#1293): corte local/dev del nodo t-experience-reviews y flow-experience-review contrastado con las cinco migraciones iniciales 20261004100000-100400 y con los ficheros de src de la rama feat/experiencias-resenas el 2026-10-04; aplicado y verificado en dev contra pg_proc/pg_class/pg_policies; aplicación y verificación en producción de las seis migraciones 20261004100000-100500 el 2026-10-04 documentadas en docs/testing/2026-10-04-experiencias-resenas.md, recogido en PR #1378; recibo independiente de metadata 21:03 UTC limitado a tabla, RLS, una política, SELECT y existencia de get_experience_rating_summaries; sin fixtures ni recorrido autenticado de reseñas acreditados en producción; E2E 16/16 contra build/start local · celebraciones recuperables #1334 sobre candidato a64f2e3/main14ad944: 75 unitarios, Node20/20, PostgreSQL local cold-r2 ledger285, grants11/11/11 y revisión independiente de tres correcciones PASS, 2026-10-03; G4 nativo, activación dev/prod y CI de publicación pendientes al registrar este delta · corte de celebraciones #1334 revalidado el 2026-10-04: G4 local de build gmpZaurRiZDtN1lTctOQI acredita recuperación post-commit, presentación y ACK; 390 incidentales conservados como GLOBAL FAIL en #1301 y tres fronteras nativas pendientes en #1356; dev activo con objetos/ACL/grants11/11/11 revalidados y filas históricas intactas; registros extra del transporte seguidos en #1355; producción y CI de publicación pendientes en ese corte anterior · activación productiva de celebraciones #1334 aplicada el 2026-10-04 a las 20:15:35 UTC y verificada a las 20:16:22 UTC: guard real de quiescencia y ledger en la misma transacción, cuatro RPC invoker iguales a dev y EXECUTE sólo authenticated, grants 11/11/11, legacy compatible de cero filas; 221 filas y 303 registros previos del ledger intactos, total 307 sin normalizar carriers (#1355); dos FAIL SQLSTATE 55000 con rollback y sin identidad de las transacciones, sin atribuir causa al éxito posterior; seguridad sin grupos ni hallazgos nuevos, sólo se retira el aviso del legacy; el corte de las 20:16:22 UTC precede a la entrega del consumidor seguida en PR #1364, no acredita presentación remota; FAIL global #1301 y límites nativos #1356 conservados · delta ChromeBoundary #1385: límites de ruta y payload de sesión separados en AppShell, verificados contra código y cinco regresiones SSR/hidratación React DOM más 26 controles de navegación el 2026-10-05; RED final 2 FAIL/3 PASS conservado; revisión independiente PASS; build nueva e5fdb395 pasa MTG original 2/2 y retorno 2/2 a 390/1280px con cero errores de hidratación; global FAIL por 16 GET RSC cancelados sin clasificación y gate de inventario completo FAIL por 56 route-cache nuevos, con 2445 archivos previos y 3272 fuentes idénticos; parada física independiente PASS con backup y censo0; CI integrada pendiente; las demás fuentes mantienen su alcance · integración documental con main f1205b9 el 2026-10-05; CI del hijo71fd8bf/base3262374 PASS477 archivos/4744 unitarios/20 contratos Node/291 pasosSQL/168 recorridos; CI del candidato de main y despliegue pendientes · delta Novedades desde codex/novedades el 2026-10-06: implementación y esquema local/dev, contratos SQL reales y fuente de rutas; ver docs/testing/2026-10-06-novedades.md para los cortes funcionales y límites. Producción y publicación pendientes. · delta crónicas desde codex/wrap-ups-completion: código, regresiones, SQL dev con rollback y QA 32 escenarios build/start verificados el 2026-10-06; producción/cron remoto pendientes #1433 · integración de crónicas con main 4ac41fc7: build NoKJdNfgoltclBjsFj_XI, 544 archivos/5383 unitarios, 28 contratos de bootstrap, 5 E2E sin reintentos y QA focal anual4/4 PASS el 2026-10-06; producción/CI de publicación pendientes #1433 · activación productiva de crónicas verificada el 2026-10-07: PR1436/main5d6b447c, ocho superficies dev/prod idénticas, alias productivo READY y pg_net18196 HTTP200 (4 candidatas/escritas,3 solicitudes de aviso,0 fallos); recibo#1433 cerrado; despacho dev#1439 · calidad de Novedades #1451 y enlaces #1449: código y SQL con rollback local/dev del 2026-10-07; producción pendiente · esquema de calidad #1451 aplicado y verificado en producción el 2026-10-07 a las 08:57:59 UTC: columna, ACL, función igual a local/dev, 311 anuncios y políticas previas intactos; código en PR #1452 · Paper #1450: candidato local, 44 unitarios, 19 casos build/start en 320–1920 px claro/oscuro y ocho capturas con metadatos públicos reales el 2026-10-07; integración/publicación pendientes · calendario lateral Paper #1450 en PR #1455, 2026-10-07: 65 unitarios focales, 22 E2E build/start, 548 archivos/5438 unitarios, TypeScript/lint PASS y 14 capturas con muestra pública real; tarjetas e Inicio idénticos al aprobado 65426407, integración/publicación pendientes · Volver arriba móvil en Novedades, 2026-10-07: 3 regresiones RED/GREEN, 26 focales, 24 E2E, refuerzo desktop2/2 y 548 archivos/5441 unitarios PASS; captura real390px, publicación pendiente #1450 · filtros agrupados Paper #1450 en PR #1455, 2026-10-07: 69 unitarios focales, 27 E2E build/start, 548 archivos/5442 unitarios, TypeScript/lint PASS y diez capturas con muestra pública real; tarjetas/calendario/Inicio conservados, integración/publicación pendientes · panel ocultable de Novedades en PR #1455, 2026-10-07: 70 focales, tres E2E públicos a 320/390/1280 px contra build/start propio en 3030, build/TypeScript/lint y revisión independiente PASS; 18 capturas reales, sin perder borradores/URL; 3000 ocupado por otra sesión, tanda autenticada previa no repetida, publicación pendiente #1450",
+    "generatedAt": "2026-10-10",
+    "verifiedAgainst": "código en la rama claude/codebase-architecture-analysis-8d683d (commit f1aceab) · fase 3 de la mascota (avisos push) añadida desde la rama feat/mascota-push el 2026-09-03 · flujo R4b desde codex/mascota-r4b, 2026-09-08 · shell RPG y recuperación desde codex/mascota-r4b, 2026-09-09 · archivo de Letterboxd y su recuperación desde main, 2026-09-08, al fusionar main en codex/mascota-r4b el 2026-09-09 · delta ISBN canónico #906 desde codex/catalog-isbn-906, 2026-09-30 · delta de reanudación de sesión #737, fusionado en PR #1245, 2026-09-30 · continuidad de timeline #696 desde código y pruebas focalizadas, 2026-09-30 · frontera SSR de Supabase #895, desarrollo verificado y build final pendiente de repetir, 2026-09-30; el resto conserva las fuentes anteriores · despacho autenticado e invalidación por lotes de ZIP #1250, código, unitarios y smoke de producción local verificados el 2026-10-01 · economía y fondos R5 desde codex/bellotas-r5-resumed: código, SQL con rollback local/dev y tienda/concurrencia contra build local verificados el 2026-10-01 · retorno administrativo al login #1271 desde codex/admin-login-return-1271, código y pruebas focalizadas el 2026-10-01 · delta de hidratación Google-only #1290 desde codex/google-books-hydration-1290: código, unitarios focales y revisión estática independiente verificados el 2026-10-02; el resto conserva sus fuentes anteriores · delta de reemplazo de partida #964 y configuración exacta de reloj/selector compartido #995 desde código, unitarios y build/start local verificados el 2026-10-02 · delta de convergencia de créditos de autor #633 desde código, unitarios y contrato nativo de PostgREST local verificados el 2026-10-02 · utilidad compartida de vibración #996 desde código, equivalencia literal de función y nueve unitarios existentes verificados el 2026-10-02 · delta de publicación confirmada del Reloj #1313 desde candidato r3: código, 163 unitarios (25 durables) y revisión independiente (6 + 5 diagnósticos) verificados el 2026-10-03; 19 casos Clock nativos PASS en build nuevo (18 iniciales + 1 recuperación focal); tanda conjunta y FAIL global de POST conservados en #1328/#1301; CI exigida en la PR · delta de reporte push #1052 desde commit 4419656: 116 unitarios pertinentes, revisión independiente sin hallazgos (1.144 escenarios) y primera CI 4.201 unitarios/123 recorridos; accepted es ACK del proveedor, errores resueltos/rechazados de health observados sin invalidar aceptación (#1329; 51 pruebas focales y tres diagnósticos independientes PASS), 2026-10-03 · Experiencias #1293 desde codex/experiencias, código y esquema local/dev 2026-10-02; ocho migraciones aplicadas y objetos/definiciones/ACL verificados en producción 2026-10-03 a las 10:04 UTC; integración y despliegue seguidos en PR #1323 y #1293 · álbum social de Experiencias desde codex/experiencias: captura breve y composición contextual, código, controles y navegador local verificados el 2026-10-03; publicación seguida en PR #1323 y #1293 · navegación por áreas desde codex/experiencias: cinco destinos, Comunidad y herramientas de Biblioteca, código, unitarios focales e integridad del mapa verificados el 2026-10-03; 11 recorridos funcionales, 32 vistas y 8 menús verificados contra build/start local; 437 archivos y 4304 unitarios PASS · providers de ruta de Comunidad y Rincón desde código y unitarios focales (6/6) verificados el 2026-10-03 · Recursos #1328/#1007: 57 unitarios, revisión del coordinador y ocho casos nativos de Recursos más un contexto visual PASS en build w0f/base4a, 2026-10-03; integración con maina0b0/Experiencias exige nueva QA y CI · gate actual de Recursos/Colecciones sobre main a0b0/Experiencias: 95 unitarios focales y nueve recorridos funcionales PASS en build zOSPb8W0Exp_IruBgC7iv/backend282 el 2026-10-03; auditoría global FAIL de tres POST conservada en #1301/#1334, sin efecto RPC por petición acreditado; CI final exigida en la PR · delta documental BiblioPlay #937/#938: referencia de esquema inexistente retirada y recorrido de crear, jugar, resumir y guardar contrastado estáticamente con rutas, imports y persistencia en main e4f33f2, 2026-10-03; sin nueva ejecución funcional, de navegador o de backend; las demás fuentes se conservan · cabecera y panel de notificaciones #1349: composición móvil, tema en Más, región acotada al viewport y cierre por Escape/puntero verificados contra código, build Next 16.3.8 y siete E2E focales build/start local el 2026-10-04 (19,7 s, cero reintentos/skip/flaky; cinco nuevos y dos de navegación/avatar; 320/360/390/412/768 px, claro/oscuro y 320×360 px); lista larga de 20 avisos sintéticos solo en respuesta de lectura: último aviso/footer dentro de la región y scroll alcanzable, sin acreditar ausencia de oclusiones; cero errores de consola en los cinco nuevos, ERR_ABORTED conservados; 17 unitarios focales PASS (incluido cierre por foco fuera con foco real en NotificationBell) y suite general de 459 archivos/4565 pruebas PASS (233,52 s); verificación sobre candidato local; integración/publicación rastreadas en PR #1351 (https://github.com/borjar20/Biblioshare/pull/1351); las demás fuentes conservan su alcance · delta reseñas por momento de Experiencias (#1293): corte local/dev del nodo t-experience-reviews y flow-experience-review contrastado con las cinco migraciones iniciales 20261004100000-100400 y con los ficheros de src de la rama feat/experiencias-resenas el 2026-10-04; aplicado y verificado en dev contra pg_proc/pg_class/pg_policies; aplicación y verificación en producción de las seis migraciones 20261004100000-100500 el 2026-10-04 documentadas en docs/testing/2026-10-04-experiencias-resenas.md, recogido en PR #1378; recibo independiente de metadata 21:03 UTC limitado a tabla, RLS, una política, SELECT y existencia de get_experience_rating_summaries; sin fixtures ni recorrido autenticado de reseñas acreditados en producción; E2E 16/16 contra build/start local · celebraciones recuperables #1334 sobre candidato a64f2e3/main14ad944: 75 unitarios, Node20/20, PostgreSQL local cold-r2 ledger285, grants11/11/11 y revisión independiente de tres correcciones PASS, 2026-10-03; G4 nativo, activación dev/prod y CI de publicación pendientes al registrar este delta · corte de celebraciones #1334 revalidado el 2026-10-04: G4 local de build gmpZaurRiZDtN1lTctOQI acredita recuperación post-commit, presentación y ACK; 390 incidentales conservados como GLOBAL FAIL en #1301 y tres fronteras nativas pendientes en #1356; dev activo con objetos/ACL/grants11/11/11 revalidados y filas históricas intactas; registros extra del transporte seguidos en #1355; producción y CI de publicación pendientes en ese corte anterior · activación productiva de celebraciones #1334 aplicada el 2026-10-04 a las 20:15:35 UTC y verificada a las 20:16:22 UTC: guard real de quiescencia y ledger en la misma transacción, cuatro RPC invoker iguales a dev y EXECUTE sólo authenticated, grants 11/11/11, legacy compatible de cero filas; 221 filas y 303 registros previos del ledger intactos, total 307 sin normalizar carriers (#1355); dos FAIL SQLSTATE 55000 con rollback y sin identidad de las transacciones, sin atribuir causa al éxito posterior; seguridad sin grupos ni hallazgos nuevos, sólo se retira el aviso del legacy; el corte de las 20:16:22 UTC precede a la entrega del consumidor seguida en PR #1364, no acredita presentación remota; FAIL global #1301 y límites nativos #1356 conservados · delta ChromeBoundary #1385: límites de ruta y payload de sesión separados en AppShell, verificados contra código y cinco regresiones SSR/hidratación React DOM más 26 controles de navegación el 2026-10-05; RED final 2 FAIL/3 PASS conservado; revisión independiente PASS; build nueva e5fdb395 pasa MTG original 2/2 y retorno 2/2 a 390/1280px con cero errores de hidratación; global FAIL por 16 GET RSC cancelados sin clasificación y gate de inventario completo FAIL por 56 route-cache nuevos, con 2445 archivos previos y 3272 fuentes idénticos; parada física independiente PASS con backup y censo0; CI integrada pendiente; las demás fuentes mantienen su alcance · integración documental con main f1205b9 el 2026-10-05; CI del hijo71fd8bf/base3262374 PASS477 archivos/4744 unitarios/20 contratos Node/291 pasosSQL/168 recorridos; CI del candidato de main y despliegue pendientes · delta Novedades desde codex/novedades el 2026-10-06: implementación y esquema local/dev, contratos SQL reales y fuente de rutas; ver docs/testing/2026-10-06-novedades.md para los cortes funcionales y límites. Producción y publicación pendientes. · delta crónicas desde codex/wrap-ups-completion: código, regresiones, SQL dev con rollback y QA 32 escenarios build/start verificados el 2026-10-06; producción/cron remoto pendientes #1433 · integración de crónicas con main 4ac41fc7: build NoKJdNfgoltclBjsFj_XI, 544 archivos/5383 unitarios, 28 contratos de bootstrap, 5 E2E sin reintentos y QA focal anual4/4 PASS el 2026-10-06; producción/CI de publicación pendientes #1433 · activación productiva de crónicas verificada el 2026-10-07: PR1436/main5d6b447c, ocho superficies dev/prod idénticas, alias productivo READY y pg_net18196 HTTP200 (4 candidatas/escritas,3 solicitudes de aviso,0 fallos); recibo#1433 cerrado; despacho dev#1439 · calidad de Novedades #1451 y enlaces #1449: código y SQL con rollback local/dev del 2026-10-07; producción pendiente · esquema de calidad #1451 aplicado y verificado en producción el 2026-10-07 a las 08:57:59 UTC: columna, ACL, función igual a local/dev, 311 anuncios y políticas previas intactos; código en PR #1452 · Paper #1450: candidato local, 44 unitarios, 19 casos build/start en 320–1920 px claro/oscuro y ocho capturas con metadatos públicos reales el 2026-10-07; integración/publicación pendientes · calendario lateral Paper #1450 en PR #1455, 2026-10-07: 65 unitarios focales, 22 E2E build/start, 548 archivos/5438 unitarios, TypeScript/lint PASS y 14 capturas con muestra pública real; tarjetas e Inicio idénticos al aprobado 65426407, integración/publicación pendientes · Volver arriba móvil en Novedades, 2026-10-07: 3 regresiones RED/GREEN, 26 focales, 24 E2E, refuerzo desktop2/2 y 548 archivos/5441 unitarios PASS; captura real390px, publicación pendiente #1450 · filtros agrupados Paper #1450 en PR #1455, 2026-10-07: 69 unitarios focales, 27 E2E build/start, 548 archivos/5442 unitarios, TypeScript/lint PASS y diez capturas con muestra pública real; tarjetas/calendario/Inicio conservados, integración/publicación pendientes · panel ocultable de Novedades en PR #1455, 2026-10-07: 70 focales, tres E2E públicos a 320/390/1280 px contra build/start propio en 3030, build/TypeScript/lint y revisión independiente PASS; 18 capturas reales, sin perder borradores/URL; 3000 ocupado por otra sesión, tanda autenticada previa no repetida, publicación pendiente #1450 · Entre nosotros #1462: código y esquema/grants local/dev verificados el 2026-10-10; bootstrap 307 pasos, SQL roles reales y concurrencia local; build/start final AzNCV4SAaUJ6YTFacyCNy, 5.610 unitarios y 12 recorridos únicos mediante 11 PASS + 1280 focal PASS; integración/publicación y esquema productivo pendientes; evidencia docs/testing/2026-10-10-entre-nosotros.md",
     "stack": {
       "framework": "Next.js 16.3.8 (App Router, React 19.2.4)",
       "language": "TypeScript 5",
@@ -87,6 +87,11 @@
         "id": "inv-release-consent",
         "rule": "Añadir a Pendiente y Avisarme son elecciones independientes; ninguna lectura ni revisión automática escribe passes. Los avisos exigen consentimiento vigente por lanzamiento y revisión, con precisión civil real.",
         "evidence": "src/lib/releases/mutations.ts; supabase/tests/cultural_releases.sql; e2e/ci/novedades.spec.ts"
+      },
+      {
+        "id": "inv-comparison-privacy",
+        "rule": "Guardar una selección no concede acceso a bibliotecas: cada action autentica y lee passes/episode_watches con sesión/RLS, pagina todo el historial y revalida permisos; los revocados pierden identidad y evidencia. Sin service role, use cache, cliente sin sesión ni persistencia compartida de datos personales.",
+        "evidence": "src/lib/comparisons/groups.ts; src/lib/comparisons/load.ts; src/lib/comparisons/actions.ts; supabase/tests/comparison_groups.sql"
       }
     ],
     "layers": [
@@ -2222,6 +2227,105 @@
       "gotchas": [
         "Sesión sin INSERT/UPDATE. Sustitución/borrado limpia share/post. Dev y producción verificados el 2026-10-07; despacho dev pendiente #1439."
       ]
+    },
+    {
+      "id": "r-comparisons",
+      "label": "/comunidad/entre-nosotros",
+      "layer": "route",
+      "kind": "route",
+      "summary": "Entrada autenticada desde Comunidad; Suspense resuelve sesión, selecciones privadas y candidatos. Namespace comparisons propio; recuperación por error.tsx.",
+      "files": [
+        "src/app/comunidad/entre-nosotros/page.tsx",
+        "src/app/comunidad/entre-nosotros/layout.tsx",
+        "src/app/comunidad/entre-nosotros/error.tsx"
+      ],
+      "gotchas": [
+        "RouteMessages anidado reemplaza los mensajes del padre; declarar comparisons. Implementado local/dev; esquema verificado en producción 2026-10-10. Entrega de código en PR #1474."
+      ]
+    },
+    {
+      "id": "c-comparisons",
+      "label": "components/comparisons",
+      "layer": "ui",
+      "kind": "ui",
+      "summary": "Obras/Gustos, editor privado, mapa de grupo y Venn exacto de pareja/trío; general → cruce completo → obra con portada original, 720 ms/850 ms y scroll móvil.",
+      "files": [
+        "src/components/comparisons/explorer.tsx",
+        "src/components/comparisons/state.ts",
+        "src/components/comparisons/group-editor.tsx",
+        "src/components/comparisons/canvas.tsx",
+        "src/components/comparisons/canvas.module.css",
+        "src/components/comparisons/geometry.ts",
+        "src/components/comparisons/motion.ts",
+        "src/components/comparisons/use-camera.ts",
+        "src/components/comparisons/work-detail.tsx",
+        "src/components/comparisons/tastes.tsx"
+      ],
+      "gotchas": [
+        "Sin arrastre libre ni paneles/modales de evidencia; crece el lienzo y usa scroll normal.",
+        "La frontera de sesión oculta evidencia durante getUser; focus nuevo invalida resultado en vuelo y solicita comprobación fresca. Actor distinto/ausente desmonta contexto, respuestas antiguas no restauran datos.",
+        "Tendencias: tres obras únicas valoradas por cada persona mencionada; los umbrales de obras no se aplican a medias de categorías."
+      ]
+    },
+    {
+      "id": "a-comparisons",
+      "label": "comparisons/actions",
+      "layer": "action",
+      "kind": "module",
+      "summary": "loadComparison, loadComparisonWork, saveGroup y deleteGroup: sesión verificada por llamada, entrada runtime y errores tipados; RPC invoker atómicas.",
+      "files": [
+        "src/lib/comparisons/actions.ts"
+      ],
+      "gotchas": [
+        "PT404 ajeno/inexistente indistinguible; PT409 conflicto exige recargar. El DTO no revela errores técnicos ni texto privado."
+      ]
+    },
+    {
+      "id": "m-comparisons",
+      "label": "comparisons/normalize y derive",
+      "layer": "domain",
+      "kind": "module",
+      "summary": "Historial único por persona/obra, último terminado sin rescatar notas; series por episodios vistos. Regiones exactas, hallazgos inclusivos ≥8/≤1/≥3 y facetas por evidencia.",
+      "files": [
+        "src/lib/comparisons/types.ts",
+        "src/lib/comparisons/normalize.ts",
+        "src/lib/comparisons/derive.ts"
+      ],
+      "gotchas": [
+        "Series abandonadas con episodios entran; sin episodios quedan fuera. Nota general y notas de episodios separadas; nunca ausencia=0.",
+        "eligibleTotal es toda la base elegible de la persona, no solo la categoría; falta de metadatos no elimina pertenencia."
+      ]
+    },
+    {
+      "id": "d-comparisons",
+      "label": "comparisons/groups y load",
+      "layer": "data",
+      "kind": "module",
+      "summary": "Cliente de petición/RLS; sigue accepted en un sentido, perfiles visibles y can_view_profile. Pagina pases/episodios/créditos/catálogo, revalida grupo y permisos al terminar.",
+      "files": [
+        "src/lib/comparisons/groups.ts",
+        "src/lib/comparisons/load.ts"
+      ],
+      "gotchas": [
+        "Revisión cambiada devuelve conflicto. Revocación elimina hechos/catálogo exclusivo/cobertura; acceso recuperado durante carga espera siguiente lectura.",
+        "Puesto no disponible conserva solo slotId; sin UUID/nombre/avatar. No service role, caché compartida ni hidratación."
+      ]
+    },
+    {
+      "id": "t-comparisons",
+      "label": "comparison_groups / comparison_group_members",
+      "layer": "db",
+      "kind": "table",
+      "summary": "Selecciones privadas del dueño de 2–10 personas, dueño opcional; revisión opaca, grants por columna, RPC/trigger invoker y RLS owner-only.",
+      "files": [
+        "supabase/migrations/20261010084120_entre_nosotros_groups.sql",
+        "supabase/tests/comparison_groups.sql",
+        "scripts/db/verify-comparison-concurrency.mjs"
+      ],
+      "gotchas": [
+        "Sin FK Auth del miembro: cuenta eliminada conserva puesto no disponible. Lock padre y constraints diferibles protegen también DML directo.",
+        "Objetos y grants verificados local/dev/producción 2026-10-10. No concede visibilidad de biblioteca."
+      ]
     }
   ],
   "edges": [
@@ -3838,6 +3942,86 @@
       "to": "m-stats",
       "kind": "calls",
       "label": "reglas compartidas"
+    },
+    {
+      "from": "r-comunidad",
+      "to": "r-comparisons",
+      "kind": "renders"
+    },
+    {
+      "from": "r-comparisons",
+      "to": "c-comparisons",
+      "kind": "renders"
+    },
+    {
+      "from": "r-comparisons",
+      "to": "d-comparisons",
+      "kind": "calls"
+    },
+    {
+      "from": "c-comparisons",
+      "to": "a-comparisons",
+      "kind": "calls"
+    },
+    {
+      "from": "c-comparisons",
+      "to": "m-comparisons",
+      "kind": "calls"
+    },
+    {
+      "from": "a-comparisons",
+      "to": "d-comparisons",
+      "kind": "calls"
+    },
+    {
+      "from": "a-comparisons",
+      "to": "t-comparisons",
+      "kind": "writes"
+    },
+    {
+      "from": "d-comparisons",
+      "to": "t-comparisons",
+      "kind": "reads"
+    },
+    {
+      "from": "d-comparisons",
+      "to": "t-passes",
+      "kind": "reads"
+    },
+    {
+      "from": "d-comparisons",
+      "to": "t-watches",
+      "kind": "reads"
+    },
+    {
+      "from": "d-comparisons",
+      "to": "m-comparisons",
+      "kind": "calls"
+    },
+    {
+      "from": "d-comparisons",
+      "to": "t-profiles",
+      "kind": "reads"
+    },
+    {
+      "from": "d-comparisons",
+      "to": "t-follows",
+      "kind": "reads"
+    },
+    {
+      "from": "d-comparisons",
+      "to": "t-catalog",
+      "kind": "reads"
+    },
+    {
+      "from": "d-comparisons",
+      "to": "t-tiradas",
+      "kind": "reads"
+    },
+    {
+      "from": "d-comparisons",
+      "to": "t-people",
+      "kind": "reads"
     }
   ],
   "flows": [
@@ -5620,6 +5804,70 @@
           "node": "c-wrap-ups",
           "action": "Feed muestra resumen y PNG revalida RLS",
           "file": "src/components/wrap-ups/wrap-up-feed-card.tsx"
+        }
+      ]
+    },
+    {
+      "id": "flow-comparison",
+      "name": "Guardar selección → comparar → explorar evidencia",
+      "category": "social",
+      "summary": "Selección privada de 2–10 seguidos; sesión/RLS actual, historial completo y revalidación. Mapa, Venn exacto y Gustos conservan evidencia visible.",
+      "entrypoint": "src/app/comunidad/entre-nosotros/page.tsx",
+      "steps": [
+        {
+          "node": "r-comparisons",
+          "action": "Resolver sesión, grupos y candidatos desde Comunidad bajo Suspense",
+          "file": "src/app/comunidad/entre-nosotros/page.tsx"
+        },
+        {
+          "node": "d-comparisons",
+          "action": "Paginar seguidos accepted y verificar identidades visibles",
+          "file": "src/lib/comparisons/groups.ts"
+        },
+        {
+          "node": "c-comparisons",
+          "action": "Crear/editar selección personal con dueño opcional",
+          "file": "src/components/comparisons/group-editor.tsx"
+        },
+        {
+          "node": "a-comparisons",
+          "action": "Autenticar cada llamada y validar entradas/revisión",
+          "file": "src/lib/comparisons/actions.ts"
+        },
+        {
+          "node": "t-comparisons",
+          "action": "Bloquear padre y guardar lista atómica con RLS/grants/constraints; no conceder acceso",
+          "file": "supabase/migrations/20261010084120_entre_nosotros_groups.sql"
+        },
+        {
+          "node": "d-comparisons",
+          "action": "Leer todas las páginas de passes/episode_watches y catálogo; revalidar grupo/permisos",
+          "file": "src/lib/comparisons/load.ts"
+        },
+        {
+          "node": "m-comparisons",
+          "action": "Deduplicar obras y elegir último terminado/episodios sin recuperar notas ausentes",
+          "file": "src/lib/comparisons/normalize.ts"
+        },
+        {
+          "node": "m-comparisons",
+          "action": "Derivar regiones exactas de pareja/trío, hallazgos y facetas",
+          "file": "src/lib/comparisons/derive.ts"
+        },
+        {
+          "node": "c-comparisons",
+          "action": "Explorar general → cruce completo → obra y regreso sobre lienzo móvil",
+          "file": "src/components/comparisons/canvas.tsx"
+        },
+        {
+          "node": "c-comparisons",
+          "action": "Separar consumo y valoración con cobertura y tres obras únicas por persona para tendencias",
+          "file": "src/components/comparisons/tastes.tsx"
+        },
+        {
+          "node": "c-comparisons",
+          "action": "Ocultar evidencia durante auth y descartar respuestas obsoletas al cambiar identidad",
+          "file": "src/components/comparisons/explorer.tsx"
         }
       ]
     }

@@ -2032,7 +2032,7 @@ encadenadas (`20260826_confirm_checkpoint_lee_passes.sql` y
 
 - **#470** — la RPC original (20260713) leía `library_entries.position`, tabla CONGELADA
   desde el pase-hub: comparaba contra una posición muerta y rechazaba confirmaciones que la
-  UI (que lee `passes`) daba por alcanzables. La 20260826 la pasó al pase activo… 
+  UI (que lee `passes`) daba por alcanzables. La 20260826 la pasó al pase activo…
 - **#471** — …y la 20260827 eliminó el gate entero: la página objetivo la fijaba el
   moderador según SU edición y cada participante mide en páginas de la SUYA
   (`book_editions.total_pages` varía), así que el mismo número cae en puntos distintos de
@@ -5300,6 +5300,98 @@ pase-hub se redataron y prod las registra en otro orden.
 está aplicada pero sin registrar en el ledger. Para comprobar si algo existe de verdad,
 mirar los **objetos** (`pg_proc`, `pg_class`), no el ledger.
 
+## Grupos privados de comparación — Entre nosotros
+
+> [Canónico · esquema y grants verificados local/dev/producción el 2026-10-10.]
+
+`comparison_groups`: `id uuid`, `owner_id uuid NOT NULL DEFAULT auth.uid()` (FK a
+`auth.users`, CASCADE), `name text` recortado (1–60 caracteres), `revision integer`
+positiva, `created_at` y `updated_at`. `comparison_group_members`: `id uuid`,
+`group_id` (FK CASCADE), `user_id uuid NOT NULL`, `position integer` (0–9).
+Hay unicidad grupo/usuario y grupo/posición; esta última es diferible para reordenar.
+El usuario miembro no tiene FK: borrar su cuenta conserva un puesto no disponible,
+sin nombre ni avatar almacenados. El lector debe entregar `userId=null` y nombre/avatar
+nulos si ya no hay identidad disponible. El dueño puede quedar fuera de la selección.
+
+Ambas tablas son privadas incluso si el perfil del dueño es público: SELECT, INSERT,
+UPDATE y DELETE exigen dueño autenticado. Guardar un puesto no concede visibilidad
+de biblioteca. Cada alta exige perfil vigente visible para la sesión, `can_view_profile`
+y self o seguimiento aceptado del dueño hacia esa persona, sin reciprocidad.
+Borrar/reordenar no vuelve a exigir el follow: permite retirar puestos inaccesibles.
+Las tablas no consultan `passes`, `episode_watches` ni bibliotecas.
+
+Los triggers invoker con `search_path=''` serializan cada cambio de miembro mediante
+`UPDATE name=name` del padre antes de escribir. El trigger del padre incrementa la
+revisión y actualiza la fecha. Constraints diferibles comprueban 2–10 puestos al
+terminar la transacción; omiten padres borrados. La revisión es un token opaco y puede
+crecer más de uno por guardado. No se concede escritura directa de revisión/identidad.
+
+`save_comparison_group(p_id uuid, p_name text, p_user_ids uuid[], p_expected_revision integer)`
+devuelve `comparison_groups`; id y revisión nulos crean. Editar bloquea el padre
+`FOR UPDATE`, comprueba la revisión y reemplaza la lista atómicamente en su orden.
+`delete_comparison_group(p_id uuid, p_expected_revision integer)` devuelve boolean.
+Ambas son invoker, sesión obligatoria y EXECUTE solo para authenticated (sin PUBLIC/anon).
+Errores: `PT409` conflicto, `PT404` inexistente/ajeno indistinguibles, `22023` entrada
+inválida, `42501` sesión/permisos. La conversión de texto no UUID falla con `22P02`
+antes de entrar a la función. Reemplazar una lista revalida todas sus altas; se deben
+retirar personas que ya no se pueden añadir.
+
+Superficie 6 de DRIFT-CHECK verificada contra objetos locales/dev el 2026-10-10:
+
+| Tabla | Columnas | INSERT authenticated | UPDATE authenticated |
+|---|---:|---|---|
+| comparison_groups | 6 | name (1) | name (1) |
+| comparison_group_members | 4 | group_id, user_id, position (3) | position (1) |
+
+SELECT/DELETE son grants de tabla para authenticated. Anon no tiene permisos;
+id, dueño, revisión y timestamps quedan gestionados por la base. Tipos generados desde
+local y dev fusionados solo para estas tablas/RPC; se conserva la extensión manual de
+argumentos nulos de creación. El resto del modelo mantiene sus verificaciones anteriores.
+
+### Políticas, funciones y alcance verificado (2026-10-10)
+
+Las cuatro policies de grupos son `comparison_groups_owner_select`,
+`comparison_groups_owner_insert`, `comparison_groups_owner_update` y
+`comparison_groups_owner_delete`; las cuatro de miembros siguen el mismo sufijo
+con prefijo `comparison_group_members_owner_`. Todas se limitan a authenticated:
+grupos compara `owner_id=auth.uid()`; miembros exige padre propio visible por RLS.
+Los triggers `comparison_group_touch`, `comparison_member_guard`,
+`comparison_groups_size` y `comparison_members_size` ejecutan las tres funciones
+`comparison_group_touch`, `comparison_member_guard` y `comparison_group_size_check`.
+Las cinco funciones, incluidas ambas RPC, son invoker con ruta de búsqueda vacía.
+Los triggers no tienen EXECUTE directo concedido a authenticated/anon.
+
+Verificación contra `pg_class`, columnas, constraints, `pg_proc`, `pg_policies` y ACL
+en local/dev y, tras aplicar la migración, en producción: objetos y hashes de definiciones idénticos, ocho policies, dos tablas
+con RLS y grants finos 6/1/1 y 4/3/1. El contrato SQL real prueba también DML directo,
+identidad/bloqueo, columnas inmutables, unicidad y cardinalidad diferibles; dos
+conexiones locales prueban bloqueo, ganador único y rechazo de un miembro undécimo.
+Bootstrap completo de 307 pasos y verificador local PASS con recibo de coordinación
+auténtico. Las comprobaciones no se deducen del ledger. En producción se aplicó
+la misma migración aditiva y se contrastaron objetos, funciones, políticas, constraints,
+triggers y grants contra desarrollo: coincidencia exacta, sin hallazgos de seguridad
+añadidos. No se ejecutaron fixtures productivos. Recibo:
+[catálogo y permisos de producción](../testing/assets/2026-10-10-entre-nosotros/integration/schema-production.json).
+
+### Lectura de evidencia y contrato de respuesta
+
+El consumo se deriva de `passes` y `episode_watches`, nunca `library_entries`.
+Historial completo paginado; libros/películas elegibles al menos una vez terminados,
+nota del último terminado sin recuperar una anterior ausente; series con al menos
+un episodio, incluso abandonadas, deduplicadas por temporada/episodio entre pases.
+Progreso del pase actual y nota general de serie se mantienen separados de las
+notas de episodios. Una obra cuenta una vez por persona.
+
+Después de consultar fuentes/catálogo se revalidan grupo y disponibilidad; cambio
+de revisión devuelve `conflict` para recargar, no interpreta miembros nuevos sin
+lectura como cero obras. Una revocación retira hechos, catálogo exclusivo y cobertura;
+un puesto que recupera acceso durante la carga espera a la siguiente lectura.
+Metadatos perdidos conservan obra/pertenencia con `metadataMissing`, título vacío,
+portada nula y facetas ausentes, sin hidratación. El detalle admite 1–10 personas
+disponibles distintas y exige algún consumidor elegible; los episodios comunes
+requieren ≥2 personas y nota de todas. El DTO no contiene filas crudas, reseñas,
+spoilers ni motivos de abandono. Sesión/RLS actual en cada action, sin service role
+ni caché compartida. Evidencia: [verificación integrada](../testing/2026-10-10-entre-nosotros.md).
 
 ## Deltas pendientes de integrar (vigentes)
 

@@ -1,5 +1,40 @@
 # Seguridad — modelo de permisos y excepciones
 
+> **[Entre nosotros #1462 · permisos, objetos y grants verificados en local/dev/producción el 2026-10-10.]**
+
+## Entre nosotros — grupos privados y lecturas de la sesión
+
+`comparison_groups` y `comparison_group_members` tienen RLS exclusiva del dueño,
+incluso con perfil público; anon carece de acceso. Las ocho políticas cubren
+SELECT/INSERT/UPDATE/DELETE. INSERT/UPDATE son grants por columna: `name` en grupos,
+`group_id,user_id,position`/`position` en miembros. El cliente authenticated no puede modificar
+dueño, identidad, revisión ni timestamps. Tres funciones de trigger y dos RPC son
+`SECURITY INVOKER`, con `search_path=''`; EXECUTE de RPC solo para authenticated,
+sin EXECUTE directo de triggers para authenticated/anon.
+
+Alta exige identidad visible, `can_view_profile` y seguimiento aceptado del dueño
+hacia otra persona, sin reciprocidad. Retirar/reordenar no revalida un alta perdida.
+Locks del padre, unicidad diferible y tamaño final 2–10 también protegen DML directo;
+la revisión evita pisar ediciones. Cuenta eliminada deja un puesto sin identidad en
+el DTO; su UUID no se divulga. Borrar al dueño elimina sus selecciones en cascada.
+
+Cada action verifica sesión; las lecturas usan el cliente de petición y RLS, paginan
+todo el historial y revalidan permisos después. Guardar una persona no concede acceso
+a su biblioteca. El DTO excluye reseñas, texto spoiler y motivos privados; la pérdida
+de acceso retira evidencia y la frontera de sesión descarta resultados obsoletos.
+No hay consultas de comparación con service role, clientes sin sesión, `use cache`,
+localStorage ni persistencia compartida de datos personales. El privilegio de fixture
+solo siembra/limpia en local/dev y nunca sustituye permisos de producto.
+
+Contrato SQL con roles reales y rollback local/dev, concurrencia local y superficie 6
+verificados; advisors dev sin hallazgos añadidos ni retirados respecto a su baseline.
+Detalle de tablas/ACL en [modelo de datos](requirements/data-model.md); navegador,
+acciones ajenas/revocación y límites en [el informe](testing/2026-10-10-entre-nosotros.md).
+En producción se aplicó la migración aditiva y se verificó coincidencia exacta con
+desarrollo: dos tablas con RLS, ocho políticas, cinco funciones invoker, cuatro
+triggers y grants por columna. Advisors de seguridad: seis antes y después,
+sin hallazgos añadidos. No hubo fixtures productivos; [recibo](testing/assets/2026-10-10-entre-nosotros/integration/schema-production.json).
+
 > **[Canónico · verificado contra dev (con diff a prod) el 2026-08-19]**
 >
 > Cómo se decide quién puede leer/escribir qué, dónde viven las barreras y qué

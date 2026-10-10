@@ -1,0 +1,88 @@
+
+> biblioshare@1.1.0 test:e2e
+> playwright test --config playwright.comparisons.config.ts --grep final fix --workers=1 --retries=0 --output test-results/final-fix-first
+
+
+Running 3 tests using 1 worker
+
+(node:41248) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  1 [chromium] › e2e\entre-nosotros.spec.ts:477:1 › final fixes: natural origin focus, 320px selector, all-person episode sample and exclusions (3.0m)
+(node:36996) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  2 [chromium] › e2e\entre-nosotros.spec.ts:544:1 › final fixes: intermediate map DOM names, piles and summary stay disjoint (10.6s)
+(node:36908) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 3 [chromium] › e2e\entre-nosotros.spec.ts:576:1 › final fix M3 bounded allow/block fixture-cover ownership diagnosis (19.5s)
+
+
+  1) [chromium] › e2e\entre-nosotros.spec.ts:477:1 › final fixes: natural origin focus, 320px selector, all-person episode sample and exclusions 
+
+    Test timeout of 180000ms exceeded.
+
+    attachment #1: selector-empty (application/json) ───────────────────────────────────────────────
+    test-results\final-fix-first\entre-nosotros-final-fixes-07ced-isode-sample-and-exclusions-chromium\attachments\selector-empty-21aa5c0e978a406cc16ed6029cae51aa44ea822e.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: selector-long-selected (application/json) ───────────────────────────────────────
+    test-results\final-fix-first\entre-nosotros-final-fixes-07ced-isode-sample-and-exclusions-chromium\attachments\selector-long-selected-aa99c1530c68a048338d665e786fb2ae8f00fffa.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: browser-journal (application/json) ──────────────────────────────────────────────
+    test-results\final-fix-first\entre-nosotros-final-fixes-07ced-isode-sample-and-exclusions-chromium\attachments\browser-journal-a7c5e9f6165a1566daeded09f7d242393d0402fe.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\final-fix-first\entre-nosotros-final-fixes-07ced-isode-sample-and-exclusions-chromium\error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\final-fix-first\entre-nosotros-final-fixes-07ced-isode-sample-and-exclusions-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\final-fix-first\entre-nosotros-final-fixes-07ced-isode-sample-and-exclusions-chromium\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › e2e\entre-nosotros.spec.ts:544:1 › final fixes: intermediate map DOM names, piles and summary stay disjoint 
+
+    Error: expect(received).toBeLessThanOrEqual(expected)
+
+    Expected: <= 334
+    Received:    341.546875
+
+      562 |       expect(boxes.labels.some(label => label.height >= parseFloat(label.lineHeight) * 2 + 13)).toBe(true);
+      563 |       for (const [index, label] of boxes.labels.entries()) {
+    > 564 |         expect(label.x).toBeGreaterThanOrEqual(boxes.stage.x); expect(label.right).toBeLessThanOrEqual(boxes.stage.right);
+          |                                                                                    ^
+      565 |         expect(label.y).toBeGreaterThanOrEqual(boxes.stage.y); expect(label.bottom).toBeLessThanOrEqual(boxes.stage.bottom);
+      566 |         for (const other of boxes.labels.slice(index + 1)) expect(overlap(label, other), `name/name ${width}`).toBe(0);
+      567 |         for (const pile of boxes.piles) expect(overlap(label, pile), `name/pile ${width}`).toBe(0);
+        at integrated (C:\Users\borja\.codex\worktrees\5ca1\Biblioshare\e2e\entre-nosotros.spec.ts:564:84)
+        at withComparisonFixture (C:\Users\borja\.codex\worktrees\5ca1\Biblioshare\e2e\support\comparison-fixtures.ts:102:13)
+        at C:\Users\borja\.codex\worktrees\5ca1\Biblioshare\e2e\entre-nosotros.spec.ts:545:3
+
+    attachment #1: map-365-bounds (application/json) ───────────────────────────────────────────────
+    test-results\final-fix-first\entre-nosotros-final-fixes-9fa3e-s-and-summary-stay-disjoint-chromium\attachments\map-365-bounds-788ef4a9ec1f4ed95d207c2e69ba7bad346f7149.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: map-366-bounds (application/json) ───────────────────────────────────────────────
+    test-results\final-fix-first\entre-nosotros-final-fixes-9fa3e-s-and-summary-stay-disjoint-chromium\attachments\map-366-bounds-b832aedd40c58a168c6bf7e69c273ea3cad16cdb.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: browser-journal (application/json) ──────────────────────────────────────────────
+    test-results\final-fix-first\entre-nosotros-final-fixes-9fa3e-s-and-summary-stay-disjoint-chromium\attachments\browser-journal-988d9240d0ff06a41e23c1739e75418c62d33aee.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\final-fix-first\entre-nosotros-final-fixes-9fa3e-s-and-summary-stay-disjoint-chromium\error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\final-fix-first\entre-nosotros-final-fixes-9fa3e-s-and-summary-stay-disjoint-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\final-fix-first\entre-nosotros-final-fixes-9fa3e-s-and-summary-stay-disjoint-chromium\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2 failed
+    [chromium] › e2e\entre-nosotros.spec.ts:477:1 › final fixes: natural origin focus, 320px selector, all-person episode sample and exclusions 
+    [chromium] › e2e\entre-nosotros.spec.ts:544:1 › final fixes: intermediate map DOM names, piles and summary stay disjoint 
+  1 passed (3.6m)

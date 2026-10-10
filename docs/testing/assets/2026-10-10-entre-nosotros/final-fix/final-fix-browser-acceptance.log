@@ -1,0 +1,13 @@
+
+> biblioshare@1.1.0 test:e2e
+> playwright test --config playwright.comparisons.config.ts --grep final fixes --workers=1 --retries=0 --output test-results/final-fix-acceptance
+
+
+Running 2 tests using 1 worker
+
+(node:48260) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 [chromium] › e2e\entre-nosotros.spec.ts:477:1 › final fixes: natural origin focus, 320px selector, all-person episode sample and exclusions (28.8s)
+  ok 2 [chromium] › e2e\entre-nosotros.spec.ts:545:1 › final fixes: intermediate map DOM names, piles and summary stay disjoint (25.3s)
+
+  2 passed (55.5s)

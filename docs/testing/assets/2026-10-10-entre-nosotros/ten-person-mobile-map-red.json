@@ -1,0 +1,164 @@
+{
+  "stage": {
+    "x": 33,
+    "y": 1043,
+    "width": 254,
+    "height": 360,
+    "top": 1043,
+    "right": 287,
+    "bottom": 1403,
+    "left": 33
+  },
+  "people": [
+    {
+      "name": "Ana QA",
+      "rect": {
+        "x": 134.34375,
+        "y": 1053.140625,
+        "width": 51.3125,
+        "height": 30.5,
+        "top": 1053.140625,
+        "right": 185.65625,
+        "bottom": 1083.640625,
+        "left": 134.34375
+      },
+      "scrollWidth": 51,
+      "clientWidth": 51
+    },
+    {
+      "name": "Beatriz QA",
+      "rect": {
+        "x": 179.8828125,
+        "y": 1070.125,
+        "width": 67.703125,
+        "height": 30.5,
+        "top": 1070.125,
+        "right": 247.5859375,
+        "bottom": 1100.625,
+        "left": 179.8828125
+      },
+      "scrollWidth": 68,
+      "clientWidth": 68
+    },
+    {
+      "name": "Carlos QA",
+      "rect": {
+        "x": 226.9296875,
+        "y": 1098.078125,
+        "width": 40.046875,
+        "height": 63.5,
+        "top": 1098.078125,
+        "right": 266.9765625,
+        "bottom": 1161.578125,
+        "left": 226.9296875
+      },
+      "scrollWidth": 40,
+      "clientWidth": 40
+    },
+    {
+      "name": "Diana QA",
+      "rect": {
+        "x": 226.9296875,
+        "y": 1161.265625,
+        "width": 40.046875,
+        "height": 47,
+        "top": 1161.265625,
+        "right": 266.9765625,
+        "bottom": 1208.265625,
+        "left": 226.9296875
+      },
+      "scrollWidth": 40,
+      "clientWidth": 40
+    },
+    {
+      "name": "Eva QA",
+      "rect": {
+        "x": 188.75,
+        "y": 1213.96875,
+        "width": 49.96875,
+        "height": 30.5,
+        "top": 1213.96875,
+        "right": 238.71875,
+        "bottom": 1244.46875,
+        "left": 188.75
+      },
+      "scrollWidth": 50,
+      "clientWidth": 50
+    },
+    {
+      "name": "Felipe QA",
+      "rect": {
+        "x": 128.84375,
+        "y": 1230.9375,
+        "width": 62.3125,
+        "height": 30.5,
+        "top": 1230.9375,
+        "right": 191.15625,
+        "bottom": 1261.4375,
+        "left": 128.84375
+      },
+      "scrollWidth": 62,
+      "clientWidth": 62
+    },
+    {
+      "name": "Gloria QA",
+      "rect": {
+        "x": 75.7109375,
+        "y": 1213.96875,
+        "width": 61.078125,
+        "height": 30.5,
+        "top": 1213.96875,
+        "right": 136.7890625,
+        "bottom": 1244.46875,
+        "left": 75.7109375
+      },
+      "scrollWidth": 61,
+      "clientWidth": 61
+    },
+    {
+      "name": "Hugo QA",
+      "rect": {
+        "x": 43.828125,
+        "y": 1169.515625,
+        "width": 58.40625,
+        "height": 30.5,
+        "top": 1169.515625,
+        "right": 102.234375,
+        "bottom": 1200.015625,
+        "left": 43.828125
+      },
+      "scrollWidth": 58,
+      "clientWidth": 58
+    },
+    {
+      "name": "Irene QA",
+      "rect": {
+        "x": 44.484375,
+        "y": 1114.578125,
+        "width": 57.09375,
+        "height": 30.5,
+        "top": 1114.578125,
+        "right": 101.578125,
+        "bottom": 1145.078125,
+        "left": 44.484375
+      },
+      "scrollWidth": 57,
+      "clientWidth": 57
+    },
+    {
+      "name": "Luis QA",
+      "rect": {
+        "x": 80.1328125,
+        "y": 1070.125,
+        "width": 52.234375,
+        "height": 30.5,
+        "top": 1070.125,
+        "right": 132.3671875,
+        "bottom": 1100.625,
+        "left": 80.1328125
+      },
+      "scrollWidth": 52,
+      "clientWidth": 52
+    }
+  ]
+}

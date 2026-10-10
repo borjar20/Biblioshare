@@ -1,0 +1,161 @@
+
+> biblioshare@1.1.0 build
+> next build
+
+▲ Next.js 16.3.8 (Turbopack)
+- Environments: .env.local
+✓ Running next.config.ts took 76ms
+- Cache Components enabled
+- Partial Prefetching enabled
+- Experiments (use with caution):
+  · serverActions
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 4.4s
+  Running TypeScript ...
+  Finished TypeScript in 6.3s ...
+  Collecting page data using 11 workers ...
+  Generating static pages using 11 workers (0/89) ...
+  Generating static pages using 11 workers (22/89) 
+  Generating static pages using 11 workers (44/89) 
+  Generating static pages using 11 workers (66/89) 
+✓ Generating static pages using 11 workers (89/89) in 2.6s
+  Finalizing page optimization ...
+
+Route (app)
+┌ ◐ /
+├ ◐ /_not-found
+├   /(.)sesion/[passId]
+│ └ ◐ /(.)sesion/[passId]
+├ ◐ /admin
+├   /admin/[section]
+│ └ ◐ /admin/[section]
+├ ◐ /admin/mascota
+├ ◐ /admin/novedades
+├   /admin/novedades/[id]
+│ └ ◐ /admin/novedades/[id]
+├ ◐ /admin/novedades/nuevo
+├ ◐ /ajustes
+├ ƒ /api/admin/experience-photos/[id]
+├ ƒ /api/admin/voice-notes/[id]
+├ ƒ /api/cron/archive-imports
+├ ƒ /api/cron/event-reminders
+├ ƒ /api/cron/pet-nudges
+├ ƒ /api/cron/releases
+├ ƒ /api/cron/wrap-ups
+├ ƒ /api/experience-photos/[id]
+├ ƒ /api/experience-photos/[id]/own
+├ ƒ /api/export
+├ ƒ /api/import/archive/[id]/dispatch
+├ ƒ /api/month-calendar
+├ ƒ /api/native/session
+├ ƒ /api/og/nota/[id]
+├ ƒ /api/og/wrap-up/[kind]
+├ ƒ /api/og/wrap-up/share/[id]
+├ ƒ /api/places/search
+├ ƒ /api/voice-notes/[id]
+├ ○ /apple-icon
+├ ƒ /auth/confirm
+├ ○ /badge-96
+├ ◐ /buscar
+├ ◐ /buscar/manual
+├   /club/[slug]
+│ └ ◐ /club/[slug]
+├   /club/[slug]/actividad/[id]
+│ └ ◐ /club/[slug]/actividad/[id]
+├   /club/[slug]/calendario
+│ └ ◐ /club/[slug]/calendario
+├   /club/[slug]/evento/[id]
+│ └ ◐ /club/[slug]/evento/[id]
+├   /club/[slug]/miembros
+│ └ ◐ /club/[slug]/miembros
+├ ◐ /clubes
+├ ◐ /coleccion
+├   /coleccion/c/[id]
+│ └ ◐ /coleccion/c/[id]
+├ ◐ /coleccion/rincon
+├ ◐ /comunidad
+├ ◐ /comunidad/entre-nosotros
+├ ƒ /cuenta/contrasena
+├ ◐ /estadisticas
+├   /experiencia/[id]
+│ └ ◐ /experiencia/[id]
+├   /experiencia/[id]/editar
+│ └ ◐ /experiencia/[id]/editar
+├ ◐ /experiencias
+├ ◐ /experiencias/nueva
+├   /genero/[slug]
+│ └ ◐ /genero/[slug]
+├ ƒ /go/[id]
+├ ○ /icon
+├ ○ /icon-192
+├ ƒ /importar
+├ ƒ /importar/pendientes
+├   /juntos/[id]
+│ └ ◐ /juntos/[id]
+├   /libro/[id]
+│ └ ◐ /libro/[id]
+├ ◐ /login
+├ ○ /manifest.webmanifest
+├   /margen/[id]
+│ └ ◐ /margen/[id]
+├ ◐ /mascota
+├ ◐ /notas
+├ ◐ /novedades
+├ ◐ /offline
+├ ƒ /onboarding
+├ ◐ /partida/activa
+├ ◐ /partidas
+├ ◐ /partidas/aleatorio
+├ ◐ /partidas/mtg
+├ ◐ /partidas/mtg/nueva
+├ ◐ /partidas/puntuacion
+├ ◐ /partidas/puntuacion/nueva
+├ ◐ /partidas/recursos
+├ ◐ /partidas/reloj
+├ ◐ /partidas/turnos
+├   /pelicula/[id]
+│ └ ◐ /pelicula/[id]
+├   /persona/[id]
+│ └ ◐ /persona/[id]
+├   /post/[id]
+│ └ ◐ /post/[id]
+├ ◐ /recuperar
+├ ƒ /robots.txt
+├   /saga/[id]
+│ └ ◐ /saga/[id]
+├   /saga/[id]/editar
+│ └ ◐ /saga/[id]/editar
+├   /saga/[id]/mapa
+│ └ ◐ /saga/[id]/mapa
+├   /saga/[id]/mapa/editar
+│ └ ◐ /saga/[id]/mapa/editar
+├   /saga/[id]/rutas
+│ └ ◐ /saga/[id]/rutas
+├   /saga/[id]/rutas/[slug]/editar
+│ └ ◐ /saga/[id]/rutas/[slug]/editar
+├ ◐ /sagas
+├ ƒ /sagas/nueva
+├   /serie/[id]
+│ └ ◐ /serie/[id]
+├   /sesion/[passId]
+│ └ ◐ /sesion/[passId]
+├ ◐ /signup
+├ ƒ /sitemap.xml
+├   /u/[username]
+│ └ ◐ /u/[username]
+├ ƒ /u/[username]/opengraph-image
+├   /u/[username]/seguidores
+│ └ ◐ /u/[username]/seguidores
+├   /u/[username]/siguiendo
+│ └ ◐ /u/[username]/siguiendo
+└   /wrap/[kind]
+  └ ◐ /wrap/[kind]
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)             prerendered as static content
+◐  (Partial Prerender)  prerendered as static HTML with dynamic server-streamed content
+ƒ  (Dynamic)            server-rendered on demand
+

@@ -1,0 +1,14 @@
+
+> biblioshare@1.1.0 test
+> vitest run src/components/comparisons src/lib/comparisons src/components/route-messages.test.tsx --reporter=dot
+
+
+ RUN  v4.1.11 C:/Users/borja/.codex/worktrees/5ca1/Biblioshare
+
+·······················································································································································································································································
+
+ Test Files  13 passed (13)
+      Tests  247 passed (247)
+   Start at  16:09:42
+   Duration  14.29s (transform 3.95s, setup 0ms, import 22.02s, tests 6.99s, environment 49.02s)
+

@@ -41,6 +41,7 @@ async function CommunityContent({ searchParams }: CommunityProps) {
     <nav aria-label={t("navigationLabel")} className="flex gap-5 border-b border-border">
       {([false, true] as const).map(isPeople => <Link key={String(isPeople)} href={isPeople ? "/comunidad?tab=personas" : "/comunidad"} aria-current={people === isPeople ? "page" : undefined} className={`inline-flex min-h-11 items-center border-b-2 py-2 font-serif text-base font-semibold ${people === isPeople ? "border-accent text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>{t(isPeople ? "people" : "clubs")}</Link>)}
     </nav>
+    <Link href="/comunidad/entre-nosotros" className="self-start font-serif text-lg font-semibold text-accent hover:underline">{t("comparisons")}</Link>
     {people ? <>
       <form key={query} action="/comunidad" className="flex flex-col gap-2 sm:flex-row sm:items-end">
         <input type="hidden" name="tab" value="personas"/>

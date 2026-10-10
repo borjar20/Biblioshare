@@ -1,0 +1,185 @@
+
+> biblioshare@1.1.0 test
+> vitest run src/components/comparisons/geometry.test.ts --reporter=dot
+
+
+ RUN  v4.1.11 C:/Users/borja/.codex/worktrees/5ca1/Biblioshare
+
+········x········x········x········x········xxxxxxx··x·····················································································
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 12 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/components/comparisons/geometry.test.ts > comparison world geometry > keeps two-line names clear of representative footprints for 5 people at 601 px
+AssertionError: label 1/pile: expected 103.073298309066 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 103.073298309066
+
+ ❯ src/components/comparisons/geometry.test.ts:45:184
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/12]⎯
+
+ FAIL  src/components/comparisons/geometry.test.ts > comparison world geometry > keeps two-line names clear of representative footprints for 6 people at 601 px
+AssertionError: label 1/pile: expected 146.1430311718951 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 146.1430311718951
+
+ ❯ src/components/comparisons/geometry.test.ts:45:184
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/12]⎯
+
+ FAIL  src/components/comparisons/geometry.test.ts > comparison world geometry > keeps two-line names clear of representative footprints for 7 people at 601 px
+AssertionError: label 0/pile: expected 211.96268269040874 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 211.96268269040874
+
+ ❯ src/components/comparisons/geometry.test.ts:45:184
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/12]⎯
+
+ FAIL  src/components/comparisons/geometry.test.ts > comparison world geometry > keeps two-line names clear of representative footprints for 8 people at 601 px
+AssertionError: label 0/pile: expected 608.9445683609553 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 608.9445683609553
+
+ ❯ src/components/comparisons/geometry.test.ts:45:184
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/12]⎯
+
+ FAIL  src/components/comparisons/geometry.test.ts > comparison world geometry > keeps two-line names clear of representative footprints for 9 people at 601 px
+AssertionError: label 0/pile: expected 1026.5036729537933 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 1026.5036729537933
+
+ ❯ src/components/comparisons/geometry.test.ts:45:184
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/12]⎯
+
+ FAIL  src/components/comparisons/geometry.test.ts > comparison world geometry > keeps two-line names clear of representative footprints for 10 people at 254 px
+AssertionError: label 0/pile: expected 241.73441120702626 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 241.73441120702626
+
+ ❯ src/components/comparisons/geometry.test.ts:45:184
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/12]⎯
+
+ FAIL  src/components/comparisons/geometry.test.ts > comparison world geometry > keeps two-line names clear of representative footprints for 10 people at 299 px
+AssertionError: label 0/pile: expected 177.7684123092621 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 177.7684123092621
+
+ ❯ src/components/comparisons/geometry.test.ts:45:184
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/12]⎯
+
+ FAIL  src/components/comparisons/geometry.test.ts > comparison world geometry > keeps two-line names clear of representative footprints for 10 people at 300 px
+AssertionError: label 0/pile: expected 176.40400990796252 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 176.40400990796252
+
+ ❯ src/components/comparisons/geometry.test.ts:45:184
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/12]⎯
+
+ FAIL  src/components/comparisons/geometry.test.ts > comparison world geometry > keeps two-line names clear of representative footprints for 10 people at 301 px
+AssertionError: label 0/pile: expected 481.30536188264995 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 481.30536188264995
+
+ ❯ src/components/comparisons/geometry.test.ts:45:184
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/12]⎯
+
+ FAIL  src/components/comparisons/geometry.test.ts > comparison world geometry > keeps two-line names clear of representative footprints for 10 people at 364 px
+AssertionError: label 0/pile: expected 334.21238827415556 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 334.21238827415556
+
+ ❯ src/components/comparisons/geometry.test.ts:45:184
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/12]⎯
+
+ FAIL  src/components/comparisons/geometry.test.ts > comparison world geometry > keeps two-line names clear of representative footprints for 10 people at 400 px
+AssertionError: label 0/pile: expected 254.58049863854623 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 254.58049863854623
+
+ ❯ src/components/comparisons/geometry.test.ts:45:184
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/12]⎯
+
+ FAIL  src/components/comparisons/geometry.test.ts > comparison world geometry > keeps two-line names clear of representative footprints for 10 people at 601 px
+AssertionError: label 0/pile: expected 1312.1111140525181 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 1312.1111140525181
+
+ ❯ src/components/comparisons/geometry.test.ts:45:184
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/12]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  12 failed | 127 passed (139)
+   Start at  16:11:45
+   Duration  665ms (transform 60ms, setup 0ms, import 119ms, tests 209ms, environment 0ms)
+
