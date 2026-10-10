@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Snapshot, WorkKey } from '@/lib/comparisons/types';
-import { layoutScene, mapConnections, regionCenter, vennCircles, type Pose } from './geometry';
+import { groupMapLayout, personCenter, layoutScene, mapConnections, regionCenter, vennCircles, type Pose } from './geometry';
 
 const keys = Array.from({ length: 83 }, (_, index) => `book:${index}` as WorkKey);
 const snapshot: Snapshot = { group: { id: 'g', name: 'Grupo', revision: 1, members: Array.from({ length: 10 }, (_, i) => ({ slotId: `${i}`, userId: `${i}`, name: `Persona ${i}`, avatarUrl: null, available: true })) }, format: 'all', catalog: keys.map(key => ({ key, title: key, coverUrl: null, genres: [], creators: [] })), works: keys.flatMap(key => ['0', '1', '2'].map(userId => ({ key, userId, rating: null, orderUnknown: false, progress: null }))), excludedSeriesWithoutEpisodes: 0 };
@@ -33,6 +33,34 @@ function exactZones(count: number, samples: number) {
   return { data, entries, people };
 }
 describe('comparison world geometry', () => {
+  it.each([5, 6, 7, 8, 9, 10])('separates two-line name footprints and the summary in a narrow %i-person map', count => {
+    const width = 254, scale = width / 1000, layout = groupMapLayout(count, width);
+    const chips = Array.from({ length: count }, (_, index) => {
+      const point = personCenter(index, count, width);
+      return { left: point.x * scale - 34, right: point.x * scale + 34, top: point.y * scale - 23.5, bottom: point.y * scale + 23.5 };
+    });
+    for (const chip of chips) {
+      expect(chip.left).toBeGreaterThanOrEqual(0); expect(chip.right).toBeLessThanOrEqual(width);
+      expect(chip.top).toBeGreaterThanOrEqual(0); expect(chip.bottom).toBeLessThan(layout.summaryY);
+    }
+    for (let a = 0; a < count; a++) for (let b = a + 1; b < count; b++) {
+      expect(Math.max(0, Math.min(chips[a].right, chips[b].right) - Math.max(chips[a].left, chips[b].left))
+        * Math.max(0, Math.min(chips[a].bottom, chips[b].bottom) - Math.max(chips[a].top, chips[b].top))).toBe(0);
+    }
+    expect(layout.height).toBeGreaterThan(layout.summaryY + 100);
+    const data = { ...snapshot, group: { ...snapshot.group, members: snapshot.group.members.slice(0, count) } };
+    const scene = layoutScene(data, { level: 'group' }, { width, height: 500 }, [keys[0]]);
+    expect(scene.height).toBe(layout.height);
+    const first = personCenter(0, count, width), second = personCenter(1, count, width);
+    const pose = scene.poses[keys[0]];
+    expect(pose.x + pose.width / 2).toBeCloseTo((first.x + second.x) / 2);
+    expect(pose.y + pose.height / 2).toBeCloseTo((first.y + second.y) / 2);
+  });
+  it('preserves the original wide map and the pair/trio coordinate system', () => {
+    expect(groupMapLayout(10, 768)).toMatchObject({ centerY: 450, radiusY: 350, worldHeight: 900 });
+    expect(groupMapLayout(3, 254)).toMatchObject({ centerY: 450, radiusY: 350, worldHeight: 900 });
+    expect(personCenter(0, 10, 768)).toEqual({ x: 500, y: 100 });
+  });
   it('footprint oracle catches excluded circles crossing an edge when every corner is outside', () => {
     const polygon = corners({ x: 0, y: 0, width: 100, height: 100, rotate: 0 });
     const circle = { x: 110, y: 50, radius: 20 };

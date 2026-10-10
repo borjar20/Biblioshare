@@ -122,6 +122,28 @@ describe('normalize', () => {
   });
 });
 
+describe('closed active series progress', () => {
+  it.each(['completed', 'dropped'] as const)('%s retains current-pass progress and deduplicates repeated episodes', status => {
+    const facts = normalize([
+      pass({ id: 'old', item_type: 'series', item_id: 's', is_active: false,
+        finished_on: '2026-01-01', rating: 9 }),
+      pass({ id: 'current', item_type: 'series', item_id: 's', status,
+        is_active: true, finished_on: '2026-02-01', rating: 6 }),
+    ], [
+      watch({ id: 'old-one', pass_id: 'old', episode_number: 1, rating: 9 }),
+      watch({ id: 'old-two', pass_id: 'old', episode_number: 2, rating: 8 }),
+      watch({ id: 'first', pass_id: 'current', episode_number: 1, rating: 7 }),
+      watch({ id: 'repeat', pass_id: 'current', episode_number: 1, rating: null,
+        watched_on: '2026-02-02' }),
+    ], [{ seriesId: 's', count: 12 }]);
+    expect(facts.works).toEqual([{ userId: 'a', key: 'series:s', rating: 6,
+      orderUnknown: false, progress: { seenEver: 2, current: 1, aired: 12, status } }]);
+    expect(facts.episodes['a|series:s']).toEqual([
+      { season: 1, episode: 1, rating: null }, { season: 1, episode: 2, rating: 8 },
+    ]);
+  });
+});
+
 describe('commonEpisodes', () => {
   it('en un trío solo devuelve episodios con notas de las tres personas', () => {
     const facts = normalize([], [

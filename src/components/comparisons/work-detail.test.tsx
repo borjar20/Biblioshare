@@ -9,9 +9,21 @@ vi.mock('@/lib/comparisons/actions', () => ({ loadComparisonWork: load }));
 import { WorkDetail } from './work-detail';
 const snapshot: Snapshot = { group: { id: 'g', revision: 1, name: 'Amigos', members: ['Ana', 'Bea'].map((name, i) => ({ slotId: name, userId: `${i}`, name, avatarUrl: null, available: true })) }, format: 'series', catalog: [{ key: 'series:x', title: 'Serie', coverUrl: null, genres: [], creators: [] }], works: [], excludedSeriesWithoutEpisodes: 2 };
 function ui(detail: Detail) { load.mockResolvedValue({ ok: true, data: detail }); return <NextIntlClientProvider locale="es" messages={messages}><WorkDetail snapshot={snapshot} work={snapshot.catalog[0]} view={{ level: 'work', people: ['0', '1'], key: 'series:x', origin: { kind: 'facet', facetKind: 'genre', facetId: 'Drama' } }}/></NextIntlClientProvider>; }
-const detail: Detail = { work: snapshot.catalog[0], people: [{ userId: '0', key: 'series:x', rating: 9, orderUnknown: false, progress: { seenEver: 1, current: 1, aired: null, status: 'abandoned' } }, { userId: '1', key: 'series:x', rating: null, orderUnknown: false, progress: null }], commonEpisodes: [{ season: 1, episode: 1, notes: [{ userId: '0', rating: 3 }] }] };
+const detail: Detail = { work: snapshot.catalog[0], people: [{ userId: '0', key: 'series:x', rating: 9, orderUnknown: false, progress: { seenEver: 1, current: 1, aired: null, status: 'dropped' } }, { userId: '1', key: 'series:x', rating: null, orderUnknown: false, progress: null }], commonEpisodes: [{ season: 1, episode: 1, notes: [{ userId: '0', rating: 3 }] }] };
 afterEach(cleanup);
 describe('series detail evidence', () => {
+  it.each([
+    { status: 'completed', label: 'Terminada' },
+    { status: 'dropped', label: 'Abandonada' },
+    { status: 'in_progress', label: 'En curso' },
+  ])('labels canonical $status without changing its current-pass progress', async ({ status, label }) => {
+    render(ui({ ...detail, people: [{ ...detail.people[0], progress: {
+      seenEver: 4, current: 2, aired: 10, status,
+    } }] }));
+    expect(await screen.findByText(label)).toBeTruthy();
+    expect(screen.getByText('Pase actual: 2 de 10 episodios emitidos')).toBeTruthy();
+    if (status !== 'in_progress') expect(screen.queryByText('En curso')).toBeNull();
+  });
   it('separates general notes, unavailable progress and one episode with a missing note', async () => {
     render(ui(detail)); await screen.findByRole('heading', { name: 'Episodios comunes' });
     expect(screen.getByRole('heading', { name: 'Valoración general y progreso' })).toBeTruthy();

@@ -1,0 +1,11 @@
+{
+  "build": "WaTVIDrFWDkb9lEF3xWrX",
+  "run": "R3 (test failed later at wrong final-episode locator)",
+  "physicalClickStartMs": 49852.759,
+  "frameTimestampMs": 50210.585,
+  "afterClickMs": 357.82600000000093,
+  "viewport": {
+    "width": 1280,
+    "height": 800
+  }
+}

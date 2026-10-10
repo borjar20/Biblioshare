@@ -1,0 +1,2703 @@
+{
+  "buildId": "AzNCV4SAaUJ6YTFacyCNy",
+  "round": "final11PASS plus focal1280PASS after CDP body capture repair",
+  "320": {
+    "motion": {
+      "samples": [
+        {
+          "t": 10.899999998509884,
+          "moving": "false",
+          "height": 3159.1875,
+          "transform": "translate(-111px, -94.3px) scale(0.254)"
+        },
+        {
+          "t": 23.099999997764826,
+          "moving": "false",
+          "height": 3159.1875,
+          "transform": "translate(-111px, -94.3px) scale(0.254)"
+        },
+        {
+          "t": 39.099999997764826,
+          "moving": "false",
+          "height": 3159.1875,
+          "transform": "translate(-111px, -94.3px) scale(0.254)"
+        },
+        {
+          "t": 56.099999997764826,
+          "moving": "true",
+          "height": 3159.1875,
+          "transform": "translate(-111px, -94.3px) scale(0.254)"
+        },
+        {
+          "t": 73.5,
+          "moving": "true",
+          "height": 3159.09375,
+          "transform": "translate(-110.999px, -94.4253px) scale(0.254001)"
+        },
+        {
+          "t": 89.89999999850988,
+          "moving": "true",
+          "height": 3154.171875,
+          "transform": "translate(-110.928px, -101.026px) scale(0.254062)"
+        },
+        {
+          "t": 107.79999999701977,
+          "moving": "true",
+          "height": 3141.890625,
+          "transform": "translate(-110.753px, -117.445px) scale(0.254213)"
+        },
+        {
+          "t": 124.59999999776483,
+          "moving": "true",
+          "height": 3122.78125,
+          "transform": "translate(-110.48px, -143.011px) scale(0.254449)"
+        },
+        {
+          "t": 141.19999999925494,
+          "moving": "true",
+          "height": 3096.96875,
+          "transform": "translate(-110.112px, -177.554px) scale(0.254767)"
+        },
+        {
+          "t": 156.79999999701977,
+          "moving": "true",
+          "height": 3064.890625,
+          "transform": "translate(-109.654px, -220.467px) scale(0.255163)"
+        },
+        {
+          "t": 174.09999999776483,
+          "moving": "true",
+          "height": 3026.921875,
+          "transform": "translate(-109.112px, -271.269px) scale(0.255631)"
+        },
+        {
+          "t": 191.29999999701977,
+          "moving": "true",
+          "height": 2983.40625,
+          "transform": "translate(-108.491px, -329.479px) scale(0.256168)"
+        },
+        {
+          "t": 207.39999999850988,
+          "moving": "true",
+          "height": 2935.03125,
+          "transform": "translate(-107.801px, -394.207px) scale(0.256764)"
+        },
+        {
+          "t": 223.79999999701977,
+          "moving": "true",
+          "height": 2881.5625,
+          "transform": "translate(-107.038px, -465.754px) scale(0.257424)"
+        },
+        {
+          "t": 240.89999999850988,
+          "moving": "true",
+          "height": 2823.625,
+          "transform": "translate(-106.211px, -543.271px) scale(0.258138)"
+        },
+        {
+          "t": 257.0999999977648,
+          "moving": "true",
+          "height": 2761.953125,
+          "transform": "translate(-105.331px, -625.764px) scale(0.258899)"
+        },
+        {
+          "t": 274.29999999701977,
+          "moving": "true",
+          "height": 2696.609375,
+          "transform": "translate(-104.398px, -713.208px) scale(0.259705)"
+        },
+        {
+          "t": 290.19999999925494,
+          "moving": "true",
+          "height": 2627.046875,
+          "transform": "translate(-103.405px, -806.264px) scale(0.260562)"
+        },
+        {
+          "t": 307.5999999977648,
+          "moving": "true",
+          "height": 2555.3125,
+          "transform": "translate(-102.381px, -902.24px) scale(0.261447)"
+        },
+        {
+          "t": 325,
+          "moving": "true",
+          "height": 2480.484375,
+          "transform": "translate(-101.313px, -1002.35px) scale(0.26237)"
+        },
+        {
+          "t": 341.0999999977648,
+          "moving": "true",
+          "height": 2403.8125,
+          "transform": "translate(-100.219px, -1104.93px) scale(0.263315)"
+        },
+        {
+          "t": 357.69999999925494,
+          "moving": "true",
+          "height": 2324.734375,
+          "transform": "translate(-99.0905px, -1210.73px) scale(0.26429)"
+        },
+        {
+          "t": 374.5,
+          "moving": "true",
+          "height": 2244.0625,
+          "transform": "translate(-97.9392px, -1318.67px) scale(0.265285)"
+        },
+        {
+          "t": 390,
+          "moving": "true",
+          "height": 2162.65625,
+          "transform": "translate(-96.7772px, -1427.59px) scale(0.266289)"
+        },
+        {
+          "t": 406.3999999985099,
+          "moving": "true",
+          "height": 5771,
+          "transform": "translate(-95.5958px, -1538.34px) scale(0.26731)"
+        },
+        {
+          "t": 423.0999999977648,
+          "moving": "true",
+          "height": 5771,
+          "transform": "translate(-94.4069px, -1649.79px) scale(0.268337)"
+        },
+        {
+          "t": 439.5999999977648,
+          "moving": "true",
+          "height": 5771,
+          "transform": "translate(-93.223px, -1760.78px) scale(0.26936)"
+        },
+        {
+          "t": 457.19999999925494,
+          "moving": "true",
+          "height": 5771,
+          "transform": "translate(-92.0347px, -1872.17px) scale(0.270387)"
+        },
+        {
+          "t": 474,
+          "moving": "true",
+          "height": 5771,
+          "transform": "translate(-90.8543px, -1982.82px) scale(0.271407)"
+        },
+        {
+          "t": 488.8999999985099,
+          "moving": "true",
+          "height": 5771,
+          "transform": "translate(-89.694px, -2091.59px) scale(0.27241)"
+        },
+        {
+          "t": 508.0999999977648,
+          "moving": "true",
+          "height": 5771,
+          "transform": "translate(-88.5449px, -2199.32px) scale(0.273403)"
+        },
+        {
+          "t": 524.7999999970198,
+          "moving": "true",
+          "height": 5771,
+          "transform": "translate(-87.4257px, -2304.24px) scale(0.27437)"
+        },
+        {
+          "t": 550.1999999992549,
+          "moving": "true",
+          "height": 5771,
+          "transform": "translate(-86.328px, -2407.13px) scale(0.275318)"
+        },
+        {
+          "t": 557.5,
+          "moving": "true",
+          "height": 5771,
+          "transform": "translate(-85.2702px, -2506.3px) scale(0.276232)"
+        },
+        {
+          "t": 573.0999999977648,
+          "moving": "true",
+          "height": 5771,
+          "transform": "translate(-84.2385px, -2603.01px) scale(0.277123)"
+        },
+        {
+          "t": 590.6999999992549,
+          "moving": "true",
+          "height": 5771,
+          "transform": "translate(-83.2626px, -2694.5px) scale(0.277967)"
+        },
+        {
+          "t": 606.1999999992549,
+          "moving": "true",
+          "height": 5771,
+          "transform": "translate(-82.3295px, -2781.97px) scale(0.278773)"
+        },
+        {
+          "t": 623.1999999992549,
+          "moving": "true",
+          "height": 5771,
+          "transform": "translate(-81.4505px, -2864.37px) scale(0.279532)"
+        },
+        {
+          "t": 639.7999999970198,
+          "moving": "true",
+          "height": 5771,
+          "transform": "translate(-80.6353px, -2940.79px) scale(0.280237)"
+        },
+        {
+          "t": 658.0999999977648,
+          "moving": "true",
+          "height": 5771,
+          "transform": "translate(-79.8836px, -3011.26px) scale(0.280886)"
+        },
+        {
+          "t": 672.6999999992549,
+          "moving": "true",
+          "height": 5771,
+          "transform": "translate(-79.1964px, -3075.68px) scale(0.28148)"
+        },
+        {
+          "t": 690.1999999992549,
+          "moving": "true",
+          "height": 5771,
+          "transform": "translate(-78.5837px, -3133.11px) scale(0.282009)"
+        },
+        {
+          "t": 706.7999999970198,
+          "moving": "true",
+          "height": 5771,
+          "transform": "translate(-78.0506px, -3183.08px) scale(0.28247)"
+        },
+        {
+          "t": 723.3999999985099,
+          "moving": "true",
+          "height": 5771,
+          "transform": "translate(-77.6047px, -3224.89px) scale(0.282855)"
+        },
+        {
+          "t": 740,
+          "moving": "true",
+          "height": 5771,
+          "transform": "translate(-77.2456px, -3258.56px) scale(0.283166)"
+        },
+        {
+          "t": 756.5999999977648,
+          "moving": "true",
+          "height": 5771,
+          "transform": "translate(-76.9827px, -3283.2px) scale(0.283393)"
+        },
+        {
+          "t": 780.3999999985099,
+          "moving": "true",
+          "height": 5771,
+          "transform": "translate(-76.8179px, -3298.64px) scale(0.283535)"
+        },
+        {
+          "t": 790.3999999985099,
+          "moving": "true",
+          "height": 5771,
+          "transform": "translate(-76.7584px, -3304.23px) scale(0.283587)"
+        },
+        {
+          "t": 805.5999999977648,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 822.3999999985099,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 839.8999999985099,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 855.8999999985099,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 872.5,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 889,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 906.0999999977648,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 922.5999999977648,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 939.5999999977648,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 956.0999999977648,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 972.5999999977648,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 989.2999999970198,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1006.5,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1022.8999999985099,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1039.5999999977648,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1055.699999999255,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1072.5999999977648,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1089.199999999255,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1105.7999999970198,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1123.2999999970198,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1139.5999999977648,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1156.2999999970198,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1172.7999999970198,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1189.2999999970198,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1205.8999999985099,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1222.199999999255,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1239.2999999970198,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1255.8999999985099,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1273.5,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1291,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1305.7999999970198,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1323.2999999970198,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1340,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1355.8999999985099,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1373.8999999985099,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1389.5999999977648,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1406.5,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1422.5,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1439.199999999255,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1455.7999999970198,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1473.2999999970198,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1489.2999999970198,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1506.199999999255,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1523,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1539.7999999970198,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1556.199999999255,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1572.8999999985099,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1589,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1606.5999999977648,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        },
+        {
+          "t": 1624.8999999985099,
+          "moving": "false",
+          "height": 5771,
+          "transform": "translate(-76.7582px, -3304.24px) scale(0.283587)"
+        }
+      ],
+      "savedScroll": 5776,
+      "width": 320
+    },
+    "title": {
+      "title": {
+        "x": 41,
+        "y": 502,
+        "width": 238,
+        "height": 165.5625,
+        "top": 502,
+        "right": 279,
+        "bottom": 667.5625,
+        "left": 41
+      },
+      "cover": {
+        "x": 109.19696044921875,
+        "y": 252.997802734375,
+        "width": 101.59939575195312,
+        "height": 147.319091796875,
+        "top": 252.997802734375,
+        "right": 210.79635620117188,
+        "bottom": 400.31689453125,
+        "left": 109.19696044921875
+      },
+      "stage": {
+        "x": 33,
+        "y": 148,
+        "width": 254,
+        "height": 5771,
+        "top": 148,
+        "right": 287,
+        "bottom": 5919,
+        "left": 33
+      },
+      "overlapArea": 0,
+      "scrollWidth": 238,
+      "clientWidth": 238,
+      "textRects": [
+        {
+          "x": 43.953125,
+          "y": 501,
+          "width": 232.078125,
+          "height": 28,
+          "top": 501,
+          "right": 276.03125,
+          "bottom": 529,
+          "left": 43.953125
+        },
+        {
+          "x": 65.96875,
+          "y": 528.59375,
+          "width": 188.046875,
+          "height": 28,
+          "top": 528.59375,
+          "right": 254.015625,
+          "bottom": 556.59375,
+          "left": 65.96875
+        },
+        {
+          "x": 47.703125,
+          "y": 556.1875,
+          "width": 224.59375,
+          "height": 28,
+          "top": 556.1875,
+          "right": 272.296875,
+          "bottom": 584.1875,
+          "left": 47.703125
+        },
+        {
+          "x": 93.515625,
+          "y": 583.78125,
+          "width": 132.953125,
+          "height": 28,
+          "top": 583.78125,
+          "right": 226.46875,
+          "bottom": 611.78125,
+          "left": 93.515625
+        },
+        {
+          "x": 41.921875,
+          "y": 611.375,
+          "width": 236.140625,
+          "height": 28,
+          "top": 611.375,
+          "right": 278.0625,
+          "bottom": 639.375,
+          "left": 41.921875
+        },
+        {
+          "x": 79.75,
+          "y": 638.96875,
+          "width": 160.5,
+          "height": 28,
+          "top": 638.96875,
+          "right": 240.25,
+          "bottom": 666.96875,
+          "left": 79.75
+        }
+      ],
+      "text": "qa_comp_motion_long_series_El relato extraordinariamente largo de una biblioteca compartida y sus episodios"
+    },
+    "light": {
+      "viewport": {
+        "width": 320,
+        "height": 800
+      },
+      "scrollY": 714,
+      "documentWidth": 320,
+      "documentHeight": 6749,
+      "stage": {
+        "x": 33,
+        "y": 148,
+        "width": 254,
+        "height": 5771,
+        "top": 148,
+        "right": 287,
+        "bottom": 5919,
+        "left": 33
+      },
+      "colors": {
+        "background": "rgba(0, 0, 0, 0)",
+        "text": "rgb(44, 38, 32)"
+      }
+    },
+    "dark": {
+      "viewport": {
+        "width": 320,
+        "height": 800
+      },
+      "scrollY": 714,
+      "documentWidth": 320,
+      "documentHeight": 6749,
+      "stage": {
+        "x": 33,
+        "y": 148,
+        "width": 254,
+        "height": 5771,
+        "top": 148,
+        "right": 287,
+        "bottom": 5919,
+        "left": 33
+      },
+      "colors": {
+        "background": "rgba(0, 0, 0, 0)",
+        "text": "rgb(240, 232, 219)"
+      }
+    }
+  },
+  "768": {
+    "motion": {
+      "samples": [
+        {
+          "t": 5.899999998509884,
+          "moving": "false",
+          "height": 1564.125,
+          "transform": "translate(-319px, -281.5px) scale(0.67)"
+        },
+        {
+          "t": 22.199999999254942,
+          "moving": "false",
+          "height": 1564.125,
+          "transform": "translate(-319px, -281.5px) scale(0.67)"
+        },
+        {
+          "t": 39.19999999925494,
+          "moving": "false",
+          "height": 1564.125,
+          "transform": "translate(-319px, -281.5px) scale(0.67)"
+        },
+        {
+          "t": 56.099999997764826,
+          "moving": "true",
+          "height": 1564.125,
+          "transform": "translate(-319px, -281.5px) scale(0.67)"
+        },
+        {
+          "t": 73,
+          "moving": "true",
+          "height": 1564.03125,
+          "transform": "translate(-319.002px, -281.784px) scale(0.670055)"
+        },
+        {
+          "t": 90.39999999850988,
+          "moving": "true",
+          "height": 1562.078125,
+          "transform": "translate(-319.033px, -287.432px) scale(0.67115)"
+        },
+        {
+          "t": 107,
+          "moving": "true",
+          "height": 1557.65625,
+          "transform": "translate(-319.106px, -300.255px) scale(0.673635)"
+        },
+        {
+          "t": 124,
+          "moving": "true",
+          "height": 1550.90625,
+          "transform": "translate(-319.216px, -319.74px) scale(0.677411)"
+        },
+        {
+          "t": 140.09999999776483,
+          "moving": "true",
+          "height": 1542.03125,
+          "transform": "translate(-319.361px, -345.419px) scale(0.682387)"
+        },
+        {
+          "t": 157,
+          "moving": "true",
+          "height": 1531.03125,
+          "transform": "translate(-319.541px, -377.256px) scale(0.688557)"
+        },
+        {
+          "t": 173.39999999850988,
+          "moving": "true",
+          "height": 1518.140625,
+          "transform": "translate(-319.751px, -414.525px) scale(0.69578)"
+        },
+        {
+          "t": 190.5,
+          "moving": "true",
+          "height": 1503.34375,
+          "transform": "translate(-319.993px, -457.33px) scale(0.704075)"
+        },
+        {
+          "t": 207.59999999776483,
+          "moving": "true",
+          "height": 1486.828125,
+          "transform": "translate(-320.263px, -505.113px) scale(0.713335)"
+        },
+        {
+          "t": 224.19999999925494,
+          "moving": "true",
+          "height": 1468.828125,
+          "transform": "translate(-320.557px, -557.2px) scale(0.72343)"
+        },
+        {
+          "t": 241.5,
+          "moving": "true",
+          "height": 1449.359375,
+          "transform": "translate(-320.875px, -613.52px) scale(0.734344)"
+        },
+        {
+          "t": 257.69999999925494,
+          "moving": "true",
+          "height": 1428.28125,
+          "transform": "translate(-321.219px, -674.479px) scale(0.746158)"
+        },
+        {
+          "t": 274,
+          "moving": "true",
+          "height": 1406.234375,
+          "transform": "translate(-321.58px, -738.279px) scale(0.758522)"
+        },
+        {
+          "t": 290,
+          "moving": "true",
+          "height": 1383.078125,
+          "transform": "translate(-321.958px, -805.282px) scale(0.771507)"
+        },
+        {
+          "t": 307.5999999977648,
+          "moving": "true",
+          "height": 1358.765625,
+          "transform": "translate(-322.355px, -875.575px) scale(0.785129)"
+        },
+        {
+          "t": 323.29999999701977,
+          "moving": "true",
+          "height": 1333.4375,
+          "transform": "translate(-322.769px, -948.857px) scale(0.799331)"
+        },
+        {
+          "t": 339.8999999985099,
+          "moving": "true",
+          "height": 1307.65625,
+          "transform": "translate(-323.19px, -1023.45px) scale(0.813787)"
+        },
+        {
+          "t": 356.79999999701977,
+          "moving": "true",
+          "height": 1281.078125,
+          "transform": "translate(-323.624px, -1100.34px) scale(0.828688)"
+        },
+        {
+          "t": 374,
+          "moving": "true",
+          "height": 1254.140625,
+          "transform": "translate(-324.064px, -1178.26px) scale(0.843788)"
+        },
+        {
+          "t": 389.5999999977648,
+          "moving": "true",
+          "height": 5528,
+          "transform": "translate(-324.511px, -1257.31px) scale(0.859109)"
+        },
+        {
+          "t": 407,
+          "moving": "true",
+          "height": 5528,
+          "transform": "translate(-324.965px, -1337.65px) scale(0.874679)"
+        },
+        {
+          "t": 424.3999999985099,
+          "moving": "true",
+          "height": 5528,
+          "transform": "translate(-325.421px, -1418.46px) scale(0.890338)"
+        },
+        {
+          "t": 439.8999999985099,
+          "moving": "true",
+          "height": 5528,
+          "transform": "translate(-325.878px, -1499.37px) scale(0.906018)"
+        },
+        {
+          "t": 462.0999999977648,
+          "moving": "true",
+          "height": 5528,
+          "transform": "translate(-326.334px, -1580.05px) scale(0.921654)"
+        },
+        {
+          "t": 473.19999999925494,
+          "moving": "true",
+          "height": 5528,
+          "transform": "translate(-326.783px, -1659.66px) scale(0.937083)"
+        },
+        {
+          "t": 489.69999999925494,
+          "moving": "true",
+          "height": 5528,
+          "transform": "translate(-327.228px, -1738.36px) scale(0.952334)"
+        },
+        {
+          "t": 507.0999999977648,
+          "moving": "true",
+          "height": 5528,
+          "transform": "translate(-327.67px, -1816.72px) scale(0.96752)"
+        },
+        {
+          "t": 522.5,
+          "moving": "true",
+          "height": 5528,
+          "transform": "translate(-328.098px, -1892.54px) scale(0.982213)"
+        },
+        {
+          "t": 539.6999999992549,
+          "moving": "true",
+          "height": 5528,
+          "transform": "translate(-328.518px, -1966.84px) scale(0.996612)"
+        },
+        {
+          "t": 556.6999999992549,
+          "moving": "true",
+          "height": 5528,
+          "transform": "translate(-328.922px, -2038.39px) scale(1.01048)"
+        },
+        {
+          "t": 573.2999999970198,
+          "moving": "true",
+          "height": 5528,
+          "transform": "translate(-329.314px, -2107.72px) scale(1.02391)"
+        },
+        {
+          "t": 589.3999999985099,
+          "moving": "true",
+          "height": 5528,
+          "transform": "translate(-329.688px, -2174.03px) scale(1.03676)"
+        },
+        {
+          "t": 607.2999999970198,
+          "moving": "true",
+          "height": 5528,
+          "transform": "translate(-330.042px, -2236.61px) scale(1.04889)"
+        },
+        {
+          "t": 623.6999999992549,
+          "moving": "true",
+          "height": 5528,
+          "transform": "translate(-330.376px, -2295.87px) scale(1.06038)"
+        },
+        {
+          "t": 639.6999999992549,
+          "moving": "true",
+          "height": 5528,
+          "transform": "translate(-330.688px, -2351.06px) scale(1.07107)"
+        },
+        {
+          "t": 656.0999999977648,
+          "moving": "true",
+          "height": 5528,
+          "transform": "translate(-330.973px, -2401.56px) scale(1.08086)"
+        },
+        {
+          "t": 673.6999999992549,
+          "moving": "true",
+          "height": 5528,
+          "transform": "translate(-331.233px, -2447.63px) scale(1.08979)"
+        },
+        {
+          "t": 690.2999999970198,
+          "moving": "true",
+          "height": 5528,
+          "transform": "translate(-331.465px, -2488.59px) scale(1.09773)"
+        },
+        {
+          "t": 707.1999999992549,
+          "moving": "true",
+          "height": 5528,
+          "transform": "translate(-331.664px, -2523.91px) scale(1.10457)"
+        },
+        {
+          "t": 723.5,
+          "moving": "true",
+          "height": 5528,
+          "transform": "translate(-331.832px, -2553.65px) scale(1.11033)"
+        },
+        {
+          "t": 740.5999999977648,
+          "moving": "true",
+          "height": 5528,
+          "transform": "translate(-331.965px, -2577.26px) scale(1.11491)"
+        },
+        {
+          "t": 756.8999999985099,
+          "moving": "true",
+          "height": 5528,
+          "transform": "translate(-332.062px, -2594.29px) scale(1.11821)"
+        },
+        {
+          "t": 773.5999999977648,
+          "moving": "true",
+          "height": 5528,
+          "transform": "translate(-332.12px, -2604.6px) scale(1.12021)"
+        },
+        {
+          "t": 789.2999999970198,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 806,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 822.0999999977648,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 839.5999999977648,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 856,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 872.5999999977648,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 889.1999999992549,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 905.2999999970198,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 922.7999999970198,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 939.2999999970198,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 955.6999999992549,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 972.5999999977648,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 989,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1006.5,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1022.7999999970198,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1039.2999999970198,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1055.3999999985099,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1072.5,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1089.0999999977648,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1105.5999999977648,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1122.5,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1138.5999999977648,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1156.2999999970198,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1172.7999999970198,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1189.5,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1206.199999999255,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1222.199999999255,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1239.7999999970198,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1258.0999999977648,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1272.8999999985099,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1289.3999999985099,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1306.0999999977648,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1322.5999999977648,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1339.0999999977648,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1355.5,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1373,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1390.2999999970198,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1406.3999999985099,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1422.2999999970198,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1439.3999999985099,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1455.3999999985099,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1473.3999999985099,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1489.3999999985099,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1506.3999999985099,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1522.7999999970198,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1538.7999999970198,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1556.7999999970198,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        },
+        {
+          "t": 1574.5999999977648,
+          "moving": "false",
+          "height": 5528,
+          "transform": "translate(-332.138px, -2607.75px) scale(1.12082)"
+        }
+      ],
+      "savedScroll": 3005,
+      "width": 768
+    },
+    "title": {
+      "title": {
+        "x": 57,
+        "y": 557,
+        "width": 654,
+        "height": 86.390625,
+        "top": 557,
+        "right": 711,
+        "bottom": 643.390625,
+        "left": 57
+      },
+      "cover": {
+        "x": 293.9961242675781,
+        "y": 227.999755859375,
+        "width": 179.996337890625,
+        "height": 260.992919921875,
+        "top": 227.999755859375,
+        "right": 473.9924621582031,
+        "bottom": 488.99267578125,
+        "left": 293.9961242675781
+      },
+      "stage": {
+        "x": 49,
+        "y": 123,
+        "width": 670,
+        "height": 5528,
+        "top": 123,
+        "right": 719,
+        "bottom": 5651,
+        "left": 49
+      },
+      "overlapArea": 0,
+      "scrollWidth": 654,
+      "clientWidth": 654,
+      "textRects": [
+        {
+          "x": 164.796875,
+          "y": 556,
+          "width": 438.390625,
+          "height": 29,
+          "top": 556,
+          "right": 603.1875,
+          "bottom": 585,
+          "left": 164.796875
+        },
+        {
+          "x": 59.546875,
+          "y": 584.796875,
+          "width": 648.890625,
+          "height": 29,
+          "top": 584.796875,
+          "right": 708.4375,
+          "bottom": 613.796875,
+          "left": 59.546875
+        },
+        {
+          "x": 309.59375,
+          "y": 613.59375,
+          "width": 148.8125,
+          "height": 29,
+          "top": 613.59375,
+          "right": 458.40625,
+          "bottom": 642.59375,
+          "left": 309.59375
+        }
+      ],
+      "text": "qa_comp_motion_long_series_El relato extraordinariamente largo de una biblioteca compartida y sus episodios"
+    },
+    "light": {
+      "viewport": {
+        "width": 768,
+        "height": 800
+      },
+      "scrollY": 502,
+      "documentWidth": 768,
+      "documentHeight": 6210,
+      "stage": {
+        "x": 49,
+        "y": 123,
+        "width": 670,
+        "height": 5528,
+        "top": 123,
+        "right": 719,
+        "bottom": 5651,
+        "left": 49
+      },
+      "colors": {
+        "background": "rgba(0, 0, 0, 0)",
+        "text": "rgb(44, 38, 32)"
+      }
+    },
+    "dark": {
+      "viewport": {
+        "width": 768,
+        "height": 800
+      },
+      "scrollY": 502,
+      "documentWidth": 768,
+      "documentHeight": 6210,
+      "stage": {
+        "x": 49,
+        "y": 123,
+        "width": 670,
+        "height": 5528,
+        "top": 123,
+        "right": 719,
+        "bottom": 5651,
+        "left": 49
+      },
+      "colors": {
+        "background": "rgba(0, 0, 0, 0)",
+        "text": "rgb(240, 232, 219)"
+      }
+    }
+  },
+  "1280": {
+    "motion": {
+      "samples": [
+        {
+          "t": 4.400000002235174,
+          "moving": "false",
+          "height": 894.796875,
+          "transform": "translate(-484px, -430px) scale(1)"
+        },
+        {
+          "t": 18.5,
+          "moving": "false",
+          "height": 894.796875,
+          "transform": "translate(-484px, -430px) scale(1)"
+        },
+        {
+          "t": 36.30000000074506,
+          "moving": "false",
+          "height": 894.796875,
+          "transform": "translate(-484px, -430px) scale(1)"
+        },
+        {
+          "t": 51.900000002235174,
+          "moving": "true",
+          "height": 894.796875,
+          "transform": "translate(-484px, -430px) scale(1)"
+        },
+        {
+          "t": 70.10000000149012,
+          "moving": "true",
+          "height": 894.78125,
+          "transform": "translate(-484.038px, -430.095px) scale(1.00005)"
+        },
+        {
+          "t": 89.10000000149012,
+          "moving": "true",
+          "height": 894.484375,
+          "transform": "translate(-485.23px, -433.101px) scale(1.00162)"
+        },
+        {
+          "t": 107.60000000149012,
+          "moving": "true",
+          "height": 893.765625,
+          "transform": "translate(-488.041px, -440.184px) scale(1.00531)"
+        },
+        {
+          "t": 128,
+          "moving": "true",
+          "height": 892.65625,
+          "transform": "translate(-492.389px, -451.144px) scale(1.01103)"
+        },
+        {
+          "t": 136.70000000298023,
+          "moving": "true",
+          "height": 891.203125,
+          "transform": "translate(-498.157px, -465.683px) scale(1.01862)"
+        },
+        {
+          "t": 153.5,
+          "moving": "true",
+          "height": 889.390625,
+          "transform": "translate(-505.288px, -483.657px) scale(1.02799)"
+        },
+        {
+          "t": 170,
+          "moving": "true",
+          "height": 887.21875,
+          "transform": "translate(-513.813px, -505.144px) scale(1.0392)"
+        },
+        {
+          "t": 187.90000000223517,
+          "moving": "true",
+          "height": 884.78125,
+          "transform": "translate(-523.451px, -529.435px) scale(1.05187)"
+        },
+        {
+          "t": 204.5,
+          "moving": "true",
+          "height": 882.046875,
+          "transform": "translate(-534.216px, -556.569px) scale(1.06603)"
+        },
+        {
+          "t": 220.20000000298023,
+          "moving": "true",
+          "height": 879.03125,
+          "transform": "translate(-546.105px, -586.535px) scale(1.08166)"
+        },
+        {
+          "t": 236.70000000298023,
+          "moving": "true",
+          "height": 875.75,
+          "transform": "translate(-558.977px, -618.98px) scale(1.09859)"
+        },
+        {
+          "t": 253.70000000298023,
+          "moving": "true",
+          "height": 872.265625,
+          "transform": "translate(-572.753px, -653.701px) scale(1.1167)"
+        },
+        {
+          "t": 271.1000000014901,
+          "moving": "true",
+          "height": 868.546875,
+          "transform": "translate(-587.353px, -690.5px) scale(1.1359)"
+        },
+        {
+          "t": 286.6000000014901,
+          "moving": "true",
+          "height": 864.671875,
+          "transform": "translate(-602.603px, -728.939px) scale(1.15595)"
+        },
+        {
+          "t": 303.9000000022352,
+          "moving": "true",
+          "height": 860.609375,
+          "transform": "translate(-618.609px, -769.281px) scale(1.177)"
+        },
+        {
+          "t": 320.20000000298023,
+          "moving": "true",
+          "height": 856.421875,
+          "transform": "translate(-635.1px, -810.845px) scale(1.19868)"
+        },
+        {
+          "t": 337.5,
+          "moving": "true",
+          "height": 852.09375,
+          "transform": "translate(-652.195px, -853.934px) scale(1.22116)"
+        },
+        {
+          "t": 354,
+          "moving": "true",
+          "height": 847.671875,
+          "transform": "translate(-669.612px, -897.833px) scale(1.24406)"
+        },
+        {
+          "t": 371.9000000022352,
+          "moving": "true",
+          "height": 843.125,
+          "transform": "translate(-687.481px, -942.872px) scale(1.26756)"
+        },
+        {
+          "t": 386.80000000074506,
+          "moving": "true",
+          "height": 838.53125,
+          "transform": "translate(-705.619px, -988.588px) scale(1.29141)"
+        },
+        {
+          "t": 404.80000000074506,
+          "moving": "true",
+          "height": 833.90625,
+          "transform": "translate(-723.836px, -1034.5px) scale(1.31536)"
+        },
+        {
+          "t": 420.20000000298023,
+          "moving": "true",
+          "height": 829.21875,
+          "transform": "translate(-742.273px, -1080.98px) scale(1.3396)"
+        },
+        {
+          "t": 445.80000000074506,
+          "moving": "true",
+          "height": 5500,
+          "transform": "translate(-760.741px, -1127.52px) scale(1.36389)"
+        },
+        {
+          "t": 457.1000000014901,
+          "moving": "true",
+          "height": 5500,
+          "transform": "translate(-779.161px, -1173.95px) scale(1.38811)"
+        },
+        {
+          "t": 469.1000000014901,
+          "moving": "true",
+          "height": 5500,
+          "transform": "translate(-797.343px, -1219.78px) scale(1.41202)"
+        },
+        {
+          "t": 492.5,
+          "moving": "true",
+          "height": 5500,
+          "transform": "translate(-815.428px, -1265.36px) scale(1.4358)"
+        },
+        {
+          "t": 504.70000000298023,
+          "moving": "true",
+          "height": 5500,
+          "transform": "translate(-833.227px, -1310.22px) scale(1.4592)"
+        },
+        {
+          "t": 519.7000000029802,
+          "moving": "true",
+          "height": 5500,
+          "transform": "translate(-850.557px, -1353.9px) scale(1.48199)"
+        },
+        {
+          "t": 535.5,
+          "moving": "true",
+          "height": 5500,
+          "transform": "translate(-867.546px, -1396.72px) scale(1.50433)"
+        },
+        {
+          "t": 553.6000000014901,
+          "moving": "true",
+          "height": 5500,
+          "transform": "translate(-884.012px, -1438.22px) scale(1.52598)"
+        },
+        {
+          "t": 569.8000000007451,
+          "moving": "true",
+          "height": 5500,
+          "transform": "translate(-899.78px, -1477.97px) scale(1.54671)"
+        },
+        {
+          "t": 590.7000000029802,
+          "moving": "true",
+          "height": 5500,
+          "transform": "translate(-914.962px, -1516.23px) scale(1.56667)"
+        },
+        {
+          "t": 603,
+          "moving": "true",
+          "height": 5500,
+          "transform": "translate(-929.297px, -1552.37px) scale(1.58552)"
+        },
+        {
+          "t": 619.8000000007451,
+          "moving": "true",
+          "height": 5500,
+          "transform": "translate(-942.958px, -1586.8px) scale(1.60348)"
+        },
+        {
+          "t": 635.6000000014901,
+          "moving": "true",
+          "height": 5500,
+          "transform": "translate(-955.541px, -1618.51px) scale(1.62003)"
+        },
+        {
+          "t": 653.3000000007451,
+          "moving": "true",
+          "height": 5500,
+          "transform": "translate(-967.202px, -1647.9px) scale(1.63536)"
+        },
+        {
+          "t": 669.7000000029802,
+          "moving": "true",
+          "height": 5500,
+          "transform": "translate(-977.722px, -1674.42px) scale(1.6492)"
+        },
+        {
+          "t": 686.3000000007451,
+          "moving": "true",
+          "height": 5500,
+          "transform": "translate(-987.15px, -1698.18px) scale(1.66159)"
+        },
+        {
+          "t": 702.3000000007451,
+          "moving": "true",
+          "height": 5500,
+          "transform": "translate(-995.295px, -1718.71px) scale(1.6723)"
+        },
+        {
+          "t": 719.9000000022352,
+          "moving": "true",
+          "height": 5500,
+          "transform": "translate(-1002.17px, -1736.05px) scale(1.68135)"
+        },
+        {
+          "t": 736.5,
+          "moving": "true",
+          "height": 5500,
+          "transform": "translate(-1007.63px, -1749.8px) scale(1.68852)"
+        },
+        {
+          "t": 754.1000000014901,
+          "moving": "true",
+          "height": 5500,
+          "transform": "translate(-1011.64px, -1759.92px) scale(1.6938)"
+        },
+        {
+          "t": 770.6000000014901,
+          "moving": "true",
+          "height": 5500,
+          "transform": "translate(-1014.1px, -1766.11px) scale(1.69703)"
+        },
+        {
+          "t": 786.8000000007451,
+          "moving": "false",
+          "height": 5500,
+          "transform": "translate(-1014.92px, -1768.19px) scale(1.69811)"
+        },
+        {
+          "t": 802,
+          "moving": "false",
+          "height": 5500,
+          "transform": "translate(-1014.92px, -1768.19px) scale(1.69811)"
+        },
+        {
+          "t": 818.6000000014901,
+          "moving": "false",
+          "height": 5500,
+          "transform": "translate(-1014.92px, -1768.19px) scale(1.69811)"
+        },
+        {
+          "t": 835,
+          "moving": "false",
+          "height": 5500,
+          "transform": "translate(-1014.92px, -1768.19px) scale(1.69811)"
+        },
+        {
+          "t": 852.9000000022352,
+          "moving": "false",
+          "height": 5500,
+          "transform": "translate(-1014.92px, -1768.19px) scale(1.69811)"
+        },
+        {
+          "t": 868.9000000022352,
+          "moving": "false",
+          "height": 5500,
+          "transform": "translate(-1014.92px, -1768.19px) scale(1.69811)"
+        },
+        {
+          "t": 885.5,
+          "moving": "false",
+          "height": 5500,
+          "transform": "translate(-1014.92px, -1768.19px) scale(1.69811)"
+        },
+        {
+          "t": 901.6000000014901,
+          "moving": "false",
+          "height": 5500,
+          "transform": "translate(-1014.92px, -1768.19px) scale(1.69811)"
+        },
+        {
+          "t": 919.1000000014901,
+          "moving": "false",
+          "height": 5500,
+          "transform": "translate(-1014.92px, -1768.19px) scale(1.69811)"
+        },
+        {
+          "t": 935.7000000029802,
+          "moving": "false",
+          "height": 5500,
+          "transform": "translate(-1014.92px, -1768.19px) scale(1.69811)"
+        },
+        {
+          "t": 952.2000000029802,
+          "moving": "false",
+          "height": 5500,
+          "transform": "translate(-1014.92px, -1768.19px) scale(1.69811)"
+        },
+        {
+          "t": 968.8000000007451,
+          "moving": "false",
+          "height": 5500,
+          "transform": "translate(-1014.92px, -1768.19px) scale(1.69811)"
+        },
+        {
+          "t": 985.4000000022352,
+          "moving": "false",
+          "height": 5500,
+          "transform": "translate(-1014.92px, -1768.19px) scale(1.69811)"
+        },
+        {
+          "t": 1001.9000000022352,
+          "moving": "false",
+          "height": 5500,
+          "transform": "translate(-1014.92px, -1768.19px) scale(1.69811)"
+        },
+        {
+          "t": 1019.6000000014901,
+          "moving": "false",
+          "height": 5500,
+          "transform": "translate(-1014.92px, -1768.19px) scale(1.69811)"
+        },
+        {
+          "t": 1035.2000000029802,
+          "moving": "false",
+          "height": 5500,
+          "transform": "translate(-1014.92px, -1768.19px) scale(1.69811)"
+        },
+        {
+          "t": 1052.1000000014901,
+          "moving": "false",
+          "height": 5500,
+          "transform": "translate(-1014.92px, -1768.19px) scale(1.69811)"
+        },
+        {
+          "t": 1069.1000000014901,
+          "moving": "false",
+          "height": 5500,
+          "transform": "translate(-1014.92px, -1768.19px) scale(1.69811)"
+        },
+        {
+          "t": 1086.1000000014901,
+          "moving": "false",
+          "height": 5500,
+          "transform": "translate(-1014.92px, -1768.19px) scale(1.69811)"
+        },
+        {
+          "t": 1103.2000000029802,
+          "moving": "false",
+          "height": 5500,
+          "transform": "translate(-1014.92px, -1768.19px) scale(1.69811)"
+        },
+        {
+          "t": 1121.7000000029802,
+          "moving": "false",
+          "height": 5500,
+          "transform": "translate(-1014.92px, -1768.19px) scale(1.69811)"
+        }
+      ],
+      "savedScroll": 2316,
+      "width": 1280
+    },
+    "title": {
+      "title": {
+        "x": 65,
+        "y": 557,
+        "width": 1150,
+        "height": 57.59375,
+        "top": 557,
+        "right": 1215,
+        "bottom": 614.59375,
+        "left": 65
+      },
+      "cover": {
+        "x": 550.0000610351562,
+        "y": 227.9893798828125,
+        "width": 180,
+        "height": 260.9786376953125,
+        "top": 227.9893798828125,
+        "right": 730.0000610351562,
+        "bottom": 488.968017578125,
+        "left": 550.0000610351562
+      },
+      "stage": {
+        "x": 57,
+        "y": 123,
+        "width": 1166,
+        "height": 5500,
+        "top": 123,
+        "right": 1223,
+        "bottom": 5623,
+        "left": 57
+      },
+      "overlapArea": 0,
+      "scrollWidth": 1150,
+      "clientWidth": 1150,
+      "textRects": [
+        {
+          "x": 72.484375,
+          "y": 556,
+          "width": 1135.03125,
+          "height": 29,
+          "top": 556,
+          "right": 1207.515625,
+          "bottom": 585,
+          "left": 72.484375
+        },
+        {
+          "x": 586.765625,
+          "y": 584.796875,
+          "width": 106.453125,
+          "height": 29,
+          "top": 584.796875,
+          "right": 693.21875,
+          "bottom": 613.796875,
+          "left": 586.765625
+        }
+      ],
+      "text": "qa_comp_motion_long_series_El relato extraordinariamente largo de una biblioteca compartida y sus episodios"
+    },
+    "light": {
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "scrollY": 502,
+      "documentWidth": 1280,
+      "documentHeight": 6182,
+      "stage": {
+        "x": 57,
+        "y": 123,
+        "width": 1166,
+        "height": 5500,
+        "top": 123,
+        "right": 1223,
+        "bottom": 5623,
+        "left": 57
+      },
+      "colors": {
+        "background": "rgba(0, 0, 0, 0)",
+        "text": "rgb(44, 38, 32)"
+      }
+    },
+    "dark": {
+      "viewport": {
+        "width": 1280,
+        "height": 800
+      },
+      "scrollY": 502,
+      "documentWidth": 1280,
+      "documentHeight": 6182,
+      "stage": {
+        "x": 57,
+        "y": 123,
+        "width": 1166,
+        "height": 5500,
+        "top": 123,
+        "right": 1223,
+        "bottom": 5623,
+        "left": 57
+      },
+      "colors": {
+        "background": "rgba(0, 0, 0, 0)",
+        "text": "rgb(240, 232, 219)"
+      }
+    }
+  },
+  "volume": {
+    "backend": "local54321",
+    "members": 10,
+    "historicalBookPassesForPrivateMember": 1205,
+    "catalogWorks": 1207,
+    "personWorks": 1292,
+    "elapsedLoginCreateAndLoadMs": 10740,
+    "refreshMs": 4007,
+    "uncompressedActionResponseBytes": 361170
+  },
+  "keyboardFocus": {
+    "focusAfterConfirm": {
+      "tag": "BODY",
+      "text": "Saltar al contenidoBiblioshareInicioBibliotecaExperienciasComunidadBuscarQVolver a ComunidadEntre no"
+    }
+  },
+  "staleAuth": {
+    "timeline": [
+      {
+        "phase": "A verification forward started",
+        "t": 1791637610876
+      },
+      {
+        "phase": "A response received and held",
+        "t": 1791637610941
+      },
+      {
+        "phase": "real logout completed",
+        "t": 1791637611921
+      },
+      {
+        "phase": "old-tab RSC refresh forwarding",
+        "t": 1791637612043
+      },
+      {
+        "phase": "old-tab RSC response held status 200",
+        "t": 1791637612213
+      },
+      {
+        "phase": "B real login completed and profile verified",
+        "t": 1791637612500
+      },
+      {
+        "phase": "fresh focus verification requested",
+        "t": 1791637612518
+      },
+      {
+        "phase": "A response released after B login",
+        "t": 1791637612518
+      },
+      {
+        "phase": "A response delivered",
+        "t": 1791637612521
+      },
+      {
+        "phase": "old-tab RSC refresh forwarding",
+        "t": 1791637612579
+      },
+      {
+        "phase": "old-tab RSC response held status 200",
+        "t": 1791637612749
+      }
+    ],
+    "authChecks": 2,
+    "samples": [
+      {
+        "t": 5,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      },
+      {
+        "t": 12.300000000745058,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      },
+      {
+        "t": 29.300000000745058,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      },
+      {
+        "t": 45.19999999925494,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      },
+      {
+        "t": 61.5,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      },
+      {
+        "t": 79.80000000074506,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      },
+      {
+        "t": 102.5,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      },
+      {
+        "t": 114.5,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      },
+      {
+        "t": 128.19999999925494,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      },
+      {
+        "t": 144.90000000223517,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      },
+      {
+        "t": 162,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      },
+      {
+        "t": 179,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      },
+      {
+        "t": 195.60000000149012,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      },
+      {
+        "t": 211.80000000074506,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      },
+      {
+        "t": 228,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      },
+      {
+        "t": 244.40000000223517,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      },
+      {
+        "t": 262.30000000074506,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      },
+      {
+        "t": 278.4000000022352,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      },
+      {
+        "t": 294.9000000022352,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      },
+      {
+        "t": 311.19999999925494,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      },
+      {
+        "t": 328.69999999925494,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      },
+      {
+        "t": 345.30000000074506,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      },
+      {
+        "t": 361.9000000022352,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      },
+      {
+        "t": 378.4000000022352,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      },
+      {
+        "t": 395,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      },
+      {
+        "t": 411.69999999925494,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      },
+      {
+        "t": 428.80000000074506,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      },
+      {
+        "t": 445,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      },
+      {
+        "t": 461.6000000014901,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      },
+      {
+        "t": 478.6000000014901,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      },
+      {
+        "t": 495.30000000074506,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      },
+      {
+        "t": 511.80000000074506,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      },
+      {
+        "t": 528.6999999992549,
+        "oldVisible": false,
+        "path": "/comunidad/entre-nosotros"
+      }
+    ],
+    "oldAccount": "qa_comp_motion_a",
+    "newAccount": "qa_comp_motion_c",
+    "boundaryMountedAfterRelease": true
+  },
+  "map": {
+    "stage": {
+      "x": 33,
+      "y": 1043,
+      "width": 254,
+      "height": 1019,
+      "top": 1043,
+      "right": 287,
+      "bottom": 2062,
+      "left": 33
+    },
+    "people": [
+      {
+        "name": "Ana QA",
+        "rect": {
+          "x": 134.34375,
+          "y": 1053.140625,
+          "width": 51.3125,
+          "height": 30.5,
+          "top": 1053.140625,
+          "right": 185.65625,
+          "bottom": 1083.640625,
+          "left": 134.34375
+        },
+        "scrollWidth": 51,
+        "clientWidth": 51
+      },
+      {
+        "name": "Beatriz QA",
+        "rect": {
+          "x": 179.8828125,
+          "y": 1130.75,
+          "width": 67.703125,
+          "height": 30.5,
+          "top": 1130.75,
+          "right": 247.5859375,
+          "bottom": 1161.25,
+          "left": 179.8828125
+        },
+        "scrollWidth": 68,
+        "clientWidth": 68
+      },
+      {
+        "name": "Carlos QA",
+        "rect": {
+          "x": 214.8671875,
+          "y": 1333.953125,
+          "width": 64.171875,
+          "height": 30.5,
+          "top": 1333.953125,
+          "right": 279.0390625,
+          "bottom": 1364.453125,
+          "left": 214.8671875
+        },
+        "scrollWidth": 64,
+        "clientWidth": 64
+      },
+      {
+        "name": "Diana Ana QA",
+        "rect": {
+          "x": 212.953125,
+          "y": 1576.875,
+          "width": 68,
+          "height": 47,
+          "top": 1576.875,
+          "right": 280.953125,
+          "bottom": 1623.875,
+          "left": 212.953125
+        },
+        "scrollWidth": 68,
+        "clientWidth": 68
+      },
+      {
+        "name": "Eva QA",
+        "rect": {
+          "x": 188.75,
+          "y": 1788.328125,
+          "width": 49.96875,
+          "height": 30.5,
+          "top": 1788.328125,
+          "right": 238.71875,
+          "bottom": 1818.828125,
+          "left": 188.75
+        },
+        "scrollWidth": 50,
+        "clientWidth": 50
+      },
+      {
+        "name": "Felipe QA",
+        "rect": {
+          "x": 128.84375,
+          "y": 1865.9375,
+          "width": 62.3125,
+          "height": 30.5,
+          "top": 1865.9375,
+          "right": 191.15625,
+          "bottom": 1896.4375,
+          "left": 128.84375
+        },
+        "scrollWidth": 62,
+        "clientWidth": 62
+      },
+      {
+        "name": "Gloria QA",
+        "rect": {
+          "x": 75.7109375,
+          "y": 1788.328125,
+          "width": 61.078125,
+          "height": 30.5,
+          "top": 1788.328125,
+          "right": 136.7890625,
+          "bottom": 1818.828125,
+          "left": 75.7109375
+        },
+        "scrollWidth": 61,
+        "clientWidth": 61
+      },
+      {
+        "name": "Hugo QA",
+        "rect": {
+          "x": 43.828125,
+          "y": 1585.125,
+          "width": 58.40625,
+          "height": 30.5,
+          "top": 1585.125,
+          "right": 102.234375,
+          "bottom": 1615.625,
+          "left": 43.828125
+        },
+        "scrollWidth": 58,
+        "clientWidth": 58
+      },
+      {
+        "name": "Irene QA",
+        "rect": {
+          "x": 44.484375,
+          "y": 1333.953125,
+          "width": 57.09375,
+          "height": 30.5,
+          "top": 1333.953125,
+          "right": 101.578125,
+          "bottom": 1364.453125,
+          "left": 44.484375
+        },
+        "scrollWidth": 57,
+        "clientWidth": 57
+      },
+      {
+        "name": "Luis QA",
+        "rect": {
+          "x": 80.1328125,
+          "y": 1130.75,
+          "width": 52.234375,
+          "height": 30.5,
+          "top": 1130.75,
+          "right": 132.3671875,
+          "bottom": 1161.25,
+          "left": 80.1328125
+        },
+        "scrollWidth": 52,
+        "clientWidth": 52
+      }
+    ],
+    "summary": {
+      "x": 96.5,
+      "y": 1921.1875,
+      "width": 127,
+      "height": 95,
+      "top": 1921.1875,
+      "right": 223.5,
+      "bottom": 2016.1875,
+      "left": 96.5
+    },
+    "covers": [
+      {
+        "x": 140.04071044921875,
+        "y": 1447.5675048828125,
+        "width": 39.918609619140625,
+        "height": 54.465087890625,
+        "top": 1447.5675048828125,
+        "right": 179.95932006835938,
+        "bottom": 1502.0325927734375,
+        "left": 140.04071044921875
+      },
+      {
+        "x": 145.46710205078125,
+        "y": 1449.393798828125,
+        "width": 38.209808349609375,
+        "height": 53.3524169921875,
+        "top": 1449.393798828125,
+        "right": 183.67691040039062,
+        "bottom": 1502.7462158203125,
+        "left": 145.46710205078125
+      },
+      {
+        "x": 147.54986572265625,
+        "y": 1449.094970703125,
+        "width": 43.18827819824219,
+        "height": 56.489990234375,
+        "top": 1449.094970703125,
+        "right": 190.73814392089844,
+        "bottom": 1505.5849609375,
+        "left": 147.54986572265625
+      }
+    ]
+  },
+  "journals": [
+    {
+      "test": "entre-nosotros-foreign-own-08e16-ual-action-responses-and-UI-chromium",
+      "round": "task-9-browser-final",
+      "responses": 140,
+      "pageErrors": [],
+      "consoleMessages": [],
+      "requestFailures": [
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "POST /login net::ERR_ABORTED",
+        "POST / net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros net::ERR_ABORTED"
+      ],
+      "actionBodyStates": {
+        "complete": 8
+      },
+      "httpStatuses": {
+        "200": 140
+      }
+    },
+    {
+      "test": "entre-nosotros-Gustos-rest-10195--long-async-series-evidence-chromium",
+      "round": "task-9-browser-final",
+      "responses": 139,
+      "pageErrors": [],
+      "consoleMessages": [
+        "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+      ],
+      "requestFailures": [
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "POST /login net::ERR_ABORTED",
+        "GET /catalog-cover.jpg net::ERR_NAME_NOT_RESOLVED",
+        "POST / net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros net::ERR_ABORTED",
+        "POST /comunidad/entre-nosotros net::ERR_ABORTED"
+      ],
+      "actionBodyStates": {
+        "complete": 4,
+        "unavailable": 1
+      },
+      "httpStatuses": {
+        "200": 139
+      }
+    },
+    {
+      "test": "entre-nosotros-Gustos-rest-d0b45--long-async-series-evidence-chromium",
+      "round": "task-9-browser-final",
+      "responses": 151,
+      "pageErrors": [],
+      "consoleMessages": [
+        "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+      ],
+      "requestFailures": [
+        "GET /comunidad net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a net::ERR_ABORTED",
+        "POST / net::ERR_ABORTED",
+        "GET /catalog-cover.jpg net::ERR_NAME_NOT_RESOLVED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros net::ERR_ABORTED"
+      ],
+      "actionBodyStates": {
+        "complete": 5
+      },
+      "httpStatuses": {
+        "200": 151
+      }
+    },
+    {
+      "test": "entre-nosotros-Gustos-rest-d1514--long-async-series-evidence-chromium",
+      "round": "task-9-browser-final",
+      "responses": 140,
+      "pageErrors": [],
+      "consoleMessages": [
+        "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+      ],
+      "requestFailures": [
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "POST /login net::ERR_ABORTED",
+        "GET /catalog-cover.jpg net::ERR_NAME_NOT_RESOLVED",
+        "POST / net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros net::ERR_ABORTED"
+      ],
+      "actionBodyStates": {
+        "complete": 5
+      },
+      "httpStatuses": {
+        "200": 140
+      }
+    },
+    {
+      "test": "entre-nosotros-LOCAL-ONLY--827ad-asses-without-private-prose-chromium",
+      "round": "task-9-browser-final",
+      "responses": 135,
+      "pageErrors": [],
+      "consoleMessages": [],
+      "requestFailures": [
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "POST /login net::ERR_ABORTED",
+        "POST / net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros net::ERR_ABORTED",
+        "POST /comunidad/entre-nosotros net::ERR_ABORTED",
+        "POST /comunidad/entre-nosotros net::ERR_ABORTED"
+      ],
+      "actionBodyStates": {
+        "complete": 3,
+        "unavailable": 2
+      },
+      "httpStatuses": {
+        "200": 135
+      }
+    },
+    {
+      "test": "entre-nosotros-read-transp-55d19-it-retry-recovers-real-data-chromium",
+      "round": "task-9-browser-final",
+      "responses": 148,
+      "pageErrors": [],
+      "consoleMessages": [
+        "Failed to load resource: net::ERR_NAME_NOT_RESOLVED",
+        "Failed to load resource: net::ERR_FAILED"
+      ],
+      "requestFailures": [
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "POST /login net::ERR_ABORTED",
+        "GET /catalog-cover.jpg net::ERR_NAME_NOT_RESOLVED",
+        "POST / net::ERR_ABORTED",
+        "GET /coleccion net::ERR_ABORTED",
+        "GET /coleccion net::ERR_ABORTED",
+        "GET /serie/7858f1b4-98ed-4244-9dd0-52dcfc9f96ef net::ERR_ABORTED",
+        "GET /coleccion net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "POST /comunidad/entre-nosotros net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros net::ERR_ABORTED",
+        "POST /comunidad/entre-nosotros net::ERR_FAILED"
+      ],
+      "actionBodyStates": {
+        "unavailable": 1,
+        "complete": 4
+      },
+      "httpStatuses": {
+        "200": 148
+      }
+    },
+    {
+      "test": "entre-nosotros-ten-person--907e8-es-persistence-and-keyboard-chromium",
+      "round": "task-9-browser-final",
+      "responses": 194,
+      "pageErrors": [],
+      "consoleMessages": [
+        "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+      ],
+      "requestFailures": [
+        "GET /buscar net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "POST /login net::ERR_ABORTED",
+        "GET /catalog-cover.jpg net::ERR_NAME_NOT_RESOLVED",
+        "POST / net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros net::ERR_ABORTED"
+      ],
+      "actionBodyStates": {
+        "complete": 12
+      },
+      "httpStatuses": {
+        "200": 194
+      }
+    },
+    {
+      "test": "entre-nosotros-two-real-ta-ead6a-switch-removes-old-evidence-chromium",
+      "round": "task-9-browser-final",
+      "responses": 465,
+      "pageErrors": [],
+      "consoleMessages": [
+        "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+      ],
+      "requestFailures": [
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "POST /login net::ERR_ABORTED",
+        "GET /catalog-cover.jpg net::ERR_NAME_NOT_RESOLVED",
+        "POST / net::ERR_ABORTED",
+        "GET /serie/24d38cac-8ab2-4796-b2d6-db029eceeca0 net::ERR_ABORTED",
+        "GET /experiencias net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros net::ERR_ABORTED",
+        "POST /comunidad/entre-nosotros net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros net::ERR_ABORTED",
+        "POST /comunidad/entre-nosotros net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "POST /ajustes net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /importar net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a net::ERR_ABORTED",
+        "POST /ajustes net::ERR_ABORTED",
+        "POST /ajustes net::ERR_ABORTED",
+        "GET /novedades net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "GET /_next/static/chunks/2v_y0sblb2raw.js net::ERR_ABORTED",
+        "GET /novedades net::ERR_ABORTED",
+        "GET /login net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a net::ERR_ABORTED",
+        "POST /login net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "POST / net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_c net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "POST /comunidad/entre-nosotros net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_c net::ERR_ABORTED",
+        "POST /comunidad/entre-nosotros net::ERR_ABORTED"
+      ],
+      "actionBodyStates": {
+        "complete": 16,
+        "unavailable": 3
+      },
+      "httpStatuses": {
+        "200": 465
+      }
+    },
+    {
+      "test": "entre-nosotros-Gustos-rest-10195--long-async-series-evidence-chromium",
+      "round": "task-9-browser-final-1280",
+      "responses": 139,
+      "pageErrors": [],
+      "consoleMessages": [
+        "Failed to load resource: net::ERR_NAME_NOT_RESOLVED"
+      ],
+      "requestFailures": [
+        "GET /comunidad net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "POST /login net::ERR_ABORTED",
+        "GET /catalog-cover.jpg net::ERR_NAME_NOT_RESOLVED",
+        "POST / net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros net::ERR_ABORTED"
+      ],
+      "actionBodyStates": {
+        "complete": 5
+      },
+      "httpStatuses": {
+        "200": 139
+      }
+    }
+  ]
+}

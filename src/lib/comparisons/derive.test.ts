@@ -72,6 +72,11 @@ describe('regions', () => {
 });
 
 describe('findings', () => {
+  it('a single recorded note cannot make a shared concrete finding', () => {
+    const data = snapshot([work('a', 'book:one', 9)], [catalog('book:one', 'One')]);
+    expect(findings(data, ['a', 'b'])).toEqual([]);
+  });
+
   it.each([
     { notes: [8, 8], kinds: ['loved', 'similar'] },
     { notes: [2, 3], kinds: ['similar'] },
@@ -115,6 +120,18 @@ describe('findings', () => {
 });
 
 describe('facets', () => {
+  it('keeps exact two-versus-three unique rated bases without hiding their means', () => {
+    const keys = ['book:one', 'book:two', 'book:three'] as WorkKey[];
+    const data = snapshot([
+      work('a', keys[0], 6), work('a', keys[1], 8), work('a', keys[1], 8),
+      work('a', keys[2]), ...keys.map(key => work('b', key, 9)),
+    ], keys.map((key, index) => catalog(key, String(index), ['Drama', 'Drama'])));
+    expect(facets(data, ['a', 'b'], 'genre')[0].people).toEqual([
+      { userId: 'a', consumed: keys, rated: keys.slice(0, 2), mean: 7, min: 6, max: 8, eligibleTotal: 3 },
+      { userId: 'b', consumed: keys, rated: keys, mean: 9, min: 9, max: 9, eligibleTotal: 3 },
+    ]);
+  });
+
   it('counts distinct consumed works, keeps unrated members and small sample means', () => {
     const keys = ['book:one', 'book:two', 'movie:three', 'series:four'] as WorkKey[];
     const data = snapshot([

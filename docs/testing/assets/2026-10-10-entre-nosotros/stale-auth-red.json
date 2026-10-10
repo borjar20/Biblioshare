@@ -1,0 +1,221 @@
+{
+  "timeline": [
+    {
+      "phase": "A verification forward started",
+      "t": 1791635881270
+    },
+    {
+      "phase": "A response received and held",
+      "t": 1791635881332
+    },
+    {
+      "phase": "real logout completed",
+      "t": 1791635882369
+    },
+    {
+      "phase": "old-tab RSC refresh forwarding",
+      "t": 1791635882513
+    },
+    {
+      "phase": "old-tab RSC response held status 200",
+      "t": 1791635882702
+    },
+    {
+      "phase": "B real login completed and profile verified",
+      "t": 1791635882978
+    },
+    {
+      "phase": "fresh focus verification requested",
+      "t": 1791635883001
+    },
+    {
+      "phase": "A response released after B login",
+      "t": 1791635883001
+    },
+    {
+      "phase": "A response delivered",
+      "t": 1791635883003
+    }
+  ],
+  "authChecks": 1,
+  "samples": [
+    {
+      "t": 0.7000000029802322,
+      "oldVisible": false,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 3.7000000029802322,
+      "oldVisible": false,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 19.800000000745058,
+      "oldVisible": false,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 38.100000001490116,
+      "oldVisible": true,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 56.600000001490116,
+      "oldVisible": true,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 69.30000000074506,
+      "oldVisible": true,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 86.70000000298023,
+      "oldVisible": true,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 102.70000000298023,
+      "oldVisible": true,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 120.60000000149012,
+      "oldVisible": true,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 136.90000000223517,
+      "oldVisible": true,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 152.40000000223517,
+      "oldVisible": true,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 169.10000000149012,
+      "oldVisible": true,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 185.5,
+      "oldVisible": true,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 202.5,
+      "oldVisible": true,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 219.20000000298023,
+      "oldVisible": true,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 235.90000000223517,
+      "oldVisible": true,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 252.70000000298023,
+      "oldVisible": true,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 269.20000000298023,
+      "oldVisible": true,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 286.70000000298023,
+      "oldVisible": true,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 302.9000000022352,
+      "oldVisible": true,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 319.80000000074506,
+      "oldVisible": true,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 335.80000000074506,
+      "oldVisible": true,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 353.30000000074506,
+      "oldVisible": true,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 370,
+      "oldVisible": true,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 386.4000000022352,
+      "oldVisible": true,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 403.20000000298023,
+      "oldVisible": true,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 419.70000000298023,
+      "oldVisible": true,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 436.20000000298023,
+      "oldVisible": true,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 452.80000000074506,
+      "oldVisible": true,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 469.1000000014901,
+      "oldVisible": true,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 485.80000000074506,
+      "oldVisible": true,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 502.4000000022352,
+      "oldVisible": true,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 519,
+      "oldVisible": true,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 536.6000000014901,
+      "oldVisible": true,
+      "path": "/comunidad/entre-nosotros"
+    },
+    {
+      "t": 553.5,
+      "oldVisible": true,
+      "path": "/comunidad/entre-nosotros"
+    }
+  ],
+  "oldAccount": "qa_comp_motion_a",
+  "newAccount": "qa_comp_motion_c",
+  "boundaryMountedAfterRelease": false
+}

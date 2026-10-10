@@ -16,7 +16,7 @@ const group = (suffix: string, name: string): Group => ({ id: `${suffix.repeat(8
 const first = group('a', 'Lectores'); const second = group('b', 'Cine');
 const snapshot = (g: Group): Snapshot => ({ group: g, format: 'all', catalog: [], works: [], excludedSeriesWithoutEpisodes: 0 });
 function ui(groups = [first, second], viewerId = 'a') { return <NextIntlClientProvider locale="es" messages={messages}><Explorer initialGroups={groups} candidates={[{ userId: 'a', name: 'Ana', avatarUrl: null }, { userId: 'b', name: 'Bea', avatarUrl: null }]} viewerId={viewerId}/></NextIntlClientProvider>; }
-beforeEach(() => { vi.clearAllMocks(); mocks.query = ''; mocks.load.mockResolvedValue({ ok: true, data: snapshot(first) }); mocks.getUser.mockResolvedValue({ data: { user: { id: 'a' } }, error: null }); });
+beforeEach(() => { vi.clearAllMocks(); mocks.query = ''; mocks.load.mockResolvedValue({ ok: true, data: snapshot(first) }); mocks.getUser.mockReset().mockResolvedValue({ data: { user: { id: 'a' } }, error: null }); });
 afterEach(cleanup);
 describe('independent format view retention', () => {
   it('retains controlled taste category and signal across sections and its own reload', () => {
@@ -183,6 +183,53 @@ describe('Explorer request boundaries', () => {
     mocks.getUser.mockResolvedValueOnce({ data: { user: { id: 'new-account' } }, error: null });
     act(() => window.dispatchEvent(new Event('focus'))); await screen.findByText(messages.comparisons.sessionChanged);
     expect(screen.queryByText('Ana')).toBeNull(); expect(screen.queryByLabelText('Grupo')).toBeNull();
+  });
+  it.each(['resolve', 'error', 'reject'])('discards an older %s completion and coalesces a fresh check without reopening A', async completion => {
+    mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('checkbox', { name: 'Ana' });
+    type Answer = { data: { user: { id: string } }; error: Error | null };
+    let finishOld!: (answer: Answer) => void, rejectOld!: (error: Error) => void, finishFresh!: (answer: Answer) => void;
+    mocks.getUser.mockImplementationOnce(() => new Promise((resolve, reject) => { finishOld = resolve; rejectOld = reject; }))
+      .mockImplementationOnce(() => new Promise(resolve => { finishFresh = resolve; }));
+    act(() => window.dispatchEvent(new Event('focus')));
+    act(() => { window.dispatchEvent(new Event('focus')); window.dispatchEvent(new Event('focus')); document.dispatchEvent(new Event('visibilitychange')); });
+    expect(mocks.getUser).toHaveBeenCalledOnce();
+    await act(async () => {
+      if (completion === 'reject') rejectOld(new Error('old request rejected'));
+      else finishOld({ data: { user: { id: 'a' } }, error: completion === 'error' ? new Error('old error') : null });
+    });
+    expect(mocks.getUser).toHaveBeenCalledTimes(2);
+    expect(screen.getByText(messages.comparisons.checkingSession)).toBeTruthy();
+    expect(screen.queryByRole('combobox', { name: 'Grupo' })).toBeNull();
+    expect(screen.queryByText(messages.comparisons.sessionCheckFailed)).toBeNull();
+    await act(async () => finishFresh({ data: { user: { id: 'b' } }, error: null }));
+    expect(screen.getByText(messages.comparisons.sessionChanged)).toBeTruthy();
+    expect(screen.queryByLabelText('Grupo')).toBeNull();
+    act(() => window.dispatchEvent(new Event('focus'))); expect(mocks.getUser).toHaveBeenCalledTimes(2);
+  });
+  it('keeps the same-account draft hidden until its queued fresh answer completes', async () => {
+    mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('checkbox', { name: 'Ana' });
+    fireEvent.click(screen.getByRole('button', { name: 'Editar grupo' })); fireEvent.change(screen.getByLabelText('Nombre del grupo'), { target: { value: 'Borrador' } });
+    type Answer = { data: { user: { id: string } }; error: null };
+    let finishOld!: (answer: Answer) => void, finishFresh!: (answer: Answer) => void;
+    mocks.getUser.mockImplementationOnce(() => new Promise(resolve => { finishOld = resolve; }))
+      .mockImplementationOnce(() => new Promise(resolve => { finishFresh = resolve; }));
+    act(() => window.dispatchEvent(new Event('focus'))); act(() => window.dispatchEvent(new Event('focus')));
+    await act(async () => finishOld({ data: { user: { id: 'a' } }, error: null }));
+    expect(mocks.getUser).toHaveBeenCalledTimes(2); expect(screen.queryByRole('form')).toBeNull();
+    await act(async () => finishFresh({ data: { user: { id: 'a' } }, error: null }));
+    expect((screen.getByLabelText('Nombre del grupo') as HTMLInputElement).value).toBe('Borrador');
+  });
+  it.each(['unmount', 'auth-invalidation'])('does not launch queued verification after %s', async end => {
+    mocks.query = `group=${first.id}`; const mounted = render(ui()); await screen.findByRole('checkbox', { name: 'Ana' });
+    let finish!: (answer: { data: { user: { id: string } }; error: null }) => void;
+    mocks.getUser.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    act(() => { window.dispatchEvent(new Event('focus')); window.dispatchEvent(new Event('focus')); });
+    if (end === 'unmount') mounted.unmount(); else act(() => mocks.auth!('SIGNED_OUT', null));
+    await act(async () => finish({ data: { user: { id: 'a' } }, error: null }));
+    act(() => window.dispatchEvent(new Event('focus')));
+    expect(mocks.getUser).toHaveBeenCalledOnce();
+    if (end === 'unmount') expect(mocks.refresh).not.toHaveBeenCalled();
+    else expect(screen.queryByLabelText('Grupo')).toBeNull();
   });
   it('keeps a failed identity check gated until successful retry and discards stale checks on unmount', async () => {
     mocks.query = `group=${first.id}`; const mounted = render(ui()); await screen.findByRole('checkbox', { name: 'Ana' });
