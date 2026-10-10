@@ -7056,3 +7056,17 @@ Gustos sigue la misma interacción, con vuelta a su conexión anterior.
 Se mantiene el zoom guiado por niveles, la separación entre consumo y valoración
 y las reglas de visibilidad. Es la dirección de exploración de la maqueta;
 la implementación en la app sigue pendiente en #1462.
+
+## 2026-10-10 — Probar cámara libre y foco visual en el Venn
+
+El usuario amplía la exploración: rueda para acercarse, arrastre para desplazar
+el lienzo y desenfoque del contexto al elegir un cruce. La maqueta sustituye el
+zoom exclusivamente guiado por una cámara continua, manteniendo botones de zoom
+y encuadre. Las portadas aparecen por tramos de proximidad y conservan el vínculo
+espacial con su región. Se mantiene nítida la selección y se difuminan los demás
+cruces. El arrastre dentro de una colección no cambia su foco ni abre obras.
+
+La posición se conserva al volver de una obra y al restaurar la maqueta. Siguen
+vigentes la paleta, la navegación dentro del lienzo, la separación entre consumo
+y gustos y las reglas de visibilidad. Es una prueba de interacción en Sites;
+la evaluación e integración de la feature continúan en #1462.

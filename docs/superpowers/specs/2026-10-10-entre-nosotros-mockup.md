@@ -216,3 +216,33 @@ Con movimiento reducido, abrir y volver funcionan con 0 animaciones. Pasa el
 test de guardado/restauración; no aparecen errores de consola. Se conservan CSP,
 iframe aislado, portadas reales y paleta de la app. La integración sigue pendiente
 en #1462: estos cambios solo afectan a la maqueta publicada.
+
+## Iteración del 2026-10-10: cámara libre y desenfoque de contexto
+
+El usuario pide zoom con rueda, desplazamiento por arrastre y desenfoque del
+fondo al seleccionar una región. El Venn incorpora una cámara continua entre
+100 y 450 %, con zoom alrededor del cursor. El mundo se desplaza dentro de un
+lienzo recortado de altura estable; los botones de acercamiento y encuadre siguen
+disponibles. Los gestos se limitan al Venn, y Ctrl + rueda conserva el comportamiento
+del navegador. En el mínimo, alejar con la rueda permite continuar el scroll.
+
+Las pilas del cruce activo se despliegan progresivamente: seis portadas a partir
+de 155 %, diez a partir de 205 % y todas a partir de 265 %. Los otros cruces y
+los círculos pierden nitidez; la selección y sus portadas permanecen nítidas.
+Al arrastrar fuera de la colección activa y llegar a otro cruce con obras, ese
+cruce pasa a ser el foco. No se cambia de región mientras se recorre la colección
+desplegada. Un arrastre no dispara el clic de abrir obra. Volver del detalle o
+recargar recupera la cámara, y Encuadrar Venn restablece escala, posición y foco.
+
+Verificación: los controles del navegador y una prueba temporal con WheelEvent
+y PointerEvent dentro del iframe comprueban 6, 10 y 13 portadas, desplazamiento,
+supresión del clic tras arrastrar, fondo con seis regiones desenfocadas, vuelta
+exacta a la cámara y persistencia. La secuencia de rueda completa 64 animaciones
+sin cancelaciones. Con movimiento reducido se llega a 450 %, se despliegan las
+21 obras de una pareja y se arrastra sin crear animaciones. A 320 px, la app mide
+273 px y su scrollWidth también. Las coordenadas de rueda/arrastre del automatizador
+no entregaron eventos al iframe: los gestos se validaron mediante los eventos
+inyectados en el arnés local, que no se publica. Pasan los tests de anclaje del
+cursor, límites, restauración inválida, revelado y eco de guardado. CSP y sandbox
+se conservan. La sensación con ratón físico forma parte de la evaluación del
+prototipo de #1462; no se ha integrado la feature en la app.
