@@ -279,3 +279,39 @@ niveles con las 21 obras y cero animaciones. No aparecen errores de consola.
 Se conservan CSP, sandbox y paleta. El arnés no
 se publica. La sensación física de rueda sigue siendo parte de la evaluación del
 mockup; no se ha integrado la feature en la app.
+
+## Iteración del 2026-10-10: cámara sobre la portada y encuadre guiado
+
+El usuario aprueba los niveles y pide acercarse directamente a la portada elegida,
+con las demás desenfocadas detrás, y recorrer el camino inverso al volver. Se usa
+el mismo mundo de círculos, pilas y colección tanto en el cruce como en la obra.
+La cámara aumenta escala y se centra en las coordenadas de la portada; esta sigue
+siendo la portada de la colección. El título, los estados y las valoraciones
+aparecen dentro del lienzo. Las otras portadas quedan visibles pero desenfocadas
+y sin interacción mientras se muestra la obra.
+
+El recorrido dura 720 ms y usa interpolación simétrica de escala y centro. El
+regreso recupera el encuadre calculado del cruce; anterior/siguiente centra la
+cámara en otra portada de la misma colección. Se elimina el renderer anterior
+que sustituía la colección por un detalle separado. Las transiciones del mapa de
+grupo y la apertura desde Gustos conservan su comportamiento.
+
+Se retira el movimiento libre por ratón y flechas. Un gesto de arrastre tampoco
+abre accidentalmente una portada. El lienzo crece en altura cuando la colección
+no cabe, en vez de ocultar filas detrás de una cámara desplazable. Al abrir desde
+una fila inferior se lleva el detalle a la vista con el scroll normal de página;
+al regresar se hace visible de nuevo la portada de origen.
+
+Verificación: el arnés local con rueda simulada registra fotogramas intermedios
+de ida y vuelta, conserva las 12 portadas vecinas al abrir La llegada y devuelve
+exactamente la escala y el centro iniciales. Arrastre y flecha derecha dejan
+la cámara intacta y no abren una obra. En 320 px, las 21 portadas de una pareja
+quedan dentro de un lienzo de 838 px, sin desbordamiento horizontal (273 px de
+ancho y scrollWidth), y se abre Twin Peaks desde la última fila. Se verifica el
+regreso al Venn general y la restauración del detalle. Los tests cubren geometría
+del foco, trayectoria inversa, accesibilidad de todas las filas, ausencia de pan,
+inercia de rueda y eco de guardado. CSP y sandbox se conservan; el arnés no se
+publica. Con movimiento reducido, ida y vuelta llegan directamente a sus destinos
+sin fotogramas de cámara intermedios; se conservan las 20 portadas vecinas de la
+pareja. No aparecen errores de consola. Solo cambia el mockup, con integración
+pendiente en #1462.

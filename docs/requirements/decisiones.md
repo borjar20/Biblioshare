@@ -7085,3 +7085,17 @@ legible y se arrastra para recorrer la colección completa. Siguen vigentes las
 transiciones suaves, el desenfoque del contexto y la navegación dentro del lienzo.
 La implementación y evaluación de la feature continúan en #1462; esta decisión
 solo cambia la maqueta publicada en Sites.
+
+## 2026-10-10 — Acercar la cámara a la portada y retirar el arrastre libre
+
+El usuario mantiene los tres niveles y pide que el detalle se alcance acercando
+la cámara a la portada dentro de su colección. Las demás portadas permanecen
+en sus posiciones, desenfocadas detrás; regresar recorre el mismo trayecto en
+sentido inverso. El detalle ya no sustituye la colección por una escena sin ella.
+
+Se retira el desplazamiento libre del lienzo, tanto por arrastre como por flechas:
+el encuadre se calcula a partir del cruce o de la obra. Las colecciones estrechas
+amplían la altura del lienzo para mantener todas las portadas accesibles mediante
+el desplazamiento normal de la página. Se conservan rueda por niveles, clic,
+movimiento reducido y paleta. Sigue siendo una prueba en Sites; #1462 mantiene
+pendiente la implementación en Biblioshare.
