@@ -27,6 +27,7 @@ function CanvasSession({ snapshot, view, onView }: Props) {
   const t = useTranslations('comparisons');
   const host = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
+  const entry = useRef<HTMLDivElement>(null);
   const backButton = useRef<HTMLButtonElement>(null);
   const returnTo = useRef<{ key: WorkKey; scroll: number } | null>(null);
   const focusAfter = useRef<'work' | 'return' | 'back' | null>(null);
@@ -111,7 +112,9 @@ function CanvasSession({ snapshot, view, onView }: Props) {
     else onView({ level: 'group' });
   }
   useLayoutEffect(() => {
-    if (view.level === 'work' && focusAfter.current === 'work') stage.current?.scrollIntoView?.({ block: 'start', behavior: 'instant' });
+    // The return action precedes the stage. Anchor entry at its toolbar so both
+    // it and the following heading remain below the sticky shell header.
+    if (view.level === 'work' && focusAfter.current === 'work') entry.current?.scrollIntoView?.({ block: 'start', behavior: 'instant' });
   }, [view.level]);
   useEffect(() => {
     if (moving || !focusAfter.current) return;
@@ -148,7 +151,7 @@ function CanvasSession({ snapshot, view, onView }: Props) {
   const isWork = view.level === 'work';
   const overviewControls = view.level === 'group' || view.level === 'venn';
   return <div ref={host} className={styles.canvas} data-view={view.level} data-camera-moving={moving} onKeyDown={event => { if (event.key === 'Escape' && view.level !== 'group') { event.preventDefault(); back(); } }}>
-    <div className={styles.toolbar}>
+    <div ref={entry} className={styles.toolbar}>
       {view.level !== 'group' && <button ref={backButton} type="button" onClick={back}>{t(isWork ? 'backToRegion' : view.level === 'region' ? 'backToVenn' : 'backToGroup')}</button>}
       {view.level !== 'group' && <span>{names(vennPeople)}</span>}
       {view.level === 'group' && <><p>{t('mapHint')}</p>{members.length < snapshot.group.members.length && <p>{t('unavailableCount', { count: snapshot.group.members.length - members.length })}</p>}</>}

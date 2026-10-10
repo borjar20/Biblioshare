@@ -2,6 +2,7 @@
 .canvas button, .canvas a { cursor: pointer; }
 .canvas button:focus-visible, .canvas a:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
 .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; min-height: 52px; font-size: 14px; }
+.canvas[data-view=work] .toolbar { scroll-margin-top: calc(var(--topbar-h, 59px) + 12px); }
 .toolbar button, .signals button, .pagination button, .detailEvidence button { min-height: 44px; padding: 8px 14px; border-radius: 8px; background: var(--surface-muted); }
 .toolbar p, .toolbar span, .caption { color: var(--muted-foreground); }
 .signals { display: flex; flex-wrap: wrap; gap: 6px; font-size: 13px; }

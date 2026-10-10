@@ -2,6 +2,23 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
 import { openComparisonFixture, withComparisonFixture } from './support/comparison-fixtures';
 async function settled(page: Page) { await expect(page.locator('[data-camera-moving]')).toHaveAttribute('data-camera-moving', 'false'); }
+async function visibleWorkEntry(page: Page, title: string) {
+  const back = page.getByRole('button', { name: 'Volver al cruce', exact: true });
+  const heading = page.getByRole('heading', { name: title, exact: true });
+  // Wait for the genuine authorized detail response, not its loading state.
+  await expect(page.getByRole('link', { name: 'Ver ficha', exact: true })).toBeVisible();
+  await expect(back).toBeFocused();
+  const shellBottom = await page.locator('header').first().evaluate(node => node.getBoundingClientRect().bottom);
+  const viewport = page.viewportSize()!;
+  const rectangles = { shellBottom, back: (await back.boundingBox())!, heading: (await heading.boundingBox())! };
+  for (const box of [rectangles.back, rectangles.heading]) {
+    expect(box.y).toBeGreaterThanOrEqual(shellBottom);
+    expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+  }
+  return rectangles;
+}
 async function pair(page: Page) {
   await page.locator('[data-camera-moving][data-view="group"]').getByRole('button', { name: 'Ana QA, Beatriz QA 30 obras comunes', exact: true }).click();
   await settled(page);
@@ -136,7 +153,7 @@ test('reduced motion applies destination directly and Escape returns with focus'
     const cover = page.locator(`[data-work-key="book:${fixture.books[0].id}"]`);
     await cover.click(); await expect(canvas).toHaveAttribute('data-camera-moving', 'false');
     const box = await cover.boundingBox(); await page.waitForTimeout(150); expect(await cover.boundingBox()).toEqual(box);
-    await expect(page.getByRole('button', { name: 'Volver al cruce', exact: true })).toBeFocused();
+    await visibleWorkEntry(page, fixture.books[0].title);
     await page.keyboard.press('Escape'); await expect(canvas).toHaveAttribute('data-view', 'region');
     await expect(cover).toBeFocused();
     const world = await page.locator('[data-comparison-world]').getAttribute('style');
@@ -159,6 +176,8 @@ test('320px normal page scroll reaches last loaded cover, touch opens actual wor
       const firstBox = await last.boundingBox();
       await last.tap(); await settled(page); await expect(last).toBeInViewport();
       expect((await last.boundingBox())!.width).not.toBe(firstBox!.width);
+      const entry = await visibleWorkEntry(page, fixture.books.at(-1)!.title);
+      await writeFile(info.outputPath('mobile-entry-visibility.json'), JSON.stringify({ viewport: page.viewportSize(), savedScroll: scroll, entry }, null, 2));
       await page.screenshot({ path: info.outputPath('mobile-work-destination.png') });
       await last.tap(); // Tapping the current destination must preserve origin scroll.
       await page.getByRole('button', { name: 'Volver al cruce', exact: true }).tap(); await settled(page);
