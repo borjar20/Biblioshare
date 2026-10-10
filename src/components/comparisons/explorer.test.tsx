@@ -63,6 +63,60 @@ describe('independent format view retention', () => {
   });
 });
 describe('Explorer request boundaries', () => {
+  it('hands the loader to fresh content without blocking focus or announcing a completed load', async () => {
+    mocks.query = `group=${first.id}`;
+    let finish!: (value: Result<Snapshot>) => void;
+    mocks.load.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    const { container } = render(ui());
+    expect(screen.getByRole('status').textContent).toContain(messages.comparisons.loading);
+    await act(async () => finish({ ok: true, data: snapshot(first) }));
+    expect(screen.queryByRole('status')).toBeNull();
+    const handoff = container.querySelector('[data-comparison-handoff]')!;
+    expect(handoff).not.toBeNull();
+    expect(handoff.getAttribute('aria-hidden')).toBe('true');
+    expect(handoff.hasAttribute('inert')).toBe(true);
+    const refresh = screen.getByRole('button', { name: 'Actualizar acceso' });
+    refresh.focus(); expect(document.activeElement).toBe(refresh);
+    expect(container.querySelector('[data-comparison-slot="works"]')).not.toBeNull();
+    // JSDOM has no AnimationEvent, so React selects the prefixed DOM event.
+    const animationEnd = () => new Event('AnimationEvent' in window ? 'animationend' : 'webkitAnimationEnd', { bubbles: true });
+    fireEvent(handoff.querySelector('svg')!, animationEnd());
+    expect(container.querySelector('[data-comparison-handoff]')).toBe(handoff);
+    fireEvent(handoff, animationEnd());
+    expect(container.querySelector('[data-comparison-handoff]')).toBeNull();
+    expect(document.activeElement).toBe(refresh);
+  });
+  it('discards fading evidence on refresh and accepts only the most recent load', async () => {
+    mocks.query = `group=${first.id}`;
+    const { container } = render(ui());
+    await screen.findByRole('checkbox', { name: 'Ana' });
+    expect(container.querySelector('[data-comparison-handoff]')).not.toBeNull();
+    let finishOld!: (value: Result<Snapshot>) => void;
+    let finishNew!: (value: Result<Snapshot>) => void;
+    mocks.load.mockImplementationOnce(() => new Promise(resolve => { finishOld = resolve; }))
+      .mockImplementationOnce(() => new Promise(resolve => { finishNew = resolve; }));
+    fireEvent.click(screen.getByRole('button', { name: 'Actualizar acceso' }));
+    expect(container.querySelector('[data-comparison-handoff]')).toBeNull();
+    expect(container.querySelector('[data-comparison-slot]')).toBeNull();
+    fireEvent.change(screen.getByLabelText('Grupo'), { target: { value: second.id } });
+    await act(async () => finishOld({ ok: true, data: snapshot(first) }));
+    expect(container.querySelector('[data-comparison-slot]')).toBeNull();
+    expect(screen.getByRole('status').textContent).toContain(messages.comparisons.loading);
+    await act(async () => finishNew({ ok: true, data: snapshot(second) }));
+    expect(screen.getByRole('heading', { name: second.name })).toBeTruthy();
+    expect(container.querySelector('[data-comparison-handoff]')).not.toBeNull();
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+  it('drops both the fade and fresh evidence immediately when the account signs out', async () => {
+    mocks.query = `group=${first.id}`;
+    const { container } = render(ui());
+    await screen.findByRole('checkbox', { name: 'Ana' });
+    expect(container.querySelector('[data-comparison-handoff]')).not.toBeNull();
+    act(() => mocks.auth!('SIGNED_OUT', null));
+    expect(container.querySelector('[data-comparison-handoff]')).toBeNull();
+    expect(container.querySelector('[data-comparison-slot]')).toBeNull();
+    expect(screen.getByText(messages.comparisons.sessionChanged)).toBeTruthy();
+  });
   it('discloses loaded-group histories with zero eligible works and an unavailable participant', async () => {
     mocks.query = `group=${first.id}`;
     mocks.load.mockResolvedValue({ ok: true, data: { ...snapshot(first), excludedSeriesWithoutEpisodes: 2 } });

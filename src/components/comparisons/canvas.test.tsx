@@ -25,6 +25,47 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 describe('comparison canvas', () => {
+  it('does not displace restored region scroll when its sticky back button receives focus', () => {
+    const { container } = render(<Harness initial={{ level: 'venn', people: ['0', '1'] }}/>);
+    const viewport = container.querySelector<HTMLElement>('[data-camera-moving]')!;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this === viewport) return new DOMRect(0, 100, 640, 500);
+      if (this.className.includes('toolbar')) return new DOMRect(0, 100, 640, 90);
+      if (this.textContent?.startsWith('Volver')) return new DOMRect(0, 130, 100, 44);
+      return new DOMRect(0, 250, 100, 44);
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir región: Ana, Bea; 83 obras' }));
+    viewport.scrollTop = 1100;
+    fireEvent.click(screen.getByRole('button', { name: 'Volver al Venn' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir región: Ana, Bea; 83 obras' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Volver al Venn' }));
+    expect(viewport.scrollTop).toBe(1100);
+  });
+  it('returns the inner scroll to the originating cover after exploring an item', async () => {
+    const { container } = render(<Harness initial={{ level: 'region', people: ['0', '1'], mask: 3 }}/>);
+    const viewport = container.querySelector<HTMLElement>('[data-camera-moving]')!;
+    viewport.scrollTop = 1400;
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir obra: Libro 20' }));
+    expect(viewport.scrollTop).toBe(0);
+    await screen.findByRole('link', { name: 'Ver ficha' });
+    viewport.scrollTop = 300;
+    fireEvent.click(screen.getByRole('button', { name: 'Volver al cruce' }));
+    expect(viewport.scrollTop).toBe(1400);
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Abrir obra: Libro 20' }));
+  });
+  it.each<[View, number]>([
+    [{ level: 'group' }, -160],
+    [{ level: 'venn', people: ['0', '1'] }, -160],
+    [{ level: 'region', people: ['0', '1'], mask: 3 }, -160],
+    [{ level: 'work', people: ['0', '1'], key: 'book:0', origin: { kind: 'region', mask: 3 } }, 160],
+  ])('lets wheel scroll normally without navigating from %j', (initial, deltaY) => {
+    const { container } = render(<Harness initial={initial}/>);
+    const target = container.querySelector(initial.level === 'venn' ? '[data-region-mask]' : '[data-work-key]')!;
+    const event = new WheelEvent('wheel', { deltaY, deltaMode: 0, bubbles: true, cancelable: true });
+    expect(fireEvent(target, event)).toBe(true);
+    expect(event.defaultPrevented).toBe(false);
+    expect(container.querySelector('[data-view]')!.getAttribute('data-view')).toBe(initial.level);
+  });
   it.each([2, 3])('returns focus to Compare selection after opening a %i-person Venn', count => {
     const data = { ...snapshot, group: { ...snapshot.group, members: Array.from({ length: 10 }, (_, i) => ({ slotId: String(i), userId: String(i), name: `Persona ${i}`, avatarUrl: null, available: true })) } };
     const { container } = render(<Harness initial={{ level: 'group' }} data={data} selection/>);

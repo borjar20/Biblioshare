@@ -7538,3 +7538,18 @@ ni porcentajes inventados. El componente no recibe participantes ni obras: la
 invalidación de evidencia al cambiar grupo, formato o permisos sigue intacta.
 El detalle usa la variante compacta. Se conservan las etiquetas traducidas en una
 región de estado y la preferencia de movimiento reducido deja un dibujo estático.
+
+## 2026-10-10 — Marco estable y relevo de carga en Entre nosotros
+
+La rueda deja de controlar los niveles de zoom para permitir desplazamiento nativo.
+Mapa, Venn, cruce y obra mantienen un marco de altura responsive constante; la altura
+del contenido sigue creciendo para alcanzar todas las portadas y episodios mediante
+scroll interior. La barra de retorno permanece accesible y la navegación conserva
+el desplazamiento y foco del origen. Las obras se abren al comienzo de su contenido.
+Se retira el clasificador de gestos de rueda al no tener consumidores.
+
+El loader y el resultado comparten el marco. Un fundido CSS de 420 ms retira solo
+la ilustración decorativa y presenta los datos nuevos, sin retrasar la petición ni
+retener evidencia invalidada. La salida se acota a la secuencia de carga y el
+movimiento reducido muestra el resultado directamente. Los gráficos de Gustos
+conservan su altura natural; sus exploraciones usan el mismo marco de lienzo.

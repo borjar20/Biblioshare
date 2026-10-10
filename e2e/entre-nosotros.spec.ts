@@ -181,6 +181,9 @@ for (const width of [320, 768, 1280]) test(`Gustos restores A/B after Works sele
     const cover = page.locator(`[data-work-key="series:${fixture.series!.id}"]`), original = await cover.elementHandle();
     await cover.scrollIntoViewIfNeeded();
     const savedScroll = await page.evaluate(() => scrollY);
+    const canvas = page.locator('[data-canvas-scroll]');
+    const savedCanvasScroll = await canvas.evaluate(node => node.scrollTop);
+    const frameHeight = (await canvas.boundingBox())!.height;
     // Delay transport delivery only: response is still the genuine action/RLS result.
     let release!: () => void;
     let originalDetailBody = '';
@@ -215,6 +218,7 @@ for (const width of [320, 768, 1280]) test(`Gustos restores A/B after Works sele
     expect(samples[finalMoving].t - samples.find(sample => sample.moving === 'true')!.t).toBeLessThan(950);
     const final = samples.at(-1)!;
     expect(final.height).toBeGreaterThan(3000);
+    expect((await canvas.boundingBox())!.height).toBeCloseTo(frameHeight, 0);
     expect(samples.slice(finalMoving + 2).every(sample => sample.transform === final.transform)).toBe(true);
     expect(await original!.evaluate(node => node.isConnected)).toBe(true);
     await expect(page.getByRole('button', { name: 'Volver a la categoría', exact: true })).toBeFocused();
@@ -248,10 +252,12 @@ for (const width of [320, 768, 1280]) test(`Gustos restores A/B after Works sele
     }
     const last = page.getByRole('heading', { name: 'Temporada 1 · episodio 40', exact: true });
     await last.scrollIntoViewIfNeeded(); await expect(last).toBeInViewport();
-    expect(await page.evaluate(() => scrollY)).toBeGreaterThan(2000);
+    expect(await canvas.evaluate(node => node.scrollTop)).toBeGreaterThan(2000);
+    expect((await canvas.boundingBox())!.height).toBeCloseTo(frameHeight, 0);
     await page.keyboard.press('Escape'); await settled(page); await expect(cover).toBeFocused();
     expect(await page.evaluate(() => scrollY)).toBeCloseTo(savedScroll, 0);
-    await attachJson(info, 'async-series-motion', { samples, savedScroll, width });
+    expect(await canvas.evaluate(node => node.scrollTop)).toBeCloseTo(savedCanvasScroll, 0);
+    await attachJson(info, 'async-series-motion', { samples, savedScroll, savedCanvasScroll, frameHeight, width });
   }, { integrated: true });
 });
 
@@ -657,6 +663,151 @@ test('final fixes: intermediate map DOM names, piles and summary stay disjoint',
       await attachJson(info, `map-${width}-bounds`, boxes);
       if ([366, 430, 666, 667, 1074, 1075, 1280].includes(width)) await page.screenshot({ path: info.outputPath(`map-${width}.png`), fullPage: true });
     }
+  }, { integrated: true });
+});
+
+for (const width of [320, 1280]) test(`stable canvas: real loading handoff, native wheel and reverse keyboard traversal; ${width}px`, async ({ page }, info) => {
+  await page.setViewportSize({ width, height: 800 });
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await withComparisonFixture(async fixture => {
+    const group = await open(page, fixture, fixture.actors.slice(0, 2));
+    const workspace = page.getByRole('region', { name: 'Lienzo de comparación', exact: true });
+    const canvas = page.locator('[data-canvas-scroll]');
+    await expect(page.locator('[data-comparison-handoff]')).toHaveCount(0);
+    const initialHeight = (await workspace.boundingBox())!.height;
+    const frames: { phase: string; exterior: number; interior: number }[] = [];
+    const measureFrame = async (phase: string) => {
+      const exterior = (await workspace.boundingBox())!.height;
+      const interior = (await canvas.boundingBox())!.height;
+      expect(exterior, `exterior stays fixed at ${phase}`).toBeCloseTo(initialHeight, 0);
+      expect(interior, `canvas viewport fills the same frame at ${phase}`).toBeCloseTo(initialHeight, 0);
+      frames.push({ phase, exterior, interior }); return interior;
+    };
+    await measureFrame('group');
+
+    // Hold only genuine server transport. Auth/RLS/action bytes are forwarded
+    // unchanged; no synthetic snapshot bypasses the loading/reveal lifecycle.
+    let release!: () => void;
+    const held = new Promise<void>(resolve => { release = resolve; });
+    const reloadHandler: Parameters<Page['route']>[1] = async route => {
+      if (!route.request().headers()['next-action'] || route.request().postData() !== JSON.stringify([group, 'all'])) return route.continue();
+      const original = await route.fetch({ maxRetries: 0, maxRedirects: 0 });
+      expect(original.status()).toBe(200);
+      await held; await route.fulfill({ response: original });
+    };
+    const handoff = await page.evaluateHandle(() => {
+      const samples: { height: number; loading: boolean; reveal: number | null; overlay: number | null }[] = [];
+      let running = true;
+      function tick() {
+        const workspace = document.querySelector('section[aria-label="Lienzo de comparación"]')!;
+        const reveal = workspace.querySelector('[data-comparison-reveal]');
+        const overlay = workspace.querySelector('[data-comparison-handoff]');
+        samples.push({ height: workspace.getBoundingClientRect().height, loading: workspace.getAttribute('aria-busy') === 'true',
+          reveal: reveal ? Number(getComputedStyle(reveal).opacity) : null, overlay: overlay ? Number(getComputedStyle(overlay).opacity) : null });
+        if (running) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick); return { samples, stop() { running = false; } };
+    });
+    await page.route('**/comunidad/entre-nosotros**', reloadHandler);
+    try {
+      await page.getByRole('button', { name: 'Actualizar acceso', exact: true }).click();
+      await expect(workspace).toHaveAttribute('aria-busy', 'true');
+      await expect(workspace.getByRole('status')).toBeVisible();
+      await expect(canvas).toHaveCount(0);
+      expect((await workspace.boundingBox())!.height).toBeCloseTo(initialHeight, 0);
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      release();
+      await expect(workspace).toHaveAttribute('aria-busy', 'false');
+      await expect(page.locator('[data-comparison-handoff]')).toHaveCount(0);
+      await settled(page);
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    } finally {
+      release(); await page.unroute('**/comunidad/entre-nosotros**', reloadHandler);
+      await handoff.evaluate(probe => probe.stop());
+    }
+    const loadingSamples = await handoff.evaluate(probe => probe.samples);
+    expect(loadingSamples.some(sample => sample.loading && sample.reveal === null)).toBe(true);
+    const blended = loadingSamples.filter(sample => sample.reveal !== null && sample.overlay !== null && sample.reveal > .05 && sample.reveal < .95 && sample.overlay > .05 && sample.overlay < .95);
+    expect(blended.length, 'real frames must show both loader fading out and map fading in').toBeGreaterThan(1);
+    expect(blended.at(-1)!.reveal!).toBeGreaterThan(blended[0].reveal!);
+    expect(blended.at(-1)!.overlay!).toBeLessThan(blended[0].overlay!);
+    expect(loadingSamples.at(-1)!.reveal).toBe(1);
+    for (const sample of loadingSamples) expect(Math.abs(sample.height - initialHeight), 'no frame expands during loading handoff').toBeLessThanOrEqual(1);
+    await measureFrame('group-after-loading');
+    await page.locator('[data-map-pair]').first().click(); await settled(page);
+    await measureFrame('venn');
+    const region = page.getByRole('button', { name: 'Abrir región: Ana QA, Beatriz QA; 32 obras', exact: true });
+    const wheel = await page.evaluateHandle(() => {
+      const events: { prevented: boolean; delta: number }[] = [];
+      const listen = (event: WheelEvent) => events.push({ prevented: event.defaultPrevented, delta: event.deltaY });
+      window.addEventListener('wheel', listen, { passive: true });
+      return { events, stop: () => window.removeEventListener('wheel', listen) };
+    });
+    try {
+      await region.hover(); await page.mouse.wheel(0, -160);
+      await expect.poll(() => wheel.evaluate(probe => probe.events.length)).toBe(1);
+      await expect(canvas).toHaveAttribute('data-view', 'venn');
+      await region.hover(); await page.mouse.wheel(0, 160);
+      await expect.poll(() => wheel.evaluate(probe => probe.events.length)).toBe(2);
+      await expect(canvas).toHaveAttribute('data-view', 'venn');
+      await region.click(); await settled(page);
+      const regionHeight = await measureFrame('region-first-page');
+      const covers = canvas.locator('button[data-work-key][data-background="false"][data-inactive="false"]');
+      await expect(covers).toHaveCount(24);
+      await covers.first().hover(); await page.mouse.wheel(0, -160);
+      await expect.poll(() => wheel.evaluate(probe => probe.events.length)).toBe(3);
+      await expect(canvas).toHaveAttribute('data-view', 'region');
+      await page.getByRole('button', { name: 'Cargar más', exact: true }).click();
+      await expect(covers).toHaveCount(32);
+      expect(await measureFrame('region-all-inclusions')).toBeCloseTo(regionHeight, 0);
+
+      // Native chaining at the upper edge must scroll the surrounding page,
+      // rather than consume the wheel or change the selected diagram level.
+      await canvas.evaluate(node => { node.scrollTop = 0; window.scrollTo({ top: node.getBoundingClientRect().top + scrollY - 120, behavior: 'instant' }); });
+      const beforePageScroll = await page.evaluate(() => scrollY);
+      expect(beforePageScroll).toBeGreaterThan(0);
+      const position = await canvas.evaluate(node => {
+        const box = node.getBoundingClientRect(), toolbar = node.querySelector('[data-canvas-toolbar]')!.getBoundingClientRect();
+        return { x: box.left + box.width / 2, y: toolbar.bottom + 16 };
+      });
+      await page.mouse.move(position.x, position.y); await page.mouse.wheel(0, -320);
+      await expect.poll(() => page.evaluate(() => scrollY)).toBeLessThan(beforePageScroll);
+      await expect.poll(() => wheel.evaluate(probe => probe.events.length)).toBe(4);
+      expect(await canvas.evaluate(node => node.scrollTop)).toBe(0);
+      await expect(canvas).toHaveAttribute('data-view', 'region');
+      expect(await wheel.evaluate(probe => probe.events.every(event => !event.prevented))).toBe(true);
+
+      // Traverse upward through every real inclusion: the sticky toolbar must
+      // never cover the focused cover, even after extending the region grid.
+      const keys = await covers.evaluateAll(nodes => nodes.map(node => node.getAttribute('data-work-key')!));
+      await covers.last().focus();
+      const focused: unknown[] = [];
+      for (let index = keys.length - 2; index >= 0; index--) {
+        await page.keyboard.press('Shift+Tab');
+        await expect(canvas.locator(`[data-work-key="${keys[index]}"]`)).toBeFocused();
+        const bounds = await canvas.evaluate(node => ({
+          control: document.activeElement!.getBoundingClientRect().toJSON(),
+          frame: node.getBoundingClientRect().toJSON(), toolbar: node.querySelector('[data-canvas-toolbar]')!.getBoundingClientRect().toJSON(),
+          scrollPadding: parseFloat(getComputedStyle(node).scrollPaddingTop), scrollTop: node.scrollTop,
+        }));
+        expect(bounds.scrollPadding).toBeGreaterThanOrEqual(bounds.toolbar.height);
+        expect(bounds.control.top, 'focused cover must remain below sticky toolbar').toBeGreaterThanOrEqual(bounds.toolbar.bottom - 1);
+        expect(bounds.control.bottom).toBeLessThanOrEqual(bounds.frame.bottom + 1);
+        focused.push({ key: keys[index], ...bounds });
+      }
+      const savedCanvasScroll = await canvas.evaluate(node => node.scrollTop);
+      await page.keyboard.press('Enter'); await settled(page);
+      await expect(page.getByRole('link', { name: 'Ver ficha', exact: true })).toBeVisible();
+      expect(await measureFrame('work')).toBeCloseTo(regionHeight, 0);
+      await page.keyboard.press('Escape'); await settled(page);
+      await expect(canvas.locator(`[data-work-key="${keys[0]}"]`)).toBeFocused();
+      expect(await canvas.evaluate(node => node.scrollTop)).toBeCloseTo(savedCanvasScroll, 0);
+      expect(await measureFrame('region-return')).toBeCloseTo(regionHeight, 0);
+      await page.keyboard.press('Escape'); await settled(page); await measureFrame('venn-return');
+      await page.keyboard.press('Escape'); await settled(page); await measureFrame('group-return');
+      await expect(canvas).toHaveAttribute('data-view', 'group');
+      await attachJson(info, 'stable-canvas-native-navigation', { width, frames, focused, beforePageScroll, wheel: await wheel.evaluate(probe => probe.events), loadingSamples });
+    } finally { await wheel.evaluate(probe => probe.stop()); }
   }, { integrated: true });
 });
 

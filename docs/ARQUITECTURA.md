@@ -29,19 +29,25 @@ una ilustración SVG de círculos y portadas simbólicas que convergen mediante 
 No recibe datos del grupo ni conserva evidencia anterior; reutiliza las etiquetas
 traducidas con `role="status"` y oculta el gráfico a lectores de pantalla. El detalle
 usa una versión compacta y `prefers-reduced-motion` deja la composición estática.
+Cuando llega el resultado, el dibujo cede al contenido con un fundido de 420 ms.
+Solo se conserva la ilustración decorativa durante ese relevo; la evidencia previa
+se elimina inmediatamente al invalidar una carga.
 
 `canvas.tsx`, `geometry.ts`, `motion.ts` y `use-camera.ts` mantienen la portada original
 en el recorrido general → cruce completo → obra: 720 ms entre niveles y 850 ms
 mapa/Venn, retorno simétrico y movimiento reducido. No hay arrastre libre,
 desplazamiento por flechas, modales ni paneles laterales para explorar evidencia.
-En móvil crece la altura del lienzo y se usa el scroll normal de la página.
+El marco exterior mantiene una altura responsive constante entre carga y niveles;
+las filas y los detalles largos crecen dentro de un área con scroll nativo. La
+barra de retorno permanece accesible y se restauran foco y desplazamiento interior
+al regresar. La rueda no controla el zoom: los niveles se abren por clic o teclado.
 
 La composición visual sigue el prototipo aprobado de Sites: hero y controles compactos,
 avatares seleccionables, enlaces curvos y pilas de portadas. `presentation.ts` asigna
 colores por puesto guardado, estables al entrar en una pareja o trío. El centro del mapa
 cuenta la unión de obras compartidas por alguna pareja; el estante cuenta por separado
 las compartidas por todas las personas disponibles. Las parejas se despliegan dentro
-de la página. Gustos muestra dos superficies simultáneas: área proporcional a obras
+del marco desplazable. Gustos muestra dos superficies simultáneas: área proporcional a obras
 únicas consumidas y notas reales en escala 0–10, con muestras, rangos y cobertura.
 Los CSS Modules locales permiten esa composición sin cambiar la paleta global.
 

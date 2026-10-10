@@ -1,7 +1,7 @@
-.canvas { color: var(--foreground); background: var(--surface); min-width: 0; border-radius: 24px; overflow: clip; }
-.canvas button, .canvas a { cursor: pointer; }
+.canvas { color: var(--foreground); background: var(--surface); min-width: 0; height: var(--comparison-canvas-height,clamp(560px,72svh,720px)); max-height: 100%; border-radius: 24px; overflow-x: hidden; overflow-y: auto; overflow-anchor: none; scrollbar-gutter: stable; scroll-padding-top: var(--canvas-toolbar-height,88px); }
+.canvas button, .canvas a { cursor: pointer; scroll-margin-block: 8px; }
 .canvas button:focus-visible, .canvas a:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
-.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; min-height: 52px; padding: 18px 22px 8px; font-size: 12px; }
+.toolbar { position: sticky; top: 0; z-index: 4; background: var(--surface); display: flex; flex-wrap: wrap; align-items: center; gap: 12px; min-height: 52px; padding: 18px 22px 8px; font-size: 12px; }
 .canvas[data-view=work] .toolbar { scroll-margin-top: calc(var(--topbar-h, 59px) + 12px); }
 .toolbar button, .signals button, .pagination button, .detailEvidence button { min-height: 44px; padding: 8px 14px; border-radius: 12px; background: var(--surface-muted); }
 .toolbar p, .toolbar span, .caption { color: var(--muted-foreground); }

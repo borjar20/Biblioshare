@@ -1,17 +1,16 @@
 'use client';
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react';
 import { useTranslations } from 'next-intl';
 import { findings, regions } from '@/lib/comparisons/derive';
 import type { CatalogWork, Finding, Snapshot, WorkKey } from '@/lib/comparisons/types';
 import type { View } from './state';
 import { groupMapLayout, layoutScene, mapConnections, personCenter, regionCenter, vennCircles, WORLD_HEIGHT, WORLD_WIDTH, type Scene } from './geometry';
 import { useCamera } from './use-camera';
-import { WheelGesture } from './motion';
 import { WorkDetail } from './work-detail';
 import { initials, personColor, personInk } from './presentation';
 import styles from './canvas.module.css';
 
-type Props = { snapshot: Snapshot; view: View; onView: (view: View) => void; facetKeys?: WorkKey[]; onOpenFacetWork?: (key: WorkKey) => void; selectedPeople?: string[]; onTogglePerson?: (id: string) => void };
+type Props = { snapshot: Snapshot; view: View; onView: (view: View) => void; facetKeys?: WorkKey[]; onOpenFacetWork?: (key: WorkKey) => void; selectedPeople?: string[]; onTogglePerson?: (id: string) => void; controls?: ReactNode };
 function Avatar({ name, url }: { name: string; url: string | null }) {
   const [failed, setFailed] = useState(false);
   return <span className={styles.avatar} aria-hidden="true">{url && !failed
@@ -28,15 +27,14 @@ function Cover({ work, title }: { work: CatalogWork; title: string }) {
       : <span className={styles.fallback}><span>{title}</span><small>{t('noCover')}</small></span>}
   </span><span className={styles.coverTitle}>{title}</span></>;
 }
-type NavigationMemory = { pair: string | null; mapOrigin: 'pair' | 'selection'; region: number | null; refreshFocus: boolean };
+type NavigationMemory = { pair: string | null; mapOrigin: 'pair' | 'selection'; region: number | null; refreshFocus: boolean; scroll: Record<string, number> };
 export function ComparisonCanvas(props: Props) {
-  const navigationRef = useRef<NavigationMemory>({ pair: null, mapOrigin: 'pair', region: null, refreshFocus: false });
+  const navigationRef = useRef<NavigationMemory>({ pair: null, mapOrigin: 'pair', region: null, refreshFocus: false, scroll: {} });
   return <CanvasSession navigationRef={navigationRef} key={`${props.snapshot.group.id}:${props.snapshot.group.revision}:${props.snapshot.format}`} {...props}/>;
 }
-function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, navigationRef, selectedPeople, onTogglePerson }: Props & { navigationRef: RefObject<NavigationMemory> }) {
+function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, navigationRef, selectedPeople, onTogglePerson, controls }: Props & { navigationRef: RefObject<NavigationMemory> }) {
   const t = useTranslations('comparisons');
   const host = useRef<HTMLDivElement>(null);
-  const stage = useRef<HTMLDivElement>(null);
   const entry = useRef<HTMLDivElement>(null);
   const backButton = useRef<HTMLButtonElement>(null);
   const selectionButton = useRef<HTMLButtonElement>(null);
@@ -48,7 +46,7 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, nav
     const element = host.current; const storedNavigation = navigationRef.current;
     return () => { storedNavigation.refreshFocus = !!element?.contains(document.activeElement); };
   }, [navigationRef]);
-  const gesture = useRef(new WheelGesture());
+  const viewId = JSON.stringify(view);
   const [reduced, setReduced] = useState(false);
   const [journey, setJourney] = useState<{ level: View['level']; transition: 'group' | 'level' }>({ level: view.level, transition: 'level' });
   if (journey.level !== view.level) setJourney({ level: view.level, transition: journey.level === 'group' || view.level === 'group' ? 'group' : 'level' });
@@ -72,10 +70,14 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, nav
   useEffect(() => {
     const element = host.current;
     if (!element) return;
-    const measure = () => { if (element.clientWidth) setWidth(element.clientWidth); };
+    const measure = () => {
+      if (element.clientWidth) setWidth(element.clientWidth);
+      element.style.setProperty('--canvas-toolbar-height', `${(entry.current?.offsetHeight ?? 0) + 8}px`);
+    };
     measure();
     if (typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(measure); observer.observe(element);
+    if (entry.current) observer.observe(entry.current);
     return () => observer.disconnect();
   }, []);
   const members = snapshot.group.members.filter(member => member.available && member.userId);
@@ -121,19 +123,23 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, nav
   const poses = { ...destination.poses, ...scene.poses };
   const catalog = new Map(snapshot.catalog.map(work => [work.key, work]));
   const titleFor = (work: CatalogWork) => work.metadataMissing || !work.title ? t('missingMetadata') : work.title;
-  function openPair(people: string[], mapOrigin: NavigationMemory['mapOrigin'] = 'pair') { navigationRef.current.pair = JSON.stringify(people); navigationRef.current.mapOrigin = mapOrigin; focusAfter.current = 'back'; onView({ level: 'venn', people }); }
-  function openRegion(nextMask: number) { navigationRef.current.region = nextMask; focusAfter.current = 'back'; onView({ level: 'region', people: vennPeople, mask: nextMask }); }
+  function rememberScroll() { navigationRef.current.scroll[viewId] = host.current?.scrollTop ?? 0; }
+  function openPair(people: string[], mapOrigin: NavigationMemory['mapOrigin'] = 'pair') { rememberScroll(); navigationRef.current.pair = JSON.stringify(people); navigationRef.current.mapOrigin = mapOrigin; focusAfter.current = 'back'; onView({ level: 'venn', people }); }
+  function openRegion(nextMask: number) { rememberScroll(); navigationRef.current.region = nextMask; focusAfter.current = 'back'; onView({ level: 'region', people: vennPeople, mask: nextMask }); }
   function openWork(key: WorkKey) {
     if (facetMode && onOpenFacetWork && view.level === 'facet') {
+      rememberScroll();
       returnTo.current = { key, scroll: window.scrollY }; focusAfter.current = 'work'; onOpenFacetWork(key); return;
     }
     const zone = zones.find(item => item.keys.includes(key));
     if (zone) {
+      rememberScroll();
       returnTo.current = { key, scroll: window.scrollY }; focusAfter.current = 'work';
       onView({ level: 'work', people: vennPeople, origin: { kind: 'region', mask: zone.mask }, key });
     }
   }
   function back() {
+    rememberScroll();
     focusAfter.current = view.level === 'work' ? 'return' : 'origin';
     if (view.level === 'region') navigationRef.current.region = view.mask;
     if (view.level === 'work' && view.origin.kind === 'facet') onView({ level: 'facet', people: view.people, facetKind: view.origin.facetKind, facetId: view.origin.facetId });
@@ -142,55 +148,44 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, nav
     else onView({ level: 'group' });
   }
   useLayoutEffect(() => {
-    // The return action precedes the stage. Anchor entry at its toolbar so both
-    // it and the following heading remain below the sticky shell header.
-    if (view.level === 'work' && focusAfter.current === 'work') entry.current?.scrollIntoView?.({ block: 'start', behavior: 'instant' });
-  }, [view.level]);
+    // Only the inner viewport moves. The page and its fixed frame stay put.
+    if (host.current) host.current.scrollTop = 0;
+  }, [viewId]);
   useEffect(() => {
     if (moving || !focusAfter.current) return;
+    const viewport = host.current;
+    if (viewport) viewport.scrollTop = view.level === 'work' ? 0 : navigationRef.current.scroll[viewId] ?? 0;
+    let focused: HTMLElement | null = null;
     if (focusAfter.current === 'return' && returnTo.current) {
       const target = Array.from(host.current?.querySelectorAll<HTMLButtonElement>('[data-work-key]') ?? []).find(node => node.dataset.workKey === returnTo.current!.key);
       target?.focus({ preventScroll: true }); window.scrollTo({ top: returnTo.current.scroll, behavior: 'instant' });
+      focused = target ?? null;
     } else {
       const controls = Array.from(host.current?.querySelectorAll<HTMLButtonElement>(view.level === 'group' ? '[data-map-pair]' : 'button[data-region-mask]:not([data-work-key])') ?? []);
       const selectionOrigin = view.level === 'group' && navigationRef.current.mapOrigin === 'selection' && !selectionButton.current?.disabled ? selectionButton.current : null;
       const origin = focusAfter.current === 'origin' ? selectionOrigin ?? controls.find(control => view.level === 'group'
         ? control.dataset.mapPair === navigationRef.current.pair : Number(control.dataset.regionMask) === navigationRef.current.region) : null;
-      (origin ?? (view.level === 'group' ? controls[0] : backButton.current) ?? host.current)?.focus({ preventScroll: true });
+      focused = origin ?? (view.level === 'group' ? controls[0] : backButton.current) ?? host.current;
+      focused?.focus({ preventScroll: true });
+    }
+    // A refreshed origin may have moved. Keep its focused control visible
+    // without scrolling the surrounding page or hiding it behind the toolbar.
+    if (viewport && focused && focused !== viewport && !entry.current?.contains(focused)) {
+      const bounds = viewport.getBoundingClientRect(); const control = focused.getBoundingClientRect();
+      const top = bounds.top + (entry.current?.getBoundingClientRect().height ?? 0);
+      if (control.top < top) viewport.scrollTop -= top - control.top;
+      else if (control.bottom > bounds.bottom) viewport.scrollTop += control.bottom - bounds.bottom;
     }
     focusAfter.current = null;
-  }, [moving, view.level, navigationRef]);
-  // The native, non-passive listener captures only a valid destination gesture.
-  // Its gesture state survives frames, so a burst cannot emit multiple levels.
-  useEffect(() => {
-    const element = stage.current; if (!element) return;
-    const wheel = (event: WheelEvent) => {
-      if (event.ctrlKey || event.metaKey) return;
-      const direction = event.deltaY < 0 ? 'in' : event.deltaY > 0 ? 'out' : null;
-      if (!direction) return;
-      const target = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-region-mask], [data-work-key], [data-pair]') : null;
-      const canBack = direction === 'out' && view.level !== 'group';
-      const canEnter = direction === 'in' && (view.level === 'venn' && !!target?.dataset.regionMask || (view.level === 'region' || view.level === 'facet') && !!target?.dataset.workKey && target.dataset.background !== 'true' || view.level === 'group' && !!target?.dataset.pair);
-      const now = performance.now();
-      if (!canBack && !canEnter && !gesture.current.isCaptured(now, moving)) { gesture.current.reset(); return; }
-      const intent = gesture.current.push(event.deltaY, event.deltaMode, now, moving);
-      if (gesture.current.captured) event.preventDefault();
-      if (!intent) return;
-      if (intent === 'out' && canBack) back();
-      else if (view.level === 'venn' && target?.dataset.regionMask) openRegion(Number(target.dataset.regionMask));
-      else if ((view.level === 'region' || view.level === 'facet') && target?.dataset.workKey) openWork(target.dataset.workKey as WorkKey);
-      else if (view.level === 'group' && target?.dataset.pair) openPair(JSON.parse(target.dataset.pair) as string[]);
-    };
-    element.addEventListener('wheel', wheel, { passive: false });
-    return () => element.removeEventListener('wheel', wheel);
-  });
+  }, [moving, viewId, view.level, navigationRef]);
   const isWork = view.level === 'work';
-  // Async content reserves ordinary page space without changing the camera
-  // destination or restarting its 720ms clock and completion focus.
-  const stageHeight = isWork ? Math.max(scene.height, evidenceHeight) : scene.height;
+  // Scene height is a scrollable content extent, never the exterior frame.
+  // Reserve its destination immediately instead of tweening page geometry.
+  const stageHeight = isWork ? Math.max(destination.height, evidenceHeight) : destination.height;
   const overviewControls = view.level === 'group' || view.level === 'venn';
-  return <div ref={host} tabIndex={-1} className={styles.canvas} data-view={view.level} data-camera-moving={moving} onKeyDown={event => { if (event.key === 'Escape' && view.level !== 'group') { event.preventDefault(); back(); } }}>
-    <div ref={entry} className={styles.toolbar}>
+  return <div ref={host} tabIndex={-1} className={styles.canvas} data-view={view.level} data-camera-moving={moving} data-canvas-scroll onKeyDown={event => { if (event.key === 'Escape' && view.level !== 'group') { event.preventDefault(); back(); } }}>
+    {controls}
+    <div ref={entry} className={styles.toolbar} data-canvas-toolbar>
       {view.level !== 'group' && <button ref={backButton} type="button" onClick={back}>{t(isWork ? facetMode ? 'backToFacet' : 'backToRegion' : view.level === 'region' ? 'backToVenn' : 'backToGroup')}</button>}
       {view.level !== 'group' && <span>{names(vennPeople)}</span>}
       {view.level === 'group' && <><p>{t('mapHint')}</p>{members.length < snapshot.group.members.length && <p>{t('unavailableCount', { count: snapshot.group.members.length - members.length })}</p>}</>}
@@ -204,7 +199,7 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, nav
     {view.level === 'region' && <header className={styles.regionHeading}><h3>{names(region?.people ?? [])}</h3><p>{t('baseCount', { count: region?.keys.length ?? 0 })}</p>
       {!fullKeys.length && <p>{t(signal === 'all' ? 'emptyRegion' : 'emptyFindings')}</p>}
     </header>}
-    <div ref={stage} className={styles.stage} style={{ height: stageHeight }} data-comparison-stage data-scene-height={stageHeight}>
+    <div className={styles.stage} style={{ height: stageHeight }} data-comparison-stage data-scene-height={stageHeight}>
       <div className={styles.world} data-comparison-world style={{ width: WORLD_WIDTH, height: worldHeight, '--camera-scale': scene.camera.scale, transform: `translate(${scene.camera.x}px, ${scene.camera.y}px) scale(${scene.camera.scale})` } as CSSProperties}>
         <svg className={styles.background} data-focused={!overviewControls} width={WORLD_WIDTH} height={worldHeight} aria-hidden="true">
           {view.level === 'group' ? pairs.map(pair => {
