@@ -346,3 +346,12 @@ portadas, altura y cámara en coordenadas de pantalla, el reinicio desde una pos
 intermedia y el foco de obra con distintas alturas de lienzo. Siguen pasando los
 tests de cámara y eco de guardado. Se conservan iframe y ambas CSP; el arnés de
 medición temporal no se publica. La integración sigue pendiente en #1462.
+
+## Validación del diseño del 2026-10-10
+
+Después de la corrección anterior, el usuario confirma «Ok veo bien el diseño».
+La versión 14 publicada queda como referencia visual validada para la feature,
+con el recorrido general/cruce/obra dentro del lienzo y las transiciones descritas.
+Esta aprobación posterior actualiza el estado de revisión indicado al inicio de
+este historial. La implementación con datos reales y las decisiones de producto
+todavía abiertas siguen pendientes en #1462.

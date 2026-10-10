@@ -7109,3 +7109,13 @@ de cada portada desde la pila. El regreso recorre esa transformación al revés;
 si se interrumpe, continúa desde las posiciones visibles. Las colecciones móviles
 siguen creciendo en altura y el zoom a una obra conserva su destino. Es una
 corrección de continuidad en el mockup de Sites; la feature sigue en #1462.
+
+## 2026-10-10 — Diseño visual de Entre nosotros validado
+
+Tras revisar la transición entre Venn general y cruce, el usuario confirma:
+«Ok veo bien el diseño». Queda validada como referencia visual la versión 14 del
+[mockup publicado](https://biblioshare-entre-nosotros.borjar20.chatgpt.site): paleta
+de Biblioshare, pilas de portadas reales, exploración dentro del lienzo por niveles
+general/cruce/obra, transiciones reversibles y fondo difuminado, sin arrastre libre.
+La aprobación corresponde al diseño y la interacción del prototipo. La integración
+con datos reales y las reglas de producto pendientes continúan en #1462.
