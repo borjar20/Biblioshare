@@ -13,5 +13,6 @@ export default defineConfig({
   timeout: 180_000,
   workers: 1,
   retries: 0,
-  use: { ...base.use, trace: 'retain-on-failure' },
+  // Asset/action interception is the gate contract. Offline/SW behavior is outside it.
+  use: { ...base.use, serviceWorkers: 'block', trace: 'retain-on-failure' },
 });

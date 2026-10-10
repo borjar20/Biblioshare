@@ -1,0 +1,46 @@
+
+> biblioshare@1.1.0 test
+> vitest run src/components/comparisons/geometry.test.ts --reporter=dot
+
+
+ RUN  v4.1.11 C:/Users/borja/.codex/worktrees/5ca1/Biblioshare
+
+···························xx·········xxx········xxx········xxx······················
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 11 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/components/comparisons/geometry.test.ts > comparison world geometry > fits two-line labels for 7 people at stage 361 px
+ FAIL  src/components/comparisons/geometry.test.ts > comparison world geometry > fits two-line labels for 7 people at stage 364 px
+ FAIL  src/components/comparisons/geometry.test.ts > comparison world geometry > fits two-line labels for 8 people at stage 361 px
+ FAIL  src/components/comparisons/geometry.test.ts > comparison world geometry > fits two-line labels for 8 people at stage 364 px
+ FAIL  src/components/comparisons/geometry.test.ts > comparison world geometry > fits two-line labels for 8 people at stage 400 px
+ FAIL  src/components/comparisons/geometry.test.ts > comparison world geometry > fits two-line labels for 9 people at stage 361 px
+ FAIL  src/components/comparisons/geometry.test.ts > comparison world geometry > fits two-line labels for 9 people at stage 364 px
+ FAIL  src/components/comparisons/geometry.test.ts > comparison world geometry > fits two-line labels for 9 people at stage 400 px
+ FAIL  src/components/comparisons/geometry.test.ts > comparison world geometry > fits two-line labels for 10 people at stage 361 px
+ FAIL  src/components/comparisons/geometry.test.ts > comparison world geometry > fits two-line labels for 10 people at stage 364 px
+ FAIL  src/components/comparisons/geometry.test.ts > comparison world geometry > fits two-line labels for 10 people at stage 400 px
+AssertionError: 0/1 overlap: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/components/comparisons/geometry.test.ts:40:164
+     38|     const points = Array.from({ length: count }, (_, i) => personCente…
+     39|     for (let i = 0; i < points.length; i++) for (let j = i + 1; j < po…
+     40|       expect(Math.abs(points[i].x - points[j].x) * scale >= envelope.w…
+       |                                                                                                                                                                    ^
+     41|     }
+     42|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/11]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  11 failed | 74 passed (85)
+   Start at  16:02:06
+   Duration  468ms (transform 60ms, setup 0ms, import 121ms, tests 109ms, environment 0ms)
+

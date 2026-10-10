@@ -1,0 +1,15 @@
+
+> biblioshare@1.1.0 test:e2e
+> playwright test e2e/entre-nosotros-motion.spec.ts --config playwright.comparisons.config.ts --workers=1 --retries=0 --output test-results/final-fix-motion
+
+
+Running 4 tests using 1 worker
+
+(node:41044) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 [chromium] › e2e\entre-nosotros-motion.spec.ts:52:5 › real cover travels both ways through map, Venn, region and work, and interruption rebases (13.6s)
+  ok 2 [chromium] › e2e\entre-nosotros-motion.spec.ts:93:5 › real wheel burst captures one target, releases after quiet and animation, keeps native limits and modifiers (13.1s)
+  ok 3 [chromium] › e2e\entre-nosotros-motion.spec.ts:149:5 › reduced motion applies destination directly and Escape returns with focus (4.2s)
+  ok 4 [chromium] › e2e\entre-nosotros-motion.spec.ts:166:5 › 320px normal page scroll reaches last loaded cover, touch opens actual work and return restores node, batch, scroll and focus (9.4s)
+
+  4 passed (41.4s)

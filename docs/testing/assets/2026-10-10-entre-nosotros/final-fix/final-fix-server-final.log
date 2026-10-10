@@ -1,0 +1,13 @@
+
+> biblioshare@1.1.0 start
+> next start --port 3000
+
+▲ Next.js 16.3.8
+- Local:         http://localhost:3000
+- Network:       http://169.254.83.107:3000
+✓ Ready in 322ms
+✓ Running next.config.ts took 113ms
+⨯ Error: The destination stream closed early.
+    at ignore-listed frames {
+  digest: '3204442879'
+}

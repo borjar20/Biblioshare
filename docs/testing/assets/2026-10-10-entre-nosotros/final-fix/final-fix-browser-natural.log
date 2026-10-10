@@ -1,0 +1,57 @@
+
+> biblioshare@1.1.0 test:e2e
+> playwright test --config playwright.comparisons.config.ts --grep final fixes: natural --workers=1 --retries=0 --output test-results/final-fix-natural
+
+
+Running 1 test using 1 worker
+
+(node:47704) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  1 [chromium] › e2e\entre-nosotros.spec.ts:477:1 › final fixes: natural origin focus, 320px selector, all-person episode sample and exclusions (18.8s)
+
+
+  1) [chromium] › e2e\entre-nosotros.spec.ts:477:1 › final fixes: natural origin focus, 320px selector, all-person episode sample and exclusions 
+
+    Error: locator.innerText: Error: strict mode violation: locator('[data-view="work"]') resolved to 2 elements:
+        1) <div data-view="work" class="min-h-48" data-comparison-slot="works">…</div> aka getByText('Comparar selecciónVolver al')
+        2) <div tabindex="-1" data-view="work" data-camera-moving="false" class="canvas-module__wR_ZRW__canvas">…</div> aka getByText('Volver al cruceBeatriz QA, Ana QAqa_comp_motion_long_series_El relato')
+
+    Call log:
+      - waiting for locator('[data-view="work"]')
+
+
+      515 |     await expect(page.getByText('0 episodios comunes valorados por todas las personas indicadas.', { exact: true })).toBeVisible();
+      516 |     await expect(page.getByText('No hay episodios comunes valorados por todas las personas indicadas.', { exact: true })).toBeVisible();
+    > 517 |     await attachJson(info, 'joint-episodes-copy', await page.locator('[data-view="work"]').innerText());
+          |                                                                                            ^
+      518 |     await page.keyboard.press('Escape'); await settled(page);
+      519 |     await page.keyboard.press('Escape'); await settled(page);
+      520 |     await comparisonRest(`episode_watches?user_id=eq.${fixture.actors[1].id}&series_id=eq.${fixture.series!.id}`, { method: 'DELETE' });
+        at integrated (C:\Users\borja\.codex\worktrees\5ca1\Biblioshare\e2e\entre-nosotros.spec.ts:517:92)
+        at withComparisonFixture (C:\Users\borja\.codex\worktrees\5ca1\Biblioshare\e2e\support\comparison-fixtures.ts:102:13)
+        at C:\Users\borja\.codex\worktrees\5ca1\Biblioshare\e2e\entre-nosotros.spec.ts:479:3
+
+    attachment #1: selector-empty (application/json) ───────────────────────────────────────────────
+    test-results\final-fix-natural\entre-nosotros-final-fixes-07ced-isode-sample-and-exclusions-chromium\attachments\selector-empty-29ee7e235cd89336a6416a437573f27faaeb0a66.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: selector-long-selected (application/json) ───────────────────────────────────────
+    test-results\final-fix-natural\entre-nosotros-final-fixes-07ced-isode-sample-and-exclusions-chromium\attachments\selector-long-selected-7a1d1ddd030a4cf8bd195b8e30f214a730c2cc14.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: browser-journal (application/json) ──────────────────────────────────────────────
+    test-results\final-fix-natural\entre-nosotros-final-fixes-07ced-isode-sample-and-exclusions-chromium\attachments\browser-journal-3d14ca103022b22980cc97501671bbd5f16d00bc.json
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\final-fix-natural\entre-nosotros-final-fixes-07ced-isode-sample-and-exclusions-chromium\error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\final-fix-natural\entre-nosotros-final-fixes-07ced-isode-sample-and-exclusions-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\final-fix-natural\entre-nosotros-final-fixes-07ced-isode-sample-and-exclusions-chromium\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium] › e2e\entre-nosotros.spec.ts:477:1 › final fixes: natural origin focus, 320px selector, all-person episode sample and exclusions 

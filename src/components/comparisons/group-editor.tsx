@@ -1,5 +1,5 @@
 'use client';
-import { useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { deleteGroup, saveGroup } from '@/lib/comparisons/actions';
 import type { Candidate, Group, Result } from '@/lib/comparisons/types';
@@ -16,6 +16,13 @@ export function GroupEditor({ group, candidates, onSaved, onDeleted, onCancel, o
   const [error, setError] = useState<Extract<Result<never>, { ok: false }>['code'] | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [unavailable, setUnavailable] = useState(group?.members.filter(member => !member.available).map(member => member.slotId) ?? []);
+  const deleteTrigger = useRef<HTMLButtonElement>(null);
+  const deleteCancel = useRef<HTMLButtonElement>(null);
+  const deleteFocus = useRef(false);
+  useLayoutEffect(() => {
+    if (deleteFocus.current) (confirmDelete ? deleteCancel : deleteTrigger).current?.focus();
+    deleteFocus.current = false;
+  }, [confirmDelete]);
   const pending = useRef(false);
   const nameInput = useRef<HTMLInputElement>(null);
   const valid = !!name.trim() && [...name.trim()].length <= 60 && selected.length >= 2 && selected.length <= 10 && unavailable.length === 0;
@@ -50,6 +57,6 @@ export function GroupEditor({ group, candidates, onSaved, onDeleted, onCancel, o
     <p id="comparison-group-count" role="status" className="text-sm">{t('participantCount', { count: participantCount })} {participantCount < 2 || participantCount > 10 ? t('groupSize') : ''}</p>
     {error && <div role="alert"><p>{t(error === 'conflict' ? 'saveConflict' : `errors.${error}`)}</p>{error === 'conflict' && <Button type="button" variant="secondary" onClick={onReload}>{t('reloadGroups')}</Button>}</div>}
     <div className="flex flex-wrap gap-2"><Button type="submit" disabled={busy || !valid} aria-describedby="comparison-group-count">{t(busy ? 'saving' : 'save')}</Button><Button type="button" variant="secondary" disabled={busy} onClick={onCancel}>{t('cancel')}</Button></div>
-    {group && <div className="border-t border-border pt-3">{confirmDelete ? <div className="flex flex-wrap items-center gap-2"><p>{t('deleteConfirm')}</p><Button type="button" variant="danger" disabled={busy} onClick={() => void remove()}>{t('confirmDelete')}</Button><Button type="button" variant="ghost" disabled={busy} onClick={() => setConfirmDelete(false)}>{t('cancel')}</Button></div> : <Button type="button" variant="ghost" disabled={busy} onClick={() => setConfirmDelete(true)}>{t('deleteGroup')}</Button>}</div>}
+    {group && <div className="border-t border-border pt-3">{confirmDelete ? <div className="flex flex-wrap items-center gap-2"><p>{t('deleteConfirm')}</p><Button type="button" variant="danger" disabled={busy} onClick={() => void remove()}>{t('confirmDelete')}</Button><Button type="button" ref={deleteCancel} variant="ghost" disabled={busy} onClick={() => { deleteFocus.current = true; setConfirmDelete(false); }}>{t('cancel')}</Button></div> : <Button type="button" ref={deleteTrigger} variant="ghost" disabled={busy} onClick={() => { deleteFocus.current = true; setConfirmDelete(true); }}>{t('deleteGroup')}</Button>}</div>}
   </form>;
 }

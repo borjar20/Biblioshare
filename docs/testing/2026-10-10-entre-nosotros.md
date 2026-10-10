@@ -1,6 +1,6 @@
 # Entre nosotros — verificación integrada
 
-> [Canónico · evidencia de ejecución local del 2026-10-10; candidato sobre cd43ce9bffbbcdceca92c22509794f1f3044fca0. Gates finalizados sobre build AzNCV4SAaUJ6YTFacyCNy; mediciones previas identificadas por ronda; revisión independiente pendiente.]
+> [Canónico · evidencia de ejecución local del 2026-10-10. Corte previo sobre cd43ce9bffbbcdceca92c22509794f1f3044fca0/build AzNCV4SAaUJ6YTFacyCNy conservado; ronda final sobre base a481da32/build pOmDFAzwjVIeNxwlt6Cex al final. Revisión acotada pendiente.]
 
 ## Fronteras y reproducción
 
@@ -162,3 +162,115 @@ Observación M2 para revisión final del controlador: el selector Grupo a 320 px
 
 
 Corrección de revisión I1 de tarea 9: tipos y ESLint de ambas configuraciones PASS, sin errores/advertencias; diff focal limpio. M1/M2/M3 permanecen pendientes para revisión de toda la rama: el DNS de imagen placeholder de fixture se conserva explícito junto con los otros avisos, sin arreglo incidental. La deriva del rol Codex backlog-scribe queda fuera de la feature y registrada en #1466; no se cambia configuración de agentes.
+
+
+## Ronda única final de correcciones — 2026-10-10
+
+Los apartados anteriores conservan el corte previo: **5.610 unitarios/560 archivos
+y 12 recorridos únicos de la build AzNCV4SAaUJ6YTFacyCNy**. Esa suite general no se
+ha repetido ni se atribuye al nuevo candidato. La presente ronda corrige únicamente
+I1/I2/M1–M5 del informe completo, sobre base `a481da32c9280e43ec5fc38d11197d69492adaaa`.
+Producción, integración/CI y la re-revisión acotada siguen pendientes.
+
+| Hallazgo | Resultado actual |
+| --- | --- |
+| I1 | Aviso compartido de historiales persona/serie del grupo cargado, incluso sin obras elegibles, sin selección en Gustos o con participante no disponible. Aclara que no cuenta series únicas ni sólo la pareja activa. Snapshot vacío real conserva3; tras borrar Carlos conserva2. |
+| I2 | Tamaño de nombre y geometría dependen del mismo ancho de stage; reserva de etiqueta de dos líneas/portada rotada, ajuste de bordes y crecimiento vertical con scroll normal. Coordenadas únicas y relojes anteriores intactos. |
+| M1 | Confirmación inline enfoca Cancelar; cancelar devuelve a Eliminar. Enter/Cancelar/Enter/Shift+Tab/Confirmar se prueba sin reparar foco. Observación actual BUTTON/Cancelar. |
+| M2 | Selector320 px, vacío y nombre largo, mide288 px; botones envuelven en otra fila. |
+| M3 | Sospecha de harness abierta y etiquetada en [#1471](https://github.com/borjar20/Biblioshare/issues/1471); diagnóstico y contraevidencia preservados. Política dedicada bloquea workers como límite del gate, no como cierre causal ni promesa de entrega universal. |
+| M4 | Muestra de episodios valorados por todas las personas, cero veraz cuando B deja notas nulas; región individual explica que no hay comparación conjunta. Notas generales/episodio separadas. |
+| M5 | Retorno a pareja no inicial/región exacta y categoría original desde el padre Gustos; control superviviente al desaparecer origen. Nodo/scroll del cover y movimiento reversible conservados. |
+
+RED significativo: ocho fallos UI/69 PASS y11 geometría/74 PASS; añadido oráculo de
+huella rotada:12 FAIL/127 PASS. GREEN actual: **350/350 en13 archivos**,7,27s, mediante
+`npm test -- src/components/comparisons src/lib/comparisons src/components/route-messages.test.tsx --reporter=dot`.
+Tras alinear un fixture antiguo de detalle con el contrato real de notas de todas
+las personas, `npm test -- src/components/comparisons/work-detail.test.tsx --reporter=dot`
+pasa10/10,2,76s. Sólo cambio de test. Tipos `npx tsc --noEmit --pretty false` PASS;
+lint focal de comparisons/spec/fixture/config0 errores/0 advertencias. Consistencia:
+82 claves directas de comparisons presentes, familias dinámicas sin cambios; suite
+de mensajes de ruta incluida. No suite general repetida.
+
+Build fresca `npm run build` PASS, Next16.3.8, **BUILD_ID
+`pOmDFAzwjVIeNxwlt6Cex`**. Supabase local desechable54321 preloaded para build,
+start y browser; `.env.local` dev intacto. Servidor propio único3000/PID37936.
+Ningún cambio de producto posterior a esa build, sólo tests/docs/informe.
+El servidor conserva un mensaje «destination stream closed early» ya seguido en
+[#1263](https://github.com/borjar20/Biblioshare/issues/1263); no se declara log limpio.
+
+Browser con `playwright.comparisons.config.ts`, workers1/retries0:
+
+- Tanda `--grep 'final fixes|ten-person CRUD|Gustos restores A/B'`:5 PASS/1 FAIL,
+  4,3min. CRUD/teclado natural y Gustos320/768/1280 PASS; mapa intermedio PASS.
+  El caso combinado falló por asumir orden Ana,Beatriz cuando el origen no inicial
+  conservaba Beatriz,Ana y la intersección real correcta tenía1serie. Se conserva
+  el fallo: no era un defecto de selección ni de producto.
+- Una repetición focal encontró strictness en un selector de **registro** innerText
+  (slot y canvas tenían data-view=work),18,8s. Las muestras40/0 ya habían pasado.
+  Selector de captura acotado al host de cámara; sin cambio de producto.
+- `--grep 'final fixes' --output test-results/final-fix-acceptance`:**2/2 PASS**,
+  55,5s. Copia/muestras/región individual/exclusiones y retornos naturales28,8s;
+  DOM responsive25,3s, incluidos nuevos bordes stage959/960/961.
+- `e2e/entre-nosotros-motion.spec.ts --output test-results/final-fix-motion`:
+  **4/4 PASS**,41,4s: cover original ambos sentidos/interrupción, wheel real,
+  movimiento reducido y320 px touch/scroll/batch/foco.
+
+Son **10 casos relevantes distintos en la build nueva**, acreditados por cuatro
+CRUD/Gustos de la tanda +dos aceptación corregidos +cuatro motion; no se presenta
+la tanda6 como íntegramente verde ni se inventa una repetición actual de los12 anteriores.
+Los comandos completos, fracasos intermedios y capturas están en el
+[informe completo de esta ronda](assets/2026-10-10-entre-nosotros/final-fix/final-fix-report.md).
+
+DOM real10 personas, nombres de dos líneas Diana A0–A9 García y una pila periférica
+real:18viewport widths365/366/367,425/426/427,430,466,665/666/667,
+1041/1042/1043,1073/1074/1075,1280. Sus stages299/300/301,359/360/361,364,
+400,567/568/569,927/928/929,959/960/961,1166 tienen cero intersecciones
+nombre/nombre, nombre/pila y nombre/resumen, bordes dentro del stage y sin overflow.
+Altura de etiquetas compactas40,375 px/11 px; ordinarias47,59375 px/14 px. Oráculo puro
+cubre5–10 personas y ambos lados de umbrales,187/187 PASS. Se conservan18 JSON de
+bounds y fullPage366/430/666/667/1074/1075/1280, además de selector 320vacío/largo,
+serie por temas y aviso de exclusión sin obras/con participante no disponible.
+Capturas430y selector largo inspeccionadas visualmente. No se copian traces con
+cookies/headers/tokens a los assets durables.
+
+### M3: diagnóstico acotado y contraevidencia
+
+En build previa de esta ronda `iJy-2j8v-ua6py5Ep4y0F`, un solo caso crea contexts
+allow/block. Conserva origen/ruta completa sanitizada del placeholder, tipo image,
+frame, Request.serviceWorker y CDP initiator. allow:un fallo DNS en frame `/`,
+worker del request null, initiator other y /sw.js registrado/controller al final;
+block:sin fallo en ese caso. **Después, dos fallos DNS aparecen también con
+workers bloqueados** en Inicio durante los recorridos Gustos de pOm. Se añaden a
+#1471; no hay causa confirmada, ni fallo atribuido a proveedor externo o producción.
+`serviceWorkers: 'block'` en la configuración dedicada expresa el límite del gate
+de intercepción y no acredita PWA/offline ni una corrección universal del fixture.
+El worker de producto y HTTP original de sesión/acciones permanecen intactos.
+
+Aceptación2 casos:0 errores JS no capturados,0fallos de cover,21fallos de red
+ERR_ABORTED conservados y4 mensajes esperados de registro de worker bloqueado.
+Tanda original6:0 errores JS no capturados,58fallos de red incluidos2DNS,
+15 mensajes de consola (incluye el caso de harness fallido). Motion no tiene auto
+journal: no se inventa un conteo global para sus4 PASS. Los errores no se ocultan.
+Datos sanitizados en [journal resumen](assets/2026-10-10-entre-nosotros/final-fix/browser-journal-summary.json)
+y [diagnóstico M3](assets/2026-10-10-entre-nosotros/final-fix/M3-cover-ownership.json).
+
+### Limpieza y límites de esta ronda
+
+Cleanup exacto por finally en todos los fixtures, también tras fallos. Audit
+final read-only del proyecto inicialmente vacío: profiles/books/movies/series/
+comparison_groups/passes/episode_watches y auth qa_comp_motion_[a-j] todos0,
+[recibo](assets/2026-10-10-entre-nosotros/final-fix/final-fix-cleanup.json).
+Primer import del helper de auditoría falló por Node userInfo ENOMEM antes de
+mutar; auditoría REST de sólo lectura con Node plain pasa. Servidores propios
+35524/37936 y contexts/runners cerrados,3000libre, sin watchers; override temporal
+eliminado, .env.local dev preservado. Supabase local padre queda en marcha para la
+auditoría/parada final del coordinador. Sin cambios/fixtures productivos,
+nuevos worktrees, cleanup de procesos ajenos, push ni merge.
+
+Límites siguen rastreados en #1462 integración/despliegue,
+[#1468](https://github.com/borjar20/Biblioshare/issues/1468) plataformas/screen-reader,
+[#1469](https://github.com/borjar20/Biblioshare/issues/1469) facetas/listas grandes,
+[#1470](https://github.com/borjar20/Biblioshare/issues/1470) acta offline/polling/realtime,
+y #1471 M3. Deuda #1263/#1463–#1467 conservada. No se atribuyen CI, producción,
+Android, Firefox, WebKit ni lector de pantalla a estas pruebas Chromium locales.

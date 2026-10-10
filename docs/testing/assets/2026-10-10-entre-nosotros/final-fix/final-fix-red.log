@@ -1,0 +1,2737 @@
+
+> biblioshare@1.1.0 test
+> vitest run src/components/comparisons/group-editor.test.tsx src/components/comparisons/canvas.test.tsx src/components/comparisons/tastes.test.tsx src/components/comparisons/explorer.test.tsx src/components/comparisons/work-detail.test.tsx --reporter=dot
+
+
+ RUN  v4.1.11 C:/Users/borja/.codex/worktrees/5ca1/Biblioshare
+
+·······x··xx······················x·x··············x·················xx······
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/components/comparisons/canvas.test.tsx > comparison canvas > returns to the originating non-first pair and exact region
+AssertionError: expected <button type="button"></button> to be <button type="button" …(5)>…(2)</button> // Object.is equality
+
+- Expected
++ Received
+
+  <button
+-   aria-label="Abrir región: Carlos; 0 obras"
+-   class="_region_c4ae9d"
+-   data-empty="true"
+-   data-region-mask="2"
+-   style="left: 486.40000000000003px; top: 268.8px;"
+    type="button"
+  >
+-   <strong>
+-     0
+-   </strong>
+-   <span>
+-     Carlos
+-   </span>
++   Volver al grupo
+  </button>
+
+ ❯ src/components/comparisons/canvas.test.tsx:31:36
+     29|     fireEvent.click(screen.getByRole('button', { name: 'Abrir región: …
+     30|     fireEvent.click(screen.getByRole('button', { name: 'Volver al Venn…
+     31|     expect(document.activeElement).toBe(screen.getByRole('button', { n…
+       |                                    ^
+     32|     fireEvent.click(screen.getByRole('button', { name: 'Volver al grup…
+     33|     expect(document.activeElement).toBe(screen.getByRole('button', { n…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  src/components/comparisons/explorer.test.tsx > Explorer request boundaries > discloses loaded-group histories with zero eligible works and an unavailable participant
+TestingLibraryElementError: Unable to find an element with the text: /2 historiales de persona y serie del grupo cargado/. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div>
+      <div
+        class="flex flex-col gap-5"
+      >
+        <div
+          class="flex flex-wrap items-end gap-3"
+        >
+          <label
+            class="flex min-w-0 flex-1 flex-col gap-2 text-sm font-medium"
+          >
+            Grupo
+            <select
+              class="min-h-11 rounded-md border border-border bg-surface px-3 text-foreground"
+            >
+              <option
+                value=""
+              >
+                Elige un grupo
+              </option>
+              <option
+                value="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+              >
+                Lectores
+              </option>
+              <option
+                value="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+              >
+                Cine
+              </option>
+            </select>
+          </label>
+          <button
+            class="inline-flex items-center justify-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition-colors bg-accent text-accent-foreground hover:bg-accent-hover disabled:opacity-60 "
+          >
+            Crear grupo
+          </button>
+          <button
+            class="inline-flex items-center justify-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition-colors border border-border text-foreground hover:bg-surface-muted disabled:opacity-60 "
+          >
+            Editar grupo
+          </button>
+        </div>
+        <div
+          class="flex flex-wrap items-center justify-between gap-3 border-b border-border"
+        >
+          <nav
+            aria-label="Secciones de la comparación"
+            class="flex gap-5"
+          >
+            <button
+              aria-pressed="true"
+              class="min-h-11 border-b-2 font-serif text-lg border-accent text-foreground"
+              type="button"
+            >
+              Obras
+            </button>
+            <button
+              aria-pressed="false"
+              class="min-h-11 border-b-2 font-serif text-lg border-transparent text-muted-foreground"
+              type="button"
+            >
+              Gustos
+            </button>
+          </nav>
+          <label
+            class="flex items-center gap-2 text-sm"
+          >
+            Formato
+            <select
+              class="min-h-11 rounded-md border border-border bg-surface px-2"
+            >
+              <option
+                value="all"
+              >
+                Todos los formatos
+              </option>
+              <option
+                value="book"
+              >
+                Libros
+              </option>
+              <option
+                value="movie"
+              >
+                Películas
+              </option>
+              <option
+                value="series"
+              >
+                Series
+              </option>
+            </select>
+          </label>
+        </div>
+        <section
+          aria-busy="false"
+          aria-label="Lienzo de comparación"
+          class="min-h-72 rounded-lg border border-border bg-surface p-4 sm:p-6"
+        >
+          <div
+            class="flex flex-wrap items-center justify-between gap-3"
+          >
+            <h2
+              class="font-serif text-xl font-semibold"
+            >
+              Lectores
+            </h2>
+            <button
+              class="inline-flex items-center justify-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition-colors text-foreground hover:bg-surface-muted disabled:opacity-60 "
+            >
+              Actualizar acceso
+            </button>
+          </div>
+          <fieldset
+            class="my-4 flex flex-wrap gap-3"
+          >
+            <legend
+              class="mb-2 text-sm text-muted-foreground"
+            >
+              Elige dos o tres personas para ver su cruce.
+            </legend>
+            <label
+              class="flex min-h-11 items-center gap-2"
+            >
+              <input
+                type="checkbox"
+              />
+              Ana
+            </label>
+            <span
+              class="flex min-h-11 items-center text-sm text-muted-foreground"
+            >
+              Persona no disponible
+            </span>
+          </fieldset>
+          <div
+            class="min-h-48"
+            data-comparison-slot="works"
+            data-view="group"
+          >
+            <button
+              class="inline-flex items-center justify-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition-colors border border-border text-foreground hover:bg-surface-muted disabled:opacity-60 "
+              disabled=""
+            >
+              Comparar selección
+            </button>
+            <div
+              class="_canvas_c4ae9d"
+              data-camera-moving="false"
+              data-view="group"
+            >
+              <div
+                class="_toolbar_c4ae9d"
+              >
+                <p>
+                  Abre una pareja o elige dos o tres personas para explorar sus obras.
+                </p>
+                <p>
+                  Una persona no está disponible.
+                </p>
+              </div>
+              <div
+                class="_stage_c4ae9d"
+                data-comparison-stage="true"
+                data-scene-height="576"
+                style="height: 576px;"
+              >
+                <div
+                  class="_world_c4ae9d"
+                  data-comparison-world="true"
+                  style="width: 1000px; height: 900px; --camera-scale: 0.64; transform: translate(0px, 0px) scale(0.64);"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="_background_c4ae9d"
+                    data-focused="false"
+                    height="900"
+                    width="1000"
+                  />
+                </div>
+                <div
+                  class="_controls_c4ae9d"
+                >
+                  <span
+                    class="_person_c4ae9d"
+                    style="left: 320px; top: 64px;"
+                  >
+                    Ana
+                  </span>
+                  <div
+                    class="_shared_c4ae9d"
+                    style="top: 353px;"
+                  >
+                    <strong>
+                      0
+                    </strong>
+                    <span>
+                      compartidas por las personas disponibles
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div
+                aria-label="Conexiones entre parejas"
+                class="_pairs_c4ae9d"
+              />
+              <p
+                class="_caption_c4ae9d"
+              >
+                Las posiciones y los círculos son esquemáticos. Las cantidades cuentan obras únicas con registros elegibles visibles.
+              </p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</body>
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <div>
+      <div
+        class="flex flex-col gap-5"
+      >
+        <div
+          class="flex flex-wrap items-end gap-3"
+        >
+          <label
+            class="flex min-w-0 flex-1 flex-col gap-2 text-sm font-medium"
+          >
+            Grupo
+            <select
+              class="min-h-11 rounded-md border border-border bg-surface px-3 text-foreground"
+            >
+              <option
+                value=""
+              >
+                Elige un grupo
+              </option>
+              <option
+                value="aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+              >
+                Lectores
+              </option>
+              <option
+                value="bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+              >
+                Cine
+              </option>
+            </select>
+          </label>
+          <button
+            class="inline-flex items-center justify-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition-colors bg-accent text-accent-foreground hover:bg-accent-hover disabled:opacity-60 "
+          >
+            Crear grupo
+          </button>
+          <button
+            class="inline-flex items-center justify-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition-colors border border-border text-foreground hover:bg-surface-muted disabled:opacity-60 "
+          >
+            Editar grupo
+          </button>
+        </div>
+        <div
+          class="flex flex-wrap items-center justify-between gap-3 border-b border-border"
+        >
+          <nav
+            aria-label="Secciones de la comparación"
+            class="flex gap-5"
+          >
+            <button
+              aria-pressed="true"
+              class="min-h-11 border-b-2 font-serif text-lg border-accent text-foreground"
+              type="button"
+            >
+              Obras
+            </button>
+            <button
+              aria-pressed="false"
+              class="min-h-11 border-b-2 font-serif text-lg border-transparent text-muted-foreground"
+              type="button"
+            >
+              Gustos
+            </button>
+          </nav>
+          <label
+            class="flex items-center gap-2 text-sm"
+          >
+            Formato
+            <select
+              class="min-h-11 rounded-md border border-border bg-surface px-2"
+            >
+              <option
+                value="all"
+              >
+                Todos los formatos
+              </option>
+              <option
+                value="book"
+              >
+                Libros
+              </option>
+              <option
+                value="movie"
+              >
+                Películas
+              </option>
+              <option
+                value="series"
+              >
+                Series
+              </option>
+            </select>
+          </label>
+        </div>
+        <section
+          aria-busy="false"
+          aria-label="Lienzo de comparación"
+          class="min-h-72 rounded-lg border border-border bg-surface p-4 sm:p-6"
+        >
+          <div
+            class="flex flex-wrap items-center justify-between gap-3"
+          >
+            <h2
+              class="font-serif text-xl font-semibold"
+            >
+              Lectores
+            </h2>
+            <button
+              class="inline-flex items-center justify-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition-colors text-foreground hover:bg-surface-muted disabled:opacity-60 "
+            >
+              Actualizar acceso
+            </button>
+          </div>
+          <fieldset
+            class="my-4 flex flex-wrap gap-3"
+          >
+            <legend
+              class="mb-2 text-sm text-muted-foreground"
+            >
+              Elige dos o tres personas para ver su cruce.
+            </legend>
+            <label
+              class="flex min-h-11 items-center gap-2"
+            >
+              <input
+                type="checkbox"
+              />
+              Ana
+            </label>
+            <span
+              class="flex min-h-11 items-center text-sm text-muted-foreground"
+            >
+              Persona no disponible
+            </span>
+          </fieldset>
+          <div
+            class="min-h-48"
+            data-comparison-slot="works"
+            data-view="group"
+          >
+            <button
+              class="inline-flex items-center justify-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition-colors border border-border text-foreground hover:bg-surface-muted disabled:opacity-60 "
+              disabled=""
+            >
+              Comparar selección
+            </button>
+            <div
+              class="_canvas_c4ae9d"
+              data-camera-moving="false"
+              data-view="group"
+            >
+              <div
+                class="_toolbar_c4ae9d"
+              >
+                <p>
+                  Abre una pareja o elige dos o tres personas para explorar sus obras.
+                </p>
+                <p>
+                  Una persona no está disponible.
+                </p>
+              </div>
+              <div
+                class="_stage_c4ae9d"
+                data-comparison-stage="true"
+                data-scene-height="576"
+                style="height: 576px;"
+              >
+                <div
+                  class="_world_c4ae9d"
+                  data-comparison-world="true"
+                  style="width: 1000px; height: 900px; --camera-scale: 0.64; transform: translate(0px, 0px) scale(0.64);"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="_background_c4ae9d"
+                    data-focused="false"
+                    height="900"
+                    width="1000"
+                  />
+                </div>
+                <div
+                  class="_controls_c4ae9d"
+                >
+                  <span
+                    class="_person_c4ae9d"
+                    style="left: 320px; top: 64px;"
+                  >
+                    Ana
+                  </span>
+                  <div
+                    class="_shared_c4ae9d"
+                    style="top: 353px;"
+                  >
+                    <strong>
+                      0
+                    </strong>
+                    <span>
+                      compartidas por las personas disponibles
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div
+                aria-label="Conexiones entre parejas"
+                class="_pairs_c4ae9d"
+              />
+              <p
+                class="_caption_c4ae9d"
+              >
+                Las posiciones y los círculos son esquemáticos. Las cantidades cuentan obras únicas con registros elegibles visibles.
+              </p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</body>
+ ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ src/components/comparisons/explorer.test.tsx:70:33
+     68|     mocks.load.mockResolvedValue({ ok: true, data: { ...snapshot(first…
+     69|     render(ui());
+     70|     const notice = await screen.findByText(/2 historiales de persona y…
+       |                                 ^
+     71|     expect(notice.textContent).toContain('sin episodios registrados');
+     72|     fireEvent.click(screen.getByRole('button', { name: 'Gustos' }));
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+ FAIL  src/components/comparisons/group-editor.test.tsx > inline group editing > moves focus to safe cancel and restores Delete after inline cancellation
+AssertionError: expected <body><div>…(1)</div></body> to be <button …(2)></button> // Object.is equality
+
+- Expected
++ Received
+
++ <body>
++   <div>
++     <form
++       aria-label="Editar grupo"
++       class="flex max-w-2xl flex-col gap-4 rounded-lg border border-border bg-surface p-5"
++     >
++       <h2
++         class="font-serif text-xl font-semibold"
++       >
++         Editar grupo
++       </h2>
++       <label
++         class="flex flex-col gap-2"
++       >
++         Nombre del grupo
++         <input
++           class="rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent "
++           maxlength="120"
++           required=""
++           value="Lectores"
++         />
++       </label>
++       <p
++         class="text-sm text-muted-foreground"
++       >
++         Elige entre 2 y 10 personas a las que sigues. Puedes incluirte o comparar solo a otras personas. Guardar un grupo no da acceso a sus bibliotecas.
++       </p>
++       <label
++         class="flex flex-col gap-2"
++       >
++         Buscar personas
++         <input
++           class="rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent "
++           type="search"
++           value=""
++         />
++       </label>
++       <fieldset
++         class="grid gap-2 sm:grid-cols-2"
++       >
++         <legend
++           class="mb-2 text-sm font-medium"
++         >
++           Participantes
++         </legend>
++         <label
++           class="flex min-h-11 items-center gap-3 rounded-md px-2 hover:bg-surface-muted"
++         >
++           <input
++             checked=""
++             class="size-4 accent-accent"
++             type="checkbox"
++           />
++           Persona 0
++         </label>
++         <label
++           class="flex min-h-11 items-center gap-3 rounded-md px-2 hover:bg-surface-muted"
++         >
++           <input
++             checked=""
++             class="size-4 accent-accent"
++             type="checkbox"
++           />
++           Persona 1
++         </label>
++         <label
++           class="flex min-h-11 items-center gap-3 rounded-md px-2 hover:bg-surface-muted"
++         >
++           <input
++             class="size-4 accent-accent"
++             type="checkbox"
++           />
++           Persona 2
++         </label>
++         <label
++           class="flex min-h-11 items-center gap-3 rounded-md px-2 hover:bg-surface-muted"
++         >
++           <input
++             class="size-4 accent-accent"
++             type="checkbox"
++           />
++           Persona 3
++         </label>
++         <label
++           class="flex min-h-11 items-center gap-3 rounded-md px-2 hover:bg-surface-muted"
++         >
++           <input
++             class="size-4 accent-accent"
++             type="checkbox"
++           />
++           Persona 4
++         </label>
++         <label
++           class="flex min-h-11 items-center gap-3 rounded-md px-2 hover:bg-surface-muted"
++         >
++           <input
++             class="size-4 accent-accent"
++             type="checkbox"
++           />
++           Persona 5
++         </label>
++         <label
++           class="flex min-h-11 items-center gap-3 rounded-md px-2 hover:bg-surface-muted"
++         >
++           <input
++             class="size-4 accent-accent"
++             type="checkbox"
++           />
++           Persona 6
++         </label>
++         <label
++           class="flex min-h-11 items-center gap-3 rounded-md px-2 hover:bg-surface-muted"
++         >
++           <input
++             class="size-4 accent-accent"
++             type="checkbox"
++           />
++           Persona 7
++         </label>
++         <label
++           class="flex min-h-11 items-center gap-3 rounded-md px-2 hover:bg-surface-muted"
++         >
++           <input
++             class="size-4 accent-accent"
++             type="checkbox"
++           />
++           Persona 8
++         </label>
++         <label
++           class="flex min-h-11 items-center gap-3 rounded-md px-2 hover:bg-surface-muted"
++         >
++           <input
++             class="size-4 accent-accent"
++             type="checkbox"
++           />
++           Persona 9
++         </label>
++         <label
++           class="flex min-h-11 items-center gap-3 rounded-md px-2 hover:bg-surface-muted"
++         >
++           <input
++             class="size-4 accent-accent"
++             type="checkbox"
++           />
++           Persona 10
++         </label>
++       </fieldset>
++       <p
++         class="text-sm"
++         id="comparison-group-count"
++         role="status"
++       >
++         2 de 10 participantes.
++          
++       </p>
++       <div
++         class="flex flex-wrap gap-2"
++       >
+          <button
++           aria-describedby="comparison-group-count"
++           class="inline-flex items-center justify-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition-colors bg-accent text-accent-foreground hover:bg-accent-hover disabled:opacity-60 "
++           type="submit"
++         >
++           Guardar grupo
++         </button>
++         <button
++           class="inline-flex items-center justify-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition-colors border border-border text-foreground hover:bg-surface-muted disabled:opacity-60 "
++           type="button"
++         >
++           Cancelar
++         </button>
++       </div>
++       <div
++         class="border-t border-border pt-3"
++       >
++         <div
++           class="flex flex-wrap items-center gap-2"
++         >
++           <p>
++             ¿Eliminar este grupo?
++           </p>
++           <button
++             class="inline-flex items-center justify-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition-colors bg-status-dropped text-accent-foreground hover:opacity-90 disabled:opacity-60 "
++             type="button"
++           >
++             Confirmar eliminación
++           </button>
++           <button
+              class="inline-flex items-center justify-center gap-2 rounded-full px-5 py-2 text-sm font-medium transition-colors text-foreground hover:bg-surface-muted disabled:opacity-60 "
+              type="button"
+            >
+              Cancelar
+            </button>
++         </div>
++       </div>
++     </form>
++   </div>
++ </body>
+
+ ❯ src/components/comparisons/group-editor.test.tsx:21:36
+     19|     trigger.focus(); fireEvent.click(trigger);
+     20|     const cancel = screen.getAllByRole('button', { name: 'Cancelar' })…
+     21|     expect(document.activeElement).toBe(cancel); fireEvent.click(cance…
+       |                                    ^
+     22|     expect(document.activeElement).toBe(screen.getByRole('button', { n…
+     23|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+ FAIL  src/components/comparisons/tastes.test.tsx > tastes evidence > restores the exact category after Canvas unmounts and falls back when it disappears
+AssertionError: expected <body><div>…(1)</div></body> to be <button type="button"></button> // Object.is equality
+
+- Expected
++ Received
+
++ <body>
++   <div>
++     <div
++       class="_tastes_c4ae9d"
++     >
++       <div>
++         <div
++           aria-label="Señales de gustos"
++           class="_signals_c4ae9d"
++         >
+            <button
++             aria-pressed="true"
+              type="button"
++           >
++             Lo que consumís
++           </button>
++           <button
++             aria-pressed="false"
++             type="button"
++           >
++             Lo que valoráis
++           </button>
++         </div>
++         <h3>
++           Lo que consumís
++         </h3>
++         <p>
++           El tamaño de cada burbuja representa la cantidad de obras únicas consumidas.
++         </p>
++         <label>
++           Agrupar por
++            
++           <select>
++             <option
++               value="genre"
++             >
++               Géneros
++             </option>
++             <option
++               value="author"
++             >
++               Autores
++             </option>
++             <option
++               value="director"
++             >
++               Directores
++             </option>
++           </select>
++         </label>
++         <p
++           class="_caption_c4ae9d"
++         >
++           Los géneros se solapan: una obra puede contar en varios géneros. No sumes sus cantidades.
++         </p>
++         <div
++           class="_coverage_c4ae9d"
++         >
++           <p>
++             Ana: metadatos en 3 de 3 obras elegibles
++           </p>
++           <p>
++             Bea: metadatos en 3 de 3 obras elegibles
++           </p>
++         </div>
++         <div
++           class="_facetList_c4ae9d"
++         >
++           <section
++             aria-label="Drama"
++             class="_facet_c4ae9d"
++           >
++             <h4>
++               Drama
++             </h4>
++             <div
++               class="_facetPeople_c4ae9d"
++             >
++               <div>
++                 <h5>
++                   Ana
++                 </h5>
++                 <span
++                   aria-hidden="true"
++                   class="_consumptionBubble_c4ae9d"
++                   data-consumption-count="3"
++                   style="width: 80px; height: 80px;"
+                  >
++                   3
++                 </span>
++                 <p>
++                   3 de 3 obras elegibles
++                 </p>
++               </div>
++               <div>
++                 <h5>
++                   Bea
++                 </h5>
++                 <span
++                   aria-hidden="true"
++                   class="_consumptionBubble_c4ae9d"
++                   data-consumption-count="3"
++                   style="width: 80px; height: 80px;"
++                 >
++                   3
++                 </span>
++                 <p>
++                   3 de 3 obras elegibles
++                 </p>
++               </div>
++             </div>
++             <button
++               type="button"
++             >
++               Explorar Drama
++             </button>
++           </section>
++           <section
++             aria-label="Misterio"
++             class="_facet_c4ae9d"
++           >
++             <h4>
++               Misterio
++             </h4>
++             <div
++               class="_facetPeople_c4ae9d"
++             >
++               <div>
++                 <h5>
++                   Ana
++                 </h5>
++                 <span
++                   aria-hidden="true"
++                   class="_consumptionBubble_c4ae9d"
++                   data-consumption-count="3"
++                   style="width: 80px; height: 80px;"
++                 >
++                   3
++                 </span>
++                 <p>
++                   3 de 3 obras elegibles
++                 </p>
++               </div>
++               <div>
++                 <h5>
++                   Bea
++                 </h5>
++                 <span
++                   aria-hidden="true"
++                   class="_consumptionBubble_c4ae9d"
++                   data-consumption-count="3"
++                   style="width: 80px; height: 80px;"
++                 >
++                   3
++                 </span>
++                 <p>
++                   3 de 3 obras elegibles
++                 </p>
++               </div>
++             </div>
++             <button
++               type="button"
++             >
+                Explorar Misterio
+              </button>
++           </section>
++         </div>
++       </div>
++       <p
++         class="_caption_c4ae9d"
++       >
++         2 series históricas sin episodios registrados quedan fuera del conjunto.
++       </p>
++     </div>
++   </div>
++ </body>
+
+ ❯ src/components/comparisons/tastes.test.tsx:29:36
+     27|     fireEvent.click(screen.getByRole('button', { name: 'Explorar Miste…
+     28|     fireEvent.click(screen.getByRole('button', { name: 'Volver al grup…
+     29|     expect(document.activeElement).toBe(screen.getByRole('button', { n…
+       |                                    ^
+     30|     fireEvent.click(screen.getByRole('button', { name: 'Explorar Miste…
+     31|     rerender(<Harness snapshot={{ ...data, catalog: data.catalog.map(w…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯
+
+ FAIL  src/components/comparisons/work-detail.test.tsx > series detail evidence > reports the all-person episode sample 0 independently of series ratings
+TestingLibraryElementError: Unable to find an element with the text: 0 episodios comunes valorados por todas las personas indicadas.. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <section
+      aria-busy="false"
+      aria-label="Detalle de la obra"
+      class="_detail_c4ae9d"
+    >
+      <div
+        class="_detailContent_c4ae9d"
+      >
+        <header
+          class="_detailHeading_c4ae9d"
+        >
+          <p>
+            Serie
+          </p>
+          <h3>
+            Serie
+          </h3>
+        </header>
+        <div
+          class="_detailEvidence_c4ae9d"
+        >
+          <h4>
+            Valoración general y progreso
+          </h4>
+          <dl
+            class="_peopleNotes_c4ae9d"
+          >
+            <div>
+              <dt>
+                Ana
+              </dt>
+              <dd>
+                <strong>
+                  9/10
+                </strong>
+                <small>
+                  1 episodios vistos alguna vez
+                </small>
+                <small>
+                  Pase actual: 1 de total desconocido episodios emitidos
+                </small>
+                <small>
+                  Abandonada
+                </small>
+              </dd>
+            </div>
+            <div>
+              <dt>
+                Bea
+              </dt>
+              <dd>
+                <strong>
+                  Sin valorar
+                </strong>
+                <small>
+                  Progreso no disponible
+                </small>
+              </dd>
+            </div>
+          </dl>
+          <section
+            aria-label="Episodios comunes"
+            class="_episodeEvidence_c4ae9d"
+          >
+            <h4>
+              Episodios comunes
+            </h4>
+            <p>
+              Estas notas pertenecen a cada episodio y no valoran la serie. Una nota ausente permanece sin valorar.
+            </p>
+            <p>
+              No hay episodios comunes con alguna valoración visible.
+            </p>
+          </section>
+          <p>
+            2 series históricas sin episodios registrados quedan fuera del conjunto.
+          </p>
+          <a
+            href="/serie/x"
+          >
+            Ver ficha
+          </a>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <section
+      aria-busy="false"
+      aria-label="Detalle de la obra"
+      class="_detail_c4ae9d"
+    >
+      <div
+        class="_detailContent_c4ae9d"
+      >
+        <header
+          class="_detailHeading_c4ae9d"
+        >
+          <p>
+            Serie
+          </p>
+          <h3>
+            Serie
+          </h3>
+        </header>
+        <div
+          class="_detailEvidence_c4ae9d"
+        >
+          <h4>
+            Valoración general y progreso
+          </h4>
+          <dl
+            class="_peopleNotes_c4ae9d"
+          >
+            <div>
+              <dt>
+                Ana
+              </dt>
+              <dd>
+                <strong>
+                  9/10
+                </strong>
+                <small>
+                  1 episodios vistos alguna vez
+                </small>
+                <small>
+                  Pase actual: 1 de total desconocido episodios emitidos
+                </small>
+                <small>
+                  Abandonada
+                </small>
+              </dd>
+            </div>
+            <div>
+              <dt>
+                Bea
+              </dt>
+              <dd>
+                <strong>
+                  Sin valorar
+                </strong>
+                <small>
+                  Progreso no disponible
+                </small>
+              </dd>
+            </div>
+          </dl>
+          <section
+            aria-label="Episodios comunes"
+            class="_episodeEvidence_c4ae9d"
+          >
+            <h4>
+              Episodios comunes
+            </h4>
+            <p>
+              Estas notas pertenecen a cada episodio y no valoran la serie. Una nota ausente permanece sin valorar.
+            </p>
+            <p>
+              No hay episodios comunes con alguna valoración visible.
+            </p>
+          </section>
+          <p>
+            2 series históricas sin episodios registrados quedan fuera del conjunto.
+          </p>
+          <a
+            href="/serie/x"
+          >
+            Ver ficha
+          </a>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+ ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ src/components/comparisons/work-detail.test.tsx:18:25
+     16|     const episodes = Array.from({ length: count }, (_, index) => ({ se…
+     17|     render(ui({ ...detail, commonEpisodes: episodes }));
+     18|     expect(await screen.findByText(`${count} episodios comunes valorad…
+       |                         ^
+     19|     if (!count) expect(screen.getByText('No hay episodios comunes valo…
+     20|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/8]⎯
+
+ FAIL  src/components/comparisons/work-detail.test.tsx > series detail evidence > reports the all-person episode sample 1 independently of series ratings
+TestingLibraryElementError: Unable to find an element with the text: 1 episodios comunes valorados por todas las personas indicadas.. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <section
+      aria-busy="false"
+      aria-label="Detalle de la obra"
+      class="_detail_c4ae9d"
+    >
+      <div
+        class="_detailContent_c4ae9d"
+      >
+        <header
+          class="_detailHeading_c4ae9d"
+        >
+          <p>
+            Serie
+          </p>
+          <h3>
+            Serie
+          </h3>
+        </header>
+        <div
+          class="_detailEvidence_c4ae9d"
+        >
+          <h4>
+            Valoración general y progreso
+          </h4>
+          <dl
+            class="_peopleNotes_c4ae9d"
+          >
+            <div>
+              <dt>
+                Ana
+              </dt>
+              <dd>
+                <strong>
+                  9/10
+                </strong>
+                <small>
+                  1 episodios vistos alguna vez
+                </small>
+                <small>
+                  Pase actual: 1 de total desconocido episodios emitidos
+                </small>
+                <small>
+                  Abandonada
+                </small>
+              </dd>
+            </div>
+            <div>
+              <dt>
+                Bea
+              </dt>
+              <dd>
+                <strong>
+                  Sin valorar
+                </strong>
+                <small>
+                  Progreso no disponible
+                </small>
+              </dd>
+            </div>
+          </dl>
+          <section
+            aria-label="Episodios comunes"
+            class="_episodeEvidence_c4ae9d"
+          >
+            <h4>
+              Episodios comunes
+            </h4>
+            <p>
+              Estas notas pertenecen a cada episodio y no valoran la serie. Una nota ausente permanece sin valorar.
+            </p>
+            <div>
+              <h5>
+                Temporada 1 · episodio 1
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+          </section>
+          <p>
+            2 series históricas sin episodios registrados quedan fuera del conjunto.
+          </p>
+          <a
+            href="/serie/x"
+          >
+            Ver ficha
+          </a>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <section
+      aria-busy="false"
+      aria-label="Detalle de la obra"
+      class="_detail_c4ae9d"
+    >
+      <div
+        class="_detailContent_c4ae9d"
+      >
+        <header
+          class="_detailHeading_c4ae9d"
+        >
+          <p>
+            Serie
+          </p>
+          <h3>
+            Serie
+          </h3>
+        </header>
+        <div
+          class="_detailEvidence_c4ae9d"
+        >
+          <h4>
+            Valoración general y progreso
+          </h4>
+          <dl
+            class="_peopleNotes_c4ae9d"
+          >
+            <div>
+              <dt>
+                Ana
+              </dt>
+              <dd>
+                <strong>
+                  9/10
+                </strong>
+                <small>
+                  1 episodios vistos alguna vez
+                </small>
+                <small>
+                  Pase actual: 1 de total desconocido episodios emitidos
+                </small>
+                <small>
+                  Abandonada
+                </small>
+              </dd>
+            </div>
+            <div>
+              <dt>
+                Bea
+              </dt>
+              <dd>
+                <strong>
+                  Sin valorar
+                </strong>
+                <small>
+                  Progreso no disponible
+                </small>
+              </dd>
+            </div>
+          </dl>
+          <section
+            aria-label="Episodios comunes"
+            class="_episodeEvidence_c4ae9d"
+          >
+            <h4>
+              Episodios comunes
+            </h4>
+            <p>
+              Estas notas pertenecen a cada episodio y no valoran la serie. Una nota ausente permanece sin valorar.
+            </p>
+            <div>
+              <h5>
+                Temporada 1 · episodio 1
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+          </section>
+          <p>
+            2 series históricas sin episodios registrados quedan fuera del conjunto.
+          </p>
+          <a
+            href="/serie/x"
+          >
+            Ver ficha
+          </a>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+ ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ src/components/comparisons/work-detail.test.tsx:18:25
+     16|     const episodes = Array.from({ length: count }, (_, index) => ({ se…
+     17|     render(ui({ ...detail, commonEpisodes: episodes }));
+     18|     expect(await screen.findByText(`${count} episodios comunes valorad…
+       |                         ^
+     19|     if (!count) expect(screen.getByText('No hay episodios comunes valo…
+     20|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/8]⎯
+
+ FAIL  src/components/comparisons/work-detail.test.tsx > series detail evidence > reports the all-person episode sample 40 independently of series ratings
+TestingLibraryElementError: Unable to find an element with the text: 40 episodios comunes valorados por todas las personas indicadas.. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <section
+      aria-busy="false"
+      aria-label="Detalle de la obra"
+      class="_detail_c4ae9d"
+    >
+      <div
+        class="_detailContent_c4ae9d"
+      >
+        <header
+          class="_detailHeading_c4ae9d"
+        >
+          <p>
+            Serie
+          </p>
+          <h3>
+            Serie
+          </h3>
+        </header>
+        <div
+          class="_detailEvidence_c4ae9d"
+        >
+          <h4>
+            Valoración general y progreso
+          </h4>
+          <dl
+            class="_peopleNotes_c4ae9d"
+          >
+            <div>
+              <dt>
+                Ana
+              </dt>
+              <dd>
+                <strong>
+                  9/10
+                </strong>
+                <small>
+                  1 episodios vistos alguna vez
+                </small>
+                <small>
+                  Pase actual: 1 de total desconocido episodios emitidos
+                </small>
+                <small>
+                  Abandonada
+                </small>
+              </dd>
+            </div>
+            <div>
+              <dt>
+                Bea
+              </dt>
+              <dd>
+                <strong>
+                  Sin valorar
+                </strong>
+                <small>
+                  Progreso no disponible
+                </small>
+              </dd>
+            </div>
+          </dl>
+          <section
+            aria-label="Episodios comunes"
+            class="_episodeEvidence_c4ae9d"
+          >
+            <h4>
+              Episodios comunes
+            </h4>
+            <p>
+              Estas notas pertenecen a cada episodio y no valoran la serie. Una nota ausente permanece sin valorar.
+            </p>
+            <div>
+              <h5>
+                Temporada 1 · episodio 1
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 2
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 3
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 4
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 5
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 6
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 7
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 8
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 9
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 10
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 11
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 12
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 13
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 14
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 15
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 16
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 17
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 18
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 19
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 20
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 21
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 22
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 23
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 24
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 25
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 26
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 27
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 28
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 29
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 30
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 31
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 32
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 33
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 34
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 35
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 36
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 37
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 38
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 39
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 40
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+          </section>
+          <p>
+            2 series históricas sin episodios registrados quedan fuera del conjunto.
+          </p>
+          <a
+            href="/serie/x"
+          >
+            Ver ficha
+          </a>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <section
+      aria-busy="false"
+      aria-label="Detalle de la obra"
+      class="_detail_c4ae9d"
+    >
+      <div
+        class="_detailContent_c4ae9d"
+      >
+        <header
+          class="_detailHeading_c4ae9d"
+        >
+          <p>
+            Serie
+          </p>
+          <h3>
+            Serie
+          </h3>
+        </header>
+        <div
+          class="_detailEvidence_c4ae9d"
+        >
+          <h4>
+            Valoración general y progreso
+          </h4>
+          <dl
+            class="_peopleNotes_c4ae9d"
+          >
+            <div>
+              <dt>
+                Ana
+              </dt>
+              <dd>
+                <strong>
+                  9/10
+                </strong>
+                <small>
+                  1 episodios vistos alguna vez
+                </small>
+                <small>
+                  Pase actual: 1 de total desconocido episodios emitidos
+                </small>
+                <small>
+                  Abandonada
+                </small>
+              </dd>
+            </div>
+            <div>
+              <dt>
+                Bea
+              </dt>
+              <dd>
+                <strong>
+                  Sin valorar
+                </strong>
+                <small>
+                  Progreso no disponible
+                </small>
+              </dd>
+            </div>
+          </dl>
+          <section
+            aria-label="Episodios comunes"
+            class="_episodeEvidence_c4ae9d"
+          >
+            <h4>
+              Episodios comunes
+            </h4>
+            <p>
+              Estas notas pertenecen a cada episodio y no valoran la serie. Una nota ausente permanece sin valorar.
+            </p>
+            <div>
+              <h5>
+                Temporada 1 · episodio 1
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 2
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 3
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 4
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 5
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 6
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 7
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 8
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 9
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 10
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 11
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 12
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 13
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 14
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 15
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 16
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 17
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 18
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 19
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 20
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 21
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 22
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 23
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 24
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 25
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 26
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 27
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 28
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 29
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 30
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 31
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 32
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 33
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 34
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 35
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 36
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 37
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 38
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 39
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h5>
+                Temporada 1 · episodio 40
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+                <li>
+                  Bea: 8
+                </li>
+              </ul>
+            </div>
+          </section>
+          <p>
+            2 series históricas sin episodios registrados quedan fuera del conjunto.
+          </p>
+          <a
+            href="/serie/x"
+          >
+            Ver ficha
+          </a>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+ ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ src/components/comparisons/work-detail.test.tsx:18:25
+     16|     const episodes = Array.from({ length: count }, (_, index) => ({ se…
+     17|     render(ui({ ...detail, commonEpisodes: episodes }));
+     18|     expect(await screen.findByText(`${count} episodios comunes valorad…
+       |                         ^
+     19|     if (!count) expect(screen.getByText('No hay episodios comunes valo…
+     20|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/8]⎯
+
+ FAIL  src/components/comparisons/work-detail.test.tsx > series detail evidence > does not imply joint comparison for an exclusive single-person series
+TestingLibraryElementError: Unable to find an element with the text: Esta región corresponde a una sola persona; no hay comparación conjunta de episodios.. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <section
+      aria-busy="false"
+      aria-label="Detalle de la obra"
+      class="_detail_c4ae9d"
+    >
+      <div
+        class="_detailContent_c4ae9d"
+      >
+        <header
+          class="_detailHeading_c4ae9d"
+        >
+          <p>
+            Serie
+          </p>
+          <h3>
+            Serie
+          </h3>
+        </header>
+        <div
+          class="_detailEvidence_c4ae9d"
+        >
+          <h4>
+            Valoración general y progreso
+          </h4>
+          <dl
+            class="_peopleNotes_c4ae9d"
+          >
+            <div>
+              <dt>
+                Ana
+              </dt>
+              <dd>
+                <strong>
+                  9/10
+                </strong>
+                <small>
+                  1 episodios vistos alguna vez
+                </small>
+                <small>
+                  Pase actual: 1 de total desconocido episodios emitidos
+                </small>
+                <small>
+                  Abandonada
+                </small>
+              </dd>
+            </div>
+          </dl>
+          <section
+            aria-label="Episodios comunes"
+            class="_episodeEvidence_c4ae9d"
+          >
+            <h4>
+              Episodios comunes
+            </h4>
+            <p>
+              Estas notas pertenecen a cada episodio y no valoran la serie. Una nota ausente permanece sin valorar.
+            </p>
+            <div>
+              <h5>
+                Temporada 1 · episodio 1
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+              </ul>
+            </div>
+          </section>
+          <p>
+            2 series históricas sin episodios registrados quedan fuera del conjunto.
+          </p>
+          <a
+            href="/serie/x"
+          >
+            Ver ficha
+          </a>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <section
+      aria-busy="false"
+      aria-label="Detalle de la obra"
+      class="_detail_c4ae9d"
+    >
+      <div
+        class="_detailContent_c4ae9d"
+      >
+        <header
+          class="_detailHeading_c4ae9d"
+        >
+          <p>
+            Serie
+          </p>
+          <h3>
+            Serie
+          </h3>
+        </header>
+        <div
+          class="_detailEvidence_c4ae9d"
+        >
+          <h4>
+            Valoración general y progreso
+          </h4>
+          <dl
+            class="_peopleNotes_c4ae9d"
+          >
+            <div>
+              <dt>
+                Ana
+              </dt>
+              <dd>
+                <strong>
+                  9/10
+                </strong>
+                <small>
+                  1 episodios vistos alguna vez
+                </small>
+                <small>
+                  Pase actual: 1 de total desconocido episodios emitidos
+                </small>
+                <small>
+                  Abandonada
+                </small>
+              </dd>
+            </div>
+          </dl>
+          <section
+            aria-label="Episodios comunes"
+            class="_episodeEvidence_c4ae9d"
+          >
+            <h4>
+              Episodios comunes
+            </h4>
+            <p>
+              Estas notas pertenecen a cada episodio y no valoran la serie. Una nota ausente permanece sin valorar.
+            </p>
+            <div>
+              <h5>
+                Temporada 1 · episodio 1
+              </h5>
+              <ul>
+                <li>
+                  Ana: 3
+                </li>
+              </ul>
+            </div>
+          </section>
+          <p>
+            2 series históricas sin episodios registrados quedan fuera del conjunto.
+          </p>
+          <a
+            href="/serie/x"
+          >
+            Ver ficha
+          </a>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+ ❯ waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:163:27
+ ❯ node_modules/@testing-library/dom/dist/query-helpers.js:86:33
+ ❯ src/components/comparisons/work-detail.test.tsx:24:25
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/8]⎯
+
+
+ Test Files  5 failed (5)
+      Tests  8 failed | 69 passed (77)
+   Start at  16:01:41
+   Duration  15.55s (transform 1.22s, setup 0ms, import 13.50s, tests 10.69s, environment 40.71s)
+

@@ -1068,3 +1068,20 @@ acredita SQL298 y matriz11/carrera/restauración/cleanup PASS en ambas CI.
 Los contratos Node suman 36 distintos (20 y 27 con once compartidos), más
 fixture #405 9/9. Este corte no acredita dev, producción ni el árbol posterior
 de #975; su CI de entrega y su GLOBAL FAIL Native conservan gates propios.
+
+
+### Entre nosotros: gate de intercepción y service workers (2026-10-10)
+
+`playwright.comparisons.config.ts` bloquea service workers para los recorridos
+que dependen de interceptar una portada exacta y temporizar HTTP original de
+acciones. No verifica PWA/offline ni modifica el worker productivo. El caso de
+diagnóstico M3 crea contexts explícitos allow/block con login y RLS reales y
+conserva origen/ruta sanitizados, tipo, frame, propiedad de worker y el iniciador
+CDP; nunca cabeceras, cookies o tokens. Una comparación acotada de políticas se asoció a
+un fallo DNS del placeholder durante Inicio tras login, pero otros dos fallos
+aparecen también con workers bloqueados. Bloquearlos no corrige universalmente
+el fixture; el request fallido no identifica directamente un worker. La causa
+permanece sin confirmar en
+[#1471](https://github.com/borjar20/Biblioshare/issues/1471). No se ocultan errores.
+Receta, builds y resultados precisos en
+[verificación Entre nosotros](testing/2026-10-10-entre-nosotros.md).

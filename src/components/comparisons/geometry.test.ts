@@ -33,6 +33,26 @@ function exactZones(count: number, samples: number) {
   return { data, entries, people };
 }
 describe('comparison world geometry', () => {
+  it.each([5, 6, 7, 8, 9, 10].flatMap(count => [254, 299, 300, 301, 364, 400, 599, 600, 601, 959, 960, 961, 1000].map(width => [count, width])))('keeps two-line names clear of representative footprints for %i people at %i px', (count, width) => {
+    const data = { ...snapshot, group: { ...snapshot.group, members: snapshot.group.members.slice(0, count) } };
+    const scene = layoutScene(data, { level: 'group' }, { width, height: 800 }, keys.slice(0, width <= 360 ? 1 : 3));
+    const scale = scene.camera.scale; const labelWidth = width <= 300 ? 68 : 110, labelHeight = width <= 300 ? 41 : 48;
+    for (let index = 0; index < count; index++) {
+      const point = personCenter(index, count, width);
+      const label = { left: point.x * scale - labelWidth / 2, right: point.x * scale + labelWidth / 2, top: point.y * scale - labelHeight / 2, bottom: point.y * scale + labelHeight / 2 };
+      for (const pose of Object.values(scene.poses)) {
+        const footprint = corners(pose); const left = Math.min(...footprint.map(p => p.x * scale)), right = Math.max(...footprint.map(p => p.x * scale)), top = Math.min(...footprint.map(p => p.y * scale)), bottom = Math.max(...footprint.map(p => p.y * scale));
+        expect(Math.max(0, Math.min(label.right, right) - Math.max(label.left, left)) * Math.max(0, Math.min(label.bottom, bottom) - Math.max(label.top, top)), `label ${index}/pile`).toBe(0);
+      }
+    }
+  });
+  it.each([5, 6, 7, 8, 9, 10].flatMap(count => [299, 300, 301, 359, 360, 361, 364, 400, 599, 600, 601, 959, 960, 961, 1000].map(width => [count, width])))('fits two-line labels for %i people at stage %i px', (count, width) => {
+    const scale = width / 1000; const envelope = width <= 300 ? { width: 68, height: 41 } : { width: 110, height: 48 };
+    const points = Array.from({ length: count }, (_, i) => personCenter(i, count, width));
+    for (let i = 0; i < points.length; i++) for (let j = i + 1; j < points.length; j++) {
+      expect(Math.abs(points[i].x - points[j].x) * scale >= envelope.width || Math.abs(points[i].y - points[j].y) * scale >= envelope.height, `${i}/${j} overlap`).toBe(true);
+    }
+  });
   it.each([5, 6, 7, 8, 9, 10])('separates two-line name footprints and the summary in a narrow %i-person map', count => {
     const width = 254, scale = width / 1000, layout = groupMapLayout(count, width);
     const chips = Array.from({ length: count }, (_, index) => {
@@ -57,9 +77,9 @@ describe('comparison world geometry', () => {
     expect(pose.y + pose.height / 2).toBeCloseTo((first.y + second.y) / 2);
   });
   it('preserves the original wide map and the pair/trio coordinate system', () => {
-    expect(groupMapLayout(10, 768)).toMatchObject({ centerY: 450, radiusY: 350, worldHeight: 900 });
+    expect(groupMapLayout(10, 1280)).toMatchObject({ centerY: 450, radiusY: 350, worldHeight: 900 });
     expect(groupMapLayout(3, 254)).toMatchObject({ centerY: 450, radiusY: 350, worldHeight: 900 });
-    expect(personCenter(0, 10, 768)).toEqual({ x: 500, y: 100 });
+    expect(personCenter(0, 10, 1280)).toEqual({ x: 500, y: 100 });
   });
   it('footprint oracle catches excluded circles crossing an edge when every corner is outside', () => {
     const polygon = corners({ x: 0, y: 0, width: 100, height: 100, rotate: 0 });

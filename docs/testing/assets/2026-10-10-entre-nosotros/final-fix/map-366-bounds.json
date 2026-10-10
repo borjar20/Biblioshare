@@ -1,0 +1,153 @@
+{
+  "stage": {
+    "x": 33,
+    "y": 1009,
+    "width": 300,
+    "height": 1586,
+    "right": 333,
+    "bottom": 2595,
+    "text": "qa_comp_motion_01qa_comp_motion_02qa_comp_motion_00Diana A0 GarcíaDiana A1 GarcíaDiana A2 GarcíaDiana A3 GarcíaDiana A4 GarcíaDiana A5 GarcíaDiana A6 GarcíaDiana A7 GarcíaDiana A8 GarcíaDiana A9 García2compartidas por todo el grupo"
+  },
+  "labels": [
+    {
+      "x": 149,
+      "y": 1018.8125,
+      "width": 68,
+      "height": 40.375,
+      "right": 217,
+      "bottom": 1059.1875,
+      "text": "Diana A0 García",
+      "font": "11px",
+      "lineHeight": "13.2px"
+    },
+    {
+      "x": 212.46875,
+      "y": 1150.171875,
+      "width": 68,
+      "height": 40.375,
+      "right": 280.46875,
+      "bottom": 1190.546875,
+      "text": "Diana A1 García",
+      "font": "11px",
+      "lineHeight": "13.2px"
+    },
+    {
+      "x": 251.703125,
+      "y": 1494.0625,
+      "width": 68,
+      "height": 40.375,
+      "right": 319.703125,
+      "bottom": 1534.4375,
+      "text": "Diana A2 García",
+      "font": "11px",
+      "lineHeight": "13.2px"
+    },
+    {
+      "x": 251.703125,
+      "y": 1919.15625,
+      "width": 68,
+      "height": 40.375,
+      "right": 319.703125,
+      "bottom": 1959.53125,
+      "text": "Diana A3 García",
+      "font": "11px",
+      "lineHeight": "13.2px"
+    },
+    {
+      "x": 212.46875,
+      "y": 2263.0625,
+      "width": 68,
+      "height": 40.375,
+      "right": 280.46875,
+      "bottom": 2303.4375,
+      "text": "Diana A4 García",
+      "font": "11px",
+      "lineHeight": "13.2px"
+    },
+    {
+      "x": 149,
+      "y": 2394.421875,
+      "width": 68,
+      "height": 40.375,
+      "right": 217,
+      "bottom": 2434.796875,
+      "text": "Diana A5 García",
+      "font": "11px",
+      "lineHeight": "13.2px"
+    },
+    {
+      "x": 85.515625,
+      "y": 2263.0625,
+      "width": 68,
+      "height": 40.375,
+      "right": 153.515625,
+      "bottom": 2303.4375,
+      "text": "Diana A6 García",
+      "font": "11px",
+      "lineHeight": "13.2px"
+    },
+    {
+      "x": 46.28125,
+      "y": 1919.15625,
+      "width": 68,
+      "height": 40.375,
+      "right": 114.28125,
+      "bottom": 1959.53125,
+      "text": "Diana A7 García",
+      "font": "11px",
+      "lineHeight": "13.2px"
+    },
+    {
+      "x": 46.28125,
+      "y": 1494.0625,
+      "width": 68,
+      "height": 40.375,
+      "right": 114.28125,
+      "bottom": 1534.4375,
+      "text": "Diana A8 García",
+      "font": "11px",
+      "lineHeight": "13.2px"
+    },
+    {
+      "x": 85.515625,
+      "y": 1150.171875,
+      "width": 68,
+      "height": 40.375,
+      "right": 153.515625,
+      "bottom": 1190.546875,
+      "text": "Diana A9 García",
+      "font": "11px",
+      "lineHeight": "13.2px"
+    }
+  ],
+  "piles": [
+    {
+      "x": 159.426025390625,
+      "y": 1694.641845703125,
+      "width": 47.14796447753906,
+      "height": 64.328857421875,
+      "right": 206.57398986816406,
+      "bottom": 1758.970703125,
+      "text": "qa_comp_motion_01"
+    },
+    {
+      "x": 191.1650848388672,
+      "y": 1072.51220703125,
+      "width": 47.147979736328125,
+      "height": 64.3287353515625,
+      "right": 238.3130645751953,
+      "bottom": 1136.8409423828125,
+      "text": "qa_comp_motion_00"
+    }
+  ],
+  "summary": {
+    "x": 108,
+    "y": 2454.609375,
+    "width": 150,
+    "height": 95,
+    "right": 258,
+    "bottom": 2549.609375,
+    "text": "2compartidas por todo el grupo"
+  },
+  "documentWidth": 366
+}

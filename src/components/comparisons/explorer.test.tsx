@@ -63,6 +63,16 @@ describe('independent format view retention', () => {
   });
 });
 describe('Explorer request boundaries', () => {
+  it('discloses loaded-group histories with zero eligible works and an unavailable participant', async () => {
+    mocks.query = `group=${first.id}`;
+    mocks.load.mockResolvedValue({ ok: true, data: { ...snapshot(first), excludedSeriesWithoutEpisodes: 2 } });
+    render(ui());
+    const notice = await screen.findByText(/2 historiales de persona y serie del grupo cargado/);
+    expect(notice.textContent).toContain('sin episodios registrados');
+    fireEvent.click(screen.getByRole('button', { name: 'Gustos' }));
+    expect(screen.getByText(/2 historiales de persona y serie del grupo cargado/)).toBeTruthy();
+    expect(screen.getByText(/Selecciona entre 2 y 10/)).toBeTruthy();
+  });
   it('restores facet participants in the checkboxes after another section adds Carlos', async () => {
     const available: Group = { ...first, members: ['Ana', 'Bea', 'Carlos'].map((name, i) => ({ slotId: `${i}`, userId: ['a', 'b', 'c'][i], name, avatarUrl: null, available: true })) };
     const data: Snapshot = { ...snapshot(available), catalog: [{ key: 'book:x', title: 'Libro', coverUrl: null, genres: ['Drama'], creators: [] }], works: [{ userId: 'a', key: 'book:x', rating: 9, orderUnknown: false, progress: null }] };

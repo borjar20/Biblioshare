@@ -19,19 +19,28 @@ export function regionCenter(count: number, mask: number): { x: number; y: numbe
 }
 export function groupMapLayout(count: number, width: number) {
   const scale = Math.min(1, Math.max(160, width) / WORLD_WIDTH);
-  const dense = width <= 360 && count >= 5;
-  const centerY = dense ? 1700 : 450, radiusY = dense ? 1600 : 350;
+  // Ordinary labels occupy 110 x 48 CSS pixels (two lines). Keep native
+  // vertical growth until the 10-person ring fits that envelope.
+  const dense = width <= 960 && count >= 5;
+  const labelHeight = width <= 300 ? 41 : 48;
+  const coverHeight = Math.min(140 * scale, 64) * 1.58;
+  // Reserve the two-line label and a rotated cover at the closest midpoint.
+  const radiusY = dense ? Math.max(350, (labelHeight + coverHeight + 24) / (scale * (1 - Math.cos(2 * Math.PI / count)))) : 350;
+  const centerY = dense ? radiusY + 100 : 450;
   const summaryY = dense ? (centerY + radiusY) * scale + 40 : centerY * scale + 65;
-  const worldHeight = dense ? 3400 : WORLD_HEIGHT;
+  const worldHeight = dense ? centerY + radiusY + 100 : WORLD_HEIGHT;
   return { centerY, radiusY, summaryY, worldHeight, height: dense ? Math.ceil(summaryY + 140) : Math.max(360, worldHeight * scale) };
 }
 export function personCenter(index: number, count: number, width = WORLD_WIDTH) {
   // Break the same-height bottom pair in odd dense maps without changing the
   // ordinary/wide ring or giving labels and their connections different points.
-  const offset = width <= 360 && count >= 5 && count % 2 ? Math.PI / (2 * count) : 0;
+  const offset = width <= 960 && count >= 5 && count % 2 ? Math.PI / (2 * count) : 0;
   const angle = index * 2 * Math.PI / Math.max(1, count) - Math.PI / 2 + offset;
   const layout = groupMapLayout(count, width);
-  return { x: 500 + 360 * Math.cos(angle), y: layout.centerY + layout.radiusY * Math.sin(angle) };
+  const scale = Math.min(1, Math.max(160, width) / WORLD_WIDTH);
+  const labelWidth = width <= 300 ? 68 : 110;
+  const radiusX = Math.min(360, Math.max(0, (width - labelWidth) / (2 * scale)));
+  return { x: 500 + radiusX * Math.cos(angle), y: layout.centerY + layout.radiusY * Math.sin(angle) };
 }
 export function mapConnections(snapshot: Snapshot): { people: string[]; keys: WorkKey[] }[] {
   const people = snapshot.group.members.filter(member => member.available && member.userId).map(member => member.userId!);
@@ -100,7 +109,7 @@ export function layoutScene(snapshot: Snapshot, view: View, viewport: { width: n
       const slot = taken.get(pile) ?? 0; taken.set(pile, slot + 1);
       const coverWidth = Math.min(140, 64 / scale);
       poses[key] = view.level === 'venn' && mask ? regionCover(view.people.length, mask, center, coverWidth, slot)
-        : { x: center.x - coverWidth / 2 + slot * 18, y: center.y - coverWidth * .725 + slot * 5,
+        : { x: center.x - coverWidth / 2 + slot * (view.level === 'group' ? 4 : 18), y: center.y - coverWidth * .725 + slot * 5,
         width: coverWidth, height: coverWidth * 1.45, rotate: slot === 0 ? -5 : (index % 3) * 6 - 3 };
     });
     return scene;

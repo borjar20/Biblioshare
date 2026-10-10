@@ -7279,3 +7279,22 @@ producción intacta e integración/publicación pendientes. Estas decisiones
 concretan las entradas de diseño anteriores; evidencia y rondas en
 `docs/testing/2026-10-10-entre-nosotros.md`. Los pendientes y «Lo que esperamos
 juntos» no entran en esta entrega y siguen registrados en #1462.
+
+
+## 2026-10-10 — Entre nosotros: espacio real de etiquetas y retorno al origen (#1462)
+
+El mapa reserva el tamaño CSS de las etiquetas de dos líneas y la huella de
+las portadas rotadas. La anchura medida del lienzo determina tanto el tamaño
+compacto de nombre como sus coordenadas; el radio horizontal respeta sus bordes
+y el radio vertical crece hasta que la disposición ordinaria dispone del espacio
+necesario. La altura se recorre mediante scroll normal. Nombres, conexiones y
+pilas continúan usando una única fuente de coordenadas. El pequeño desplazamiento
+de las tres portadas de una pila del mapa cabe también en esa reserva.
+
+El retorno por teclado recuerda la pareja no inicial, región o categoría que
+abrió la evidencia. Gustos restaura su categoría en el padre que sobrevive al
+desmontaje del lienzo; si una recarga elimina el origen, el foco alcanza un
+control superviviente. El borrado inline enfoca Cancelar al abrir y restaura
+Eliminar al cancelar. Los relojes y contratos de movimiento anteriores se
+conservan. Evidencia de esta corrección y límites de ejecución en
+`docs/testing/2026-10-10-entre-nosotros.md`, ronda final de correcciones.

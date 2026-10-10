@@ -1,0 +1,149 @@
+[
+  {
+    "serviceWorkers": "allow",
+    "workers": [
+      "http://localhost:3000/sw.js"
+    ],
+    "controller": "http://localhost:3000/sw.js",
+    "covers": [
+      {
+        "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+        "resourceType": "image",
+        "worker": null,
+        "frame": "http://localhost:3000/",
+        "event": "request"
+      },
+      {
+        "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+        "resourceType": "image",
+        "worker": null,
+        "frame": "http://localhost:3000/",
+        "event": "failed",
+        "error": "net::ERR_NAME_NOT_RESOLVED"
+      },
+      {
+        "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+        "resourceType": "image",
+        "worker": null,
+        "frame": "http://localhost:3000/comunidad/entre-nosotros",
+        "event": "request"
+      },
+      {
+        "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+        "resourceType": "image",
+        "worker": null,
+        "frame": "http://localhost:3000/comunidad/entre-nosotros",
+        "event": "response",
+        "status": 200,
+        "fromServiceWorker": false
+      },
+      {
+        "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+        "resourceType": "image",
+        "worker": null,
+        "frame": "http://localhost:3000/comunidad/entre-nosotros",
+        "event": "request"
+      },
+      {
+        "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+        "resourceType": "image",
+        "worker": null,
+        "frame": "http://localhost:3000/comunidad/entre-nosotros",
+        "event": "response",
+        "status": 200,
+        "fromServiceWorker": false
+      }
+    ],
+    "initiators": [
+      {
+        "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+        "type": "Image",
+        "initiator": "other"
+      },
+      {
+        "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+        "type": "Image",
+        "initiator": "other"
+      },
+      {
+        "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+        "type": "Image",
+        "initiator": "other"
+      }
+    ],
+    "errors": []
+  },
+  {
+    "serviceWorkers": "block",
+    "workers": [],
+    "controller": null,
+    "covers": [
+      {
+        "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+        "resourceType": "image",
+        "worker": null,
+        "frame": "http://localhost:3000/comunidad/entre-nosotros",
+        "event": "request"
+      },
+      {
+        "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+        "resourceType": "image",
+        "worker": null,
+        "frame": "http://localhost:3000/comunidad/entre-nosotros",
+        "event": "response",
+        "status": 200,
+        "fromServiceWorker": false
+      },
+      {
+        "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+        "resourceType": "image",
+        "worker": null,
+        "frame": "http://localhost:3000/comunidad/entre-nosotros",
+        "event": "request"
+      },
+      {
+        "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+        "resourceType": "image",
+        "worker": null,
+        "frame": "http://localhost:3000/comunidad/entre-nosotros",
+        "event": "response",
+        "status": 200,
+        "fromServiceWorker": false
+      },
+      {
+        "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+        "resourceType": "image",
+        "worker": null,
+        "frame": "http://localhost:3000/comunidad/entre-nosotros",
+        "event": "request"
+      },
+      {
+        "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+        "resourceType": "image",
+        "worker": null,
+        "frame": "http://localhost:3000/comunidad/entre-nosotros",
+        "event": "response",
+        "status": 200,
+        "fromServiceWorker": false
+      }
+    ],
+    "initiators": [
+      {
+        "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+        "type": "Image",
+        "initiator": "other"
+      },
+      {
+        "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+        "type": "Image",
+        "initiator": "other"
+      },
+      {
+        "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+        "type": "Image",
+        "initiator": "other"
+      }
+    ],
+    "errors": []
+  }
+]

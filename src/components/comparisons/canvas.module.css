@@ -27,7 +27,8 @@
 .fallback small { font-family: sans-serif; font-size: calc(11px / var(--camera-scale)); color: var(--muted-foreground); }
 .controls { position: absolute; inset: 0; pointer-events: none; }
 .person, .region { position: absolute; transform: translate(-50%, -50%); }
-.person { width: max-content; max-width: 110px; padding: 7px; border-radius: 18px; font-size: 14px; text-align: center; background: var(--surface-muted); overflow-wrap: anywhere; }
+.person { width: max-content; max-width: 110px; padding: 7px; border-radius: 18px; font-size: 14px; line-height: 1.2; text-align: center; background: var(--surface-muted); overflow-wrap: anywhere; }
+.person[data-compact=true] { font-size: 11px; max-width: 68px; }
 .region { pointer-events: auto; min-width: 44px; min-height: 44px; z-index: 3; text-align: center; background: var(--surface); border-radius: 12px; padding: 4px 7px; box-shadow: 0 2px 5px color-mix(in srgb, var(--foreground) 10%, transparent); }
 .region strong { display: block; font-family: var(--font-serif), Georgia, serif; font-size: 21px; }
 .region span { display: block; max-width: 115px; font-size: 11px; overflow-wrap: anywhere; }
@@ -72,7 +73,7 @@
 .episodeEvidence h4, .detailEvidence h4 { font-family: var(--font-serif), Georgia, serif; font-size: 20px; margin-bottom: 12px; }
 .episodeEvidence p, .episodeEvidence li { font-size: 14px; margin-top: 8px; }
 @media(max-width: 400px) {
-  .person { font-size: 11px; max-width: 68px; }
+
   .region span { max-width: 75px; font-size: 10px; }
   .region strong { font-size: 18px; }
   .detailHeading h3 { font-size: 23px; }

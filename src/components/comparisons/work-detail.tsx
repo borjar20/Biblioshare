@@ -58,11 +58,11 @@ export function WorkDetail({ snapshot, view, work, onEvidenceHeight }: { snapsho
               {person.progress.status && <small>{t(`progressStatus.${person.progress.status === 'dropped' ? 'abandoned' : person.progress.status === 'completed' ? 'finished' : 'active'}`)}</small>}</>}
           </dd></div>;
         })}</dl>
-        {media === 'series' && <section aria-label={t('commonEpisodes')} className={styles.episodeEvidence}><h4>{t('commonEpisodes')}</h4><p>{t('episodeNotesMeaning')}</p>
+        {media === 'series' && people.length > 1 && <section aria-label={t('commonEpisodes')} className={styles.episodeEvidence}><h4>{t('commonEpisodes')}</h4><p>{t('commonEpisodeSample', { count: result.data.commonEpisodes.length })}</p><p>{t('episodeNotesMeaning')}</p>
           {!result.data.commonEpisodes.length && <p>{t('noCommonEpisodes')}</p>}
           {result.data.commonEpisodes.map(episode => <div key={`${episode.season}:${episode.episode}`}><h5>{t('episodeLabel', { season: episode.season, episode: episode.episode })}</h5><ul>{people.map(userId => <li key={userId}>{t('episodePersonRating', { name: snapshot.group.members.find(member => member.userId === userId)?.name ?? t('unavailablePerson'), rating: episode.notes.find(note => note.userId === userId)?.rating ?? t('unrated') })}</li>)}</ul></div>)}
         </section>}
-        {media === 'series' && snapshot.excludedSeriesWithoutEpisodes > 0 && <p>{t('excludedHistoricalSeries', { count: snapshot.excludedSeriesWithoutEpisodes })}</p>}
+        {media === 'series' && people.length === 1 && <p>{t('singlePersonEpisodes')}</p>}
         {!result.data.work.metadataMissing && <a href={itemHref(media, id)}>{t('openItem')}</a>}
       </>}
     </div>

@@ -1,7 +1,15 @@
-import { expect, test as base, type Page, type TestInfo } from '@playwright/test';
+import { expect, test as base, type Page, type TestInfo, type Request } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
 import { comparisonRest, deleteComparisonActor, loginComparisonActor, withComparisonFixture, type ComparisonActor, type ComparisonFixture } from './support/comparison-fixtures';
 
+function coverOwnership(request: Request) {
+  const url = new URL(request.url());
+  if (url.hostname !== 'comparison-fixture.invalid') return null;
+  const worker = request.serviceWorker();
+  let frame: string | null = null;
+  if (!worker) { try { const source = new URL(request.frame().url()); frame = source.origin + source.pathname; } catch { /* Frame may already be detached. */ } }
+  return { url: url.origin + url.pathname, resourceType: request.resourceType(), worker: worker?.url() ?? null, frame };
+}
 type Record = { method: string; path: string; status: number; ms: number; bytes: number; body?: string; bodyState?: 'complete' | 'unavailable' | 'incomplete'; request?: string };
 async function attachJson(info: TestInfo, name: string, data: unknown) {
   const path = info.outputPath(`${name}.json`);
@@ -12,15 +20,17 @@ const test = base.extend<{ journal: Record[] }>({
   journal: [async ({ context }, use, info) => {
     const journal: Record[] = [], errors: string[] = [], consoleMessages: string[] = [], failures: string[] = [];
     const started = new Map<object, number>(), pending: Promise<void>[] = [];
+    const covers: unknown[] = [];
     context.on('page', page => {
       page.on('pageerror', error => errors.push(error.message));
       page.on('console', message => { if (['error', 'warning'].includes(message.type())) consoleMessages.push(message.text()); });
     });
-    context.on('request', request => started.set(request, Date.now()));
-    context.on('requestfailed', request => failures.push(`${request.method()} ${new URL(request.url()).pathname} ${request.failure()?.errorText}`));
+    context.on('request', request => { started.set(request, Date.now()); const cover = coverOwnership(request); if (cover) covers.push({ ...cover, event: 'request' }); });
+    context.on('requestfailed', request => { failures.push(`${request.method()} ${new URL(request.url()).pathname} ${request.failure()?.errorText}`); const cover = coverOwnership(request); if (cover) covers.push({ ...cover, event: 'failed', error: request.failure()?.errorText }); });
     context.on('response', response => {
       pending.push((async () => {
         const request = response.request(), path = new URL(response.url()).pathname;
+        const cover = coverOwnership(request); if (cover) covers.push({ ...cover, event: 'response', status: response.status(), fromServiceWorker: response.fromServiceWorker() });
         const action = !!request.headers()['next-action'] && path.includes('/entre-nosotros');
         let body = '', bodyState: Record['bodyState'] = 'complete';
         if (action) {
@@ -38,7 +48,7 @@ const test = base.extend<{ journal: Record[] }>({
     });
     await use(journal);
     await Promise.all(pending);
-    await attachJson(info, 'browser-journal', { journal, errors, consoleMessages, failures });
+    await attachJson(info, 'browser-journal', { journal, errors, consoleMessages, failures, covers });
     expect(errors, 'uncaught browser errors').toEqual([]);
   }, { auto: true }],
 });
@@ -150,7 +160,12 @@ test('ten-person CRUD, owner-free group, exact pair/trio, formats, notes, persis
     await page.getByRole('form', { name: 'Editar grupo' }).getByRole('button', { name: 'Eliminar grupo', exact: true }).focus(); await page.keyboard.press('Enter');
     const focusAfterConfirm = await page.evaluate(() => ({ tag: document.activeElement?.tagName, text: document.activeElement?.textContent?.slice(0, 100) }));
     await attachJson(info, 'editor-confirmation-focus-observation', { focusAfterConfirm });
-    await page.getByRole('button', { name: 'Confirmar eliminación', exact: true }).focus(); await page.keyboard.press('Enter');
+    const safeCancel = form.getByRole('button', { name: 'Cancelar', exact: true }).last();
+    await expect(safeCancel).toBeFocused(); await page.keyboard.press('Enter');
+    await expect(form.getByRole('button', { name: 'Eliminar grupo', exact: true })).toBeFocused();
+    await page.keyboard.press('Enter'); await expect(safeCancel).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(form.getByRole('button', { name: 'Confirmar eliminación', exact: true })).toBeFocused(); await page.keyboard.press('Enter');
     await expect(page.getByText('Crea un grupo para empezar a comparar.', { exact: true })).toBeVisible();
   }, { integrated: true });
 });
@@ -456,4 +471,144 @@ test('LOCAL ONLY ten-person full HTTP snapshot includes 1205 historical book pas
     await settled(page);
     await attachJson(info, 'volume-measurement', { backend: 'local54321', members: 10, historicalBookPassesForPrivateMember: 1205, catalogWorks: result.data.catalog.length, personWorks: result.data.works.length, elapsedLoginCreateAndLoadMs: elapsed, refreshMs, uncompressedActionResponseBytes: bytes });
   }, { integrated: true, volume: true });
+});
+
+
+test('final fixes: natural origin focus, 320px selector, all-person episode sample and exclusions', async ({ page }, info) => {
+  await page.setViewportSize({ width: 320, height: 800 });
+  await withComparisonFixture(async fixture => {
+    await loginComparisonActor(page, fixture.actors[0]); await page.goto('/comunidad/entre-nosotros');
+    const selector = page.getByRole('combobox', { name: 'Grupo', exact: true });
+    const selectorBox = async (phase: string) => {
+      const box = await selector.boundingBox(); expect(box!.width).toBeGreaterThan(220);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(320);
+      await attachJson(info, `selector-${phase}`, box);
+      await page.screenshot({ path: info.outputPath(`selector-${phase}.png`) });
+    };
+    await selectorBox('empty');
+    await createGroup(page, fixture.actors, 'Un grupo de bibliotecas y amistades con un nombre largo QA');
+    await selectorBox('long-selected');
+    const pairs = page.locator('[data-map-pair]'); const originPair = pairs.nth(2);
+    const originIdentity = await originPair.getAttribute('data-map-pair');
+    await originPair.focus(); await page.keyboard.press('Enter'); await settled(page);
+    const region = page.locator('button[data-region-mask="2"]:visible').filter({ has: page.locator('strong') });
+    await region.focus(); await page.keyboard.press('Enter'); await settled(page);
+    await page.keyboard.press('Escape'); await settled(page); await expect(region).toBeFocused();
+    await page.keyboard.press('Escape'); await settled(page);
+    await expect(page.locator(`[data-map-pair='${originIdentity}']`)).toBeFocused();
+    await selectPeople(page, fixture, [0, 1]);
+    await page.getByRole('button', { name: 'Gustos', exact: true }).click();
+    const explore = page.getByRole('button', { name: 'Explorar Drama', exact: true });
+    await explore.focus(); await page.keyboard.press('Enter'); await settled(page);
+    await page.getByRole('button', { name: 'Volver al grupo', exact: true }).click(); await expect(explore).toBeFocused();
+    await page.getByRole('button', { name: 'Obras', exact: true }).click();
+    await page.getByRole('combobox', { name: 'Formato', exact: true }).selectOption('series'); await settled(page);
+    await selectPeople(page, fixture, [0, 1]);
+    await page.getByRole('button', { name: 'Comparar selección', exact: true }).click(); await settled(page);
+    await page.getByRole('button', { name: /^Abrir región: (Ana QA, Beatriz QA|Beatriz QA, Ana QA); 1 obras$/ }).click(); await settled(page);
+    const series = page.locator(`[data-work-key="series:${fixture.series!.id}"]`);
+    await series.click(); await settled(page);
+    await expect(page.getByText('40 episodios comunes valorados por todas las personas indicadas.', { exact: true })).toBeVisible();
+    // Genuine data mutation: an existing common episode is unscored by B.
+    await comparisonRest(`episode_watches?user_id=eq.${fixture.actors[1].id}&series_id=eq.${fixture.series!.id}`, { method: 'PATCH', body: JSON.stringify({ rating: null }) });
+    await page.keyboard.press('Escape'); await settled(page); await series.click(); await settled(page);
+    await expect(page.getByText('0 episodios comunes valorados por todas las personas indicadas.', { exact: true })).toBeVisible();
+    await expect(page.getByText('No hay episodios comunes valorados por todas las personas indicadas.', { exact: true })).toBeVisible();
+    await attachJson(info, 'joint-episodes-copy', await page.locator('[data-camera-moving][data-view="work"]').innerText());
+    await page.keyboard.press('Escape'); await settled(page);
+    await page.keyboard.press('Escape'); await settled(page);
+    await comparisonRest(`episode_watches?user_id=eq.${fixture.actors[1].id}&series_id=eq.${fixture.series!.id}`, { method: 'DELETE' });
+    await page.getByRole('button', { name: 'Actualizar acceso', exact: true }).click(); await settled(page);
+    await page.getByRole('button', { name: 'Comparar selección', exact: true }).click(); await settled(page);
+    await page.getByRole('button', { name: 'Abrir región: Ana QA; 1 obras', exact: true }).click(); await settled(page);
+    await series.click(); await settled(page);
+    await expect(page.getByText('Esta región corresponde a una sola persona; no hay comparación conjunta de episodios.', { exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Episodios comunes', exact: true })).toHaveCount(0);
+    await page.keyboard.press('Escape'); await settled(page);
+    // Both completed/dropped histories remain; remove their only episode evidence.
+    await comparisonRest(`episode_watches?series_id=eq.${fixture.series!.id}`, { method: 'DELETE' });
+    await page.getByRole('button', { name: 'Actualizar acceso', exact: true }).click(); await settled(page);
+    await expect(page.locator('[data-comparison-coverage]')).toContainText('3 historiales de persona y serie del grupo cargado');
+    await expect(page.getByRole('button', { name: /Abrir obra:/ })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Comparar selección', exact: true }).click(); await settled(page);
+    await page.getByRole('button', { name: /^Abrir región: (Ana QA, Beatriz QA|Beatriz QA, Ana QA); 0 obras$/ }).click(); await settled(page);
+    await expect(page.getByText('No hay registros elegibles visibles en esta región.', { exact: true })).toBeVisible();
+    await expect(page.locator('[data-comparison-coverage]')).toBeVisible();
+    // Unavailable participant must not suppress the loaded-group notice.
+    await deleteComparisonActor(fixture.actors[2]);
+    await page.getByRole('button', { name: 'Actualizar acceso', exact: true }).click(); await settled(page);
+    await expect(page.locator('[data-comparison-coverage]')).toContainText('2 historiales de persona y serie del grupo cargado');
+    await page.screenshot({ path: info.outputPath('excluded-empty-unavailable.png'), fullPage: true });
+  }, { integrated: true });
+});
+
+test('final fixes: intermediate map DOM names, piles and summary stay disjoint', async ({ page }, info) => {
+  await withComparisonFixture(async fixture => {
+    for (const [index, actor] of fixture.actors.entries()) {
+      actor.name = `Diana A${index} García`;
+      await comparisonRest(`profiles?user_id=eq.${actor.id}`, { method: 'PATCH', body: JSON.stringify({ display_name: actor.name }) });
+    }
+    await comparisonRest(`passes?user_id=eq.${fixture.actors[9].id}&item_id=eq.${fixture.books[0].id}`, { method: 'DELETE' });
+    await open(page, fixture);
+    for (const width of [365, 366, 367, 425, 426, 427, 430, 466, 665, 666, 667, 1041, 1042, 1043, 1073, 1074, 1075, 1280]) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))); await settled(page);
+      const boxes = await page.evaluate(() => {
+        const stage = document.querySelector('[data-comparison-stage]')!;
+        const box = (node: Element) => { const b = node.getBoundingClientRect(); return { x: b.x, y: b.y, width: b.width, height: b.height, right: b.right, bottom: b.bottom, text: node.textContent }; };
+        const labels = [...stage.querySelectorAll('[data-compact]')];
+        return { stage: box(stage), labels: labels.map(node => ({ ...box(node), font: getComputedStyle(node).fontSize, lineHeight: getComputedStyle(node).lineHeight })),
+          piles: [...stage.querySelectorAll('[data-work-key][data-background="false"][data-inactive="false"]')].map(box), summary: box(stage.querySelector('[class*="shared"]')!), documentWidth: document.documentElement.scrollWidth };
+      });
+      const overlap = (a: typeof boxes.stage, b: typeof boxes.stage) => Math.max(0, Math.min(a.right, b.right) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.y, b.y));
+      expect(boxes.labels).toHaveLength(10); expect(boxes.documentWidth).toBeLessThanOrEqual(width);
+      expect(boxes.labels.some(label => label.height >= parseFloat(label.lineHeight) * 2 + 13)).toBe(true);
+      for (const [index, label] of boxes.labels.entries()) {
+        expect(label.x).toBeGreaterThanOrEqual(boxes.stage.x); expect(label.right).toBeLessThanOrEqual(boxes.stage.right);
+        expect(label.y).toBeGreaterThanOrEqual(boxes.stage.y); expect(label.bottom).toBeLessThanOrEqual(boxes.stage.bottom);
+        for (const other of boxes.labels.slice(index + 1)) expect(overlap(label, other), `name/name ${width}`).toBe(0);
+        for (const pile of boxes.piles) expect(overlap(label, pile), `name/pile ${width}`).toBe(0);
+        expect(overlap(label, boxes.summary), `name/summary ${width}`).toBe(0);
+      }
+      await attachJson(info, `map-${width}-bounds`, boxes);
+      if ([366, 430, 666, 667, 1074, 1075, 1280].includes(width)) await page.screenshot({ path: info.outputPath(`map-${width}.png`), fullPage: true });
+    }
+  }, { integrated: true });
+});
+
+test('final fix M3 bounded allow/block fixture-cover ownership diagnosis', async ({ browser }, info) => {
+  await withComparisonFixture(async fixture => {
+    const runs: unknown[] = [];
+    for (const serviceWorkers of ['allow', 'block'] as const) {
+      const context = await browser.newContext({ baseURL: 'http://localhost:3000', serviceWorkers });
+      const page = await context.newPage(); const covers: unknown[] = [], initiators: unknown[] = [], errors: string[] = [];
+      const cdp = await context.newCDPSession(page); await cdp.send('Network.enable');
+      cdp.on('Network.requestWillBeSent', event => {
+        if (new URL(event.request.url).hostname !== 'comparison-fixture.invalid') return;
+        const url = new URL(event.request.url);
+        initiators.push({ url: url.origin + url.pathname, type: event.type, initiator: event.initiator.type,
+          stack: event.initiator.stack?.callFrames.map(frame => ({ functionName: frame.functionName, url: frame.url ? new URL(frame.url, 'http://localhost:3000').origin + new URL(frame.url, 'http://localhost:3000').pathname : '', line: frame.lineNumber })) });
+      });
+      context.on('request', request => { const cover = coverOwnership(request); if (cover) covers.push({ ...cover, event: 'request' }); });
+      context.on('requestfailed', request => { const cover = coverOwnership(request); if (cover) covers.push({ ...cover, event: 'failed', error: request.failure()?.errorText }); });
+      context.on('response', response => { const cover = coverOwnership(response.request()); if (cover) covers.push({ ...cover, event: 'response', status: response.status(), fromServiceWorker: response.fromServiceWorker() }); });
+      page.on('pageerror', error => errors.push(error.message));
+      try {
+        await loginComparisonActor(page, fixture.actors[0]);
+        if (serviceWorkers === 'allow') await page.evaluate(async () => { await navigator.serviceWorker.ready; });
+        await page.goto('/comunidad/entre-nosotros');
+        if (serviceWorkers === 'allow') await page.reload();
+        await createGroup(page, fixture.actors.slice(0, 3), `M3 ${serviceWorkers}`);
+        await page.locator('[data-map-pair]').first().click(); await settled(page);
+        await page.getByRole('button', { name: 'Abrir región: Ana QA, Beatriz QA; 32 obras', exact: true }).click(); await settled(page);
+        await page.keyboard.press('Escape'); await settled(page);
+        await page.getByRole('button', { name: 'Abrir región: Ana QA, Beatriz QA; 32 obras', exact: true }).click(); await settled(page);
+        await expect(page.locator('[data-comparison-stage] img').first()).toBeVisible();
+        const workers = context.serviceWorkers().map(worker => worker.url());
+        const controller = await page.evaluate(() => navigator.serviceWorker.controller?.scriptURL ?? null);
+        runs.push({ serviceWorkers, workers, controller, covers, initiators, errors });
+      } finally { await context.close(); }
+    }
+    await attachJson(info, 'M3-cover-ownership', runs);
+  }, { integrated: true });
 });

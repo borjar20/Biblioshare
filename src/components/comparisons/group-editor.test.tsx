@@ -14,6 +14,13 @@ function mount(value: Group | null = null) { render(<NextIntlClientProvider loca
 beforeEach(() => { vi.clearAllMocks(); actions.save.mockResolvedValue({ ok: true, data: group }); actions.remove.mockResolvedValue({ ok: true, data: null }); });
 afterEach(cleanup);
 describe('inline group editing', () => {
+  it('moves focus to safe cancel and restores Delete after inline cancellation', () => {
+    mount(group); const trigger = screen.getByRole('button', { name: 'Eliminar grupo' });
+    trigger.focus(); fireEvent.click(trigger);
+    const cancel = screen.getAllByRole('button', { name: 'Cancelar' })[1];
+    expect(document.activeElement).toBe(cancel); fireEvent.click(cancel);
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Eliminar grupo' }));
+  });
   it('selects no one arbitrarily, validates ten and rejects eleven', async () => {
     mount(); fireEvent.change(screen.getByLabelText('Nombre del grupo'), { target: { value: 'Amigos' } });
     const save = screen.getByRole('button', { name: 'Guardar grupo' }) as HTMLButtonElement;

@@ -1,0 +1,596 @@
+{
+  "acceptance": [
+    {
+      "case": "entre-nosotros-final-fixes-07ced-isode-sample-and-exclusions-chromium",
+      "errors": [],
+      "consoleMessages": [
+        "Service Worker registration blocked by Playwright",
+        "Service Worker registration blocked by Playwright"
+      ],
+      "failures": [
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "POST / net::ERR_ABORTED",
+        "POST /login net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros net::ERR_ABORTED",
+        "POST /comunidad/entre-nosotros net::ERR_ABORTED",
+        "POST /comunidad/entre-nosotros net::ERR_ABORTED"
+      ],
+      "coverRequests": 6,
+      "coverFailed": [],
+      "coverResponses": [
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        }
+      ],
+      "actions": 11
+    },
+    {
+      "case": "entre-nosotros-final-fixes-9fa3e-s-and-summary-stay-disjoint-chromium",
+      "errors": [],
+      "consoleMessages": [
+        "Service Worker registration blocked by Playwright",
+        "Service Worker registration blocked by Playwright"
+      ],
+      "failures": [
+        "GET / net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "POST /login net::ERR_ABORTED",
+        "POST / net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros net::ERR_ABORTED",
+        "POST /comunidad/entre-nosotros net::ERR_ABORTED"
+      ],
+      "coverRequests": 2,
+      "coverFailed": [],
+      "coverResponses": [
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        }
+      ],
+      "actions": 4
+    }
+  ],
+  "final-batch": [
+    {
+      "case": "entre-nosotros-final-fixes-07ced-isode-sample-and-exclusions-chromium",
+      "errors": [],
+      "consoleMessages": [
+        "Service Worker registration blocked by Playwright",
+        "Service Worker registration blocked by Playwright"
+      ],
+      "failures": [
+        "GET / net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "POST /login net::ERR_ABORTED",
+        "POST / net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros net::ERR_ABORTED"
+      ],
+      "coverRequests": 5,
+      "coverFailed": [],
+      "coverResponses": [
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        }
+      ],
+      "actions": 5
+    },
+    {
+      "case": "entre-nosotros-final-fixes-9fa3e-s-and-summary-stay-disjoint-chromium",
+      "errors": [],
+      "consoleMessages": [
+        "Service Worker registration blocked by Playwright",
+        "Service Worker registration blocked by Playwright"
+      ],
+      "failures": [
+        "GET / net::ERR_ABORTED",
+        "POST /login net::ERR_ABORTED",
+        "POST / net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros net::ERR_ABORTED"
+      ],
+      "coverRequests": 2,
+      "coverFailed": [],
+      "coverResponses": [
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        }
+      ],
+      "actions": 4
+    },
+    {
+      "case": "entre-nosotros-Gustos-rest-10195--long-async-series-evidence-chromium",
+      "errors": [],
+      "consoleMessages": [
+        "Service Worker registration blocked by Playwright",
+        "Failed to load resource: net::ERR_NAME_NOT_RESOLVED",
+        "Service Worker registration blocked by Playwright"
+      ],
+      "failures": [
+        "GET /comunidad net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "POST /login net::ERR_ABORTED",
+        "GET /catalog-cover.jpg net::ERR_NAME_NOT_RESOLVED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /clubes net::ERR_ABORTED",
+        "GET /serie/bb977303-6cf8-4e53-8a44-14bcea8fea56 net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "POST /comunidad/entre-nosotros net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros net::ERR_ABORTED"
+      ],
+      "coverRequests": 7,
+      "coverFailed": [
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/",
+          "event": "failed",
+          "error": "net::ERR_NAME_NOT_RESOLVED"
+        }
+      ],
+      "coverResponses": [
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        }
+      ],
+      "actions": 5
+    },
+    {
+      "case": "entre-nosotros-Gustos-rest-d0b45--long-async-series-evidence-chromium",
+      "errors": [],
+      "consoleMessages": [
+        "Service Worker registration blocked by Playwright",
+        "Service Worker registration blocked by Playwright"
+      ],
+      "failures": [
+        "GET / net::ERR_ABORTED",
+        "POST /login net::ERR_ABORTED",
+        "POST / net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros net::ERR_ABORTED"
+      ],
+      "coverRequests": 6,
+      "coverFailed": [],
+      "coverResponses": [
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        }
+      ],
+      "actions": 5
+    },
+    {
+      "case": "entre-nosotros-Gustos-rest-d1514--long-async-series-evidence-chromium",
+      "errors": [],
+      "consoleMessages": [
+        "Service Worker registration blocked by Playwright",
+        "Failed to load resource: net::ERR_NAME_NOT_RESOLVED",
+        "Service Worker registration blocked by Playwright"
+      ],
+      "failures": [
+        "GET / net::ERR_ABORTED",
+        "POST /login net::ERR_ABORTED",
+        "GET /catalog-cover.jpg net::ERR_NAME_NOT_RESOLVED",
+        "POST / net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros net::ERR_ABORTED"
+      ],
+      "coverRequests": 8,
+      "coverFailed": [
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/",
+          "event": "failed",
+          "error": "net::ERR_NAME_NOT_RESOLVED"
+        }
+      ],
+      "coverResponses": [
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        }
+      ],
+      "actions": 5
+    },
+    {
+      "case": "entre-nosotros-ten-person--907e8-es-persistence-and-keyboard-chromium",
+      "errors": [],
+      "consoleMessages": [
+        "Service Worker registration blocked by Playwright",
+        "Service Worker registration blocked by Playwright",
+        "Service Worker registration blocked by Playwright"
+      ],
+      "failures": [
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "POST /login net::ERR_ABORTED",
+        "POST / net::ERR_ABORTED",
+        "POST /comunidad/entre-nosotros net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros net::ERR_ABORTED"
+      ],
+      "coverRequests": 7,
+      "coverFailed": [],
+      "coverResponses": [
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        },
+        {
+          "url": "https://comparison-fixture.invalid/catalog-cover.jpg",
+          "resourceType": "image",
+          "worker": null,
+          "frame": "http://localhost:3000/comunidad/entre-nosotros",
+          "event": "response",
+          "status": 200,
+          "fromServiceWorker": false
+        }
+      ],
+      "actions": 12
+    }
+  ],
+  "motion": []
+}

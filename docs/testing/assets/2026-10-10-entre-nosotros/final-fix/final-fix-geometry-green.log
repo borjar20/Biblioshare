@@ -1,0 +1,14 @@
+
+> biblioshare@1.1.0 test
+> vitest run src/components/comparisons/geometry.test.ts --reporter=dot
+
+
+ RUN  v4.1.11 C:/Users/borja/.codex/worktrees/5ca1/Biblioshare
+
+···························································································································································································
+
+ Test Files  1 passed (1)
+      Tests  187 passed (187)
+   Start at  16:16:14
+   Duration  590ms (transform 92ms, setup 0ms, import 151ms, tests 233ms, environment 0ms)
+

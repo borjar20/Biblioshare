@@ -23,6 +23,23 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 describe('comparison canvas', () => {
+  it('falls back to a surviving map control when refresh removes the origin pair', () => {
+    const { rerender } = render(<Harness initial={{ level: 'group' }}/>);
+    fireEvent.click(screen.getByRole('button', { name: 'Bea, Carlos 0 obras comunes' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Volver al grupo' }));
+    const data = { ...snapshot, group: { ...snapshot.group, revision: 2, members: snapshot.group.members.slice(0, 2) } };
+    rerender(<Harness initial={{ level: 'group' }} data={data}/>);
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Ana, Bea 83 obras comunes' }));
+  });
+  it('returns to the originating non-first pair and exact region', () => {
+    render(<Harness initial={{ level: 'group' }}/>);
+    fireEvent.click(screen.getByRole('button', { name: 'Bea, Carlos 0 obras comunes' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir región: Carlos; 0 obras' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Volver al Venn' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Abrir región: Carlos; 0 obras' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Volver al grupo' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Bea, Carlos 0 obras comunes' }));
+  });
   it.each<View>([{ level: 'region', people: ['0', '1'], mask: 3 }, { level: 'facet', people: ['0', '1'], facetKind: 'genre', facetId: 'Drama' }])('keeps the 720ms clock and focus/scroll return when delayed detail and later resizing grow evidence: %j', async initial => {
     let now = 0; let frameId = 0; let evidenceSize = 0;
     const frames = new Map<number, FrameRequestCallback>(); const observers = new Set<() => void>();

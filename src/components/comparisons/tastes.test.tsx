@@ -22,6 +22,15 @@ function Harness({ snapshot = data, people = ['0', '1'] }: { snapshot?: Snapshot
 beforeEach(() => { vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })); vi.stubGlobal('scrollTo', vi.fn()); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 describe('tastes evidence', () => {
+  it('restores the exact category after Canvas unmounts and falls back when it disappears', () => {
+    const { rerender } = render(<Harness/>);
+    fireEvent.click(screen.getByRole('button', { name: 'Explorar Misterio' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Volver al grupo' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Explorar Misterio' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Explorar Misterio' }));
+    rerender(<Harness snapshot={{ ...data, catalog: data.catalog.map(work => ({ ...work, genres: ['Drama'] })) }}/>);
+    expect(document.activeElement).toBe(screen.getByLabelText('Agrupar por'));
+  });
   it('makes consumption bubble area proportional to unique quantity including an empty category', () => {
     const snapshot = { ...data, works: data.works.filter((row, i) => row.userId === '0' || i === 3) };
     const { container, rerender } = render(<Harness snapshot={snapshot}/>);

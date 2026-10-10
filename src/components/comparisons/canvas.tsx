@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from 'react';
 import { useTranslations } from 'next-intl';
 import { findings, regions } from '@/lib/comparisons/derive';
 import type { CatalogWork, Finding, Snapshot, WorkKey } from '@/lib/comparisons/types';
@@ -20,17 +20,25 @@ function Cover({ work, title }: { work: CatalogWork; title: string }) {
       : <span className={styles.fallback}><span>{title}</span><small>{t('noCover')}</small></span>}
   </span><span className={styles.coverTitle}>{title}</span></>;
 }
+type NavigationMemory = { pair: string | null; region: number | null; refreshFocus: boolean };
 export function ComparisonCanvas(props: Props) {
-  return <CanvasSession key={`${props.snapshot.group.id}:${props.snapshot.group.revision}:${props.snapshot.format}`} {...props}/>;
+  const navigationRef = useRef<NavigationMemory>({ pair: null, region: null, refreshFocus: false });
+  return <CanvasSession navigationRef={navigationRef} key={`${props.snapshot.group.id}:${props.snapshot.group.revision}:${props.snapshot.format}`} {...props}/>;
 }
-function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork }: Props) {
+function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, navigationRef }: Props & { navigationRef: RefObject<NavigationMemory> }) {
   const t = useTranslations('comparisons');
   const host = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const entry = useRef<HTMLDivElement>(null);
   const backButton = useRef<HTMLButtonElement>(null);
   const returnTo = useRef<{ key: WorkKey; scroll: number } | null>(null);
-  const focusAfter = useRef<'work' | 'return' | 'back' | null>(null);
+  const focusAfter = useRef<'work' | 'return' | 'back' | 'origin' | null>(null);
+  useLayoutEffect(() => {
+    if (navigationRef.current.refreshFocus) focusAfter.current = 'origin';
+    navigationRef.current.refreshFocus = false;
+    const element = host.current; const storedNavigation = navigationRef.current;
+    return () => { storedNavigation.refreshFocus = !!element?.contains(document.activeElement); };
+  }, [navigationRef]);
   const gesture = useRef(new WheelGesture());
   const [reduced, setReduced] = useState(false);
   const [journey, setJourney] = useState<{ level: View['level']; transition: 'group' | 'level' }>({ level: view.level, transition: 'level' });
@@ -101,7 +109,8 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork }: P
   const poses = { ...destination.poses, ...scene.poses };
   const catalog = new Map(snapshot.catalog.map(work => [work.key, work]));
   const titleFor = (work: CatalogWork) => work.metadataMissing || !work.title ? t('missingMetadata') : work.title;
-  function openRegion(nextMask: number) { focusAfter.current = 'back'; onView({ level: 'region', people: vennPeople, mask: nextMask }); }
+  function openPair(people: string[]) { navigationRef.current.pair = JSON.stringify(people); focusAfter.current = 'back'; onView({ level: 'venn', people }); }
+  function openRegion(nextMask: number) { navigationRef.current.region = nextMask; focusAfter.current = 'back'; onView({ level: 'region', people: vennPeople, mask: nextMask }); }
   function openWork(key: WorkKey) {
     if (facetMode && onOpenFacetWork && view.level === 'facet') {
       returnTo.current = { key, scroll: window.scrollY }; focusAfter.current = 'work'; onOpenFacetWork(key); return;
@@ -113,7 +122,8 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork }: P
     }
   }
   function back() {
-    focusAfter.current = view.level === 'work' ? 'return' : 'back';
+    focusAfter.current = view.level === 'work' ? 'return' : 'origin';
+    if (view.level === 'region') navigationRef.current.region = view.mask;
     if (view.level === 'work' && view.origin.kind === 'facet') onView({ level: 'facet', people: view.people, facetKind: view.origin.facetKind, facetId: view.origin.facetId });
     else if (view.level === 'work' && view.origin.kind === 'region') onView({ level: 'region', people: view.people, mask: view.origin.mask });
     else if (view.level === 'region') onView({ level: 'venn', people: view.people });
@@ -129,9 +139,14 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork }: P
     if (focusAfter.current === 'return' && returnTo.current) {
       const target = Array.from(host.current?.querySelectorAll<HTMLButtonElement>('[data-work-key]') ?? []).find(node => node.dataset.workKey === returnTo.current!.key);
       target?.focus({ preventScroll: true }); window.scrollTo({ top: returnTo.current.scroll, behavior: 'instant' });
-    } else (backButton.current ?? host.current?.querySelector<HTMLButtonElement>('[data-map-pair]'))?.focus({ preventScroll: true });
+    } else {
+      const controls = Array.from(host.current?.querySelectorAll<HTMLButtonElement>(view.level === 'group' ? '[data-map-pair]' : 'button[data-region-mask]') ?? []);
+      const origin = focusAfter.current === 'origin' ? controls.find(control => view.level === 'group'
+        ? control.dataset.mapPair === navigationRef.current.pair : Number(control.dataset.regionMask) === navigationRef.current.region) : null;
+      (origin ?? (view.level === 'group' ? controls[0] : backButton.current) ?? host.current)?.focus({ preventScroll: true });
+    }
     focusAfter.current = null;
-  }, [moving, view.level]);
+  }, [moving, view.level, navigationRef]);
   // The native, non-passive listener captures only a valid destination gesture.
   // Its gesture state survives frames, so a burst cannot emit multiple levels.
   useEffect(() => {
@@ -151,7 +166,7 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork }: P
       if (intent === 'out' && canBack) back();
       else if (view.level === 'venn' && target?.dataset.regionMask) openRegion(Number(target.dataset.regionMask));
       else if ((view.level === 'region' || view.level === 'facet') && target?.dataset.workKey) openWork(target.dataset.workKey as WorkKey);
-      else if (view.level === 'group' && target?.dataset.pair) onView({ level: 'venn', people: JSON.parse(target.dataset.pair) as string[] });
+      else if (view.level === 'group' && target?.dataset.pair) openPair(JSON.parse(target.dataset.pair) as string[]);
     };
     element.addEventListener('wheel', wheel, { passive: false });
     return () => element.removeEventListener('wheel', wheel);
@@ -161,7 +176,7 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork }: P
   // destination or restarting its 720ms clock and completion focus.
   const stageHeight = isWork ? Math.max(scene.height, evidenceHeight) : scene.height;
   const overviewControls = view.level === 'group' || view.level === 'venn';
-  return <div ref={host} className={styles.canvas} data-view={view.level} data-camera-moving={moving} onKeyDown={event => { if (event.key === 'Escape' && view.level !== 'group') { event.preventDefault(); back(); } }}>
+  return <div ref={host} tabIndex={-1} className={styles.canvas} data-view={view.level} data-camera-moving={moving} onKeyDown={event => { if (event.key === 'Escape' && view.level !== 'group') { event.preventDefault(); back(); } }}>
     <div ref={entry} className={styles.toolbar}>
       {view.level !== 'group' && <button ref={backButton} type="button" onClick={back}>{t(isWork ? facetMode ? 'backToFacet' : 'backToRegion' : view.level === 'region' ? 'backToVenn' : 'backToGroup')}</button>}
       {view.level !== 'group' && <span>{names(vennPeople)}</span>}
@@ -201,7 +216,7 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork }: P
       </div>
       {overviewControls && <div className={styles.controls}>
         {view.level === 'group' ? <>
-          {members.map((member, index) => { const point = personCenter(index, members.length, width); return <span key={member.slotId} className={styles.person} style={{ left: overview.camera.x + point.x * overview.camera.scale, top: point.y * overview.camera.scale }}>{member.name}</span>; })}
+          {members.map((member, index) => { const point = personCenter(index, members.length, width); return <span key={member.slotId} className={styles.person} data-compact={width <= 300} style={{ left: overview.camera.x + point.x * overview.camera.scale, top: point.y * overview.camera.scale }}>{member.name}</span>; })}
           <div className={styles.shared} style={{ top: mapLayout.summaryY }}><strong>{sharedAll.length}</strong><span>{t(members.length < snapshot.group.members.length ? 'sharedByAvailable' : 'sharedByAll')}</span></div>
         </> : zones.map(zone => { const point = regionCenter(vennPeople.length, zone.mask); return <button type="button" key={zone.mask} className={styles.region} data-region-mask={zone.mask} data-empty={!zone.keys.length}
           style={{ left: overview.camera.x + point.x * overview.camera.scale, top: point.y * overview.camera.scale + (zone.keys.length ? 48 : 0) }}
@@ -209,7 +224,7 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork }: P
       </div>}
       {isWork && catalog.has(view.key) && <WorkDetail snapshot={snapshot} view={view} work={catalog.get(view.key)!} onEvidenceHeight={setEvidenceHeight}/>}
     </div>
-    {view.level === 'group' && <div className={styles.pairs} aria-label={t('pairConnections')}>{pairs.map(pair => <button type="button" data-map-pair key={pair.people.join(':')} onClick={() => onView({ level: 'venn', people: pair.people })}><span>{names(pair.people)}</span>{' '}<strong>{t('commonCount', { count: pair.keys.length })}</strong></button>)}</div>}
+    {view.level === 'group' && <div className={styles.pairs} aria-label={t('pairConnections')}>{pairs.map(pair => <button type="button" data-map-pair={JSON.stringify(pair.people)} key={pair.people.join(':')} onClick={() => openPair(pair.people)}><span>{names(pair.people)}</span>{' '}<strong>{t('commonCount', { count: pair.keys.length })}</strong></button>)}</div>}
     {view.level === 'region' && <div className={styles.pagination}><p aria-live="polite">{t('renderedCount', { count: pageKeys.length, total: fullKeys.length })}</p>{limit < fullKeys.length && <button type="button" onClick={() => setPages(current => ({ ...current, [pageId]: limit + 24 }))}>{t('loadMore')}</button>}</div>}
     {!isWork && <p className={styles.caption}>{t('schematic')}</p>}
   </div>;

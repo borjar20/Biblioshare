@@ -1,0 +1,22 @@
+{
+  "viewport": {
+    "width": 320,
+    "height": 720
+  },
+  "savedScroll": 3624,
+  "entry": {
+    "shellBottom": 59,
+    "back": {
+      "x": 33,
+      "y": 71,
+      "width": 122.40625,
+      "height": 44
+    },
+    "heading": {
+      "x": 41,
+      "y": 492,
+      "width": 238,
+      "height": 27.59375
+    }
+  }
+}

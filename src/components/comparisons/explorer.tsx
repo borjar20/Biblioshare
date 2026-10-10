@@ -153,7 +153,7 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
   }
   return <div className="flex flex-col gap-5">
     <div className="flex flex-wrap items-end gap-3">
-      <label className="flex min-w-0 flex-1 flex-col gap-2 text-sm font-medium">{t('group')}<select ref={groupSelector} className="min-h-11 rounded-md border border-border bg-surface px-3 text-foreground" value={state.groupId ?? ''} onChange={event => selectGroup(selectOwnedGroup(event.target.value, groups))}>
+      <label className="flex min-w-0 basis-full flex-col gap-2 text-sm font-medium sm:flex-1 sm:basis-60">{t('group')}<select ref={groupSelector} className="min-h-11 rounded-md border border-border bg-surface px-3 text-foreground" value={state.groupId ?? ''} onChange={event => selectGroup(selectOwnedGroup(event.target.value, groups))}>
         <option value="">{t('chooseGroup')}</option>{groups.map(group => <option key={group.id} value={group.id}>{group.name}</option>)}
       </select></label>
       <Button onClick={() => setEditor({ group: null })}>{t('createGroup')}</Button>
@@ -173,6 +173,7 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
         {state.snapshot.status === 'error' && <div role="alert"><p>{t(state.loadError === 'conflict' ? 'loadConflict' : `errors.${state.loadError ?? 'load-failed'}`)}</p><Button variant="secondary" onClick={() => { refresh(); if (state.loadError === 'unavailable' || state.loadError === 'unauthenticated') router.refresh(); }}>{t('reloadComparison')}</Button></div>}
         {snapshot && <>
           <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-serif text-xl font-semibold">{snapshot.group.name}</h2><Button variant="ghost" onClick={refresh}>{t('refreshAccess')}</Button></div>
+          {snapshot.excludedSeriesWithoutEpisodes > 0 && <p className="py-3 text-sm text-muted-foreground" data-comparison-coverage>{t('excludedHistoricalSeries', { count: snapshot.excludedSeriesWithoutEpisodes })}</p>}
           <fieldset className="my-4 flex flex-wrap gap-3"><legend className="mb-2 text-sm text-muted-foreground">{t(state.section === 'works' ? 'selectPair' : 'selectTastes')}</legend>{snapshot.group.members.map(member => member.available && member.userId ? <label key={member.slotId} className="flex min-h-11 items-center gap-2"><input type="checkbox" checked={state.selection.includes(member.userId)} onChange={event => dispatch({ type: 'selection', people: event.target.checked ? [...state.selection, member.userId!] : state.selection.filter(id => id !== member.userId) })}/>{member.name}</label> : <span key={member.slotId} className="flex min-h-11 items-center text-sm text-muted-foreground">{t('unavailablePerson')}</span>)}</fieldset>
           <div data-comparison-slot={state.section} data-view={state.views[state.section].level} className="min-h-48">
             {state.section === 'works' && <Button variant="secondary" disabled={state.selection.length < 2 || state.selection.length > 3} onClick={() => dispatch({ type: 'view', view: { level: 'venn', people: [...state.selection] } })}>{t('compareSelection')}</Button>}
