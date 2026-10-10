@@ -94,7 +94,8 @@ export function layoutScene(snapshot: Snapshot, view: View, viewport: { width: n
   // Grid coordinates belong to the origin region. A work camera changes only the
   // transform: the destination and every other cover keep their world positions.
   const mask = view.level === 'region' ? view.mask : view.level === 'work' && view.origin.kind === 'region' ? view.origin.mask : 3;
-  const anchor = regionCenter(view.people.length, mask);
+  const anchor = view.level === 'facet' || view.level === 'work' && view.origin.kind === 'facet'
+    ? { x: 500, y: 450 } : regionCenter(view.people.length, mask);
   const columns = Math.max(2, Math.floor((width - 24) / 126));
   const cell = (width - 32) / columns;
   const coverWidth = Math.min(120, cell - 20);

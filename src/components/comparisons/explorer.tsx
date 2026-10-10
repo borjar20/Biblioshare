@@ -8,16 +8,18 @@ import type { Candidate, Format, Group, Result, Snapshot } from '@/lib/compariso
 import { Button } from '@/components/ui/button';
 import { GroupEditor } from './group-editor';
 import { ComparisonCanvas } from './canvas';
+import { Tastes } from './tastes';
 import { acceptResponse, changeGroup, changeSelection, clearEvidence, initialState, reconcileParticipants, reconcileView, selectOwnedGroup, setView } from './state';
-import type { ExplorerState, Section, View } from './state';
+import type { ExplorerState, Section, TasteControls, View } from './state';
 
 type Props = { initialGroups: Group[]; candidates: Candidate[]; viewerId: string };
 type Action = { type: 'group'; id: string | null } | { type: 'section'; section: Section }
   | { type: 'format'; format: Format } | { type: 'refresh' }
   | { type: 'loading'; seq: number } | { type: 'response'; seq: number; result: Result<Snapshot> }
-  | { type: 'view'; view: View } | { type: 'selection'; people: string[] };
+  | { type: 'view'; view: View } | { type: 'selection'; people: string[] } | { type: 'tasteControls'; controls: TasteControls };
 export function explorerReducer(state: ExplorerState, action: Action): ExplorerState {
   switch (action.type) {
+    case 'tasteControls': return { ...state, tasteControls: action.controls };
     case 'group': return changeGroup(state, action.id);
     case 'section': {
       const sameFormat = state.formats[state.section] === state.formats[action.section];
@@ -170,7 +172,7 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
               if (view.level === 'venn') dispatch({ type: 'selection', people: view.people });
               dispatch({ type: 'view', view });
             }}/>}
-            {state.section === 'tastes' && state.views.tastes.level !== 'group' && <Button variant="ghost" onClick={() => dispatch({ type: 'view', view: { level: 'group' } })}>{t('backToGroup')}</Button>}
+            {state.section === 'tastes' && <Tastes snapshot={snapshot} people={state.views.tastes.level === 'group' ? state.selection : state.views.tastes.people} view={state.views.tastes} onView={view => dispatch({ type: 'view', view })} controls={state.tasteControls} onControlsChange={controls => dispatch({ type: 'tasteControls', controls })} onOpenWork={(key, origin) => dispatch({ type: 'view', view: { level: 'work', people: state.views.tastes.level === 'group' ? state.selection : state.views.tastes.people, key, origin } })}/>}
           </div>
         </>}
       </section>

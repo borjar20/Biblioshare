@@ -54,6 +54,22 @@
 .peopleNotes dd { margin-top: 8px; }
 .peopleNotes strong { display: block; font-size: 20px; font-family: var(--font-serif), Georgia, serif; }
 .peopleNotes small { display: block; margin-top: 8px; font-size: 12px; color: var(--muted-foreground); }
+.tastes { min-width: 0; }
+.tastes h3, .facet h4 { font-family: var(--font-serif), Georgia, serif; font-size: 24px; margin: 16px 0 8px; }
+.tastes select { min-height: 44px; border: 1px solid var(--border); border-radius: 6px; padding: 8px; background: var(--surface); }
+.coverage { font-size: 13px; color: var(--muted-foreground); padding: 16px 0; }
+.facetList { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 24px; }
+.facet { border-top: 1px solid var(--border); padding: 12px 0; }
+.facetPeople, .facetEvidence { display: flex; flex-wrap: wrap; gap: 24px; margin: 16px 0; }
+.facetPeople > div, .facetEvidence > section { flex: 1 1 110px; min-width: 0; overflow-wrap: anywhere; }
+.facetPeople output { display: block; font-family: var(--font-serif), Georgia, serif; font-size: 28px; }
+.facetPeople p, .facetEvidence li, .facet > p { font-size: 13px; margin: 8px 0; }
+.consumptionBubble { display: flex; justify-content: center; align-items: center; border-radius: 50%; background: color-mix(in srgb, var(--accent) 18%, var(--surface)); border: 1px solid var(--accent); margin: 8px 0; }
+.facet button { min-height: 44px; padding: 8px 14px; background: var(--surface-muted); border-radius: 6px; }
+.episodeEvidence { margin-top: 24px; }
+.episodeEvidence > div { border-top: 1px solid var(--border); padding: 16px 0; }
+.episodeEvidence h4, .detailEvidence h4 { font-family: var(--font-serif), Georgia, serif; font-size: 20px; margin-bottom: 12px; }
+.episodeEvidence p, .episodeEvidence li { font-size: 14px; margin-top: 8px; }
 @media(max-width: 400px) {
   .person { font-size: 11px; max-width: 68px; }
   .region span { max-width: 75px; font-size: 10px; }

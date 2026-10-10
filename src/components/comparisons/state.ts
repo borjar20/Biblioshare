@@ -7,16 +7,17 @@ export type View = { level: 'group' } | { level: 'venn'; people: string[] }
   | { level: 'facet'; people: string[]; facetKind: FacetKind; facetId: string }
   | { level: 'work'; people: string[]; origin: WorkOrigin; key: WorkKey };
 export type Section = 'works' | 'tastes';
+export type TasteControls = { facetKind: FacetKind; signal: 'consumed' | 'rated' };
 export type RequestState<T> = { seq: number; value: T | null; status: 'idle' | 'loading' | 'ready' | 'error' };
 export function acceptResponse<T>(state: RequestState<T>, seq: number, result: Result<T>): RequestState<T> {
   if (state.seq !== seq) return state;
   return result.ok ? { seq, value: result.data, status: 'ready' } : { seq, value: null, status: 'error' };
 }
-export type ExplorerState = { viewerId: string; groupId: string | null; section: Section; formats: Record<Section, Format>;
+export type ExplorerState = { viewerId: string; groupId: string | null; section: Section; formats: Record<Section, Format>; tasteControls: TasteControls;
   selection: string[]; views: Record<Section, View>; snapshot: RequestState<Snapshot>; detail: RequestState<WorkDetail>;
   loadError: Extract<Result<never>, { ok: false }>['code'] | null };
 export function initialState(viewerId: string): ExplorerState {
-  return { viewerId, groupId: null, section: 'works', formats: { works: 'all', tastes: 'all' }, selection: [], loadError: null,
+  return { viewerId, groupId: null, section: 'works', formats: { works: 'all', tastes: 'all' }, tasteControls: { facetKind: 'genre', signal: 'consumed' }, selection: [], loadError: null,
     views: { works: { level: 'group' }, tastes: { level: 'group' } },
     snapshot: { seq: 0, value: null, status: 'idle' }, detail: { seq: 0, value: null, status: 'idle' } };
 }

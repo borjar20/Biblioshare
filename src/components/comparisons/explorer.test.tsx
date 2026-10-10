@@ -7,7 +7,7 @@ import type { Group, Result, Snapshot } from '@/lib/comparisons/types';
 const mocks = vi.hoisted(() => ({ load: vi.fn(), save: vi.fn(), remove: vi.fn(), replace: vi.fn(), refresh: vi.fn(), unsubscribe: vi.fn(), getUser: vi.fn(), auth: null as ((event: string, session: { user: { id: string } } | null) => void) | null, query: '' }));
 const mockRouter = { replace: mocks.replace, refresh: mocks.refresh };
 vi.mock('@/lib/supabase/client', () => ({ createClient: () => ({ auth: { getUser: mocks.getUser, onAuthStateChange: (callback: typeof mocks.auth) => { mocks.auth = callback; return { data: { subscription: { unsubscribe: mocks.unsubscribe } } }; } } }) }));
-vi.mock('@/lib/comparisons/actions', () => ({ loadComparison: mocks.load, saveGroup: mocks.save, deleteGroup: mocks.remove }));
+vi.mock('@/lib/comparisons/actions', () => ({ loadComparison: mocks.load, saveGroup: mocks.save, deleteGroup: mocks.remove, loadComparisonWork: vi.fn(async () => ({ ok: false, code: 'load-failed' })) }));
 vi.mock('next/navigation', () => ({ useRouter: () => mockRouter, useSearchParams: () => new URLSearchParams(mocks.query) }));
 import { Explorer, explorerReducer } from './explorer';
 import { initialState } from './state';
@@ -19,6 +19,13 @@ function ui(groups = [first, second], viewerId = 'a') { return <NextIntlClientPr
 beforeEach(() => { vi.clearAllMocks(); mocks.query = ''; mocks.load.mockResolvedValue({ ok: true, data: snapshot(first) }); mocks.getUser.mockResolvedValue({ data: { user: { id: 'a' } }, error: null }); });
 afterEach(cleanup);
 describe('independent format view retention', () => {
+  it('retains controlled taste category and signal across sections and its own reload', () => {
+    const controlled = explorerReducer(initialState('a'), { type: 'tasteControls', controls: { facetKind: 'director', signal: 'rated' } });
+    const switched = explorerReducer(controlled, { type: 'section', section: 'tastes' });
+    const loading = explorerReducer(switched, { type: 'loading', seq: 4 });
+    const ready = explorerReducer(loading, { type: 'response', seq: 4, result: { ok: true, data: snapshot(first) } });
+    expect(ready.tasteControls).toEqual({ facetKind: 'director', signal: 'rated' });
+  });
   const availableGroup: Group = { ...first, members: [{ ...first.members[0] }, { slotId: 'two', userId: 'b', name: 'Bea', avatarUrl: null, available: true }] };
   const bookSnapshot: Snapshot = { ...snapshot(availableGroup), format: 'book', catalog: [{ key: 'book:x', title: 'Libro', coverUrl: null, genres: ['Ensayo'], creators: [] }], works: [{ key: 'book:x', userId: 'a', rating: null, orderUnknown: false, progress: null }] };
   const movieSnapshot: Snapshot = { ...snapshot(availableGroup), format: 'movie', catalog: [{ key: 'movie:y', title: 'Película', coverUrl: null, genres: ['Drama'], creators: [] }], works: [{ key: 'movie:y', userId: 'a', rating: null, orderUnknown: false, progress: null }] };
@@ -56,6 +63,22 @@ describe('independent format view retention', () => {
   });
 });
 describe('Explorer request boundaries', () => {
+  it('retains taste category, signal and participant context after section switches and its own format reload', async () => {
+    const available: Group = { ...first, members: [{ ...first.members[0] }, { slotId: 'two', userId: 'b', name: 'Bea', avatarUrl: null, available: true }] };
+    const data: Snapshot = { ...snapshot(available), catalog: [{ key: 'book:x', title: 'Libro', coverUrl: null, genres: ['Drama'], creators: [{ id: 'author', name: 'Autora', role: 'author' }] }], works: [{ userId: 'a', key: 'book:x', rating: 9, orderUnknown: false, progress: null }] };
+    mocks.query = `group=${first.id}`; mocks.load.mockImplementation(async (_id, format) => ({ ok: true, data: { ...data, format } }));
+    vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })); vi.stubGlobal('scrollTo', vi.fn());
+    render(ui([available])); fireEvent.click(await screen.findByRole('checkbox', { name: 'Ana' })); fireEvent.click(screen.getByRole('checkbox', { name: 'Bea' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Gustos' })); fireEvent.change(screen.getByLabelText('Formato'), { target: { value: 'book' } });
+    await screen.findByLabelText('Agrupar por'); fireEvent.change(screen.getByLabelText('Agrupar por'), { target: { value: 'author' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Lo que valoráis' })); fireEvent.click(screen.getByRole('button', { name: 'Explorar Autora' })); fireEvent.click(screen.getByRole('button', { name: 'Abrir obra: Libro' })); await screen.findByRole('alert');
+    fireEvent.click(screen.getByRole('button', { name: 'Obras' })); await screen.findByRole('button', { name: 'Ana, Bea 0 obras comunes' });
+    fireEvent.click(screen.getByRole('button', { name: 'Gustos' })); await screen.findByRole('button', { name: 'Volver a la categoría' });
+    fireEvent.click(screen.getByRole('button', { name: 'Volver a la categoría' }));
+    expect((screen.getByLabelText('Agrupar por') as HTMLSelectElement).value).toBe('author'); expect((screen.getByLabelText('Formato') as HTMLSelectElement).value).toBe('book');
+    expect(screen.getByRole('button', { name: 'Lo que valoráis' }).getAttribute('aria-pressed')).toBe('true'); expect(screen.getByText('Ana, Bea')).toBeTruthy();
+    vi.unstubAllGlobals();
+  });
   it('synchronizes a map pair with the participant controls before adding a third person', async () => {
     const available: Group = { ...first, members: ['Ana', 'Bea', 'Carlos'].map((name, index) => ({ slotId: `${index}`, userId: ['a', 'b', 'c'][index], name, avatarUrl: null, available: true })) };
     mocks.query = `group=${first.id}`; mocks.load.mockResolvedValue({ ok: true, data: snapshot(available) });
