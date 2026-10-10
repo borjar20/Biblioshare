@@ -24,9 +24,9 @@ export function explorerReducer(state: ExplorerState, action: Action): ExplorerS
     case 'section': {
       const sameFormat = state.formats[state.section] === state.formats[action.section];
       const next = sameFormat ? state : clearEvidence(state);
-      return { ...next, section: action.section, views: sameFormat && next.snapshot.value ? {
-        ...next.views, [action.section]: reconcileView(next.views[action.section], next.snapshot.value),
-      } : next.views };
+      const view = sameFormat && next.snapshot.value ? reconcileView(next.views[action.section], next.snapshot.value) : next.views[action.section];
+      return { ...next, section: action.section, views: { ...next.views, [action.section]: view },
+        selection: view.level === 'group' ? next.selection : [...view.people] };
     }
     case 'format': return { ...clearEvidence(state), formats: { ...state.formats, [state.section]: action.format } };
     case 'refresh': return clearEvidence(state);

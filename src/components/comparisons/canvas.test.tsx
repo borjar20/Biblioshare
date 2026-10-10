@@ -4,7 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { NextIntlClientProvider } from 'next-intl';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import messages from '../../../messages/es.json';
-import type { Snapshot, WorkKey } from '@/lib/comparisons/types';
+import type { Snapshot, WorkDetail, WorkKey } from '@/lib/comparisons/types';
 import type { View } from './state';
 const load = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/comparisons/actions', () => ({ loadComparisonWork: load }));
@@ -12,7 +12,7 @@ import { ComparisonCanvas } from './canvas';
 const snapshot: Snapshot = { group: { id: 'g', name: 'Grupo', revision: 1, members: ['Ana', 'Bea', 'Carlos'].map((name, i) => ({ slotId: `${i}`, userId: `${i}`, name, avatarUrl: null, available: true })) }, format: 'all', catalog: Array.from({ length: 83 }, (_, i) => ({ key: `book:${i}` as WorkKey, title: `Libro ${String(i).padStart(2, '0')}`, coverUrl: '/cover.jpg', genres: [], creators: [] })), works: Array.from({ length: 83 }, (_, i) => ['0', '1'].map(userId => ({ key: `book:${i}` as WorkKey, userId, rating: null, orderUnknown: false, progress: null }))).flat(), excludedSeriesWithoutEpisodes: 0 };
 function Harness({ initial = { level: 'venn', people: ['0', '1', '2'] }, data = snapshot }: { initial?: View; data?: Snapshot }) {
   const [view, setView] = useState<View>(initial);
-  return <NextIntlClientProvider locale="es" messages={messages}><ComparisonCanvas snapshot={data} view={view} onView={setView}/></NextIntlClientProvider>;
+  return <NextIntlClientProvider locale="es" messages={messages}><ComparisonCanvas snapshot={data} view={view} onView={setView} facetKeys={initial.level === 'facet' ? data.catalog.map(work => work.key) : undefined} onOpenFacetWork={key => { if (view.level === 'facet') setView({ level: 'work', people: view.people, key, origin: { kind: 'facet', facetKind: view.facetKind, facetId: view.facetId } }); }}/></NextIntlClientProvider>;
 }
 beforeEach(() => {
   // These scaffold assertions inspect final geometry; motion has dedicated
@@ -21,8 +21,35 @@ beforeEach(() => {
   vi.stubGlobal('scrollTo', vi.fn());
   load.mockReset(); load.mockImplementation(async (_group, key, people) => ({ ok: true, data: { work: snapshot.catalog.find(work => work.key === key), people: snapshot.works.filter(work => work.key === key && people.includes(work.userId)), commonEpisodes: [] } }));
 });
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 describe('comparison canvas', () => {
+  it.each<View>([{ level: 'region', people: ['0', '1'], mask: 3 }, { level: 'facet', people: ['0', '1'], facetKind: 'genre', facetId: 'Drama' }])('keeps the 720ms clock and focus/scroll return when delayed detail and later resizing grow evidence: %j', async initial => {
+    let now = 0; let frameId = 0; let evidenceSize = 0;
+    const frames = new Map<number, FrameRequestCallback>(); const observers = new Set<() => void>();
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
+    vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockImplementation(() => evidenceSize);
+    vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { frames.set(++frameId, callback); return frameId; });
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
+    vi.stubGlobal('ResizeObserver', class { constructor(private callback: () => void) { observers.add(callback); } observe() {} disconnect() { observers.delete(this.callback); } });
+    const tick = (time: number) => { now = time; const callbacks = [...frames.values()]; frames.clear(); act(() => callbacks.forEach(callback => callback(now))); };
+    const data: Snapshot = { ...snapshot, catalog: [{ key: 'series:x', title: 'Serie', coverUrl: '/cover.jpg', genres: ['Drama'], creators: [] }], works: ['0', '1'].map(userId => ({ userId, key: 'series:x', rating: null, orderUnknown: false, progress: null })) };
+    let finish!: (result: { ok: true; data: WorkDetail }) => void; load.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    const { container } = render(<Harness initial={initial} data={data}/>);
+    const host = container.querySelector('[data-camera-moving]')!; const stage = container.querySelector('[data-comparison-stage]')!;
+    const cover = screen.getByRole('button', { name: 'Abrir obra: Serie' }); const originStyle = cover.style.cssText;
+    vi.stubGlobal('scrollY', 1600); fireEvent.click(cover); const world = container.querySelector('[data-comparison-world]')!;
+    tick(300); expect(host.getAttribute('data-camera-moving')).toBe('true');
+    evidenceSize = 900; await act(async () => finish({ ok: true, data: { work: data.catalog[0], people: data.works, commonEpisodes: [{ season: 1, episode: 1, notes: [{ userId: '0', rating: 9 }] }] } }));
+    tick(720); expect(host.getAttribute('data-camera-moving')).toBe('false'); expect(frames.size).toBe(0);
+    expect(Number(stage.getAttribute('data-scene-height'))).toBeGreaterThanOrEqual(1340);
+    const back = screen.getByRole('button', { name: initial.level === 'facet' ? 'Volver a la categoría' : 'Volver al cruce' }); expect(document.activeElement).toBe(back);
+    const completedTransform = world.getAttribute('style'); evidenceSize = 1200; now = 810; act(() => observers.forEach(callback => callback()));
+    expect(Number(stage.getAttribute('data-scene-height'))).toBeGreaterThanOrEqual(1640); expect(world.getAttribute('style')).toBe(completedTransform); expect(frames.size).toBe(0);
+    fireEvent.click(back); tick(1530); expect(host.getAttribute('data-camera-moving')).toBe('false');
+    expect(container.querySelector('[data-work-key="series:x"]')).toBe(cover); expect(cover.style.cssText).toBe(originStyle); expect(document.activeElement).toBe(cover);
+    expect(window.scrollTo).toHaveBeenLastCalledWith({ top: 1600, behavior: 'instant' });
+  });
   it('keeps the original region scroll when the already selected work cover is clicked again', async () => {
     render(<Harness initial={{ level: 'region', people: ['0', '1'], mask: 3 }}/>);
     vi.stubGlobal('scrollY', 1600);

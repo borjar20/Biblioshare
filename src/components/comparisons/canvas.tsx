@@ -88,7 +88,6 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork }: P
   const viewport = { width, height: 500 };
   const overview = layoutScene(snapshot, facetMode ? view : view.level === 'group' ? view : { level: 'venn', people: vennPeople }, viewport, keys);
   const layout = mask === null && !facetMode ? overview : layoutScene(snapshot, view, viewport, pageKeys);
-  if (view.level === 'work') layout.height = Math.max(layout.height, evidenceHeight);
   const signature = JSON.stringify({ ...layout, poses: { ...overview.poses, ...layout.poses } });
   // Detail requests rerender a child, and parent renders can recreate View.
   // Only a changed geometric destination can restart the animation.
@@ -156,6 +155,9 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork }: P
     return () => element.removeEventListener('wheel', wheel);
   });
   const isWork = view.level === 'work';
+  // Async content reserves ordinary page space without changing the camera
+  // destination or restarting its 720ms clock and completion focus.
+  const stageHeight = isWork ? Math.max(scene.height, evidenceHeight) : scene.height;
   const overviewControls = view.level === 'group' || view.level === 'venn';
   return <div ref={host} className={styles.canvas} data-view={view.level} data-camera-moving={moving} onKeyDown={event => { if (event.key === 'Escape' && view.level !== 'group') { event.preventDefault(); back(); } }}>
     <div ref={entry} className={styles.toolbar}>
@@ -169,7 +171,7 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork }: P
     {view.level === 'region' && <header className={styles.regionHeading}><h3>{names(region?.people ?? [])}</h3><p>{t('baseCount', { count: region?.keys.length ?? 0 })}</p>
       {!fullKeys.length && <p>{t(signal === 'all' ? 'emptyRegion' : 'emptyFindings')}</p>}
     </header>}
-    <div ref={stage} className={styles.stage} style={{ height: scene.height }} data-comparison-stage data-scene-height={scene.height}>
+    <div ref={stage} className={styles.stage} style={{ height: stageHeight }} data-comparison-stage data-scene-height={stageHeight}>
       <div className={styles.world} data-comparison-world style={{ width: WORLD_WIDTH, height: WORLD_HEIGHT, '--camera-scale': scene.camera.scale, transform: `translate(${scene.camera.x}px, ${scene.camera.y}px) scale(${scene.camera.scale})` } as CSSProperties}>
         <svg className={styles.background} data-focused={!overviewControls} width={WORLD_WIDTH} height={WORLD_HEIGHT} aria-hidden="true">
           {view.level === 'group' ? pairs.map(pair => {
