@@ -2122,7 +2122,8 @@
   "limitations": [
     "No Preview MCP tools available in this session. Real Chromium via Playwright.",
     "Harness reuses actual loading/explorer/canvas CSS Modules and root/dark tokens; no auth, backend, production account, or data fixtures.",
-    "Geist font is not served by the isolated harness; sans-serif fallback used."
+    "Geist font is not served by the isolated harness; sans-serif fallback used.",
+    "Chromium emitted internal GPU SharedImageManager mailbox warnings in debug.log; application console and page errors remained0. Raw browser log retained in ignored .superpowers/loading/chromium-debug.log."
   ],
   "cleanup": {
     "databaseWrites": 0,
