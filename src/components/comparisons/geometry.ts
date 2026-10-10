@@ -6,9 +6,14 @@ export type Camera = { x: number; y: number; scale: number };
 export type Scene = { camera: Camera; height: number; poses: Record<WorkKey, Pose> };
 export const WORLD_WIDTH = 1000;
 export const WORLD_HEIGHT = 900;
+export type VennCircle = { x: number; y: number; radius: number };
+export function vennCircles(count: number): VennCircle[] {
+  return count === 2 ? [{ x: 370, y: 420, radius: 290 }, { x: 630, y: 420, radius: 290 }]
+    : [{ x: 370, y: 330, radius: 270 }, { x: 630, y: 330, radius: 270 }, { x: 500, y: 550, radius: 270 }];
+}
 export function regionCenter(count: number, mask: number): { x: number; y: number } {
   const centers = count === 2 ? [[240, 420], [760, 420], [500, 420]]
-    : [[255, 230], [745, 230], [500, 225], [500, 715], [320, 525], [680, 525], [500, 430]];
+    : [[255, 230], [745, 230], [500, 195], [500, 715], [320, 525], [680, 525], [500, 430]];
   const [x, y] = centers[mask - 1] ?? [500, 430];
   return { x, y };
 }
@@ -21,6 +26,39 @@ export function mapConnections(snapshot: Snapshot): { people: string[]; keys: Wo
   const pairs = people.flatMap((person, index) => people.slice(index + 1).map(other => ({ people: [person, other], keys: regions(snapshot, [person, other])[2].keys })));
   // Stable sort preserves the saved participant order for ties.
   return pairs.sort((a, b) => b.keys.length - a.keys.length);
+}
+/** Fit the entire rotated rectangle, including its edges, in one exact mask. */
+function regionCover(count: number, mask: number, center: { x: number; y: number }, desiredWidth: number, slot: number): Pose {
+  const stackIndex = slot % 3;
+  const rotate = [-5, 3, 8][stackIndex];
+  const x = center.x + [0, 10, -10][stackIndex];
+  const y = center.y + [0, -4, 4][stackIndex];
+  const angle = rotate * Math.PI / 180;
+  const circles = vennCircles(count).map(circle => {
+    const dx = circle.x - x; const dy = circle.y - y;
+    // Rotate each circle's center into the cover's local axes. Distances are
+    // unchanged, so extrema on the rectangle can be calculated analytically.
+    return { x: Math.abs(dx * Math.cos(angle) + dy * Math.sin(angle)),
+      y: Math.abs(-dx * Math.sin(angle) + dy * Math.cos(angle)), radius: circle.radius };
+  });
+  function fits(width: number) {
+    const halfWidth = width / 2; const halfHeight = width * .725;
+    return circles.every((circle, index) => mask & (1 << index)
+      ? Math.hypot(circle.x + halfWidth, circle.y + halfHeight) <= circle.radius - 3
+      : Math.hypot(Math.max(0, circle.x - halfWidth), Math.max(0, circle.y - halfHeight)) >= circle.radius + 3);
+  }
+  let width = desiredWidth;
+  if (!fits(width)) {
+    let lower = 0; let upper = width;
+    // Nested rectangles make containment monotonic; 24 steps give subpixel
+    // precision while preserving a three-world-unit gap from every boundary.
+    for (let step = 0; step < 24; step += 1) {
+      const middle = (lower + upper) / 2;
+      if (fits(middle)) lower = middle; else upper = middle;
+    }
+    width = lower;
+  }
+  return { x: x - width / 2, y: y - width * .725, width, height: width * 1.45, rotate };
 }
 export function layoutScene(snapshot: Snapshot, view: View, viewport: { width: number; height: number }, visibleKeys: WorkKey[]): Scene {
   const width = Math.max(160, viewport.width);
@@ -47,7 +85,8 @@ export function layoutScene(snapshot: Snapshot, view: View, viewport: { width: n
       const pile = `${center.x}:${center.y}`;
       const slot = taken.get(pile) ?? 0; taken.set(pile, slot + 1);
       const coverWidth = Math.min(140, 64 / scale);
-      poses[key] = { x: center.x - coverWidth / 2 + slot * 18, y: center.y - coverWidth * .725 + slot * 5,
+      poses[key] = view.level === 'venn' && mask ? regionCover(view.people.length, mask, center, coverWidth, slot)
+        : { x: center.x - coverWidth / 2 + slot * 18, y: center.y - coverWidth * .725 + slot * 5,
         width: coverWidth, height: coverWidth * 1.45, rotate: slot === 0 ? -5 : (index % 3) * 6 - 3 };
     });
     return scene;

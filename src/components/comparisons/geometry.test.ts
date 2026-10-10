@@ -1,10 +1,66 @@
 import { describe, expect, it } from 'vitest';
 import type { Snapshot, WorkKey } from '@/lib/comparisons/types';
-import { layoutScene, mapConnections, regionCenter } from './geometry';
+import { layoutScene, mapConnections, regionCenter, vennCircles, type Pose } from './geometry';
 
 const keys = Array.from({ length: 83 }, (_, index) => `book:${index}` as WorkKey);
 const snapshot: Snapshot = { group: { id: 'g', name: 'Grupo', revision: 1, members: Array.from({ length: 10 }, (_, i) => ({ slotId: `${i}`, userId: `${i}`, name: `Persona ${i}`, avatarUrl: null, available: true })) }, format: 'all', catalog: keys.map(key => ({ key, title: key, coverUrl: null, genres: [], creators: [] })), works: keys.flatMap(key => ['0', '1', '2'].map(userId => ({ key, userId, rating: null, orderUnknown: false, progress: null }))), excludedSeriesWithoutEpisodes: 0 };
+type Point = { x: number; y: number };
+function corners(pose: Pose): Point[] {
+  const angle = pose.rotate * Math.PI / 180;
+  return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([x, y]) => ({
+    x: pose.x + pose.width / 2 + x * pose.width / 2 * Math.cos(angle) - y * pose.height / 2 * Math.sin(angle),
+    y: pose.y + pose.height / 2 + x * pose.width / 2 * Math.sin(angle) + y * pose.height / 2 * Math.cos(angle),
+  }));
+}
+/** Polygon/segment oracle: tests the whole excluded disk, not only corners. */
+function distanceToFootprint(point: Point, polygon: Point[]): number {
+  const sides = polygon.map((a, index) => {
+    const b = polygon[(index + 1) % polygon.length];
+    const dx = b.x - a.x; const dy = b.y - a.y;
+    const cross = dx * (point.y - a.y) - dy * (point.x - a.x);
+    const projection = Math.max(0, Math.min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / (dx * dx + dy * dy)));
+    return { cross, distance: Math.hypot(point.x - a.x - projection * dx, point.y - a.y - projection * dy) };
+  });
+  if (sides.every(side => side.cross >= 0) || sides.every(side => side.cross <= 0)) return 0;
+  return Math.min(...sides.map(side => side.distance));
+}
+function exactZones(count: number, samples: number) {
+  const people = Array.from({ length: count }, (_, index) => String(index));
+  const entries = Array.from({ length: (1 << count) - 1 }, (_, index) => index + 1)
+    .flatMap(mask => Array.from({ length: samples }, (_, sample) => ({ mask, key: `book:mask-${mask}-${sample}` as WorkKey })));
+  const data: Snapshot = { ...snapshot, catalog: entries.map(({ key }) => ({ key, title: key, coverUrl: null, genres: [], creators: [] })),
+    works: entries.flatMap(({ key, mask }) => people.filter((_, index) => mask & (1 << index)).map(userId => ({ key, userId, rating: null, orderUnknown: false, progress: null }))) };
+  return { data, entries, people };
+}
 describe('comparison world geometry', () => {
+  it('footprint oracle catches excluded circles crossing an edge when every corner is outside', () => {
+    const polygon = corners({ x: 0, y: 0, width: 100, height: 100, rotate: 0 });
+    const circle = { x: 110, y: 50, radius: 20 };
+    expect(polygon.every(point => Math.hypot(point.x - circle.x, point.y - circle.y) > circle.radius)).toBe(true);
+    expect(distanceToFootprint(circle, polygon)).toBe(10);
+    expect(distanceToFootprint({ x: 50, y: 50 }, polygon)).toBe(0);
+  });
+  it.each([2, 3].flatMap(count => [320, 640, 1280].map(width => [count, width])))('contains every rotated footprint in its exact %i-person zone at %i px', (count, width) => {
+    const samples = width <= 360 ? 1 : 3;
+    const { data, entries, people } = exactZones(count, samples);
+    const scene = layoutScene(data, { level: 'venn', people }, { width, height: 500 }, entries.map(entry => entry.key));
+    expect(Object.keys(scene.poses)).toHaveLength(((1 << count) - 1) * samples);
+    for (const { key, mask } of entries) {
+      const pose = scene.poses[key]; const polygon = corners(pose);
+      expect(pose.width).toBeGreaterThan(0); expect(pose.height).toBeGreaterThan(0);
+      for (const point of polygon) {
+        expect(scene.camera.x + point.x * scene.camera.scale).toBeGreaterThanOrEqual(0);
+        expect(scene.camera.x + point.x * scene.camera.scale).toBeLessThanOrEqual(width);
+        expect(scene.camera.y + point.y * scene.camera.scale).toBeGreaterThanOrEqual(0);
+        expect(scene.camera.y + point.y * scene.camera.scale).toBeLessThanOrEqual(scene.height);
+      }
+      vennCircles(count).forEach((circle, index) => {
+        if (mask & (1 << index)) {
+          for (const point of polygon) expect(Math.hypot(point.x - circle.x, point.y - circle.y), `${key} leaves included circle ${index}`).toBeLessThanOrEqual(circle.radius);
+        } else expect(distanceToFootprint(circle, polygon), `${key} intersects excluded circle ${index}`).toBeGreaterThanOrEqual(circle.radius);
+      });
+    }
+  });
   it.each([320, 1280])('keeps pair/trio representative covers in their exact zone at %i px', width => {
     for (const people of [['0', '1'], ['0', '1', '2']]) {
       const scene = layoutScene(snapshot, { level: 'venn', people }, { width, height: 500 }, keys.slice(0, 3));

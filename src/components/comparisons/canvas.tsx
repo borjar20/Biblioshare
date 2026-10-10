@@ -4,7 +4,7 @@ import { useTranslations } from 'next-intl';
 import { findings, regions } from '@/lib/comparisons/derive';
 import type { CatalogWork, Finding, Snapshot, WorkKey } from '@/lib/comparisons/types';
 import type { View } from './state';
-import { layoutScene, mapConnections, personCenter, regionCenter, WORLD_HEIGHT, WORLD_WIDTH } from './geometry';
+import { layoutScene, mapConnections, personCenter, regionCenter, vennCircles, WORLD_HEIGHT, WORLD_WIDTH } from './geometry';
 import { WorkDetail } from './work-detail';
 import styles from './canvas.module.css';
 
@@ -100,7 +100,7 @@ function CanvasSession({ snapshot, view, onView }: Props) {
             const start = personCenter(members.findIndex(member => member.userId === pair.people[0]), members.length);
             const end = personCenter(members.findIndex(member => member.userId === pair.people[1]), members.length);
             return <line key={pair.people.join(':')} x1={start.x} y1={start.y} x2={end.x} y2={end.y} className={styles.connection} strokeWidth={pair.keys.length ? 2 : 1}/>;
-          }) : (vennPeople.length === 2 ? [[370, 420, 290], [630, 420, 290]] : [[370, 330, 270], [630, 330, 270], [500, 550, 270]]).map(([cx, cy, r], index) => <circle key={index} cx={cx} cy={cy} r={r} className={styles.vennCircle} data-person={index}/>)}
+          }) : vennCircles(vennPeople.length).map(({ x, y, radius }, index) => <circle key={index} cx={x} cy={y} r={radius} className={styles.vennCircle} data-person={index}/>)}
         </svg>
         {keys.map(key => {
           const work = catalog.get(key); const pose = poses[key];
