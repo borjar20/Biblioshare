@@ -77,20 +77,14 @@ async function selectPeople(page: Page, fixture: ComparisonFixture, selected: nu
   }
 }
 async function comparisonResponse(page: Page, action: () => Promise<unknown>, predicate: (request: string) => boolean = () => true) {
-  const response = page.waitForResponse(response => response.request().method() === 'POST' && !!response.request().headers()['next-action'] &&
-    new URL(response.url()).pathname.includes('/entre-nosotros') && predicate(response.request().postData() ?? ''));
-  await action();
-  const result = await response;
-  expect(result.status()).toBe(200);
-  return { body: await result.text(), request: result.request().postData() ?? '' };
-}
-async function bufferedSaveResponse(page: Page, action: () => Promise<unknown>) {
+  // Inspect genuine upstream bytes before browser delivery: Chromium can lose
+  // the CDP resource body even after waitForResponse reports HTTP 200.
   let done!: (value: { body: string; request: string }) => void;
   let reject!: (error: unknown) => void;
   const captured = new Promise<{ body: string; request: string }>((resolve, fail) => { done = resolve; reject = fail; });
   const handler: Parameters<Page['route']>[1] = async route => {
     const request = route.request().postData() ?? '';
-    if (!route.request().headers()['next-action'] || !request.includes('expectedRevision')) return route.continue();
+    if (route.request().method() !== 'POST' || !route.request().headers()['next-action'] || !predicate(request)) return route.continue();
     try {
       const upstream = await route.fetch({ maxRetries: 0, maxRedirects: 0 });
       expect(upstream.status()).toBe(200);
@@ -98,7 +92,7 @@ async function bufferedSaveResponse(page: Page, action: () => Promise<unknown>) 
     } catch (error) { reject(error); }
   };
   await page.route('**/comunidad/entre-nosotros**', handler);
-  try { await action(); return await captured; }
+  try { const [, response] = await Promise.all([action(), captured]); return response; }
   finally { await page.unroute('**/comunidad/entre-nosotros**', handler); }
 }
 function resultBody(response: { body: string }) {
@@ -166,7 +160,8 @@ test('ten-person CRUD, owner-free group, exact pair/trio, formats, notes, persis
     await page.keyboard.press('Enter'); await expect(safeCancel).toBeFocused();
     await page.keyboard.press('Shift+Tab');
     await expect(form.getByRole('button', { name: 'Confirmar eliminación', exact: true })).toBeFocused(); await page.keyboard.press('Enter');
-    await expect(page.getByText('Crea un grupo para empezar a comparar.', { exact: true })).toBeVisible();
+    const empty = page.getByRole('main').getByText('Crea un grupo para empezar a comparar.', { exact: true });
+    await expect(empty).toHaveCount(1); await expect(empty).toBeVisible();
   }, { integrated: true });
 });
 
@@ -268,7 +263,7 @@ test('two real tabs conflict, same-account focus preserves context, cookie logou
     await other.getByRole('button', { name: 'Editar grupo', exact: true }).click();
     await other.getByRole('form', { name: 'Editar grupo' }).getByLabel('Nombre del grupo').fill('Otra pestaña QA');
     await other.getByRole('form', { name: 'Editar grupo' }).getByRole('button', { name: 'Guardar grupo', exact: true }).click(); await settled(other);
-    const conflict = await bufferedSaveResponse(page, () => page.getByRole('form', { name: 'Editar grupo' }).getByRole('button', { name: 'Guardar grupo', exact: true }).click());
+    const conflict = await comparisonResponse(page, () => page.getByRole('form', { name: 'Editar grupo' }).getByRole('button', { name: 'Guardar grupo', exact: true }).click(), request => request.includes('expectedRevision'));
     expect(resultBody(conflict)).toEqual({ ok: false, code: 'conflict' });
     await expect(page.getByRole('form', { name: 'Editar grupo' }).getByRole('alert')).toContainText('otra pestaña');
     await page.getByRole('button', { name: 'Recargar grupo', exact: true }).click(); await settled(page);
@@ -324,8 +319,8 @@ test('two real tabs conflict, same-account focus preserves context, cookie logou
         const samples: { t: number; oldVisible: boolean; path: string }[] = []; let running = true;
         const start = performance.now();
         function tick() {
-          const heading = [...document.querySelectorAll('h2')].find(node => node.textContent === 'Otra pesta\u00f1a QA');
-          samples.push({ t: performance.now() - start, oldVisible: !!heading?.getClientRects().length, path: location.pathname });
+          const oldVisible = [...document.querySelectorAll('h2')].some(node => node.textContent === 'Otra pesta\u00f1a QA' && node.getClientRects().length > 0);
+          samples.push({ t: performance.now() - start, oldVisible, path: location.pathname });
           if (running) requestAnimationFrame(tick);
         }
         requestAnimationFrame(tick); return { samples, stop() { running = false; } };
@@ -345,7 +340,8 @@ test('two real tabs conflict, same-account focus preserves context, cookie logou
     // A legitimate intermediate null refresh may redirect to login. The brief
     // requires old-state removal, not automatic navigation back into the feature.
     await page.goto(`/comunidad/entre-nosotros?group=${group}`);
-    await expect(page.getByText('Crea un grupo para empezar a comparar.', { exact: true })).toBeVisible();
+    const empty = page.getByRole('main').getByText('Crea un grupo para empezar a comparar.', { exact: true });
+    await expect(empty).toHaveCount(1); await expect(empty).toBeVisible();
     await expect(page.getByRole('link', { name: 'Mi perfil', exact: true })).toHaveAttribute('href', `/u/${fixture.actors[2].username}`);
     await expect(page.getByRole('option', { name: 'Otra pestaña QA', exact: true })).toHaveCount(0);
     await page.waitForTimeout(300);

@@ -335,3 +335,27 @@ esta sección conserva la evidencia obtenida antes del merge.
 La evidencia SQL previa de roles/rollback/concurrencia sigue siendo local/dev;
 la lectura del catálogo productivo no sustituye esas pruebas ni ejecuta DML de usuarios.
 Las limitaciones de plataformas, escala y DNS conservan sus issues existentes.
+
+### Primer gate de integración CI y ajuste de instrumentación
+
+Run [38064684240](https://github.com/borjar20/Biblioshare/actions/runs/38064684240)
+en `feac8a02`: calidad PASS (563 archivos), bootstrap vacío PASS y smoke **202 PASS**.
+Comparaciones: **13 PASS / 2 fallos** en 2,8 minutos, un worker, cero reintentos.
+
+El CRUD recibió el detalle real HTTP 200 y mostró notas correctas en la ficha,
+pero `Network.getResponseBody` no permitió recuperar el cuerpo para la aserción.
+No hay navegación registrada cerca de ese fallo ni causa interna demostrada de
+Chromium. El helper reutiliza ahora el buffer HTTP auténtico del guardado:
+`route.fetch` sin retries/redirecciones, lectura de bytes antes de `fulfill` de la
+respuesta original; ningún DTO, sesión o autorización sustituido.
+
+El cambio de cuenta encontró dos mensajes vacíos iguales: uno en el main accesible,
+otro en un `DIV hidden #S:2` del streaming SSR/Suspense. El selector ahora exige
+un único mensaje visible en main. El probe de privacidad examina todos los
+encabezados A; siguen las aserciones globales de ausencia de la opción A y del
+lienzo. El artifact inicial registró 32 muestras sin A visible y perfil B.
+
+Diagnóstico y diff revisados independientemente, sin hallazgos abiertos; typecheck
+fresco PASS. El siguiente gate vivo se consulta en PR #1474. No se declara que
+este ajuste solucione `The destination stream closed early`: el error original
+se conserva en el run y su deuda sigue en #1263.
