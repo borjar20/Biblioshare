@@ -7119,3 +7119,16 @@ de Biblioshare, pilas de portadas reales, exploración dentro del lienzo por niv
 general/cruce/obra, transiciones reversibles y fondo difuminado, sin arrastre libre.
 La aprobación corresponde al diseño y la interacción del prototipo. La integración
 con datos reales y las reglas de producto pendientes continúan en #1462.
+
+## 2026-10-10 — Elegibilidad del recorrido en Entre nosotros
+
+El usuario acepta la propuesta de contar libros y películas terminados al menos
+una vez y series desde el primer episodio visto, incluidas las abandonadas.
+Las series muestran el progreso y su estado: compartir título no implica haber
+visto los mismos episodios. Cada obra cuenta una sola vez por persona, aunque
+tenga varias lecturas o visionados. Los pendientes no entran en estos conjuntos.
+
+Se mantienen las restricciones de visibilidad de quien consulta. La compatibilidad
+con registros históricos/importados sin episodios detallados y la elección de
+valoraciones siguen dentro del diseño pendiente de #1462. Esta regla de producto
+no acredita implementación ni modifica los datos existentes.

@@ -170,3 +170,19 @@ verificación visual en un navegador real ni integración con Biblioshare.
 
 Ese esquema es material de debate. Precede a la separación Obras/Gustos y no fija
 el estilo visual, los umbrales o la fórmula de afinidad de la futura feature.
+
+## 10. Acuerdo posterior del 2026-10-10: obras elegibles
+
+Tras validar el diseño visual de la maqueta, el usuario acepta la propuesta de:
+
+- Incluir libros y películas terminados al menos una vez.
+- Incluir series desde el primer episodio visto, también si se abandonaron;
+  mostrar su estado y progreso sin equiparar recorridos de distinta extensión.
+- Contar cada obra una vez por persona, sin duplicarla por relecturas o visionados.
+- Excluir los pendientes de esta comparación.
+
+Este acuerdo concreta la excepción de series de §2 y la deduplicación de §6.
+La regla de compatibilidad para registros históricos/importados sin episodios
+detallados y las valoraciones representativas siguen pendientes dentro de #1462.
+La aprobación visual y sus iteraciones constan en
+[la historia del mockup](2026-10-10-entre-nosotros-mockup.md).
