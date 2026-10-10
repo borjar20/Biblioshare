@@ -10,6 +10,7 @@ import { verifyCatalogReferenceConcurrency } from './verify-catalog-reference-co
 import { verifyBookEditionIsbnConcurrency } from './check-book-edition-isbn-concurrency.mjs';
 import { verifyExperienceConcurrency } from './verify-experience-concurrency.mjs';
 import { verifyReleaseConcurrency } from './verify-release-concurrency.mjs';
+import { verifyComparisonConcurrency } from './verify-comparison-concurrency.mjs';
 import { clubRoundsOptions, verifyClubRounds } from './verify-club-rounds.mjs';
 
 // Only the disposable container named by this checkout's generated manifest.
@@ -47,6 +48,7 @@ sql(readFileSync(join(repoRoot, 'supabase/tests/admin_content_moderation.sql'), 
 sql(readFileSync(join(repoRoot, 'supabase/tests/letterboxd_archive.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/letterboxd_recovery.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/margin_notes.sql'), 'utf8'));
+sql(readFileSync(join(repoRoot, 'supabase/tests/comparison_groups.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_access.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_transitions.sql'), 'utf8'));
 sql(readFileSync(join(repoRoot, 'supabase/tests/experiences_deletion.sql'), 'utf8'));
@@ -69,4 +71,5 @@ await verifyCatalogReferenceConcurrency(stamp.projectId);
 await verifyBookEditionIsbnConcurrency(stamp.projectId);
 await verifyExperienceConcurrency(stamp.projectId);
 await verifyReleaseConcurrency(stamp.projectId);
+await verifyComparisonConcurrency(stamp.projectId);
 console.log(`PASS: ${versions.length} bootstrap steps, schema contracts and role privileges.`);

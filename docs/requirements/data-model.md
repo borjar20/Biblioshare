@@ -1,5 +1,56 @@
 # Modelo de datos
 
+> **Delta 2026-10-10 (Entre nosotros; esquema y grants verificados en local y biblioshare-dev; producción pendiente):**
+> `20261010084120_entre_nosotros_groups.sql` añade selecciones privadas de 2–10 participantes,
+> con RLS exclusiva del dueño, revisión opaca y RPC invoker. Contrato SQL con roles reales y
+> rollback PASS en local/dev; dos conexiones concurrentes verificadas en local. Ver el apartado siguiente.
+
+## Grupos privados de comparación — Entre nosotros
+
+`comparison_groups`: `id uuid`, `owner_id uuid NOT NULL DEFAULT auth.uid()` (FK a
+`auth.users`, CASCADE), `name text` recortado (1–60 caracteres), `revision integer`
+positiva, `created_at` y `updated_at`. `comparison_group_members`: `id uuid`,
+`group_id` (FK CASCADE), `user_id uuid NOT NULL`, `position integer` (0–9).
+Hay unicidad grupo/usuario y grupo/posición; esta última es diferible para reordenar.
+El usuario miembro no tiene FK: borrar su cuenta conserva un puesto no disponible,
+sin nombre ni avatar almacenados. El lector debe entregar `userId=null` y nombre/avatar
+nulos si ya no hay identidad disponible. El dueño puede quedar fuera de la selección.
+
+Ambas tablas son privadas incluso si el perfil del dueño es público: SELECT, INSERT,
+UPDATE y DELETE exigen dueño autenticado. Guardar un puesto no concede visibilidad
+de biblioteca. Cada alta exige perfil vigente visible para la sesión, `can_view_profile`
+y self o seguimiento aceptado del dueño hacia esa persona, sin reciprocidad.
+Borrar/reordenar no vuelve a exigir el follow: permite retirar puestos inaccesibles.
+Las tablas no consultan `passes`, `episode_watches` ni bibliotecas.
+
+Los triggers invoker con `search_path=''` serializan cada cambio de miembro mediante
+`UPDATE name=name` del padre antes de escribir. El trigger del padre incrementa la
+revisión y actualiza la fecha. Constraints diferibles comprueban 2–10 puestos al
+terminar la transacción; omiten padres borrados. La revisión es un token opaco y puede
+crecer más de uno por guardado. No se concede escritura directa de revisión/identidad.
+
+`save_comparison_group(p_id uuid, p_name text, p_user_ids uuid[], p_expected_revision integer)`
+devuelve `comparison_groups`; id y revisión nulos crean. Editar bloquea el padre
+`FOR UPDATE`, comprueba la revisión y reemplaza la lista atómicamente en su orden.
+`delete_comparison_group(p_id uuid, p_expected_revision integer)` devuelve boolean.
+Ambas son invoker, sesión obligatoria y EXECUTE solo para authenticated (sin PUBLIC/anon).
+Errores: `PT409` conflicto, `PT404` inexistente/ajeno indistinguibles, `22023` entrada
+inválida, `42501` sesión/permisos. La conversión de texto no UUID falla con `22P02`
+antes de entrar a la función. Reemplazar una lista revalida todas sus altas; se deben
+retirar personas que ya no se pueden añadir.
+
+Superficie 6 de DRIFT-CHECK verificada contra objetos locales/dev el 2026-10-10:
+
+| Tabla | Columnas | INSERT authenticated | UPDATE authenticated |
+|---|---:|---|---|
+| comparison_groups | 6 | name (1) | name (1) |
+| comparison_group_members | 4 | group_id, user_id, position (3) | position (1) |
+
+SELECT/DELETE son grants de tabla para authenticated. Anon no tiene permisos;
+id, dueño, revisión y timestamps quedan gestionados por la base. Tipos generados desde
+local y dev fusionados solo para estas tablas/RPC; se conserva la extensión manual de
+argumentos nulos de creación. El resto del modelo mantiene sus verificaciones anteriores.
+
 > **Delta 2026-10-07 (calidad de Novedades; código verificado; esquema aplicado y verificado en local/dev/producción; entrega de código en PR #1452):**
 > `20261007075832_cultural_release_information_quality.sql` añade `synopsis_language`,
 > con grants explícitos, y conserva portada/sinopsis conocidas cuando el proveedor omite metadatos.

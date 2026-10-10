@@ -305,6 +305,7 @@
     "20261006134245_cultural_release_translation_publication_year.sql",
     "20261006120000_wrap_ups_enums.sql",
     "20261006120100_wrap_ups_core.sql",
-    "20261007075832_cultural_release_information_quality.sql"
+    "20261007075832_cultural_release_information_quality.sql",
+    "20261010084120_entre_nosotros_groups.sql"
   ]
 }

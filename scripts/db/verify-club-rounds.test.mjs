@@ -43,6 +43,7 @@ function controlledCaller(denied = false) {
       './verify-catalog-reference-concurrency.mjs': { verifyCatalogReferenceConcurrency: async () => {} },
       './check-book-edition-isbn-concurrency.mjs': { verifyBookEditionIsbnConcurrency: async () => {} },
       './verify-experience-concurrency.mjs': { verifyExperienceConcurrency: async () => {} },
+      './verify-comparison-concurrency.mjs': { verifyComparisonConcurrency: async () => {} },
       './verify-release-concurrency.mjs': {
         verifyReleaseConcurrency: async (id) => releaseCalls.push({ id, clubChecks: calls.length }),
       },
