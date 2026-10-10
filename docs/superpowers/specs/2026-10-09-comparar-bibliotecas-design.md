@@ -213,3 +213,20 @@ El rótulo identifica su alcance, por ejemplo «Coincidencias en 6 episodios».
 Estas notas no se convierten en una valoración de toda la serie. La ausencia de
 nota sigue siendo falta de información, nunca cero. La implementación permanece
 en #1462; los umbrales para describir patrones de gustos aún deben concretarse.
+
+## 13. Acuerdo posterior del 2026-10-10: muestra mínima de tendencias
+
+El usuario acepta distinguir coincidencias concretas de tendencias generales:
+
+- Una obra compartida basta para un hallazgo concreto, con las notas que lo
+  justifican. No se extrapola ese resultado a todo un género o creador.
+- Una tendencia por género, autor o director exige al menos tres obras valoradas
+  por cada persona incluida en la afirmación, dentro del ámbito analizado. Pueden
+  ser títulos distintos. El mínimo no basta para afirmar afinidad: las notas
+  deben sustentar también la conclusión.
+- Con una o dos obras se muestran notas y coincidencias sin generalizar.
+- Los recuentos de consumo permanecen visibles aunque no haya valoraciones.
+
+La base de tres se refiere a obras únicas, no a relecturas ni a episodios de una
+misma serie. Los umbrales de notas y el orden de los hallazgos siguen en el diseño
+de #1462. Este acuerdo no implica cambios en el código de la aplicación.

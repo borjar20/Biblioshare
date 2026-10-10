@@ -7152,3 +7152,15 @@ el número de episodios que sustenta el hallazgo. «Coincidencias en 6 episodios
 no equivale a una valoración de la serie completa; no se transforma la media de
 episodios en una nota general ni se interpreta la ausencia de nota como cero.
 Esta regla concreta el diseño de #1462; su implementación sigue pendiente.
+
+## 2026-10-10 — Muestra mínima para tendencias de gustos en Entre nosotros
+
+El usuario aprueba exigir al menos tres obras valoradas por persona dentro del
+género, autor o director analizado para presentar una tendencia de gustos. Las
+personas pueden haber valorado títulos distintos dentro de ese ámbito. Este
+mínimo habilita el análisis; por sí solo no demuestra afinidad ni entusiasmo.
+
+Una sola obra compartida puede sustentar un hallazgo concreto con sus notas.
+Con una o dos obras se muestran los datos y coincidencias sin generalizar sobre
+preferencias. Los recuentos de consumo siguen disponibles con cualquier tamaño
+de muestra y aunque no existan valoraciones. La feature continúa en #1462.
