@@ -277,3 +277,11 @@ Fuentes locales contrastadas: [modelo de datos](../../requirements/data-model.md
 `src/lib/series/get-episode-data.ts`, `src/lib/catalog/genre-vocab.ts` y
 `src/app/comunidad/page.tsx`. El [primer diseño](2026-10-09-comparar-bibliotecas-design.md)
 y el historial visual conservan la evolución de las decisiones.
+
+## 10. Paso a planificación del 2026-10-10
+
+Tras presentar este documento, el usuario pide «Prepara el plan». Se adopta esta
+especificación como base para el [plan de implementación](../plans/2026-10-10-entre-nosotros.md),
+incluidos el límite inicial de diez participantes y los criterios de historial
+descritos. El plan concreta archivos, interfaces, privacidad y verificación; queda
+para revisión antes de ejecutar. No se ha implementado ni desplegado la feature.

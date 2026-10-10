@@ -7200,3 +7200,13 @@ un límite máximo obligatorio.
 La especificación `docs/superpowers/specs/2026-10-10-entre-nosotros-design.md` reúne
 los acuerdos y distingue las propuestas nuevas para revisión. La feature sigue
 sin implementar, con seguimiento en #1462.
+
+## 2026-10-10 — Plan de implementación de Entre nosotros
+
+Tras recibir la especificación consolidada, el usuario pide preparar el plan.
+La especificación del 2026-10-10 pasa a ser su base: selecciones privadas de dos a
+diez participantes seguidos, Venn de dos o tres, reglas de consumo/valoración y
+el lienzo visual aprobado. El plan en `docs/superpowers/plans/2026-10-10-entre-nosotros.md`
+separa dominio, persistencia, lecturas autorizadas, interfaz, movimiento y pruebas.
+Sus detalles de implementación quedan para revisión; no registra código ejecutado,
+migraciones aplicadas ni publicación. #1462 conserva el trabajo pendiente.
