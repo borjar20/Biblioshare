@@ -6,6 +6,8 @@ import base from './playwright.config';
 export default defineConfig({
   ...base,
   testMatch: ['entre-nosotros.spec.ts', 'entre-nosotros-motion.spec.ts'],
+  // Discovery is owned here; neither present nor future general exclusions apply.
+  testIgnore: [],
   globalSetup: undefined,
   webServer: undefined,
   timeout: 180_000,

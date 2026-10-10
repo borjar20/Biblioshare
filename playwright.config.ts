@@ -21,7 +21,8 @@ export default defineConfig({
   // de producción con Supabase local (`playwright.pet-local.config.ts`), no un
   // spec contra `next dev`. Ninguno de los dos entra en la suite principal.
   // Moderation owns private audit fixtures and has its own cleanup/config.
-  testIgnore: ["**/support/**", "**/ci/**", "**/mascota-batallas-local.spec.ts", "**/moderation-admin.spec.ts"],
+  // Comparisons own a production/local gate via playwright.comparisons.config.ts.
+  testIgnore: ["**/support/**", "**/ci/**", "**/mascota-batallas-local.spec.ts", "**/moderation-admin.spec.ts", "**/entre-nosotros.spec.ts", "**/entre-nosotros-motion.spec.ts"],
   // Issue #215: la semilla QA de sagas se corrompía entre specs y ENTRE
   // SESIONES (un spec que muere a mitad deja su `finally` sin correr, y el
   // siguiente lee esa suciedad como su estado de partida y la restaura). Esto

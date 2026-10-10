@@ -28,6 +28,20 @@ npm run start -- --port 3000
 npm run test:e2e -- e2e/entre-nosotros.spec.ts e2e/entre-nosotros-motion.spec.ts --config playwright.comparisons.config.ts --workers=1 --retries=0
 ```
 
+El runner general excluye explícitamente `entre-nosotros.spec.ts` y `entre-nosotros-motion.spec.ts` en `testIgnore`; se ejecutan sólo mediante la configuración dedicada del comando anterior. `playwright.comparisons.config.ts` conserva `testMatch` de ambos specs y sobrescribe `testIgnore: []` después del spread de base, de modo que las exclusiones generales actuales o futuras no oculten este gate. La aserción LOCAL ONLY sigue exigiendo127.0.0.1:54321 dentro de la prueba y el guard de fixture permanece intacto.
+
+Revisión I1, verificación no ejecutante de descubrimiento:
+
+```powershell
+npm run test:e2e -- --list
+# RED anterior:440 tests in143 files;12 casos de comparisons incluidos.
+# GREEN:428 tests in141 files;0 entradas de comparisons;exit0.
+npm run test:e2e -- --config playwright.comparisons.config.ts --list
+# GREEN:12 tests in2 files, incluido LOCAL ONLY;exit0.
+```
+
+[`testMatch`/`testIgnore`](https://github.com/microsoft/playwright/blob/main/docs/src/test-api/class-testconfig.md) filtran rutas absolutas por glob; [`--list`](https://github.com/microsoft/playwright/blob/main/packages/playwright/src/runner/testRunner.ts) carga/reporta los tests sin tareas de ejecución ni globalSetup. Documentación actual consultada vía Context7. Esta corrección sólo selecciona archivos: no arranca app/navegador, no siembra fixtures y no repite suite general/build/gates de producto.
+
 La configuración aislada no ejecuta el globalSetup/sweep ni lanza un dev server. Se reutiliza exclusivamente el `next start` de la build nueva. El caller debe tener port3000 libre y comprobar PID/identidad de su servidor. La service key sólo siembra, controla cambios de fixture y limpia; nunca se envía al navegador. La fixture permite únicamente el origin local54321 o biblioshare-dev exacto, y el caso de volumen exige local.
 
 ## Fixture y oráculos
@@ -145,3 +159,6 @@ Cleanup final [audit real](assets/2026-10-10-entre-nosotros/cleanup-audit.json):
 
 
 Observación M2 para revisión final del controlador: selectGrupo a320px queda estrecho (sólo flecha) junto Crear/Editar; heading mantiene el nombre del grupo. Root lo inspeccionó en fullPage y dejó deferred junto M1, sin cambio incidental ni nueva afirmación de defecto bloqueante.
+
+
+Fix de revisión Task9I1: types y eslint de ambas configs PASS, sin errores/advertencias; diff scoped limpio. M1/M2/M3 permanecen deferred para revisión whole-branch: el DNS de fixture queda explícito junto con los otros avisos, sin arreglo incidental en este fix.
