@@ -7164,3 +7164,18 @@ Una sola obra compartida puede sustentar un hallazgo concreto con sus notas.
 Con una o dos obras se muestran los datos y coincidencias sin generalizar sobre
 preferencias. Los recuentos de consumo siguen disponibles con cualquier tamaño
 de muestra y aunque no existan valoraciones. La feature continúa en #1462.
+
+## 2026-10-10 — Umbrales de hallazgos sobre una obra en Entre nosotros
+
+El usuario aprueba estos criterios en escala de 1 a 10 para las personas
+mencionadas en un hallazgo sobre una misma obra:
+
+- «Os encantó»: todas le dieron al menos un 8.
+- «Notas parecidas»: diferencia máxima de un punto entre la nota mayor y la menor.
+- «Diferencia de opinión»: diferencia de al menos tres puntos entre esas notas.
+
+Cada hallazgo muestra sus personas y notas. «Notas parecidas» puede expresar
+también una valoración baja compartida; no equivale a entusiasmo. Se necesitan
+notas existentes de todas las personas incluidas en la afirmación. Son criterios
+para obras concretas, no un porcentaje global de compatibilidad ni una fórmula
+de tendencias por género o creador. La implementación permanece en #1462.

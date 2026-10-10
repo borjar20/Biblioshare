@@ -230,3 +230,20 @@ El usuario acepta distinguir coincidencias concretas de tendencias generales:
 La base de tres se refiere a obras únicas, no a relecturas ni a episodios de una
 misma serie. Los umbrales de notas y el orden de los hallazgos siguen en el diseño
 de #1462. Este acuerdo no implica cambios en el código de la aplicación.
+
+## 14. Acuerdo posterior del 2026-10-10: umbrales por obra
+
+El usuario acepta los siguientes umbrales, sobre notas de 1 a 10, para una misma
+obra y las personas explícitamente mencionadas:
+
+| Hallazgo | Criterio |
+|---|---|
+| Os encantó | Todas las notas son mayores o iguales que 8 |
+| Notas parecidas | Máximo menos mínimo menor o igual que 1 |
+| Diferencia de opinión | Máximo menos mínimo mayor o igual que 3 |
+
+Siempre se muestran las personas y sus notas. Una valoración baja parecida
+indica acuerdo, no entusiasmo. Las notas ausentes no se convierten en cero ni
+sustentan afirmaciones sobre personas sin valoración. Los umbrales describen
+obras concretas; el cálculo de tendencias y la priorización de los hallazgos
+continúan en el diseño de #1462.
