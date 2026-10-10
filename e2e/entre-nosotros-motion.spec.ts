@@ -93,6 +93,18 @@ test('real cover travels both ways through map, Venn, region and work, and inter
 test('real wheel bursts keep every level, native canvas scrolling and modifiers uncancelled', async ({ page }, info) => {
   await withComparisonFixture(async fixture => {
     const canvas = await openComparisonFixture(page, fixture); await settled(page); await pair(page);
+    // Opening the A/B pair sets the actual comparison selection to those two,
+    // even though the saved group also contains Carlos. Wheel must preserve it.
+    for (const name of ['Ana QA', 'Beatriz QA']) await expect(page.getByRole('checkbox', { name, exact: true })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: 'Carlos QA', exact: true })).not.toBeChecked();
+    const selections: { phase: string; people: { name: string; checked: boolean }[] }[] = [];
+    const captureSelection = async (phase: string) => {
+      await expect(page.getByRole('checkbox')).toHaveCount(fixture.actors.length);
+      const people = await Promise.all(fixture.actors.map(async actor => ({ name: actor.name, checked: await page.getByRole('checkbox', { name: actor.name, exact: true }).isChecked() })));
+      selections.push({ phase, people }); return people;
+    };
+    const selectedPair = await captureSelection('venn-before-wheel');
+    const preserveSelection = async (phase: string) => expect(await captureSelection(phase)).toEqual(selectedPair);
     const target = page.getByRole('button', { name: 'Abrir región: Ana QA, Beatriz QA; 30 obras', exact: true });
     const wheelEvents = await page.evaluateHandle(() => {
       const cancelled: boolean[] = [];
@@ -108,34 +120,43 @@ test('real wheel bursts keep every level, native canvas scrolling and modifiers 
       await page.mouse.wheel(0, -80);
       await expect.poll(() => wheelEvents.evaluate(probe => probe.cancelled.length)).toBe(1);
       await expect(canvas).toHaveAttribute('data-view', 'venn');
+      await preserveSelection('venn-after-first-wheel');
       for (let i = 0; i < 8; i++) {
         await page.mouse.wheel(0, -100);
         await expect.poll(() => wheelEvents.evaluate(probe => probe.cancelled.length)).toBe(i + 2);
         await expect(canvas).toHaveAttribute('data-view', 'venn');
+        await preserveSelection(`venn-after-burst-${i + 2}`);
       }
       expect(await world.getAttribute('style')).toBe(camera);
       await target.click(); await settled(page);
+      await preserveSelection('region-before-wheel');
       const cover = page.locator(`[data-work-key="book:${fixture.books[0].id}"]`);
       await cover.hover(); await page.mouse.wheel(0, -80);
       await expect.poll(() => wheelEvents.evaluate(probe => probe.cancelled.length)).toBe(10);
       await expect(canvas).toHaveAttribute('data-view', 'region');
+      await preserveSelection('region-after-wheel');
       await cover.click(); await settled(page);
       await expect(page.getByRole('link', { name: 'Ver ficha', exact: true })).toBeVisible();
+      await preserveSelection('work-before-wheel');
       await cover.hover(); await page.mouse.wheel(0, 0); await page.mouse.wheel(0, -100);
       await expect.poll(() => wheelEvents.evaluate(probe => probe.cancelled.length)).toBeGreaterThanOrEqual(11);
       await expect(canvas).toHaveAttribute('data-view', 'work');
+      await preserveSelection('work-after-wheel');
       const beforeModifier = await wheelEvents.evaluate(probe => probe.cancelled.length);
       await page.keyboard.down('Control');
       try { await page.mouse.wheel(0, 120); }
       finally { await page.keyboard.up('Control'); }
       await expect.poll(() => wheelEvents.evaluate(probe => probe.cancelled.length)).toBeGreaterThan(beforeModifier);
       await expect(canvas).toHaveAttribute('data-view', 'work');
+      await preserveSelection('work-after-control-wheel');
       // Dispatch verifies cancellation for all delta modes without claiming
       // synthetic events cause native scrolling or browser zoom.
       for (const deltaMode of [0, 1, 2]) expect(await canvas.evaluate((node, mode) => node.dispatchEvent(new WheelEvent('wheel', { deltaY: 1, deltaMode: mode, metaKey: true, bubbles: true, cancelable: true })), deltaMode)).toBe(true);
+      await preserveSelection('work-after-delta-modes');
       await page.getByRole('button', { name: 'Volver al cruce', exact: true }).click(); await settled(page);
       await page.getByRole('button', { name: 'Volver al Venn', exact: true }).click(); await settled(page);
       await page.getByRole('button', { name: 'Volver al grupo', exact: true }).click(); await settled(page);
+      await preserveSelection('group-before-wheel');
       // Map covers intentionally overlap. Hover the frontmost active cover,
       // rather than asking actionability to expose a cover behind the pile.
       const mapCover = canvas.locator('button[data-work-key][data-inactive="false"][data-background="false"]').last();
@@ -146,12 +167,12 @@ test('real wheel bursts keep every level, native canvas scrolling and modifiers 
       await expect.poll(() => wheelEvents.evaluate(probe => probe.cancelled.length)).toBeGreaterThan(beforeEvents);
       await expect.poll(() => canvas.evaluate(node => node.scrollTop)).toBeGreaterThan(beforeMap);
       await expect(canvas).toHaveAttribute('data-view', 'group');
+      await preserveSelection('group-after-wheel');
       const cancelled = await wheelEvents.evaluate(probe => probe.cancelled);
       expect(cancelled.every(value => !value)).toBe(true);
       const path = info.outputPath('native-wheel-events.json');
-      await writeFile(path, JSON.stringify({ cancelled, beforeMap, afterMap: await canvas.evaluate(node => node.scrollTop) }, null, 2));
+      await writeFile(path, JSON.stringify({ cancelled, beforeMap, afterMap: await canvas.evaluate(node => node.scrollTop), selections }, null, 2));
       await info.attach('native-wheel-events', { path, contentType: 'application/json' });
-      await expect(page.getByRole('checkbox', { name: 'Carlos QA', exact: true })).toBeChecked();
     } catch (error) { wheelFailure = error; throw error; }
     finally {
       try { if (!page.isClosed()) await wheelEvents.evaluate(probe => probe.stop()); }

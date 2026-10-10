@@ -7561,3 +7561,14 @@ participantes. Al entrar en una obra se mide la posición natural de su barra de
 retorno y se desplaza únicamente el contenido del lienzo hasta ella, tanto al
 comenzar como al acabar la transición. La banda de selección sigue accesible por
 encima. El scroll de la página no cambia y volver recupera la posición del cruce.
+
+## 2026-10-10 — Retorno visible bajo la cabecera de la app
+
+El scroll nativo puede dejar el lienzo parcialmente bajo la cabecera sticky de la
+app. Al abrir una obra, se conserva la entrada por scroll interior y solo se
+ajusta la página si su botón de retorno está realmente oculto por una cabecera
+sticky/fixed. El ajuste mínimo deja 12 px de separación y no cambia la altura
+del marco ni el origen guardado; volver recupera ambos scrolls. Las entradas
+visibles no desplazan la página. Esta precisión sustituye la garantía absoluta
+de no desplazar la página del registro anterior, que dejaba el retorno oculto
+en el recorrido móvil hasta la última portada.

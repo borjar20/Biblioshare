@@ -9,7 +9,7 @@ se desplazan dentro. El retorno conserva foco, scroll interior y posición de p�
 
 ## Evidencia
 
-- 345 pruebas focales en seis archivos PASS; TypeScript, ESLint focal y diff-check PASS.
+- 346 pruebas focales en seis archivos PASS; TypeScript, ESLint focal y diff-check PASS.
 - Ocho regresiones nuevas observadas RED y luego GREEN: tres del relevo de carga,
   cuatro de rueda nativa y una de retorno del scroll. Otra regresión detectó que
   el botón sticky restaba 60 px al scroll restaurado; reparación y prueba GREEN.
@@ -33,10 +33,12 @@ se desplazan dentro. El retorno conserva foco, scroll interior y posición de p�
   empieza en la barra de retorno mediante scroll interior; Escape devuelve foco
   y posición al origen. La regresión unitaria de esta entrada pasó de RED a GREEN.
 
-Las cinco fuentes medidas conservan sus hashes tras QA. Journal y cinco capturas
+Las cinco fuentes medidas conservan sus hashes tras QA. Journal y siete capturas
 en [la evidencia](assets/2026-10-10-entre-nosotros-stable-canvas/journal.json).
 La sonda adicional con Geist está en
 [work-entry-720.json](assets/2026-10-10-entre-nosotros-stable-canvas/work-entry-720.json).
+La sonda de cabecera fija está en
+[occluded-entry-720.json](assets/2026-10-10-entre-nosotros-stable-canvas/occluded-entry-720.json).
 Navegadores y servidor del harness cerrados; puerto 3000 libre. Cero escrituras,
 solicitudes externas o cambios de cuentas persistentes.
 
@@ -63,3 +65,24 @@ el producto alineando el scroll interior con la barra de retorno; su aserción
 de visibilidad permanece intacta. Evidencia del fallo conservada localmente.
 La reparación cuenta con revisión independiente, 345 pruebas focales y los doce
 escenarios Chromium anteriores; necesita CI del nuevo commit antes de integrar.
+
+La segunda ejecución, 38087302682 sobre `3afdaf4c`, pasó 5.879 unitarios y 202
+smoke; comparaciones obtuvo 15 PASS y 2 FAIL. La entrada de escritorio ya pasa.
+La prueba de rueda terminó todos sus pasos con cero eventos cancelados y scroll
+de mapa de 70 a 270 px; su expectativa final de Carlos seleccionado era incorrecta
+tras abrir la pareja Ana/Beatriz. Ahora acredita esa selección real y conserva el
+vector completo antes/después de la rueda en todos los niveles, con 18 capturas.
+En móvil, la cabecera fija ocultaba 9,69 px del botón de retorno al abrir la última
+portada tras desplazar la página. El producto corrige únicamente esa oclusión,
+sin alterar la altura ni reemplazar el scroll de origen guardado.
+
+Dos sondas adicionales con cabecera sticky real, Geist y viewport de 720 px
+verifican el ajuste mínimo a 320/1280 px y retorno exacto de foco, scroll interior
+y exterior. Repetir el tap sobre la portada actual conserva el origen. La nueva
+regresión unitaria pasó de RED a GREEN. Las entradas ya visibles siguen sin
+desplazar la página. Revisión independiente sin hallazgos y 346 pruebas focales
+PASS; el nuevo commit necesita CI antes de integrar.
+La repetición final suma 14/14 escenarios PASS (diez de matriz, dos de entrada
+visible y dos de entrada bajo cabecera). Los ajustes de página son de −22/−24 px;
+el retorno conserva exactamente 197/360 px exteriores y 561/3161 px interiores.
+Las cinco fuentes permanecen estables y el entorno del harness queda cerrado.

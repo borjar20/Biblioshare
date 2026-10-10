@@ -43,6 +43,9 @@ barra de retorno permanece accesible y se restauran foco y desplazamiento interi
 al regresar. La rueda no controla el zoom: los niveles se abren por clic o teclado.
 Al abrir una obra, el scroll interior comienza en su barra de retorno, dejando los
 selectores accesibles por encima sin empujar la portada y el título fuera del marco.
+Si el scroll previo dejó el retorno bajo la cabecera fija de la app, se corrige
+solo esa oclusión con un desplazamiento mínimo de página; volver restaura también
+la posición exterior original. Las entradas ya visibles no desplazan la página.
 
 La composición visual sigue el prototipo aprobado de Sites: hero y controles compactos,
 avatares seleccionables, enlaces curvos y pilas de portadas. `presentation.ts` asigna

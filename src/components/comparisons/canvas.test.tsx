@@ -25,6 +25,22 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 describe('comparison canvas', () => {
+  it('reveals an item return button occluded by the sticky app header and restores the original page position', async () => {
+    render(<><header style={{ position: 'sticky', top: 0 }}>Cabecera</header><Harness initial={{ level: 'region', people: ['0', '1'], mask: 3 }}/></>);
+    vi.stubGlobal('scrollY', 1600);
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.tagName === 'HEADER' && this.textContent === 'Cabecera') return new DOMRect(0, 0, 640, 59);
+      if (this.textContent?.startsWith('Volver') && this.tagName === 'BUTTON') return new DOMRect(22, 49, 108, 44);
+      return new DOMRect(0, 31, 640, 560);
+    });
+    const cover = screen.getByRole('button', { name: 'Abrir obra: Libro 20' });
+    fireEvent.click(cover);
+    await screen.findByRole('link', { name: 'Ver ficha' });
+    expect(window.scrollTo).toHaveBeenLastCalledWith({ top: 1578, behavior: 'instant' });
+    fireEvent.click(screen.getByRole('button', { name: 'Volver al cruce' }));
+    expect(window.scrollTo).toHaveBeenLastCalledWith({ top: 1600, behavior: 'instant' });
+    expect(document.activeElement).toBe(cover);
+  });
   it('opens item content at its return toolbar without moving the surrounding page', async () => {
     const { container } = render(<Harness initial={{ level: 'region', people: ['0', '1'], mask: 3 }}/>);
     const viewport = container.querySelector<HTMLElement>('[data-camera-moving]')!;

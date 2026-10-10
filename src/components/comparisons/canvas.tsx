@@ -174,6 +174,19 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, nav
       focused = origin ?? (view.level === 'group' ? controls[0] : backButton.current) ?? host.current;
       focused?.focus({ preventScroll: true });
     }
+    // Native scrolling can leave the fixed frame partly behind the app header.
+    // Reveal only an occluded work return button; retain the saved origin scroll.
+    if (view.level === 'work' && focused === backButton.current && focused) {
+      const shell = document.querySelector('header');
+      const position = shell && getComputedStyle(shell).position;
+      if (shell && (position === 'sticky' || position === 'fixed')) {
+        const shellBottom = shell.getBoundingClientRect().bottom;
+        const buttonTop = focused.getBoundingClientRect().top;
+        if (shellBottom > 0 && buttonTop < shellBottom) {
+          window.scrollTo({ top: window.scrollY + buttonTop - shellBottom - 12, behavior: 'instant' });
+        }
+      }
+    }
     // A refreshed origin may have moved. Keep its focused control visible
     // without scrolling the surrounding page or hiding it behind the toolbar.
     if (viewport && focused && focused !== viewport && !entry.current?.contains(focused)) {
