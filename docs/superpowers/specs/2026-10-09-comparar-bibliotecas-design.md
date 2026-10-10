@@ -247,3 +247,16 @@ indica acuerdo, no entusiasmo. Las notas ausentes no se convierten en cero ni
 sustentan afirmaciones sobre personas sin valoración. Los umbrales describen
 obras concretas; el cálculo de tendencias y la priorización de los hallazgos
 continúan en el diseño de #1462.
+
+## 15. Acuerdo posterior del 2026-10-10: personas seleccionables
+
+El usuario elige limitar las selecciones a las personas que sigue. Para añadir
+otros perfiles se exige un seguimiento aceptado del dueño hacia esa persona;
+no hace falta que el seguimiento sea mutuo. Un perfil público no seguido o una
+solicitud pendiente no son candidatos del selector.
+
+El dueño puede incluirse, pero no es obligatorio: siguen admitiéndose grupos y
+comparaciones formados únicamente por otros amigos. Las selecciones son privadas
+y guardables; su contenido se consulta con la visibilidad vigente del observador.
+Este acuerdo concreta la selección de perfiles de §8.6, sin cerrar todavía los
+límites de tamaño del grupo ni la implementación de #1462.

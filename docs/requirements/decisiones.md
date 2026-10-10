@@ -7179,3 +7179,13 @@ también una valoración baja compartida; no equivale a entusiasmo. Se necesitan
 notas existentes de todas las personas incluidas en la afirmación. Son criterios
 para obras concretas, no un porcentaje global de compatibilidad ni una fórmula
 de tendencias por género o creador. La implementación permanece en #1462.
+
+## 2026-10-10 — Selecciones de Entre nosotros limitadas a personas seguidas
+
+El usuario limita la elección de otras personas a aquellas a las que sigue.
+El selector usa seguimientos aceptados; no permite añadir cualquier perfil
+público por el mero hecho de ser visible ni solicitudes todavía pendientes.
+No se exige seguimiento mutuo. Se conserva la posibilidad de incluir al dueño
+de la selección o comparar solo a otros amigos, y de guardar distintas
+selecciones personales. Los datos consultados respetan los permisos vigentes
+del observador. La implementación de esta regla continúa en #1462.
