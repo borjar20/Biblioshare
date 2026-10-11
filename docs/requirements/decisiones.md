@@ -7722,3 +7722,14 @@ tarjeta o fila de pareja se enciende su curva y se atenúa a quien no participa.
 Nombres y recuentos llevan un halo del color del papel para que las curvas no los
 corten. Con movimiento reducido no hay entrada; el resaltado se mantiene porque
 comunica estado. Evidencia en `docs/testing/2026-10-11-entre-nosotros-mapa-vivo.md`.
+
+## 2026-10-11 — Entre nosotros: Gustos animado (#1499)
+
+Gustos deja de pintarse de golpe. Las burbujas de categoría entran escalando una tras
+otra y la elegida respira al seleccionarse. Las barras de media crecen desde cero,
+escalonadas por persona, y al cambiar de categoría se transforman de un valor al
+otro. Las medias y los recuentos cuentan hasta su valor, y los círculos de presencia
+crecen hasta su área. Las barras se dibujan como `scaleX` de su media en lugar de con
+un ancho, para animar solo con transformaciones. Con una o dos categorías, la nube se
+centra en vez de dejarlas arriba a la izquierda. Con movimiento reducido todo aparece
+con su valor final. Evidencia en `docs/testing/2026-10-11-entre-nosotros-gustos-animados.md`.
