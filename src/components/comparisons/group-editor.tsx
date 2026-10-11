@@ -25,7 +25,8 @@ export function GroupEditor({ group, candidates, onSaved, onDeleted, onCancel, o
   }, [confirmDelete]);
   const pending = useRef(false);
   const nameInput = useRef<HTMLInputElement>(null);
-  const valid = !!name.trim() && [...name.trim()].length <= 60 && selected.length >= 2 && selected.length <= 10 && unavailable.length === 0;
+  const nameLength = [...name.trim()].length;
+  const valid = !!name.trim() && nameLength <= 60 && selected.length >= 2 && selected.length <= 10 && unavailable.length === 0;
   const participantCount = selected.length + unavailable.length;
   async function submit() {
     if (!valid || pending.current) return;
@@ -43,8 +44,10 @@ export function GroupEditor({ group, candidates, onSaved, onDeleted, onCancel, o
   }
   return <form onSubmit={event => { event.preventDefault(); void submit(); }} className="flex max-w-2xl flex-col gap-4 rounded-lg border border-border bg-surface p-5" aria-label={t(group ? 'editGroup' : 'createGroup')}>
     <h2 className="font-serif text-xl font-semibold">{t(group ? 'editGroup' : 'createGroup')}</h2>
-    <label className="flex flex-col gap-2">{t('groupName')}<Input ref={nameInput} value={name} onChange={event => setName(event.target.value)} maxLength={120} disabled={busy} autoFocus required/></label>
-    {[...name.trim()].length > 60 && <p role="alert" className="text-sm text-status-dropped">{t('nameTooLong')}</p>}
+    {/* maxLength counts UTF-16 units; 120 lets 60 emoji through. The 60-character limit is the counter's. */}
+    <label className="flex flex-col gap-2">{t('groupName')}<Input ref={nameInput} value={name} onChange={event => setName(event.target.value)} maxLength={120} aria-describedby="comparison-group-name-count" disabled={busy} autoFocus required/></label>
+    <p id="comparison-group-name-count" className={`-mt-2 self-end text-xs tabular-nums ${nameLength > 60 ? 'text-status-dropped' : 'text-muted-foreground'}`}>{t('nameCounter', { count: nameLength })}</p>
+    {nameLength > 60 && <p role="alert" className="text-sm text-status-dropped">{t('nameTooLong')}</p>}
     <p className="text-sm text-muted-foreground">{t('groupHelp')}</p>
     {unavailable.length > 0 && <div className="flex flex-col gap-2"><p className="text-sm text-muted-foreground">{t('unavailableEditor', { count: unavailable.length })}</p>{unavailable.map(slotId => <div key={slotId} className="flex flex-wrap items-center gap-2"><span>{t('unavailablePerson')}</span><Button type="button" variant="secondary" disabled={busy} onClick={() => { setUnavailable(current => current.filter(id => id !== slotId)); nameInput.current?.focus(); }}>{t('removeUnavailable')}</Button></div>)}</div>}
     <label className="flex flex-col gap-2">{t('searchPeople')}<Input type="search" value={query} onChange={event => setQuery(event.target.value)} disabled={busy}/></label>

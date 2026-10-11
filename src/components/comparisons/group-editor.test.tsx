@@ -69,6 +69,16 @@ describe('inline group editing', () => {
     expect((screen.getByRole('button', { name: 'Guardar grupo' }) as HTMLButtonElement).disabled).toBe(false);
     fireEvent.submit(screen.getByRole('form', { name: 'Editar grupo' })); await waitFor(() => expect(actions.save).toHaveBeenCalledOnce());
   });
+  it('counts characters, not UTF-16 units: 60 emoji fit, the 61st blocks saving', () => {
+    mount(group); const input = screen.getByLabelText('Nombre del grupo') as HTMLInputElement;
+    expect(input.getAttribute('aria-describedby')).toBe('comparison-group-name-count'); expect(screen.getByText('8/60')).toBeTruthy();
+    fireEvent.change(input, { target: { value: '📚'.repeat(60) } });
+    expect(screen.getByText('60/60')).toBeTruthy(); expect(screen.queryByRole('alert')).toBeNull();
+    expect((screen.getByRole('button', { name: 'Guardar grupo' }) as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.change(input, { target: { value: '📚'.repeat(61) } });
+    expect(screen.getByText('61/60')).toBeTruthy(); expect(screen.getByRole('alert').textContent).toBe('El nombre puede tener hasta 60 caracteres.');
+    expect((screen.getByRole('button', { name: 'Guardar grupo' }) as HTMLButtonElement).disabled).toBe(true);
+  });
   it('shows save failures and retains the edited name', async () => {
     actions.save.mockRejectedValue(new Error('offline')); mount(group); fireEvent.submit(screen.getByRole('form', { name: 'Editar grupo' }));
     await screen.findByRole('alert'); expect((screen.getByLabelText('Nombre del grupo') as HTMLInputElement).value).toBe('Lectores'); expect(callbacks.onSaved).not.toHaveBeenCalled();
