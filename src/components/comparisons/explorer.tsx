@@ -1,11 +1,13 @@
 'use client';
 import { useEffect, useReducer, useRef, useState, type CSSProperties } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { loadComparison } from '@/lib/comparisons/actions';
 import type { Candidate, Format, Group, Result, Snapshot } from '@/lib/comparisons/types';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { GroupEditor } from './group-editor';
 import { ComparisonCanvas } from './canvas';
 import { Tastes } from './tastes';
@@ -197,7 +199,9 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
       </div>
     </header>
     {editor && <GroupEditor key={editor.group?.id ?? 'new'} group={editor.group} candidates={candidates} viewerId={viewerId} onSaved={onSaved} onDeleted={id => { setGroups(current => current.filter(group => group.id !== id)); selectGroup(null); }} onCancel={() => { setEditor(null); groupSelector.current?.focus(); }} onReload={() => { setEditor(null); groupSelector.current?.focus(); refresh(); router.refresh(); }}/>}
-    {!groups.length && !editor && <p className="py-10 text-muted-foreground">{t('noGroups')}</p>}
+    {!groups.length && !editor && (candidates.some(person => person.userId !== viewerId)
+      ? <EmptyState variant="panel" glyph={<Icon kind="works"/>} title={t('noGroups')} message={t('noGroupsMessage')} action={<Button onClick={() => setEditor({ group: null })}>{t('createFirstGroup')}</Button>}/>
+      : <EmptyState variant="panel" glyph={<Icon kind="works"/>} title={t('noFollowsTitle')} message={t('noFollowsMessage')} action={<Link href="/comunidad?tab=personas" className={buttonVariants('primary')}>{t('findPeopleToFollow')}</Link>}/>)}
     {active && <>
       <div className={styles.toolbar}>
         <nav aria-label={t('sections')} className={styles.tabs}>{(['works', 'tastes'] as const).map(section => <button key={section} type="button" aria-pressed={state.section === section} onClick={() => dispatch({ type: 'section', section })} className={styles.tab}><Icon kind={section}/>{t(section)}</button>)}</nav>
