@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { loadComparison } from '@/lib/comparisons/actions';
+import { sortGroups } from '@/lib/comparisons/order';
 import type { Candidate, Format, Group, Result, Snapshot } from '@/lib/comparisons/types';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -159,7 +160,7 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
     void loadComparison(id, format).catch((): Result<Snapshot> => ({ ok: false, code: 'load-failed' })).then(result => {
       if (sequence.current !== seq) return;
       dispatch({ type: 'response', seq, result });
-      if (result.ok) setGroups(current => current.map(group => group.id === id ? result.data.group : group));
+      if (result.ok) setGroups(current => sortGroups(current.map(group => group.id === id ? result.data.group : group)));
     });
     return () => { sequence.current += 1; };
   }, [state.groupId, format, reload]);
@@ -170,7 +171,7 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
   }
   function refresh() { sequence.current += 1; dispatch({ type: 'refresh' }); forceReload(); }
   function onSaved(group: Group) {
-    setGroups(current => [...current.filter(item => item.id !== group.id), group]); selectGroup(group.id);
+    setGroups(current => sortGroups([...current.filter(item => item.id !== group.id), group])); selectGroup(group.id);
     // Even a same-group save invalidates the old revision and permissions.
     forceReload();
   }
