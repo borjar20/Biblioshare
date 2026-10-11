@@ -1,6 +1,6 @@
 import { expect, test as base, type Page, type TestInfo, type Request } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
-import { comparisonRest, deleteComparisonActor, shownName, loginComparisonActor, withComparisonFixture, type ComparisonActor, type ComparisonFixture } from './support/comparison-fixtures';
+import { chooseComparisonParticipants, comparisonRest, deleteComparisonActor, shownName, loginComparisonActor, withComparisonFixture, type ComparisonActor, type ComparisonFixture } from './support/comparison-fixtures';
 
 function coverOwnership(request: Request) {
   const url = new URL(request.url());
@@ -55,11 +55,14 @@ const test = base.extend<{ journal: Record[] }>({
 async function settled(page: Page) {
   await expect(page.locator('[data-camera-moving]')).toHaveAttribute('data-camera-moving', 'false');
 }
-async function createGroup(page: Page, actors: ComparisonActor[], name = 'Mi grupo QA') {
+async function createGroup(page: Page, actors: ComparisonActor[], name = 'Mi grupo QA', owner = actors[0]) {
   await page.getByRole('button', { name: 'Crear grupo', exact: true }).click();
   const form = page.getByRole('form', { name: 'Crear grupo' });
   await form.getByLabel('Nombre del grupo').fill(name);
-  for (const actor of actors) await form.getByRole('checkbox', { name: actor.name, exact: true }).check();
+  // The owner never has to pick themselves: a new group starts with them included.
+  await expect(form.getByRole('checkbox', { name: 'Incluirme en la comparación', exact: true })).toBeChecked();
+  await expect(form.getByRole('checkbox', { name: owner.name, exact: true })).toHaveCount(0);
+  await chooseComparisonParticipants(form, owner, actors);
   await form.getByRole('button', { name: 'Guardar grupo', exact: true }).click();
   await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
   await settled(page);
@@ -129,7 +132,7 @@ test('ten-person CRUD, owner-free group, exact pair/trio, formats, notes, persis
     await page.getByRole('checkbox', { name: 'Carlos QA', exact: true }).check(); await settled(page);
     await expect(page.getByRole('button', { name: 'Abrir región: Tú, Beatriz QA; 0 obras', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Abrir región: Tú, Beatriz QA, Carlos QA; 32 obras', exact: true })).toBeVisible();
-    await page.getByRole('combobox', { name: 'Formato', exact: true }).selectOption('book'); await settled(page);
+    await page.getByRole('group', { name: 'Filtrar por tipo de obra', exact: true }).getByRole('button', { name: 'Libros', exact: true }).click(); await settled(page);
     await expect(page.getByRole('button', { name: 'Abrir región: Tú, Beatriz QA, Carlos QA; 30 obras', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Abrir región: Tú, Beatriz QA, Carlos QA; 30 obras', exact: true }).click(); await settled(page);
     const cover = page.locator(`[data-work-key="book:${fixture.books[0].id}"]`);
@@ -146,7 +149,8 @@ test('ten-person CRUD, owner-free group, exact pair/trio, formats, notes, persis
     const form = page.getByRole('form', { name: 'Editar grupo' });
     await expect(form.getByLabel('Nombre del grupo')).toBeFocused();
     await form.getByLabel('Nombre del grupo').fill('Grupo sin dueño QA');
-    for (const [index, actor] of fixture.actors.entries()) await form.getByRole('checkbox', { name: actor.name, exact: true }).setChecked(index === 1 || index === 2);
+    await form.getByRole('checkbox', { name: 'Incluirme en la comparación', exact: true }).setChecked(false);
+    for (const [index, actor] of fixture.actors.entries()) if (index > 0) await form.getByRole('checkbox', { name: actor.name, exact: true }).setChecked(index === 1 || index === 2);
     await form.getByRole('button', { name: 'Guardar grupo', exact: true }).focus(); await page.keyboard.press('Enter'); await settled(page);
     await expect(page.getByRole('checkbox', { name: 'Tú', exact: true })).toHaveCount(0);
     await expect(page.getByRole('checkbox')).toHaveCount(2);
@@ -154,13 +158,14 @@ test('ten-person CRUD, owner-free group, exact pair/trio, formats, notes, persis
     await page.getByRole('form', { name: 'Editar grupo' }).getByRole('button', { name: 'Eliminar grupo', exact: true }).focus(); await page.keyboard.press('Enter');
     const focusAfterConfirm = await page.evaluate(() => ({ tag: document.activeElement?.tagName, text: document.activeElement?.textContent?.slice(0, 100) }));
     await attachJson(info, 'editor-confirmation-focus-observation', { focusAfterConfirm });
-    const safeCancel = form.getByRole('button', { name: 'Cancelar', exact: true }).last();
+    // The confirmation's Cancel sits in the sheet body, before the footer's Cancel.
+    const safeCancel = form.getByRole('button', { name: 'Cancelar', exact: true }).first();
     await expect(safeCancel).toBeFocused(); await page.keyboard.press('Enter');
     await expect(form.getByRole('button', { name: 'Eliminar grupo', exact: true })).toBeFocused();
     await page.keyboard.press('Enter'); await expect(safeCancel).toBeFocused();
     await page.keyboard.press('Shift+Tab');
     await expect(form.getByRole('button', { name: 'Confirmar eliminación', exact: true })).toBeFocused(); await page.keyboard.press('Enter');
-    const empty = page.getByRole('main').getByText('Crea un grupo para empezar a comparar.', { exact: true });
+    const empty = page.getByRole('main').getByText('Compara con quien sigues', { exact: true });
     await expect(empty).toHaveCount(1); await expect(empty).toBeVisible();
   }, { integrated: true });
 });
@@ -313,15 +318,19 @@ test('two real tabs conflict, same-account focus preserves context, cookie logou
     });
     try {
       await page.bringToFront(); await page.evaluate(() => window.dispatchEvent(new Event('focus'))); await haveA;
-      await expect(page.getByText('Verificando tu sesi\u00f3n\u2026', { exact: true })).toBeVisible();
-      await expect(page.getByRole('heading', { name: 'Otra pesta\u00f1a QA', exact: true })).not.toBeVisible();
+      // Unchanged session cookies: the same account keeps its evidence while auth answers.
+      await expect(page.getByText('Verificando tu sesi\u00f3n\u2026', { exact: true })).toHaveCount(0);
+      await expect(page.locator('[data-comparison-slot="tastes"]')).toBeVisible();
       await other.bringToFront();
       await other.getByRole('button', { name: 'Cerrar sesi\u00f3n', exact: true }).click();
       await expect(other).toHaveURL(new URL('/', info.project.use.baseURL).href); mark('real logout completed');
       await loginComparisonActor(other, fixture.actors[2]);
       await expect(other.getByRole('link', { name: 'Mi perfil', exact: true })).toHaveAttribute('href', `/u/${fixture.actors[2].username}`);
       mark('B real login completed and profile verified');
+      // B's login rewrote the shared cookies: the focus itself hides A before auth answers.
+      await page.bringToFront();
       const visibilityProbe = await page.evaluateHandle(() => {
+        window.dispatchEvent(new Event('focus'));
         const samples: { t: number; oldVisible: boolean; path: string }[] = []; let running = true;
         const start = performance.now();
         function tick() {
@@ -331,7 +340,6 @@ test('two real tabs conflict, same-account focus preserves context, cookie logou
         }
         requestAnimationFrame(tick); return { samples, stop() { running = false; } };
       });
-      await page.bringToFront(); await page.evaluate(() => window.dispatchEvent(new Event('focus')));
       mark('fresh focus verification requested'); release(); mark('A response released after B login');
       await haveDeliveredA; await page.waitForTimeout(500); await visibilityProbe.evaluate(probe => probe.stop());
       const samples = await visibilityProbe.evaluate(probe => probe.samples);
@@ -346,7 +354,8 @@ test('two real tabs conflict, same-account focus preserves context, cookie logou
     // A legitimate intermediate null refresh may redirect to login. The brief
     // requires old-state removal, not automatic navigation back into the feature.
     await page.goto(`/comunidad/entre-nosotros?group=${group}`);
-    const empty = page.getByRole('main').getByText('Crea un grupo para empezar a comparar.', { exact: true });
+    // B follows nobody in the fixture: the empty state points to people to follow.
+    const empty = page.getByRole('main').getByText('Aún no sigues a nadie', { exact: true });
     await expect(empty).toHaveCount(1); await expect(empty).toBeVisible();
     await expect(page.getByRole('link', { name: 'Mi perfil', exact: true })).toHaveAttribute('href', `/u/${fixture.actors[2].username}`);
     await expect(page.getByRole('option', { name: 'Otra pestaña QA', exact: true })).toHaveCount(0);
@@ -561,7 +570,7 @@ test('final fixes: natural origin focus, 320px selector, all-person episode samp
     await explore.focus(); await page.keyboard.press('Enter'); await settled(page);
     await page.getByRole('button', { name: 'Volver al grupo', exact: true }).click(); await expect(explore).toBeFocused();
     await page.getByRole('button', { name: 'Obras', exact: true }).click();
-    await page.getByRole('combobox', { name: 'Formato', exact: true }).selectOption('series'); await settled(page);
+    await page.getByRole('group', { name: 'Filtrar por tipo de obra', exact: true }).getByRole('button', { name: 'Series', exact: true }).click(); await settled(page);
     await selectPeople(page, fixture, [0, 1]);
     await page.getByRole('button', { name: 'Comparar selección', exact: true }).click(); await settled(page);
     await page.getByRole('button', { name: /^Abrir región: (Tú, Beatriz QA|Beatriz QA, Tú); 1 obras$/ }).click(); await settled(page);

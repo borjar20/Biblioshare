@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test as base, type Page, type TestInfo } from "@playwright/test";
+import { submitLogin } from "../support/visible-form";
 
 const apiUrl = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "");
 if (!["127.0.0.1", "localhost", "[::1]"].includes(apiUrl.hostname)) {
@@ -94,9 +95,7 @@ test.use({ trace: "off", screenshot: "off" });
 
 async function login(page: Page, actor: Actor) {
   await page.goto("/login?next=%2Fcoleccion");
-  await page.locator('input[name="email"]').fill(actor.email);
-  await page.locator('input[name="password"]').fill(actor.password);
-  await page.locator('button[type="submit"]').click();
+  await submitLogin(page, actor.email, actor.password);
   await expect(page).toHaveURL(url => url.pathname === "/coleccion");
   await expect(page.getByRole("heading", { name: "Mi Biblioteca", exact: true })).toBeVisible();
 }

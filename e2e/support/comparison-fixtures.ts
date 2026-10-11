@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 import { visibleFormContaining } from './visible-form';
 export type ComparisonActor = { id: string; email: string; password: string; name: string; username: string };
 export type ComparisonFixture = { actors: ComparisonActor[]; books: { id: string; title: string; cover_url: string }[]; movie?: { id: string; title: string }; series?: { id: string; title: string }; volumeCount?: number };
@@ -115,6 +115,11 @@ export async function loginComparisonActor(page: Page, actor: ComparisonActor) {
   await form.locator('button[type="submit"]:visible').click();
   await expect(page).not.toHaveURL(/\/login/);
 }
+/** The signed-in owner is an «Incluirme» toggle, checked by default; everyone else is listed by name. */
+export async function chooseComparisonParticipants(form: Locator, owner: ComparisonActor, actors: ComparisonActor[]) {
+  await form.getByRole('checkbox', { name: 'Incluirme en la comparación', exact: true }).setChecked(actors.some(actor => actor.id === owner.id));
+  for (const actor of actors) if (actor.id !== owner.id) await form.getByRole('checkbox', { name: actor.name, exact: true }).check();
+}
 /** The signed-in owner (actors[0]) reads as «Tú» in the comparison; the editor keeps real names. */
 export function shownName(fixture: ComparisonFixture, actor: ComparisonActor) { return actor.id === fixture.actors[0].id ? 'Tú' : actor.name; }
 export async function openComparisonFixture(page: Page, fixture: ComparisonFixture) {
@@ -123,7 +128,7 @@ export async function openComparisonFixture(page: Page, fixture: ComparisonFixtu
   await page.getByRole('button', { name: 'Crear grupo', exact: true }).click();
   const form = page.getByRole('form', { name: 'Crear grupo' });
   await form.getByLabel('Nombre del grupo').fill('qa_comp_motion');
-  for (const actor of fixture.actors) await form.getByRole('checkbox', { name: actor.name, exact: true }).check();
+  await chooseComparisonParticipants(form, fixture.actors[0], fixture.actors);
   await form.getByRole('button', { name: 'Guardar grupo', exact: true }).click();
   await expect(page.locator('[data-camera-moving][data-view="group"]')).toBeVisible();
   return page.locator('[data-camera-moving]');

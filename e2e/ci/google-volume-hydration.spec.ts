@@ -4,6 +4,7 @@ import { existsSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 
 import { writeFile } from "node:fs/promises";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { submitLogin } from "../support/visible-form";
 
 const api = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
@@ -180,9 +181,7 @@ async function ownCase(page: Page, info: TestInfo, owned: Fixture, run: (context
       } else await route.continue();
     });
     await page.goto("/login?next=%2Fbuscar%3Ftype%3Dbook");
-    await page.locator('input[name="email"]').fill(credentials.email);
-    await page.locator('input[name="password"]').fill(credentials.password);
-    await page.locator('button[type="submit"]').click();
+    await submitLogin(page, credentials.email, credentials.password);
     await expect(page).toHaveURL(/\/buscar\?type=book$/);
     await expect(page.locator('input[name="q"]')).toBeVisible();
     const actionId = resolveActionId();

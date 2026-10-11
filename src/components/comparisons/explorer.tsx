@@ -1,11 +1,14 @@
 'use client';
 import { useEffect, useMemo, useReducer, useRef, useState, type CSSProperties } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { loadComparison } from '@/lib/comparisons/actions';
+import { sortGroups } from '@/lib/comparisons/order';
 import type { Candidate, Format, Group, Result, Snapshot } from '@/lib/comparisons/types';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { GroupEditor } from './group-editor';
 import { ComparisonCanvas } from './canvas';
 import { Tastes } from './tastes';
@@ -51,6 +54,11 @@ export function explorerReducer(state: ExplorerState, action: Action): ExplorerS
     }
   }
 }
+/** Supabase session cookies, read synchronously. Unchanged tokens cannot belong to another account. */
+export function sessionCookies(): string {
+  if (typeof document === 'undefined') return '';
+  return document.cookie.split(';').map(part => part.trim()).filter(part => /^sb-[^=]*-auth-token(?:\.\d+)?=/.test(part)).sort().join(';');
+}
 // A fresh account gets a fresh subtree synchronously, including drafts and pending responses.
 export function Explorer(props: Props) { return <SessionBoundary key={props.viewerId} {...props}/>; }
 function SessionBoundary(props: Props) {
@@ -65,6 +73,8 @@ function SessionBoundary(props: Props) {
   useEffect(() => {
     let invalidated = false; let disposed = false; let checking = false; let queued = false; let checkSeq = 0;
     let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+    // Cookies last confirmed for this viewer. Same cookies: verify without hiding evidence.
+    let verifiedCookies = sessionCookies();
     const client = createClient();
     function invalidate() {
       if (invalidated || disposed) return;
@@ -75,8 +85,11 @@ function SessionBoundary(props: Props) {
     }
     function verify() {
       if (invalidated || disposed) return;
+      const cookies = sessionCookies();
+      // Changed cookies may be another account: hide before the network answers.
+      if (cookies !== verifiedCookies) setVerification('checking');
       if (checking) { queued = true; checkSeq += 1; return; }
-      checking = true; const seq = ++checkSeq; setVerification('checking');
+      checking = true; const seq = ++checkSeq;
       void client.auth.getUser().then(({ data, error }) => {
         if (disposed || invalidated) return;
         checking = false;
@@ -84,7 +97,8 @@ function SessionBoundary(props: Props) {
         if (seq !== checkSeq) return;
         if (error) setVerification('failed');
         else if (data.user?.id !== props.viewerId) invalidate();
-        else setVerification('valid');
+        else if (sessionCookies() !== cookies) verify();
+        else { verifiedCookies = cookies; setVerification('valid'); }
       }).catch(() => {
         if (disposed || invalidated) return;
         checking = false;
@@ -97,6 +111,8 @@ function SessionBoundary(props: Props) {
     window.addEventListener('focus', verify); document.addEventListener('visibilitychange', onVisible);
     const { data: { subscription } } = client.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT' || session?.user.id !== props.viewerId) invalidate();
+      // Own token refreshes rewrite the cookies for the same viewer.
+      else if (event === 'TOKEN_REFRESHED') verifiedCookies = sessionCookies();
     });
     return () => { disposed = true; checkSeq += 1; verifySession.current = null; subscription.unsubscribe(); clearTimeout(refreshTimer); window.removeEventListener('focus', verify); document.removeEventListener('visibilitychange', onVisible); };
   }, [props.viewerId, props.initialGroups, router]);
@@ -146,7 +162,7 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
     void loadComparison(id, format).catch((): Result<Snapshot> => ({ ok: false, code: 'load-failed' })).then(result => {
       if (sequence.current !== seq) return;
       dispatch({ type: 'response', seq, result });
-      if (result.ok) setGroups(current => current.map(group => group.id === id ? result.data.group : group));
+      if (result.ok) setGroups(current => sortGroups(current.map(group => group.id === id ? result.data.group : group)));
     });
     return () => { sequence.current += 1; };
   }, [state.groupId, format, reload]);
@@ -157,7 +173,7 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
   }
   function refresh() { sequence.current += 1; dispatch({ type: 'refresh' }); forceReload(); }
   function onSaved(group: Group) {
-    setGroups(current => [...current.filter(item => item.id !== group.id), group]); selectGroup(group.id);
+    setGroups(current => sortGroups([...current.filter(item => item.id !== group.id), group])); selectGroup(group.id);
     // Even a same-group save invalidates the old revision and permissions.
     forceReload();
   }
@@ -185,15 +201,14 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
       <button type="button" className={styles.iconButton} aria-label={t('createGroup')} title={t('createGroup')} onClick={() => setEditor({ group: null })}><Icon kind="plus"/></button>
       </div>
     </header>
-    {editor && <GroupEditor key={editor.group?.id ?? 'new'} group={editor.group} candidates={candidates} onSaved={onSaved} onDeleted={id => { setGroups(current => current.filter(group => group.id !== id)); selectGroup(null); }} onCancel={() => { setEditor(null); groupSelector.current?.focus(); }} onReload={() => { setEditor(null); groupSelector.current?.focus(); refresh(); router.refresh(); }}/>}
-    {!groups.length && !editor && <p className="py-10 text-muted-foreground">{t('noGroups')}</p>}
+    {editor && <GroupEditor key={editor.group?.id ?? 'new'} group={editor.group} candidates={candidates} viewerId={viewerId} onSaved={onSaved} onDeleted={id => { setGroups(current => current.filter(group => group.id !== id)); selectGroup(null); }} onCancel={() => { setEditor(null); groupSelector.current?.focus(); }} onReload={() => { setEditor(null); groupSelector.current?.focus(); refresh(); router.refresh(); }}/>}
+    {!groups.length && !editor && (candidates.some(person => person.userId !== viewerId)
+      ? <EmptyState variant="panel" glyph={<Icon kind="works"/>} title={t('noGroups')} message={t('noGroupsMessage')} action={<Button onClick={() => setEditor({ group: null })}>{t('createFirstGroup')}</Button>}/>
+      : <EmptyState variant="panel" glyph={<Icon kind="works"/>} title={t('noFollowsTitle')} message={t('noFollowsMessage')} action={<Link href="/comunidad?tab=personas" className={buttonVariants('primary')}>{t('findPeopleToFollow')}</Link>}/>)}
     {active && <>
       <div className={styles.toolbar}>
         <nav aria-label={t('sections')} className={styles.tabs}>{(['works', 'tastes'] as const).map(section => <button key={section} type="button" aria-pressed={state.section === section} onClick={() => dispatch({ type: 'section', section })} className={styles.tab}><Icon kind={section}/>{t(section)}</button>)}</nav>
         <div className={styles.formats} role="group" aria-label={t('formatPills')}>{(['all', 'book', 'movie', 'series'] as const).map(next => <button key={next} type="button" aria-pressed={format === next} onClick={() => setFormat(next)}>{t(next === 'all' ? 'allFormatsShort' : `formats.${next}`)}</button>)}</div>
-        <label className={styles.srOnly}>{t('format')}<select value={format} onChange={event => setFormat(event.target.value as Format)}>
-          {(['all', 'book', 'movie', 'series'] as const).map(format => <option key={format} value={format}>{t(`formats.${format}`)}</option>)}
-        </select></label>
       </div>
       <section aria-label={t('canvas')} aria-busy={state.snapshot.status === 'loading'} className={`${styles.workspace} ${state.section === 'tastes' ? styles.tasteWorkspace : ''}`}>
         {state.snapshot.status === 'loading' && <div className={styles.workspaceLoading}><ComparisonLoading label={t('loading')}/></div>}

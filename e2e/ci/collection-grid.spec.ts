@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test as base, type Locator, type TestInfo } from "@playwright/test";
+import { submitLogin } from "../support/visible-form";
 
 const apiUrl = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "");
 if (!["127.0.0.1", "localhost", "[::1]"].includes(apiUrl.hostname)) {
@@ -89,9 +90,7 @@ async function geometry(cards: Locator) {
 test("Colecciones usa 4/3/2 columnas; cabecera, búsqueda y orden siguen en cliente (#662/#746)", async ({ page, fixture }, info) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/login?next=%2Fcoleccion%3Ftab%3Dcolecciones");
-  await page.locator('input[name="email"]').fill(email);
-  await page.locator('input[name="password"]').fill(fixture.password);
-  await page.locator('button[type="submit"]').click();
+  await submitLogin(page, email, fixture.password);
   await expect(page).toHaveURL(url => url.pathname === "/coleccion" && url.searchParams.get("tab") === "colecciones");
 
   const cards = page.locator('main a[href^="/coleccion/c/"]');
