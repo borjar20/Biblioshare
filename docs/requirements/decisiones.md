@@ -7617,6 +7617,32 @@ de nuevo primero. Sin cambios de esquema ni del límite de 2–10 participantes.
 
 Evidencia en `docs/testing/2026-10-11-entre-nosotros-editor.md`.
 
+## 2026-10-11 — Entre nosotros: una carga por grupo y entrada sin consultas repetidas (#1481)
+
+**Formatos derivados.** El explorador pide siempre `all` y deriva Libros, Películas y
+Series filtrando por prefijo de clave (`forFormat`). Es exacto: la normalización agrupa
+por persona y obra, así que libros y películas salen solo de sus pases y las series de
+sus pases y episodios; solo el recuento de series excluidas depende del formato (0 en
+libros y películas). Un test compara `forFormat(all)` con la carga del servidor de cada
+formato. Consecuencia asumida: cambiar de formato ya no relee ni revalida permisos;
+la evidencia se refresca al cargar, cambiar de grupo, guardar o pulsar actualizar, como
+ya ocurría al quedarse en un formato (acta #1470). Una carga en vuelo sirve a cualquier
+formato y no se descarta al cambiarlo; tras un error, cambiar de formato reintenta.
+
+**Entrada.** `listEntry` sustituye a `listGroups` + `listCandidates` en la página:
+seguidos y perfiles se leen una vez, `can_view_profile` se comprueba una vez por persona
+(8 concurrentes; un fallo detiene el resto y falla la entrada) y los puestos de todos los
+grupos se leen juntos. Todo sigue con el cliente de sesión, sin caché (#437).
+
+Medido en `next dev` contra biblioshare-dev, fixture integrado (10 personas, 3 grupos):
+
+| | Antes | Después |
+|---|---|---|
+| Selector de grupos visible | 3,05 s | 1,0–1,6 s |
+| Entrada completa con datos | 10,4 s | 6,0 s |
+| Cambio de formato | 3,8–4,4 s, 1 server action | 1,1–1,25 s, 0 (animación de cámara y fundido) |
+| Lecturas/RPC de entrada, 3 grupos de 3 (test) | 15 lecturas, 12 RPC en serie | 4 lecturas, 3 RPC |
+
 ## 2026-10-11 — Entre nosotros: pulido visual alineado con la maqueta (#1487)
 
 - **«Tú».** Quien mira aparece como «Tú» en todo el lienzo (mapa, parejas, Venn,

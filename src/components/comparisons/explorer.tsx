@@ -13,7 +13,8 @@ import { GroupEditor } from './group-editor';
 import { ComparisonCanvas } from './canvas';
 import { Tastes } from './tastes';
 import { ComparisonLoading } from './loading';
-import { acceptResponse, changeGroup, changeSelection, clearEvidence, initialState, reconcileParticipants, reconcileView, selectOwnedGroup, setView } from './state';
+import { forFormat } from '@/lib/comparisons/derive';
+import { acceptResponse, changeGroup, changeSelection, clearEvidence, deriveFormat, initialState, reconcileParticipants, reconcileView, selectOwnedGroup, setView } from './state';
 import type { ExplorerState, Section, TasteControls, View } from './state';
 import { personColor, presentViewer } from './presentation';
 import styles from './explorer.module.css';
@@ -33,20 +34,32 @@ export function explorerReducer(state: ExplorerState, action: Action): ExplorerS
     case 'group': return changeGroup(state, action.id);
     case 'section': {
       const sameFormat = state.formats[state.section] === state.formats[action.section];
-      const next = sameFormat ? state : clearEvidence(state);
+      if (!sameFormat && state.source) {
+        const derived = deriveFormat({ ...state, section: action.section }); const view = derived.views[action.section];
+        return { ...derived, selection: view.level === 'group' ? derived.selection : [...view.people] };
+      }
+      // A load in flight serves every format; dropping it would leave nothing to show.
+      const next = sameFormat || state.snapshot.status === 'loading' ? state : clearEvidence(state);
       const view = sameFormat && next.snapshot.value ? reconcileView(next.views[action.section], next.snapshot.value) : next.views[action.section];
       return { ...next, section: action.section, views: { ...next.views, [action.section]: view },
         selection: view.level === 'group' ? next.selection : [...view.people] };
     }
-    case 'format': return { ...clearEvidence(state), formats: { ...state.formats, [state.section]: action.format } };
-    case 'refresh': return clearEvidence(state);
+    case 'format': {
+      const formats = { ...state.formats, [state.section]: action.format };
+      if (state.source) return deriveFormat({ ...state, formats });
+      return state.snapshot.status === 'loading' ? { ...state, formats } : { ...clearEvidence(state), formats };
+    }
+    case 'refresh': return { ...clearEvidence(state), source: null };
     case 'selection': return changeSelection(state, action.people);
     case 'view': return setView(state, state.section, action.view);
-    case 'loading': return { ...clearEvidence(state), snapshot: { seq: action.seq, value: null, status: 'loading' } };
+    case 'loading': return { ...clearEvidence(state), source: null, snapshot: { seq: action.seq, value: null, status: 'loading' } };
     case 'response': {
-      const snapshot = acceptResponse(state.snapshot, action.seq, action.result);
+      // The request is always `all`; the section's format is derived when it arrives.
+      const source = action.result.ok ? action.result.data : null;
+      const result: Result<Snapshot> = source ? { ok: true, data: forFormat(source, state.formats[state.section]) } : action.result;
+      const snapshot = acceptResponse(state.snapshot, action.seq, result);
       if (snapshot === state.snapshot) return state;
-      return { ...state, snapshot, loadError: action.result.ok ? null : action.result.code, views: snapshot.value ? {
+      return { ...state, source, revealSeq: snapshot.seq, snapshot, loadError: action.result.ok ? null : action.result.code, views: snapshot.value ? {
         works: reconcileParticipants(state.views.works, snapshot.value.group),
         tastes: reconcileParticipants(state.views.tastes, snapshot.value.group),
         [state.section]: reconcileView(state.views[state.section], snapshot.value),
@@ -159,13 +172,14 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
     if (!state.groupId) return;
     const seq = ++sequence.current; const id = state.groupId;
     dispatch({ type: 'loading', seq });
-    void loadComparison(id, format).catch((): Result<Snapshot> => ({ ok: false, code: 'load-failed' })).then(result => {
+    // One `all` load per group revision; switching format derives from it (#1481).
+    void loadComparison(id, 'all').catch((): Result<Snapshot> => ({ ok: false, code: 'load-failed' })).then(result => {
       if (sequence.current !== seq) return;
       dispatch({ type: 'response', seq, result });
       if (result.ok) setGroups(current => sortGroups(current.map(group => group.id === id ? result.data.group : group)));
     });
     return () => { sequence.current += 1; };
-  }, [state.groupId, format, reload]);
+  }, [state.groupId, reload]);
   function selectGroup(id: string | null) {
     sequence.current += 1; dispatch({ type: 'group', id }); setEditor(null);
     groupSelector.current?.focus();
@@ -180,7 +194,13 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
   function togglePerson(userId: string) {
     dispatch({ type: 'selection', people: state.selection.includes(userId) ? state.selection.filter(id => id !== userId) : [...state.selection, userId] });
   }
-  function setFormat(next: Format) { sequence.current += 1; dispatch({ type: 'format', format: next }); }
+  // Without a loaded source (after an error) a format or section change retries the load, as before.
+  const retryWithoutSource = () => { if (state.groupId && !state.source && state.snapshot.status !== 'loading') forceReload(); };
+  function setFormat(next: Format) { dispatch({ type: 'format', format: next }); if (next !== format) retryWithoutSource(); }
+  function selectSection(section: Section) {
+    dispatch({ type: 'section', section });
+    if (state.formats[section] !== format) retryWithoutSource();
+  }
   const workspaceControls = snapshot && <>
     <div className={styles.workspaceControls}>
       <h2 className={styles.srOnly}>{snapshot.group.name}</h2>
@@ -207,7 +227,7 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
       : <EmptyState variant="panel" glyph={<Icon kind="works"/>} title={t('noFollowsTitle')} message={t('noFollowsMessage')} action={<Link href="/comunidad?tab=personas" className={buttonVariants('primary')}>{t('findPeopleToFollow')}</Link>}/>)}
     {active && <>
       <div className={styles.toolbar}>
-        <nav aria-label={t('sections')} className={styles.tabs}>{(['works', 'tastes'] as const).map(section => <button key={section} type="button" aria-pressed={state.section === section} onClick={() => dispatch({ type: 'section', section })} className={styles.tab}><Icon kind={section}/>{t(section)}</button>)}</nav>
+        <nav aria-label={t('sections')} className={styles.tabs}>{(['works', 'tastes'] as const).map(section => <button key={section} type="button" aria-pressed={state.section === section} onClick={() => selectSection(section)} className={styles.tab}><Icon kind={section}/>{t(section)}</button>)}</nav>
         <div className={styles.formats} role="group" aria-label={t('formatPills')}>{(['all', 'book', 'movie', 'series'] as const).map(next => <button key={next} type="button" aria-pressed={format === next} onClick={() => setFormat(next)}>{t(next === 'all' ? 'allFormatsShort' : `formats.${next}`)}</button>)}</div>
       </div>
       <section aria-label={t('canvas')} aria-busy={state.snapshot.status === 'loading'} className={`${styles.workspace} ${state.section === 'tastes' ? styles.tasteWorkspace : ''}`}>
@@ -224,7 +244,7 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
           </div>
         </div>}
         {/* Only data-free artwork survives the loading phase; fresh evidence is never delayed. */}
-        {snapshot && completedHandoff !== state.snapshot.seq && <div key={`handoff-${state.snapshot.seq}`} aria-hidden="true" inert className={`${styles.workspaceLoading} ${styles.loadingExit}`} data-comparison-handoff onAnimationEnd={event => {
+        {snapshot && state.revealSeq === state.snapshot.seq && completedHandoff !== state.snapshot.seq && <div key={`handoff-${state.snapshot.seq}`} aria-hidden="true" inert className={`${styles.workspaceLoading} ${styles.loadingExit}`} data-comparison-handoff onAnimationEnd={event => {
           if (event.target === event.currentTarget) setCompletedHandoff(state.snapshot.seq);
         }}><ComparisonLoading label={t('loading')}/></div>}
       </section>
