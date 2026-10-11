@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useReducer, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState, type CSSProperties } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
@@ -12,11 +12,11 @@ import { Tastes } from './tastes';
 import { ComparisonLoading } from './loading';
 import { acceptResponse, changeGroup, changeSelection, clearEvidence, initialState, reconcileParticipants, reconcileView, selectOwnedGroup, setView } from './state';
 import type { ExplorerState, Section, TasteControls, View } from './state';
-import { personColor } from './presentation';
+import { personColor, presentViewer } from './presentation';
 import styles from './explorer.module.css';
 
 function Icon({ kind }: { kind: 'works' | 'tastes' | 'lock' | 'edit' | 'plus' }) {
-  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{kind === 'works' ? <><circle cx="9" cy="10" r="6"/><circle cx="15" cy="14" r="6"/></> : kind === 'tastes' ? <><path d="m12 3 2.6 6.4L21 12l-6.4 2.6L12 21l-2.6-6.4L3 12l6.4-2.6Z"/><path d="M20 2v4m-2-2h4"/></> : kind === 'lock' ? <><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></> : kind === 'edit' ? <><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2" fill="var(--surface)"/><circle cx="16" cy="12" r="2" fill="var(--surface)"/><circle cx="8" cy="18" r="2" fill="var(--surface)"/></> : <path d="M12 5v14M5 12h14"/>}</svg>;
+  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{kind === 'works' ? <><circle cx="9" cy="10" r="6"/><circle cx="15" cy="14" r="6"/></> : kind === 'tastes' ? <><path d="m12 3 2.6 6.4L21 12l-6.4 2.6L12 21l-2.6-6.4L3 12l6.4-2.6Z"/><path d="M20 2v4m-2-2h4"/></> : kind === 'lock' ? <><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></> : kind === 'edit' ? <><path d="M4 20h4L19 9l-4-4L4 16Z"/><path d="m13.5 6.5 4 4"/></> : <path d="M12 5v14M5 12h14"/>}</svg>;
 }
 
 type Props = { initialGroups: Group[]; candidates: Candidate[]; viewerId: string };
@@ -118,7 +118,9 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
   const groupSelector = useRef<HTMLSelectElement>(null);
   const observedQuery = useRef(search.get('group'));
   const active = groups.find(group => group.id === state.groupId) ?? null;
-  const snapshot = state.snapshot.value;
+  const you = t('you');
+  const loaded = state.snapshot.value;
+  const snapshot = useMemo(() => loaded && presentViewer(loaded, viewerId, you), [loaded, viewerId, you]);
   const format = state.formats[state.section];
   const groupQuery = search.get('group');
   useEffect(() => {
@@ -167,13 +169,13 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
     <div className={styles.workspaceControls}>
       <h2 className={styles.srOnly}>{snapshot.group.name}</h2>
       {(state.section === 'tastes' || state.views.works.level !== 'group') && <fieldset className={styles.people}><legend className={styles.srOnly}>{t(state.section === 'works' ? 'selectPair' : 'selectTastes')}</legend>{snapshot.group.members.map(member => member.available && member.userId ? <label key={member.slotId} className={styles.personChip} data-selected={state.selection.includes(member.userId)} style={{ '--person': personColor(snapshot, member.userId) } as CSSProperties}><input type="checkbox" checked={state.selection.includes(member.userId)} onChange={() => togglePerson(member.userId!)}/><span className={styles.personDot} aria-hidden="true"/>{member.name}</label> : <span key={member.slotId} className={styles.unavailable}>{t('unavailablePerson')}</span>)}</fieldset>}
-      <Button variant="ghost" onClick={refresh}>{t('refreshAccess')}</Button>
+      <Button variant="ghost" onClick={refresh} title={t('refreshAccessHint')}>{t('refreshAccess')}</Button>
     </div>
     {snapshot.excludedSeriesWithoutEpisodes > 0 && <p className="py-3 text-sm text-muted-foreground" data-comparison-coverage>{t('excludedHistoricalSeries', { count: snapshot.excludedSeriesWithoutEpisodes })}</p>}
   </>;
   return <div className={styles.explorer}>
     <header className={styles.heading}>
-      <div><h1 className={styles.title}>{t('title')}.</h1><p className={styles.intro}>{t('introShared')}<br/>{t('introDifferent')}</p></div>
+      <div><h1 className={styles.title}>{t('title')}.</h1><p className={styles.intro}>{t('introShared')}{' '}<br/>{t('introDifferent')}</p></div>
       <div className={styles.groupControls}>
       <div className={styles.groupPicker}><span className={styles.private}><Icon kind="lock"/>{t('privateSelection')}</span>
       <label><span className={styles.srOnly}>{t('group')}</span><select ref={groupSelector} className={styles.groupSelect} value={state.groupId ?? ''} onChange={event => selectGroup(selectOwnedGroup(event.target.value, groups))}>

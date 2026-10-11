@@ -22,10 +22,18 @@ function Harness({ snapshot = data, people = ['0', '1'] }: { snapshot?: Snapshot
 beforeEach(() => { vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })); vi.stubGlobal('scrollTo', vi.fn()); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 describe('tastes evidence', () => {
+  it('shows avatars when available and rating bars without a draggable-looking knob', () => {
+    const withAvatar: Snapshot = { ...data, group: { ...data.group, members: data.group.members.map((member, index) => index === 0 ? { ...member, avatarUrl: '/ana.png' } : member) } };
+    const { container } = render(<Harness snapshot={withAvatar}/>);
+    const rated = screen.getByRole('region', { name: 'Lo que os gusta' });
+    expect(rated.querySelector('img[src="/ana.png"]')).toBeTruthy(); expect(within(rated).getByText('B')).toBeTruthy();
+    expect(container.querySelectorAll('[class*="ratingFill"]').length).toBeGreaterThan(0);
+    expect(container.querySelector('[class*="ratingEnd"]')).toBeNull();
+  });
   it('shows consumption and ratings together on their own scales without inventing affinity', () => {
     render(<Harness/>);
-    const consumed = screen.getByRole('region', { name: 'Lo que consumimos' });
-    const rated = screen.getByRole('region', { name: 'Lo que nos gusta' });
+    const consumed = screen.getByRole('region', { name: 'Vuestros mundos' });
+    const rated = screen.getByRole('region', { name: 'Lo que os gusta' });
     expect(within(consumed).getByRole('button', { name: 'Explorar Drama' })).toBeTruthy();
     expect(within(rated).getByText('Media sobre 10')).toBeTruthy();
     expect(within(rated).getByLabelText('3 obras valoradas').textContent).toBe('9.0');
@@ -57,7 +65,7 @@ describe('tastes evidence', () => {
       works: [...data.works.slice(0, 3), { ...data.works[0], userId: '1' }, { ...data.works[3] }, data.works[0]],
     };
     render(<Harness snapshot={snapshot}/>);
-    const consumed = screen.getByRole('region', { name: 'Lo que consumimos' });
+    const consumed = screen.getByRole('region', { name: 'Vuestros mundos' });
     const drama = within(consumed).getByRole('button', { name: 'Explorar Drama' });
     const mystery = within(consumed).getByRole('button', { name: 'Explorar Misterio' });
     expect(drama.textContent).toContain('4 obras distintas');

@@ -68,6 +68,17 @@ export function mapConnections(snapshot: Snapshot): { people: string[]; keys: Wo
   // Stable sort preserves the saved participant order for ties.
   return pairs.sort((a, b) => b.keys.length - a.keys.length);
 }
+/**
+ * Lines worth drawing on the group map: the strongest `top` pairs plus each person's
+ * strongest pair. Ten people make 45 pairs; drawing them all hid the relevant ones.
+ * Empty pairs are never drawn. Every pair stays listed below the map.
+ */
+export function mapBackbone<T extends { people: string[]; keys: unknown[] }>(pairs: T[], top = 3): T[] {
+  const shared = pairs.filter(pair => pair.keys.length > 0);
+  const shown = new Set(shared.slice(0, top));
+  for (const person of new Set(shared.flatMap(pair => pair.people))) shown.add(shared.find(pair => pair.people.includes(person))!);
+  return shared.filter(pair => shown.has(pair));
+}
 /** Fit the entire rotated rectangle, including its edges, in one exact mask. */
 function regionCover(count: number, mask: number, center: { x: number; y: number }, desiredWidth: number, slot: number): Pose {
   const stackIndex = slot % 3;

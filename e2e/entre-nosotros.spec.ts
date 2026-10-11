@@ -1,6 +1,6 @@
 import { expect, test as base, type Page, type TestInfo, type Request } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
-import { comparisonRest, deleteComparisonActor, loginComparisonActor, withComparisonFixture, type ComparisonActor, type ComparisonFixture } from './support/comparison-fixtures';
+import { comparisonRest, deleteComparisonActor, shownName, loginComparisonActor, withComparisonFixture, type ComparisonActor, type ComparisonFixture } from './support/comparison-fixtures';
 
 function coverOwnership(request: Request) {
   const url = new URL(request.url());
@@ -72,7 +72,7 @@ async function open(page: Page, fixture: ComparisonFixture, actors = fixture.act
 }
 async function selectPeople(page: Page, fixture: ComparisonFixture, selected: number[]) {
   for (const [index, actor] of fixture.actors.entries()) {
-    const checkbox = page.getByRole('checkbox', { name: actor.name, exact: true });
+    const checkbox = page.getByRole('checkbox', { name: shownName(fixture, actor), exact: true });
     if (await checkbox.count()) await checkbox.setChecked(selected.includes(index));
   }
 }
@@ -125,13 +125,13 @@ test('ten-person CRUD, owner-free group, exact pair/trio, formats, notes, persis
     expect(journal.some(row => row.body?.includes('PRIVATE PASS QA MUST NOT LEAVE'))).toBe(false);
     await selectPeople(page, fixture, [0, 1]);
     await page.getByRole('button', { name: 'Comparar selección', exact: true }).click(); await settled(page);
-    await expect(page.getByRole('button', { name: 'Abrir región: Ana QA, Beatriz QA; 32 obras', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Abrir región: Tú, Beatriz QA; 32 obras', exact: true })).toBeVisible();
     await page.getByRole('checkbox', { name: 'Carlos QA', exact: true }).check(); await settled(page);
-    await expect(page.getByRole('button', { name: 'Abrir región: Ana QA, Beatriz QA; 0 obras', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Abrir región: Ana QA, Beatriz QA, Carlos QA; 32 obras', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Abrir región: Tú, Beatriz QA; 0 obras', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Abrir región: Tú, Beatriz QA, Carlos QA; 32 obras', exact: true })).toBeVisible();
     await page.getByRole('combobox', { name: 'Formato', exact: true }).selectOption('book'); await settled(page);
-    await expect(page.getByRole('button', { name: 'Abrir región: Ana QA, Beatriz QA, Carlos QA; 30 obras', exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Abrir región: Ana QA, Beatriz QA, Carlos QA; 30 obras', exact: true }).click(); await settled(page);
+    await expect(page.getByRole('button', { name: 'Abrir región: Tú, Beatriz QA, Carlos QA; 30 obras', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Abrir región: Tú, Beatriz QA, Carlos QA; 30 obras', exact: true }).click(); await settled(page);
     const cover = page.locator(`[data-work-key="book:${fixture.books[0].id}"]`);
     const detail = await comparisonResponse(page, () => cover.click(), request => request.includes(`book:${fixture.books[0].id}`));
     const result = resultBody(detail);
@@ -148,7 +148,7 @@ test('ten-person CRUD, owner-free group, exact pair/trio, formats, notes, persis
     await form.getByLabel('Nombre del grupo').fill('Grupo sin dueño QA');
     for (const [index, actor] of fixture.actors.entries()) await form.getByRole('checkbox', { name: actor.name, exact: true }).setChecked(index === 1 || index === 2);
     await form.getByRole('button', { name: 'Guardar grupo', exact: true }).focus(); await page.keyboard.press('Enter'); await settled(page);
-    await expect(page.getByRole('checkbox', { name: 'Ana QA', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('checkbox', { name: 'Tú', exact: true })).toHaveCount(0);
     await expect(page.getByRole('checkbox')).toHaveCount(2);
     await page.getByRole('button', { name: 'Editar grupo', exact: true }).click();
     await page.getByRole('form', { name: 'Editar grupo' }).getByRole('button', { name: 'Eliminar grupo', exact: true }).focus(); await page.keyboard.press('Enter');
@@ -176,7 +176,7 @@ for (const width of [320, 768, 1280]) test(`Gustos restores A/B after Works sele
     await page.getByRole('checkbox', { name: 'Carlos QA', exact: true }).check();
     await page.getByRole('button', { name: 'Gustos', exact: true }).click(); await settled(page);
     await expect(page.getByRole('checkbox', { name: 'Carlos QA', exact: true })).not.toBeChecked();
-    for (const name of ['Ana QA', 'Beatriz QA']) await expect(page.getByRole('checkbox', { name, exact: true })).toBeChecked();
+    for (const name of ['Tú', 'Beatriz QA']) await expect(page.getByRole('checkbox', { name, exact: true })).toBeChecked();
     await expect(page.getByRole('region', { name: 'Obras de Carlos QA', exact: true })).toHaveCount(0);
     const cover = page.locator(`[data-work-key="series:${fixture.series!.id}"]`), original = await cover.elementHandle();
     await cover.scrollIntoViewIfNeeded();
@@ -361,7 +361,7 @@ test('foreign owner isolation and revoke/block/delete redact actual action respo
   await withComparisonFixture(async fixture => {
     const group = await open(page, fixture, fixture.actors.slice(0, 3));
     const ownerResponse = page.waitForResponse(response => !!response.request().headers()['next-action'] && response.request().postData() === JSON.stringify([group, 'all']));
-    await page.getByRole('button', { name: 'Actualizar acceso', exact: true }).click();
+    await page.getByRole('button', { name: 'Actualizar', exact: true }).click();
     const ownerAction = (await ownerResponse).request(); await settled(page);
     const stranger = await browser.newContext(); const strangerPage = await stranger.newPage();
     try {
@@ -379,16 +379,16 @@ test('foreign owner isolation and revoke/block/delete redact actual action respo
       await expect(strangerPage.locator('[data-comparison-stage]')).toHaveCount(0);
     } finally { await stranger.close(); }
     await comparisonRest(`follows?follower_id=eq.${fixture.actors[0].id}&followee_id=eq.${fixture.actors[1].id}`, { method: 'DELETE' });
-    const revoked = resultBody(await comparisonResponse(page, () => page.getByRole('button', { name: 'Actualizar acceso', exact: true }).click()));
+    const revoked = resultBody(await comparisonResponse(page, () => page.getByRole('button', { name: 'Actualizar', exact: true }).click()));
     expect(revoked.data.group.members[1]).toMatchObject({ userId: null, name: null, avatarUrl: null, available: false });
     expect(revoked.data.works.some((work: { userId: string }) => work.userId === fixture.actors[1].id)).toBe(false);
     await expect(page.getByRole('checkbox', { name: 'Beatriz QA', exact: true })).toHaveCount(0);
     await comparisonRest('user_blocks', { method: 'POST', body: JSON.stringify({ blocker_id: fixture.actors[0].id, blocked_id: fixture.actors[2].id }) });
-    const blocked = resultBody(await comparisonResponse(page, () => page.getByRole('button', { name: 'Actualizar acceso', exact: true }).click()));
+    const blocked = resultBody(await comparisonResponse(page, () => page.getByRole('button', { name: 'Actualizar', exact: true }).click()));
     expect(blocked.data.group.members[2]).toMatchObject({ userId: null, name: null, available: false });
     await comparisonRest(`user_blocks?blocker_id=eq.${fixture.actors[0].id}&blocked_id=eq.${fixture.actors[2].id}`, { method: 'DELETE' });
     await deleteComparisonActor(fixture.actors[2]);
-    const deleted = resultBody(await comparisonResponse(page, () => page.getByRole('button', { name: 'Actualizar acceso', exact: true }).click()));
+    const deleted = resultBody(await comparisonResponse(page, () => page.getByRole('button', { name: 'Actualizar', exact: true }).click()));
     expect(deleted.data.group.members[2]).toMatchObject({ userId: null, name: null, available: false });
     expect(deleted.data.works.every((work: { userId: string }) => work.userId === fixture.actors[0].id)).toBe(true);
     expect(JSON.stringify(deleted)).not.toContain('PRIVATE');
@@ -400,7 +400,7 @@ test('read transport error clears visible evidence and explicit retry recovers r
   await withComparisonFixture(async fixture => {
     await open(page, fixture, fixture.actors.slice(0, 3));
     await page.route('**/comunidad/entre-nosotros**', route => route.request().headers()['next-action'] ? route.abort('failed') : route.continue());
-    await page.getByRole('button', { name: 'Actualizar acceso', exact: true }).click();
+    await page.getByRole('button', { name: 'Actualizar', exact: true }).click();
     await expect(page.getByRole('region', { name: 'Lienzo de comparación' }).getByRole('alert')).toBeVisible();
     await expect(page.locator('[data-comparison-stage]')).toHaveCount(0);
     await page.unroute('**/comunidad/entre-nosotros**');
@@ -431,7 +431,7 @@ test('LOCAL ONLY ten-person full HTTP snapshot includes 1205 historical book pas
       const summary = [...stage.querySelectorAll('strong')].find(node => node.parentElement?.querySelector('span'))!.parentElement!.getBoundingClientRect().toJSON();
       const covers = [...stage.querySelectorAll('[data-work-key]')].map(node => node.getBoundingClientRect().toJSON());
       return { stage: boundary.toJSON(), people, summary, covers };
-    }, fixture.actors.map(actor => actor.name));
+    }, fixture.actors.map(actor => shownName(fixture, actor)));
     await attachJson(info, 'ten-person-mobile-map', map);
     await stage.screenshot({ path: info.outputPath('ten-person-mobile-map.png') });
     // The tall element capture includes sticky shell at the current viewport.
@@ -489,7 +489,7 @@ test('LOCAL ONLY ten-person full HTTP snapshot includes 1205 historical book pas
       await route.fulfill({ response: upstream }); captured({ body, status: upstream.status() });
     });
     const before = Date.now();
-    await page.getByRole('button', { name: 'Actualizar acceso', exact: true }).click();
+    await page.getByRole('button', { name: 'Actualizar', exact: true }).click();
     const response = await fullResponse; expect(response.status).toBe(200);
     const refreshMs = Date.now() - before, bytes = Buffer.byteLength(response.body), result = resultBody(response);
     expect(result.data.group.members).toHaveLength(10);
@@ -564,7 +564,7 @@ test('final fixes: natural origin focus, 320px selector, all-person episode samp
     await page.getByRole('combobox', { name: 'Formato', exact: true }).selectOption('series'); await settled(page);
     await selectPeople(page, fixture, [0, 1]);
     await page.getByRole('button', { name: 'Comparar selección', exact: true }).click(); await settled(page);
-    await page.getByRole('button', { name: /^Abrir región: (Ana QA, Beatriz QA|Beatriz QA, Ana QA); 1 obras$/ }).click(); await settled(page);
+    await page.getByRole('button', { name: /^Abrir región: (Tú, Beatriz QA|Beatriz QA, Tú); 1 obras$/ }).click(); await settled(page);
     const series = page.locator(`[data-work-key="series:${fixture.series!.id}"]`);
     await series.click(); await settled(page);
     await expect(page.getByText('40 episodios comunes valorados por todas las personas indicadas.', { exact: true })).toBeVisible();
@@ -577,23 +577,23 @@ test('final fixes: natural origin focus, 320px selector, all-person episode samp
     await page.keyboard.press('Escape'); await settled(page);
     await page.keyboard.press('Escape'); await settled(page);
     await comparisonRest(`episode_watches?user_id=eq.${fixture.actors[1].id}&series_id=eq.${fixture.series!.id}`, { method: 'DELETE' });
-    await page.getByRole('button', { name: 'Actualizar acceso', exact: true }).click(); await settled(page);
+    await page.getByRole('button', { name: 'Actualizar', exact: true }).click(); await settled(page);
     await expect(page.locator('[data-camera-moving]')).toHaveAttribute('data-view', 'venn');
     // Refresh keeps the current level. The selection CTA belongs to the map,
     // so follow the real return path before comparing that preserved selection.
     await page.getByRole('button', { name: 'Volver al grupo', exact: true }).click(); await settled(page);
     await expect(page.locator('[data-camera-moving]')).toHaveAttribute('data-view', 'group');
-    await expect(page.getByRole('checkbox', { name: 'Ana QA', exact: true })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: 'Tú', exact: true })).toBeChecked();
     await expect(page.getByRole('checkbox', { name: 'Beatriz QA', exact: true })).toBeChecked();
     await page.getByRole('button', { name: 'Comparar selección', exact: true }).click(); await settled(page);
-    await page.getByRole('button', { name: 'Abrir región: Ana QA; 1 obras', exact: true }).click(); await settled(page);
+    await page.getByRole('button', { name: 'Abrir región: Tú; 1 obras', exact: true }).click(); await settled(page);
     await series.click(); await settled(page);
     await expect(page.getByText('Esta región corresponde a una sola persona; no hay comparación conjunta de episodios.', { exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Episodios comunes', exact: true })).toHaveCount(0);
     await page.keyboard.press('Escape'); await settled(page);
     // Both completed/dropped histories remain; remove their only episode evidence.
     await comparisonRest(`episode_watches?series_id=eq.${fixture.series!.id}`, { method: 'DELETE' });
-    await page.getByRole('button', { name: 'Actualizar acceso', exact: true }).click(); await settled(page);
+    await page.getByRole('button', { name: 'Actualizar', exact: true }).click(); await settled(page);
     await expect(page.locator('[data-comparison-coverage]')).toContainText('3 historiales de persona y serie del grupo cargado');
     await expect(page.getByRole('button', { name: /Abrir obra:/ })).toHaveCount(0);
     await expect(page.locator('[data-camera-moving]')).toHaveAttribute('data-view', 'region');
@@ -601,15 +601,15 @@ test('final fixes: natural origin focus, 320px selector, all-person episode samp
     await expect(page.locator('[data-camera-moving]')).toHaveAttribute('data-view', 'venn');
     await page.getByRole('button', { name: 'Volver al grupo', exact: true }).click(); await settled(page);
     await expect(page.locator('[data-camera-moving]')).toHaveAttribute('data-view', 'group');
-    await expect(page.getByRole('checkbox', { name: 'Ana QA', exact: true })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: 'Tú', exact: true })).toBeChecked();
     await expect(page.getByRole('checkbox', { name: 'Beatriz QA', exact: true })).toBeChecked();
     await page.getByRole('button', { name: 'Comparar selección', exact: true }).click(); await settled(page);
-    await page.getByRole('button', { name: /^Abrir región: (Ana QA, Beatriz QA|Beatriz QA, Ana QA); 0 obras$/ }).click(); await settled(page);
+    await page.getByRole('button', { name: /^Abrir región: (Tú, Beatriz QA|Beatriz QA, Tú); 0 obras$/ }).click(); await settled(page);
     await expect(page.getByText('No hay registros elegibles visibles en esta región.', { exact: true })).toBeVisible();
     await expect(page.locator('[data-comparison-coverage]')).toBeVisible();
     // Unavailable participant must not suppress the loaded-group notice.
     await deleteComparisonActor(fixture.actors[2]);
-    await page.getByRole('button', { name: 'Actualizar acceso', exact: true }).click(); await settled(page);
+    await page.getByRole('button', { name: 'Actualizar', exact: true }).click(); await settled(page);
     await expect(page.locator('[data-comparison-coverage]')).toContainText('2 historiales de persona y serie del grupo cargado');
     await page.screenshot({ path: info.outputPath('excluded-empty-unavailable.png'), fullPage: true });
   }, { integrated: true });
@@ -710,7 +710,7 @@ for (const width of [320, 1280]) test(`stable canvas: real loading handoff, nati
     });
     await page.route('**/comunidad/entre-nosotros**', reloadHandler);
     try {
-      await page.getByRole('button', { name: 'Actualizar acceso', exact: true }).click();
+      await page.getByRole('button', { name: 'Actualizar', exact: true }).click();
       await expect(workspace).toHaveAttribute('aria-busy', 'true');
       await expect(workspace.getByRole('status')).toBeVisible();
       await expect(canvas).toHaveCount(0);
@@ -736,7 +736,7 @@ for (const width of [320, 1280]) test(`stable canvas: real loading handoff, nati
     await measureFrame('group-after-loading');
     await page.locator('[data-map-pair]').first().click(); await settled(page);
     await measureFrame('venn');
-    const region = page.getByRole('button', { name: 'Abrir región: Ana QA, Beatriz QA; 32 obras', exact: true });
+    const region = page.getByRole('button', { name: 'Abrir región: Tú, Beatriz QA; 32 obras', exact: true });
     const wheel = await page.evaluateHandle(() => {
       const events: { prevented: boolean; delta: number }[] = [];
       const listen = (event: WheelEvent) => events.push({ prevented: event.defaultPrevented, delta: event.deltaY });
@@ -835,9 +835,9 @@ test('final fix M3 bounded allow/block fixture-cover ownership diagnosis', async
         if (serviceWorkers === 'allow') await page.reload();
         await createGroup(page, fixture.actors.slice(0, 3), `M3 ${serviceWorkers}`);
         await page.locator('[data-map-pair]').first().click(); await settled(page);
-        await page.getByRole('button', { name: 'Abrir región: Ana QA, Beatriz QA; 32 obras', exact: true }).click(); await settled(page);
+        await page.getByRole('button', { name: 'Abrir región: Tú, Beatriz QA; 32 obras', exact: true }).click(); await settled(page);
         await page.keyboard.press('Escape'); await settled(page);
-        await page.getByRole('button', { name: 'Abrir región: Ana QA, Beatriz QA; 32 obras', exact: true }).click(); await settled(page);
+        await page.getByRole('button', { name: 'Abrir región: Tú, Beatriz QA; 32 obras', exact: true }).click(); await settled(page);
         await expect(page.locator('[data-comparison-stage] img').first()).toBeVisible();
         const workers = context.serviceWorkers().map(worker => worker.url());
         const controller = await page.evaluate(() => navigator.serviceWorker.controller?.scriptURL ?? null);

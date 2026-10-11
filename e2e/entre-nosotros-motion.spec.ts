@@ -1,6 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
-import { openComparisonFixture, withComparisonFixture } from './support/comparison-fixtures';
+import { openComparisonFixture, shownName, withComparisonFixture } from './support/comparison-fixtures';
 async function settled(page: Page) { await expect(page.locator('[data-camera-moving]')).toHaveAttribute('data-camera-moving', 'false'); }
 async function visibleWorkEntry(page: Page, title: string) {
   const back = page.getByRole('button', { name: 'Volver al cruce', exact: true });
@@ -20,11 +20,11 @@ async function visibleWorkEntry(page: Page, title: string) {
   return rectangles;
 }
 async function pair(page: Page) {
-  await page.locator('[data-camera-moving][data-view="group"]').getByRole('button', { name: 'Ana QA, Beatriz QA 30 obras comunes', exact: true }).click();
+  await page.locator('[data-camera-moving][data-view="group"]').getByRole('button', { name: 'Tú, Beatriz QA 30 obras comunes', exact: true }).click();
   await settled(page);
 }
 async function region(page: Page) {
-  await page.getByRole('button', { name: 'Abrir región: Ana QA, Beatriz QA; 30 obras', exact: true }).click();
+  await page.getByRole('button', { name: 'Abrir región: Tú, Beatriz QA; 30 obras', exact: true }).click();
   await settled(page);
 }
 async function trace(cover: Locator, action: () => Promise<unknown>, duration = 1050) {
@@ -55,7 +55,7 @@ test('real cover travels both ways through map, Venn, region and work, and inter
     const key = `book:${fixture.books[0].id}`;
     const cover = page.locator(`[data-work-key="${key}"]`);
     const node = await cover.elementHandle();
-    const mapTrace = await trace(cover, () => canvas.getByRole('button', { name: 'Ana QA, Beatriz QA 30 obras comunes', exact: true }).click());
+    const mapTrace = await trace(cover, () => canvas.getByRole('button', { name: 'Tú, Beatriz QA 30 obras comunes', exact: true }).click());
     moved(mapTrace); await settled(page);
     const regionTrace = await trace(cover, () => region(page)); moved(regionTrace); await settled(page);
     const workTrace = await trace(cover, () => cover.click()); moved(workTrace); await settled(page);
@@ -71,7 +71,7 @@ test('real cover travels both ways through map, Venn, region and work, and inter
     expect(await node!.evaluate((original, workKey) => original === document.querySelector(`[data-work-key="${workKey}"]`) && original.isConnected, key)).toBe(true);
     await pair(page);
     const interruption = await trace(cover, async () => {
-      await page.getByRole('button', { name: 'Abrir región: Ana QA, Beatriz QA; 30 obras', exact: true }).click();
+      await page.getByRole('button', { name: 'Abrir región: Tú, Beatriz QA; 30 obras', exact: true }).click();
       await page.waitForTimeout(270);
       // Physical forward/return clicks are covered above. Native DOM click here
       // avoids Playwright waiting for animation/scroll stability past halfway.
@@ -95,17 +95,17 @@ test('real wheel bursts keep every level, native canvas scrolling and modifiers 
     const canvas = await openComparisonFixture(page, fixture); await settled(page); await pair(page);
     // Opening the A/B pair sets the actual comparison selection to those two,
     // even though the saved group also contains Carlos. Wheel must preserve it.
-    for (const name of ['Ana QA', 'Beatriz QA']) await expect(page.getByRole('checkbox', { name, exact: true })).toBeChecked();
+    for (const name of ['Tú', 'Beatriz QA']) await expect(page.getByRole('checkbox', { name, exact: true })).toBeChecked();
     await expect(page.getByRole('checkbox', { name: 'Carlos QA', exact: true })).not.toBeChecked();
     const selections: { phase: string; people: { name: string; checked: boolean }[] }[] = [];
     const captureSelection = async (phase: string) => {
       await expect(page.getByRole('checkbox')).toHaveCount(fixture.actors.length);
-      const people = await Promise.all(fixture.actors.map(async actor => ({ name: actor.name, checked: await page.getByRole('checkbox', { name: actor.name, exact: true }).isChecked() })));
+      const people = await Promise.all(fixture.actors.map(async actor => ({ name: shownName(fixture, actor), checked: await page.getByRole('checkbox', { name: shownName(fixture, actor), exact: true }).isChecked() })));
       selections.push({ phase, people }); return people;
     };
     const selectedPair = await captureSelection('venn-before-wheel');
     const preserveSelection = async (phase: string) => expect(await captureSelection(phase)).toEqual(selectedPair);
-    const target = page.getByRole('button', { name: 'Abrir región: Ana QA, Beatriz QA; 30 obras', exact: true });
+    const target = page.getByRole('button', { name: 'Abrir región: Tú, Beatriz QA; 30 obras', exact: true });
     const wheelEvents = await page.evaluateHandle(() => {
       const cancelled: boolean[] = [];
       const listener = (event: WheelEvent) => cancelled.push(event.defaultPrevented);

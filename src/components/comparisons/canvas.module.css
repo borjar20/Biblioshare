@@ -33,6 +33,7 @@
 .person:has(input:focus-visible) .avatar { outline: 3px solid var(--accent); outline-offset: 6px; }
 .avatar { display: flex; align-items: center; justify-content: center; width: 53px; height: 53px; flex-shrink: 0; border-radius: 50%; background: color-mix(in srgb, var(--person) 15%, var(--surface)); color: var(--person-ink); font-family: var(--font-geist-sans), Arial, sans-serif; font-size: 24px; font-weight: 700; outline: 5px solid var(--surface); overflow: hidden; transition: background 200ms ease, box-shadow 200ms ease; }
 .avatar img { width: 100%; height: 100%; object-fit: cover; }
+.person[data-empty=true]:not([data-selected=true]) { opacity: .5; }
 .person[data-selected=true] .avatar { background: var(--person); color: var(--surface); box-shadow: 0 0 0 8px color-mix(in srgb, var(--person) 18%, transparent); }
 .region { pointer-events: auto; min-width: 44px; min-height: 44px; z-index: 3; display: grid; place-content: center; text-align: center; background: color-mix(in srgb, var(--surface) 90%, transparent); border: 1px solid var(--border); border-radius: 50%; padding: 4px 7px; box-shadow: 0 3px 8px color-mix(in srgb, var(--foreground) 10%, transparent); }
 .region strong { display: block; font-family: var(--font-geist-sans), Arial, sans-serif; font-size: 19px; }

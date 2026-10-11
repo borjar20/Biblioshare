@@ -7572,3 +7572,24 @@ del marco ni el origen guardado; volver recupera ambos scrolls. Las entradas
 visibles no desplazan la página. Esta precisión sustituye la garantía absoluta
 de no desplazar la página del registro anterior, que dejaba el retorno oculto
 en el recorrido móvil hasta la última portada.
+## 2026-10-11 — Entre nosotros: pulido visual alineado con la maqueta (#1487)
+
+- **«Tú».** Quien mira aparece como «Tú» en todo el lienzo (mapa, parejas, Venn,
+  cruces, Gustos, detalle y casillas), como en la [maqueta aprobada](https://biblioshare-entre-nosotros.borjar20.chatgpt.site/)
+  («Tú y Ana», «Tú + Ana»). Se aplica en el cliente (`presentViewer`) sin tocar el
+  grupo guardado; el editor conserva los nombres reales. «Obras de {name}» pasa a
+  «Obras · {name}» para no producir «Obras de Tú».
+- **Pronombres.** La maqueta habla al grupo de «vosotros» aunque incluya a «Tú». Se
+  alinean los dos títulos de Gustos que usaban «nosotros»: «Vuestros mundos» y
+  «Lo que os gusta». El punto de «Entre nosotros.» es de la maqueta y se conserva.
+- **Mapa.** Con diez personas había 45 curvas. Se dibuja un esqueleto: las tres
+  parejas más fuertes más la más fuerte de cada persona (13 como máximo con diez),
+  nunca parejas sin obras. Todas siguen listadas bajo el mapa. Las personas sin
+  obras visibles se atenúan salvo que estén seleccionadas.
+- **Notas.** La barra de media pierde el tirador circular, que invitaba a
+  arrastrarla. Gustos usa el avatar de cada persona cuando existe.
+- **Controles.** «Actualizar acceso» pasa a «Actualizar», con un `title` que explica
+  qué vuelve a comprobar; editar grupo usa un lápiz en lugar de deslizadores.
+- **Móvil (≤650 px).** Título de 34 px y la intro en un solo párrafo.
+
+Evidencia en `docs/testing/2026-10-11-entre-nosotros-pulido.md`.
