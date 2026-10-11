@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { withBattleUsers } from "./support/battle-users";
-import { submitLogin } from "./support/visible-form";
+import { submitLogin, visibleFormContaining } from "./support/visible-form";
 
 test("alta manual directa y cola de otro usuario usan la RPC de catálogo", async ({ page }) => {
   test.setTimeout(180_000);
@@ -42,9 +42,11 @@ test("alta manual directa y cola de otro usuario usan la RPC de catálogo", asyn
       await page.waitForURL("/");
 
       await page.goto("/importar");
-      await page.locator('input[type="file"]').setInputFiles({ name: "manual.csv", mimeType: "text/csv",
+      // /importar has two file inputs since the Letterboxd archive (#1507): use the CSV form's own.
+      const csv = visibleFormContaining(page, 'input[name="file"]');
+      await csv.locator('input[name="file"]').setInputFiles({ name: "manual.csv", mimeType: "text/csv",
         buffer: Buffer.from(`Book Id,Title,Author,ISBN13,My Rating,Exclusive Shelf,Date Read\n1,${directTitle},QA Author,,0,to-read,\n`) });
-      await page.getByRole("button", { name: "Subir archivo", exact: true }).click();
+      await csv.getByRole("button", { name: "Subir archivo", exact: true }).click();
       await page.getByRole("button", { name: "Añadir a mi biblioteca", exact: true }).click({ timeout: 90_000 });
       await expect(page.getByText(`${directTitle} — añadido`, { exact: true })).toBeVisible();
 
