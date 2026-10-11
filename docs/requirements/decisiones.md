@@ -7572,3 +7572,26 @@ del marco ni el origen guardado; volver recupera ambos scrolls. Las entradas
 visibles no desplazan la página. Esta precisión sustituye la garantía absoluta
 de no desplazar la página del registro anterior, que dejaba el retorno oculto
 en el recorrido móvil hasta la última portada.
+
+## 2026-10-11 — Entre nosotros: verificación de sesión silenciosa y dueño incluido por defecto (#1479, #1483)
+
+**Frontera de sesión.** Al volver el foco, el explorador ya no se oculta siempre
+mientras `getUser()` contesta: esa ocultación hacía parpadear la pantalla y perder
+el scroll en cada alt-tab. La garantía que la motivaba se conserva con una señal
+síncrona: las cookies de sesión de Supabase (`sb-*-auth-token`). Si son las mismas
+que se confirmaron para quien mira, otra cuenta no puede estar detrás; la evidencia
+sigue visible y `getUser()` se comprueba en segundo plano. Si cambiaron (logout,
+login de otra cuenta en otra pestaña, refresco de token ajeno), se oculta en el
+propio evento de foco, antes de la red, también cuando ya hay una comprobación en
+vuelo. Un fallo o una identidad distinta ocultan o desmontan igual que antes. El
+refresco de token propio (`TOKEN_REFRESHED` de la misma cuenta) actualiza la
+referencia. Se elige frente a `getSession()` porque supabase-js serializa
+`getUser()`/`getSession()` con un lock y la comprobación local esperaría a la red.
+Precisa la entrada «continuidad del lienzo y frontera de sesión» y el acta #1470:
+se sigue verificando en cada foco; solo deja de ocultarse cuando nada ha cambiado.
+
+**Dueño por defecto.** Crear un grupo empieza con el dueño incluido, en el primer
+puesto (que fija su color), mediante el interruptor «Incluirme en la comparación».
+El dueño ya no aparece como un candidato más en la búsqueda. Desmarcarlo mantiene
+la opción acordada de comparar solo a otras personas; volver a marcarlo lo coloca
+de nuevo primero. Sin cambios de esquema ni del límite de 2–10 participantes.
