@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 // E2E de la galería de portadas oficiales del editor de ficha
 // (CatalogEditorForm en src/components/detail/catalog-editor.tsx +
@@ -45,9 +46,7 @@ test("galería de portadas oficiales: elegir una la persiste en cover_url", asyn
   test.skip(candidates.length === 0, "No hay ninguna película con tmdb_id en la BD para probar la galería");
 
   await page.goto("/login");
-  await page.fill('input[name="email"]', EMAIL);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, EMAIL, PASSWORD);
   await page.waitForURL("/");
 
   // Se elige, entre los candidatos, la primera película cuya galería

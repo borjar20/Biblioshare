@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
+import { submitLogin } from "./support/visible-form";
 
 // Separate from mascota.spec.ts: that file's hooks change a persistent account.
 // This feature only uses these two disposable users, cleaned before and after.
@@ -68,9 +69,7 @@ async function createUser(username: string, signIn = true): Promise<TestUser> {
 
 async function login(page: Page, user: TestUser) {
   await page.goto("/login");
-  await page.fill('input[name="email"]', user.email);
-  await page.fill('input[name="password"]', password);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, user.email, password);
   await page.waitForURL("/");
 }
 

@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 // Feed: tarjetas por tipo (branch feat/feed-tarjetas-por-tipo). Verificación de
 // runtime real + PRIVACIDAD de notas públicas — no la cubre el vitest de
@@ -97,9 +98,7 @@ async function rest(path: string, init?: RequestInit) {
 
 async function login(page: import("@playwright/test").Page) {
   await page.goto("/login");
-  await page.fill('input[name="email"]', EMAIL);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, EMAIL, PASSWORD);
   await page.waitForURL("/");
 }
 

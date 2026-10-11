@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 // Desde la ficha de un libro se tiene que poder llegar a la ficha de su autor.
 // Spec: docs/superpowers/specs/2026-08-13-libro-enlace-autor-design.md
@@ -77,9 +78,7 @@ async function createOnboardedUser(username: string): Promise<{ id: string; emai
 
 async function loginAs(page: Page, email: string) {
   await page.goto("/login");
-  await page.fill('input[name="email"]', email);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, email, PASSWORD);
   await page.waitForURL("/");
   await page.context().clearCookies({ name: "bs_onb" });
 }

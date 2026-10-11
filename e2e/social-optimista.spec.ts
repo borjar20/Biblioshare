@@ -4,6 +4,7 @@ import { test, expect } from "@playwright/test";
 // fichero en rojo dos veces seguidas (#750 y #801). Así, renombrar un emoji
 // rompe el typecheck en vez de la suite tres semanas después.
 import { QUICK_REACTION_NAMES } from "@/lib/social/reaction-constants";
+import { submitLogin } from "./support/visible-form";
 
 const REACCION = QUICK_REACTION_NAMES["❤️"];
 
@@ -52,9 +53,7 @@ test("like y comentario de una reseña se reflejan sin recargar y persisten", as
   try {
     // ── Login (devtest, miembro del club público) ──
     await page.goto("/login");
-    await page.fill('input[name="email"]', EMAIL);
-    await page.fill('input[name="password"]', PASSWORD);
-    await page.click('button[type="submit"]');
+    await submitLogin(page, EMAIL, PASSWORD);
     await page.waitForURL("/");
 
     await page.goto(`/club/${CLUB_SLUG}`);

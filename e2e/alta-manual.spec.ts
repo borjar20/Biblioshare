@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 // Alta manual de catálogo (/buscar/manual). Cubre el cabo suelto de #674: la
 // parte F revocó el INSERT directo sobre books/movies/series y este call site se
@@ -42,9 +43,7 @@ async function rest(path: string, init?: RequestInit) {
 
 async function login(page: Page) {
   await page.goto("/login");
-  await page.fill('input[name="email"]', EMAIL);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, EMAIL, PASSWORD);
   await page.waitForURL("/");
 }
 

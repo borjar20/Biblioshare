@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 // E2E de la fase 3 (Task 7, Step 1 — brief en .superpowers/sdd/task-7-brief.md,
 // spec en docs/superpowers/specs/2026-07-27-sagas-fase-3-retirada-del-grafo-design.md):
@@ -69,9 +70,7 @@ const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 async function loginAsDevtest(page: Page) {
   await page.goto("/login");
-  await page.fill('input[name="email"]', EMAIL);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, EMAIL, PASSWORD);
   await page.waitForURL("/");
 }
 

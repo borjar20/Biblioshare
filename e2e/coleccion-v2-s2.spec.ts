@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
@@ -27,9 +28,7 @@ test("Todo filtra por tipo y la hoja añade el ítem a una colección", async ({
     colId = col.id;
 
     await page.goto("/login");
-    await page.fill('input[name="email"]', EMAIL);
-    await page.fill('input[name="password"]', PASSWORD);
-    await page.click('button[type="submit"]');
+    await submitLogin(page, EMAIL, PASSWORD);
     await page.waitForURL("/");
 
     // ── Todo con ?type=book: solo libros (hay enlaces /libro, ninguno /pelicula ni /serie) ──

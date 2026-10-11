@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 // E2E de la fase 1 del timeline con los cuatro estados: el componente único de
 // orden de lectura, montado en móvil y al pie del grafo de PC.
@@ -30,9 +31,7 @@ let stepTitles: string[] = [];
 
 async function loginAsDevtest(page: Page) {
   await page.goto("/login");
-  await page.fill('input[name="email"]', EMAIL);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, EMAIL, PASSWORD);
   await page.waitForURL("/");
 }
 

@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 // Los round-trips introducen credenciales; ninguna prueba escribe datos.
 test.use({ trace: "off" });
@@ -91,9 +92,7 @@ test("tras loguearse desde /login?next=, vuelve a la página gated de origen", a
   await page.goto("/coleccion");
   await expect(page).toHaveURL(/\/login\?next=%2Fcoleccion/);
 
-  await page.fill('input[name="email"]', process.env.TEST_USER_EMAIL!);
-  await page.fill('input[name="password"]', process.env.TEST_USER_PASSWORD!);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, process.env.TEST_USER_EMAIL!, process.env.TEST_USER_PASSWORD!);
 
   // Vuelve a /coleccion (el next), no a "/".
   await page.waitForURL("/coleccion");
@@ -107,9 +106,7 @@ test("Comunidad conserva pestaña y búsqueda tras login", async ({ page }) => {
   const destination = "/comunidad?tab=personas&q=devtest";
   await page.goto(destination);
   await expect(page).toHaveURL((url) => url.pathname === "/login" && url.searchParams.get("next") === destination);
-  await page.fill('input[name="email"]', process.env.TEST_USER_EMAIL!);
-  await page.fill('input[name="password"]', process.env.TEST_USER_PASSWORD!);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, process.env.TEST_USER_EMAIL!, process.env.TEST_USER_PASSWORD!);
   await page.waitForURL(destination);
   await expect(page.getByRole("heading", { level: 1, name: "Comunidad", exact: true })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Secciones de Comunidad" }).getByRole("link", { name: "Personas", exact: true })).toHaveAttribute("aria-current", "page");

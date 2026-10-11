@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
@@ -88,9 +89,7 @@ test("recorrido principal del usuario autenticado", async ({ page }) => {
 
   // Login
   await page.goto("/login");
-  await page.fill('input[name="email"]', EMAIL);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, EMAIL, PASSWORD);
   await page.waitForURL("/");
 
   // Home autenticada: el feed (el dashboard se mudó a Perfil › Panel). La
@@ -141,9 +140,7 @@ test("marcar una colección como sorteable la ofrece en el filtro del sorteo", a
   await seedPendingPass();
 
   await page.goto("/login");
-  await page.fill('input[name="email"]', EMAIL);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, EMAIL, PASSWORD);
   await page.waitForURL("/");
 
   const collectionName = `e2e-${Date.now()}`;
@@ -205,9 +202,7 @@ test("crear y borrar un reto", async ({ page }) => {
   test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
 
   await page.goto("/login");
-  await page.fill('input[name="email"]', EMAIL);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, EMAIL, PASSWORD);
   await page.waitForURL("/");
 
   const name = `e2e reto ${Date.now()}`;

@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { addClubPet, burrowClub, cleanupClubBurrow, clubApi, clubUser, clubWrite } from "./support/club-burrow-fixtures";
+import { submitLogin } from "./support/visible-form";
 
 test.describe("S3 madriguera del club", () => {
   test("lectura autorizada: miembro público sin seguir y privado solo con aceptación", async () => {
@@ -79,9 +80,7 @@ test.describe("S3 madriguera del club", () => {
       await page.setViewportSize({ width: 390, height: 844 });
       await page.emulateMedia({ reducedMotion: "reduce" });
       await page.goto("/login");
-      await page.fill('input[name="email"]', viewer.email);
-      await page.fill('input[name="password"]', viewer.password);
-      await page.click('button[type="submit"]');
+      await submitLogin(page, viewer.email, viewer.password);
       await page.waitForURL("/");
       await page.goto(`/club/${club.slug}`);
       const scene = page.getByRole("region", { name: "Madriguera · Club S3 de prueba", exact: true });
@@ -142,9 +141,7 @@ test.describe("S3 madriguera del club", () => {
       expect(new Set(rows.map((r) => r.total))).toEqual(new Set([65]));
       expect((await read()).map((r) => r.user_id)).toEqual(rows.map((r) => r.user_id));
       await page.goto("/login");
-      await page.fill('input[name="email"]', owner.email);
-      await page.fill('input[name="password"]', owner.password);
-      await page.click('button[type="submit"]');
+      await submitLogin(page, owner.email, owner.password);
       await page.waitForURL("/");
       await page.goto(`/club/${club.slug}`);
       const scene = page.getByRole("region", { name: "Madriguera · Club S3 de prueba", exact: true });

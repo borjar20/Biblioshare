@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
@@ -20,9 +21,7 @@ test("la pestaña Estadísticas enlaza a /estadisticas con su selector", async (
   test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
 
   await page.goto("/login");
-  await page.fill('input[name="email"]', EMAIL);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, EMAIL, PASSWORD);
   await page.waitForURL("/");
 
   await page.goto(`/u/${USERNAME}?tab=estadisticas`);
@@ -56,9 +55,7 @@ test("la página muestra completadas por año", async ({ page }) => {
   test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
 
   await page.goto("/login");
-  await page.fill('input[name="email"]', EMAIL);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, EMAIL, PASSWORD);
   await page.waitForURL("/");
 
   await page.goto("/estadisticas");
@@ -72,9 +69,7 @@ test("la página muestra completadas por año", async ({ page }) => {
 
 async function login(page: import("@playwright/test").Page) {
   await page.goto("/login");
-  await page.fill('input[name="email"]', EMAIL);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, EMAIL, PASSWORD);
   await page.waitForURL("/");
 }
 

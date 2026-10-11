@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
@@ -45,9 +46,7 @@ test("colecciones: grid + detalle de una colección sembrada", async ({ page }) 
     });
 
     await page.goto("/login");
-    await page.fill('input[name="email"]', EMAIL);
-    await page.fill('input[name="password"]', PASSWORD);
-    await page.click('button[type="submit"]');
+    await submitLogin(page, EMAIL, PASSWORD);
     await page.waitForURL("/");
 
     // ── Grid de Colecciones: la colección sembrada aparece con su recuento ──

@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
@@ -107,9 +108,7 @@ test("crea una tierlist al cerrar el reto", async ({ page }) => {
 
     // ── Login y navegación directa a la ficha del reto ──
     await page.goto("/login");
-    await page.fill('input[name="email"]', EMAIL);
-    await page.fill('input[name="password"]', PASSWORD);
-    await page.click('button[type="submit"]');
+    await submitLogin(page, EMAIL, PASSWORD);
     await page.waitForURL("/");
 
     await page.goto(`/club/${CLUB_SLUG}/actividad/${activityId}`);

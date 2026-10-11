@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 // Dos arreglos de la columna izquierda de `/persona/[id]`, sembrados a mano para
 // que no dependan de qué haya en base:
@@ -89,9 +90,7 @@ async function createOnboardedUser(username: string): Promise<{ id: string; emai
 
 async function loginAs(page: Page, email: string) {
   await page.goto("/login");
-  await page.fill('input[name="email"]', email);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, email, PASSWORD);
   await page.waitForURL("/");
   await page.context().clearCookies({ name: "bs_onb" });
 }

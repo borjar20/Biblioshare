@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 // E2E del editor de secuencia (`/saga/[id]/editar`, Task 9/10/11 de la fase 2a
 // — sustituye el formulario por fila que cubrían sagas-rol-narrativo.spec.ts y
@@ -26,9 +27,7 @@ const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 async function loginAsDevtest(page: Page) {
   await page.goto("/login");
-  await page.fill('input[name="email"]', EMAIL);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, EMAIL, PASSWORD);
   await page.waitForURL("/");
 }
 

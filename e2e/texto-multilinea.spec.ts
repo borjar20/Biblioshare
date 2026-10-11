@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 // Párrafos y saltos de línea en el feed y en el hilo de comentarios.
 //
@@ -70,9 +71,7 @@ async function devtestId(): Promise<string> {
 
 async function login(page: Page) {
   await page.goto("/login");
-  await page.fill('input[name="email"]', EMAIL);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, EMAIL, PASSWORD);
   await page.waitForURL("/");
 }
 

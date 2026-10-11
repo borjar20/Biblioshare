@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 // Tipos de evento de club (Task 14, spec 2026-08-09-tipos-de-evento): crea los
 // tres -- Encuentro, Lanzamiento y Fecha destacada -- por la UI real (asistente
@@ -44,9 +45,7 @@ async function devtestId(): Promise<string> {
 
 async function login(page: Page) {
   await page.goto("/login");
-  await page.fill('input[name="email"]', EMAIL);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, EMAIL, PASSWORD);
   await page.waitForURL("/");
 }
 

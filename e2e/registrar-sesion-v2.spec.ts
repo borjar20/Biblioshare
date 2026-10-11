@@ -3,6 +3,7 @@ import {
   FINAL_EMPIRE_FILTER,
   FINAL_EMPIRE_WORK_KEY,
 } from "./support/book-fixture";
+import { submitLogin } from "./support/visible-form";
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
@@ -57,9 +58,7 @@ async function devtestId(): Promise<string> {
 
 async function login(page: Page) {
   await page.goto("/login");
-  await page.fill('input[name="email"]', EMAIL);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, EMAIL, PASSWORD);
   await page.waitForURL("/");
 }
 

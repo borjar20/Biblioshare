@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 // Desbordes horizontales en móvil (#721). La auditoría de agosto los midió en
 // vivo: la ficha de serie pintaba un layout de 470px en un viewport de 360, y la
@@ -22,9 +23,7 @@ const MOVIL = { width: 360, height: 740 };
 
 async function login(page: Page) {
   await page.goto("/login");
-  await page.fill('input[name="email"]', EMAIL);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, EMAIL, PASSWORD);
   await page.waitForURL("/");
 }
 

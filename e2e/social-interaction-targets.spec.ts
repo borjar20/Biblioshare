@@ -5,6 +5,7 @@ import {
   type Locator,
   type Page,
 } from "@playwright/test";
+import { submitLogin } from './support/visible-form';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -94,9 +95,7 @@ function cleanupFailures(results: PromiseSettledResult<unknown>[]): unknown[] {
 async function login(page: Page, user: TestUser) {
   await page.context().clearCookies();
   await page.goto("/login");
-  await page.fill('input[name="email"]', user.email);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, user.email, PASSWORD);
   await page.waitForURL("/");
 }
 
