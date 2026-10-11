@@ -1,6 +1,7 @@
 import 'server-only';
 import { readAllRows } from '@/lib/supabase/read-all-rows';
 import { chunkIds } from '@/lib/supabase/in-chunks';
+import { sortGroups } from './order';
 import type { Candidate, Group, Member, Result } from './types';
 export type Client = Awaited<ReturnType<typeof import('@/lib/supabase/server').createClient>>;
 type Slot = { id: string; group_id: string; user_id: string; position: number };
@@ -65,7 +66,8 @@ export async function listGroups(client: Client): Promise<Group[]> {
     .select('id,name,revision').eq('owner_id', viewerId).order('id').range(from, to));
   const result: Group[] = [];
   for (const row of rows) result.push(await readGroup(client, viewerId, row.id));
-  return result;
+  // `id` keeps pagination stable; people choose by name.
+  return sortGroups(result);
 }
 
 export async function listCandidates(client: Client, viewerId: string): Promise<Candidate[]> {
