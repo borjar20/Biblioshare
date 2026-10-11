@@ -104,6 +104,10 @@
     "editorYou": "Tú",
     "removePerson": "Quitar a {name}",
     "noFollowsToAdd": "Todavía no sigues a nadie a quien añadir.",
+    "withName": "Tú y {name}",
+    "unsavedOption": "{name} · sin guardar",
+    "saveAsGroup": "Guardar como grupo",
+    "suggestedNameMore": "y {count} más",
     "sections": "Secciones de la comparación",
     "works": "Obras",
     "tastes": "Gustos",
@@ -922,6 +926,8 @@
     }
   },
   "profile": {
+    "compareWith": "Comparar",
+    "compareWithHint": "Ver qué obras compartís en Entre nosotros",
     "empty": "Este perfil todavía no ha añadido nada a su biblioteca.",
     "visibilityPublic": "Tu perfil es público. Cualquiera puede ver tu biblioteca.",
     "visibilityPrivate": "Tu perfil es privado. Solo tú puedes verla.",

@@ -193,6 +193,20 @@ describe('authorized comparison loaders', () => {
       args.target_user_id === friend ? { data: null, error: { code: 'XX000', message: 'boom' } } : { data: true, error: null });
     await expect(listEntry(f.client, owner)).rejects.toMatchObject({ code: 'XX000' });
   });
+  it('compares the viewer with one accepted follow without a saved group (#1484)', async () => {
+    f.rows.passes = [pass('b1', friend), pass('b1', owner)]; f.rows.books = [{ id: 'b1', title: 'Libro', cover_url: null, genres: [] }];
+    const pair = await loadSnapshot(f.client, owner, `with:${friend}`, 'all');
+    expect(pair.group).toMatchObject({ id: `with:${friend}`, revision: 1 });
+    expect(pair.group.members.map(member => [member.slotId, member.userId, member.available])).toEqual([['self', owner, true], ['with', friend, true]]);
+    expect(pair.works.map(work => work.userId).sort()).toEqual([owner, friend].sort());
+    expect(f.queries.some(query => query.table === 'comparison_groups')).toBe(false);
+  });
+  it('refuses an unsaved pair with someone not followed, or with the viewer, before reading consumption', async () => {
+    f.rows.follows = f.rows.follows.filter(row => row.followee_id !== third);
+    await expect(loadSnapshot(f.client, owner, `with:${third}`, 'all')).rejects.toMatchObject({ code: 'unavailable' });
+    await expect(loadSnapshot(f.client, owner, `with:${owner}`, 'all')).rejects.toMatchObject({ code: 'invalid' });
+    expect(f.queries.some(query => query.table === 'passes')).toBe(false);
+  });
   it('lists only caller-owned groups and redacts deleted identity slots', async () => {
     f.rows.comparison_groups.push({ id: 'foreign', name: 'Foreign', owner_id: third, revision: 3 });
     f.rows.profiles = f.rows.profiles.filter(row => row.user_id !== third);

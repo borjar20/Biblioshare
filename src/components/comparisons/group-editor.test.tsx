@@ -7,7 +7,7 @@ import type { Group } from '@/lib/comparisons/types';
 const actions = vi.hoisted(() => ({ save: vi.fn(), remove: vi.fn() }));
 vi.mock('@/lib/comparisons/actions', () => ({ saveGroup: actions.save, deleteGroup: actions.remove }));
 vi.mock('next/navigation', () => ({ usePathname: () => '/comunidad/entre-nosotros' }));
-import { GroupEditor } from './group-editor';
+import { GroupEditor, suggestedName } from './group-editor';
 const candidates = Array.from({ length: 11 }, (_, index) => ({ userId: `person${index}`, name: `Persona ${index}`, avatarUrl: null }));
 const group: Group = { id: 'g', name: 'Lectores', revision: 2, members: candidates.slice(0, 2).map(person => ({ ...person, slotId: person.userId, available: true })) };
 const callbacks = { onSaved: vi.fn(), onDeleted: vi.fn(), onCancel: vi.fn(), onReload: vi.fn() };
@@ -18,6 +18,28 @@ beforeEach(() => {
   HTMLDialogElement.prototype.close = function () { this.open = false; this.dispatchEvent(new Event('close')); };
   vi.clearAllMocks(); actions.save.mockResolvedValue({ ok: true, data: group }); actions.remove.mockResolvedValue({ ok: true, data: null }); });
 afterEach(cleanup);
+describe('suggested group name (#1484)', () => {
+  const more = (count: number) => `y ${count} más`;
+  it('lists who is in the group and stays within 60 characters', () => {
+    expect(suggestedName([], 'es', more)).toBe('');
+    expect(suggestedName(['Tú', 'Ana'], 'es', more)).toBe('Tú y Ana');
+    expect(suggestedName(['Tú', 'Ana', 'Carlos'], 'es', more)).toBe('Tú, Ana y Carlos');
+    const long = ['Tú', 'Alejandra Montenegro', 'Bartolomé Villalobos', 'Constanza Echeverría'];
+    expect(suggestedName(long, 'es', more)).toBe('Tú, Alejandra Montenegro y 2 más');
+    expect([...suggestedName(['Tú', 'x'.repeat(80)], 'es', more)].length).toBe(60);
+  });
+  it('proposes the name from the selection until it is edited', () => {
+    mount(); const name = () => (screen.getByRole('textbox', { name: 'Nombre del grupo' }) as HTMLInputElement).value;
+    expect(name()).toBe('Tú');
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Persona 1' })); fireEvent.click(screen.getByRole('checkbox', { name: 'Persona 2' }));
+    expect(name()).toBe('Tú, Persona 1 y Persona 2');
+    fireEvent.change(screen.getByRole('textbox', { name: 'Nombre del grupo' }), { target: { value: 'Lectores' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Persona 3' })); expect(name()).toBe('Lectores');
+  });
+  it('keeps the saved name of an existing group', () => {
+    mount(group); expect((screen.getByRole('textbox', { name: 'Nombre del grupo' }) as HTMLInputElement).value).toBe('Lectores');
+  });
+});
 describe('inline group editing', () => {
   it('opens as a modal sheet with who is in the group on top: «Tú» first, removable chips after', () => {
     mount(); expect(screen.getByRole('dialog', { name: 'Crear grupo' })).toHaveProperty('open', true);

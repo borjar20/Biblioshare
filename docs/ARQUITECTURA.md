@@ -13,7 +13,9 @@ isla usa sus propias traducciones. `error.tsx` ofrece recuperación de la ruta.
 `src/lib/comparisons/groups.ts` pagina seguimientos aceptados del dueño e identidades
 visibles. La entrada (`listEntry`) lee seguidos y perfiles una vez, comprueba
 `can_view_profile` una vez por persona con ocho llamadas concurrentes y resuelve los
-miembros de todos los grupos con ese mismo mapa y una sola lectura de puestos; `actions.ts` autentica cada llamada y valida entradas antes de leer o invocar
+miembros de todos los grupos con ese mismo mapa y una sola lectura de puestos. `resolveGroup`
+resuelve además la pareja sin guardar `with:<userId>` (quien mira y un seguido aceptado y
+visible, comprobado con la sesión en cada carga, nunca persistido); `actions.ts` autentica cada llamada y valida entradas antes de leer o invocar
 las RPC. `load.ts` lee todas las páginas de `passes` y `episode_watches`, incluidos
 episodios sin pase, y obtiene catálogo/créditos por lotes. Después revalida grupo y
 disponibilidad: una revisión distinta devuelve conflicto; un puesto revocado conserva

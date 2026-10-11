@@ -2,7 +2,7 @@ import 'server-only';
 import { readAllRows } from '@/lib/supabase/read-all-rows';
 import { chunkIds } from '@/lib/supabase/in-chunks';
 import { airedFlags, isSeriesEnded, todayISO } from '@/lib/series/aired';
-import { ComparisonError, readGroup, type Client } from './groups';
+import { ComparisonError, resolveGroup, type Client } from './groups';
 import { commonEpisodes, normalize } from './normalize';
 import type { AiredCount, CatalogWork, Format, Group, Media, PassRow, Snapshot, WatchRow, WorkDetail, WorkKey } from './types';
 
@@ -89,7 +89,7 @@ async function evidence(client: Client, format: Format, ids: string[], key?: Wor
 }
 
 async function revalidate(client: Client, viewerId: string, group: Group): Promise<Group> {
-  const current = await readGroup(client, viewerId, group.id);
+  const current = await resolveGroup(client, viewerId, group.id);
   if (current.revision !== group.revision) throw new ComparisonError('conflict');
   return current;
 }
@@ -101,7 +101,7 @@ function loadError(error: unknown): never {
 
 export async function loadSnapshot(client: Client, viewerId: string, groupId: string, format: Format): Promise<Snapshot> {
   try {
-    const group = await readGroup(client, viewerId, groupId);
+    const group = await resolveGroup(client, viewerId, groupId);
     const data = await evidence(client, format, available(group));
     const current = await revalidate(client, viewerId, group);
     // Newly available people were not queried, so cannot be represented as having zero works.
@@ -119,7 +119,7 @@ export async function loadSnapshot(client: Client, viewerId: string, groupId: st
 
 export async function loadDetail(client: Client, viewerId: string, groupId: string, key: WorkKey, people: string[]): Promise<WorkDetail> {
   try {
-    const group = await readGroup(client, viewerId, groupId);
+    const group = await resolveGroup(client, viewerId, groupId);
     if (people.length < 1 || people.length > 10 || new Set(people).size !== people.length) throw new ComparisonError('invalid');
     const ids = new Set(available(group));
     // An unavailable slot deliberately does not expose its old identity.

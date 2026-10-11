@@ -3,9 +3,12 @@ import { createClient, getCurrentUser } from '@/lib/supabase/server';
 import { ComparisonError, readGroup } from './groups';
 import { loadDetail, loadSnapshot } from './load';
 import type { Format, Group, Result, Snapshot, WorkDetail, WorkKey } from './types';
+import { withPersonTarget } from './with-person';
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function uuid(value: unknown): value is string { return typeof value === 'string' && uuidPattern.test(value); }
+/** A saved group id or an unsaved `with:` pair (#1484). */
+function groupRef(value: unknown): value is string { return uuid(value) || withPersonTarget(value) !== null; }
 function revision(value: unknown): value is number { return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 2147483647; }
 function failure(error: unknown): { ok: false; code: Extract<Result<never>, { ok: false }>['code'] } {
   if (error instanceof ComparisonError) {
@@ -22,7 +25,7 @@ export async function loadComparison(groupId: string, format: Format): Promise<R
   try {
     const user = await getCurrentUser();
     if (!user) return { ok: false, code: 'unauthenticated' };
-    if (!uuid(groupId) || !['all', 'book', 'movie', 'series'].includes(format)) return { ok: false, code: 'invalid' };
+    if (!groupRef(groupId) || !['all', 'book', 'movie', 'series'].includes(format)) return { ok: false, code: 'invalid' };
     return { ok: true, data: await loadSnapshot(await createClient(), user.id, groupId, format) };
   } catch (error) { return failure(error); }
 }
@@ -31,7 +34,7 @@ export async function loadComparisonWork(groupId: string, key: WorkKey, people: 
   try {
     const user = await getCurrentUser();
     if (!user) return { ok: false, code: 'unauthenticated' };
-    if (!uuid(groupId) || typeof key !== 'string' || !/^(book|movie|series):/.test(key) || !uuid(key.split(':')[1]) ||
+    if (!groupRef(groupId) || typeof key !== 'string' || !/^(book|movie|series):/.test(key) || !uuid(key.split(':')[1]) ||
       key.split(':').length !== 2 || !Array.isArray(people) || people.length < 1 || people.length > 10 ||
       !people.every(uuid) || new Set(people).size !== people.length) return { ok: false, code: 'invalid' };
     return { ok: true, data: await loadDetail(await createClient(), user.id, groupId, key, people) };

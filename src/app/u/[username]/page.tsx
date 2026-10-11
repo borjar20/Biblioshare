@@ -15,6 +15,7 @@ import {
 } from "@/lib/social/follows";
 import { FollowButton } from "@/components/social/follow-button";
 import { NotifyBell } from "@/components/social/notify-bell";
+import { CompareWithLink } from "@/components/comparisons/compare-with-link";
 import { ProfileSafetyActions } from "@/components/social/profile-safety-actions";
 import { getBlockState } from "@/lib/social/block-state";
 import { FollowRequests } from "@/components/social/follow-requests";
@@ -207,6 +208,10 @@ async function ProfileContent({ params, searchParams }: PublicProfileProps) {
                   username={profile.username}
                   initial={notifyEvents}
                 />
+              )}
+              {/* Entre nosotros sin guardar grupo (#1484): solo con seguimiento aceptado. */}
+              {followState === "accepted" && (
+                <CompareWithLink userId={profile.userId} />
               )}
             </div>
           ) : undefined

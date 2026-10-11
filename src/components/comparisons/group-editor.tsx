@@ -1,14 +1,14 @@
 'use client';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { deleteGroup, saveGroup } from '@/lib/comparisons/actions';
 import type { Candidate, Group, Result } from '@/lib/comparisons/types';
 import { UserAvatar } from '@/components/social/user-avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
-type Props = { group: Group | null; candidates: Candidate[]; viewerId: string; onSaved: (group: Group) => void;
+type Props = { group: Group | null; initialPeople?: string[]; candidates: Candidate[]; viewerId: string; onSaved: (group: Group) => void;
   onDeleted: (id: string) => void; onCancel: () => void; onReload: () => void };
 /**
  * Group editor as a sheet (#1486): a native <dialog> like the repo's other sheets
@@ -16,8 +16,8 @@ type Props = { group: Group | null; candidates: Candidate[]; viewerId: string; o
  * mobile and centred on `lg`. Who is in the group sits on top as removable chips;
  * search and the followed people with their avatars come below.
  */
-export function GroupEditor({ group, candidates, viewerId, onSaved, onDeleted, onCancel, onReload }: Props) {
-  const t = useTranslations('comparisons');
+export function GroupEditor({ group, initialPeople, candidates, viewerId, onSaved, onDeleted, onCancel, onReload }: Props) {
+  const t = useTranslations('comparisons'); const locale = useLocale();
   const dialog = useRef<HTMLDialogElement>(null);
   const pathname = usePathname();
   const openedAt = useRef(pathname);
@@ -25,8 +25,10 @@ export function GroupEditor({ group, candidates, viewerId, onSaved, onDeleted, o
   const self = candidates.find(person => person.userId === viewerId);
   const others = candidates.filter(person => person.userId !== viewerId);
   const people = new Map(candidates.map(person => [person.userId, person]));
-  const [name, setName] = useState(group?.name ?? '');
-  const [selected, setSelected] = useState<string[]>(group?.members.flatMap(member => member.userId ? [member.userId] : []) ?? (self ? [viewerId] : []));
+  // A new group proposes its name from who is in it until the name is edited (#1484).
+  const [draftName, setDraftName] = useState<string | null>(group?.name ?? null);
+  const [selected, setSelected] = useState<string[]>(group?.members.flatMap(member => member.userId ? [member.userId] : []) ?? initialPeople ?? (self ? [viewerId] : []));
+  const name = draftName ?? suggestedName(selected.flatMap(id => id === viewerId ? [t('editorYou')] : people.get(id) ? [people.get(id)!.name] : []), locale, count => t('suggestedNameMore', { count }));
   const includesSelf = selected.includes(viewerId);
   const [query, setQuery] = useState(''); const [busy, setBusy] = useState(false);
   const [error, setError] = useState<Extract<Result<never>, { ok: false }>['code'] | null>(null);
@@ -77,7 +79,7 @@ export function GroupEditor({ group, candidates, viewerId, onSaved, onDeleted, o
       {/* Children keep their height: in a scrolling column they would otherwise shrink and overlap. */}
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-4 [&>*]:shrink-0">
         {/* maxLength counts UTF-16 units; 120 lets 60 emoji through. The 60-character limit is the counter's. */}
-        <label className="flex flex-col gap-2 text-sm font-medium">{t('groupName')}<Input ref={nameInput} value={name} onChange={event => setName(event.target.value)} maxLength={120} aria-describedby="comparison-group-name-count" disabled={busy} autoFocus required/></label>
+        <label className="flex flex-col gap-2 text-sm font-medium">{t('groupName')}<Input ref={nameInput} value={name} onChange={event => setDraftName(event.target.value)} maxLength={120} aria-describedby="comparison-group-name-count" disabled={busy} autoFocus required/></label>
         <p id="comparison-group-name-count" className={`-mt-2 self-end text-xs tabular-nums ${nameLength > 60 ? 'text-status-dropped' : 'text-muted-foreground'}`}>{t('nameCounter', { count: nameLength })}</p>
         {nameLength > 60 && <p role="alert" className="text-sm text-status-dropped">{t('nameTooLong')}</p>}
         <section aria-labelledby="comparison-selected-title" className="flex flex-col gap-2">
@@ -117,4 +119,13 @@ export function GroupEditor({ group, candidates, viewerId, onSaved, onDeleted, o
       </footer>
     </form>
   </dialog>;
+}
+
+/** «Tú, Ana y Carlos»; past 60 characters, «Tú, Ana y 3 más». Never longer than the saved limit. */
+export function suggestedName(labels: string[], locale: string, more: (count: number) => string): string {
+  if (!labels.length) return '';
+  const full = new Intl.ListFormat(locale, { style: 'long', type: 'conjunction' }).format(labels);
+  if ([...full].length <= 60 || labels.length < 3) return [...full].slice(0, 60).join('').trim();
+  const short = `${labels.slice(0, 2).join(', ')} ${more(labels.length - 2)}`;
+  return [...short].slice(0, 60).join('').trim();
 }

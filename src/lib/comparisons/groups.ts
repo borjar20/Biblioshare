@@ -2,6 +2,7 @@ import 'server-only';
 import { readAllRows } from '@/lib/supabase/read-all-rows';
 import { chunkIds } from '@/lib/supabase/in-chunks';
 import { sortGroups } from './order';
+import { withPersonTarget } from './with-person';
 import type { Candidate, Group, Member, Result } from './types';
 export type Client = Awaited<ReturnType<typeof import('@/lib/supabase/server').createClient>>;
 type Slot = { id: string; group_id: string; user_id: string; position: number };
@@ -66,6 +67,19 @@ export async function readGroup(client: Client, viewerId: string, id: string): P
   const slots = await readAllRows<Slot>((from, to) => client.from('comparison_group_members')
     .select('id,group_id,user_id,position').eq('group_id', id).order('position').order('id').range(from, to));
   return { ...rows[0], members: members(slots, await visiblePeople(client, viewerId, slots.map(slot => slot.user_id))) };
+}
+
+/** A saved group, or the unsaved pair behind a `with:` id, checked with the session either way. */
+export async function resolveGroup(client: Client, viewerId: string, id: string): Promise<Group> {
+  const target = withPersonTarget(id);
+  if (target === null) return readGroup(client, viewerId, id);
+  if (target === viewerId) throw new ComparisonError('invalid');
+  const people = await visiblePeople(client, viewerId, [viewerId, target]);
+  // Only an accepted, visible follow can be compared; nothing is revealed otherwise.
+  if (!people.has(target)) throw new ComparisonError('unavailable');
+  return { id, name: '', revision: 1, members: members([
+    { id: 'self', group_id: id, user_id: viewerId, position: 0 },
+    { id: 'with', group_id: id, user_id: target, position: 1 }], people) };
 }
 
 /** Every owned group with one membership read and one visibility pass, not one per group. */
