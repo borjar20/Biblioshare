@@ -45,6 +45,15 @@ describe('series detail evidence', () => {
     expect(within(episodes).getByText('Ana: 3')).toBeTruthy(); expect(within(episodes).getByText('Bea: 8')).toBeTruthy();
     expect(screen.queryByText(/historiales de persona y serie/)).toBeNull();
   });
+  it('places each note on a shared 0–10 scale and draws an unrated pass as an empty track (#1501)', async () => {
+    const { container } = render(ui(detail)); await screen.findByText('Sin valorar');
+    const scales = Array.from(container.querySelectorAll<HTMLElement>('[class*="noteScale"]'));
+    expect(scales.map(scale => scale.dataset.unrated)).toEqual(['false', 'true']);
+    expect((scales[0].querySelector('[class*="noteFill"]') as HTMLElement).style.transform).toBe('scaleX(0.9)');
+    expect((scales[0].querySelector('[class*="noteDot"]') as HTMLElement).style.left).toBe('90%');
+    expect(scales[1].children).toHaveLength(0);
+    expect(scales.every(scale => scale.getAttribute('aria-hidden') === 'true')).toBe(true);
+  });
   it('explains no episodes with notes shared by every named participant', async () => {
     render(ui({ ...detail, commonEpisodes: [] })); expect(await screen.findByText('No hay episodios comunes valorados por todas las personas indicadas.')).toBeTruthy();
   });
