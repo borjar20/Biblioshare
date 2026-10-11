@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
+import { submitLogin } from "../support/visible-form";
 import { withBattleUsers } from "../support/battle-users";
 
 test("una partida anónima conserva las vidas al recargar", async ({ page }) => {
@@ -31,9 +32,7 @@ test("login real y filtros del cuaderno sin desborde móvil (#833)", async ({ pa
     expect(response.ok).toBe(true);
     await page.setViewportSize({ width: 390, height: 700 });
     await page.goto("/login?next=/notas");
-    await page.locator('input[name="email"]').fill(user.email);
-    await page.locator('input[name="password"]').fill(user.password);
-    await page.locator('button[type="submit"]').click();
+    await submitLogin(page, user.email, user.password);
     await page.waitForURL((url) => url.pathname === "/notas" && url.search === "", { timeout: 30_000 });
     const search = page.locator('form[action="/notas"]');
     await expect(search.getByRole("button", { name: /buscar/i })).toBeVisible();
