@@ -1,5 +1,5 @@
 import type {
-  CatalogWork, Facet, FacetKind, Finding, PersonWork, Region, Snapshot, WorkKey,
+  CatalogWork, Facet, FacetKind, Finding, Format, PersonWork, Region, Snapshot, WorkKey,
 } from './types';
 
 function validatePeople(snapshot: Snapshot, people: string[], max: number): void {
@@ -116,4 +116,19 @@ export function facets(snapshot: Snapshot, people: string[], kind: FacetKind,
     return participation(b) - participation(a) || minimum(b) - minimum(a) ||
       a.label.localeCompare(b.label) || a.id.localeCompare(b.id);
   });
+}
+
+/**
+ * A single-format snapshot from an `all` snapshot. Normalisation groups per person and
+ * work, so books and movies come only from their own passes and series only from series
+ * passes and episode watches: filtering by key prefix equals asking the server for that
+ * format. Only the excluded-series count is format-scoped (0 for books and movies).
+ */
+export function forFormat(all: Snapshot, format: Format): Snapshot {
+  if (all.format !== 'all') throw new RangeError('Formats derive from an all-format snapshot');
+  if (format === 'all') return all;
+  const inFormat = (key: WorkKey) => key.startsWith(`${format}:`);
+  return { group: all.group, format, works: all.works.filter(work => inFormat(work.key)),
+    catalog: all.catalog.filter(work => inFormat(work.key)),
+    excludedSeriesWithoutEpisodes: format === 'series' ? all.excludedSeriesWithoutEpisodes : 0 };
 }

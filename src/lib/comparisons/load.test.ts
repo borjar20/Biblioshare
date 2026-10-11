@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('server-only', () => ({}));
 import { loadDetail, loadSnapshot } from './load';
 import type { Client } from './groups';
-import { listCandidates, listGroups } from './groups';
+import { listCandidates, listEntry, listGroups } from './groups';
+import { forFormat } from './derive';
 
 const owner = '10000000-0000-4000-8000-000000000001';
 const friend = '10000000-0000-4000-8000-000000000002';
@@ -158,6 +159,39 @@ describe('authorized comparison loaders', () => {
     f.revoke();
     f.rows.follows.push({ follower_id: owner, followee_id: friend, status: 'accepted' });
     expect((await listCandidates(f.client, owner)).some(p => p.userId === friend)).toBe(false);
+  });
+  it('derives every format from one all load exactly as the server loads that format', async () => {
+    const movieId = '40000000-0000-4000-8000-000000000001'; const droppedSeries = '30000000-0000-4000-8000-000000000002';
+    f.rows.passes = [pass('b1'), pass('b2', owner), { ...pass('b3', owner), status: 'in_progress' }, pass('m1', friend, 'movie', movieId), pass('m2', owner, 'movie', movieId),
+      { ...pass('s1', friend, 'series', seriesId), status: 'in_progress', is_active: true }, { ...pass('s2', owner, 'series', droppedSeries), status: 'dropped' }];
+    f.rows.episode_watches = [watch('w1'), { ...watch('w2', third), episode_number: 2 }];
+    f.rows.books = ['b1', 'b2', 'b3'].map(id => ({ id, title: `Libro ${id}`, cover_url: null, genres: ['Drama'] }));
+    f.rows.movies = [{ id: movieId, title: 'Película', cover_url: null, genres: ['Drama'] }];
+    f.rows.series = [seriesId, droppedSeries].map(id => ({ id, title: `Serie ${id}`, cover_url: null, genres: ['Drama'], tmdb_status: 'Ended' }));
+    f.rows.series_episodes = [1, 2].map(n => ({ id: `e${n}`, series_id: seriesId, season_number: 1, episode_number: n, air_date: '2020-01-01' }));
+    const all = await loadSnapshot(f.client, owner, groupId, 'all');
+    expect(all.excludedSeriesWithoutEpisodes).toBe(1); expect(new Set(all.works.map(work => work.key.split(':')[0]))).toEqual(new Set(['book', 'movie', 'series']));
+    for (const format of ['book', 'movie', 'series'] as const) {
+      expect(forFormat(all, format), format).toEqual(await loadSnapshot(f.client, owner, groupId, format));
+    }
+    expect(forFormat(all, 'all')).toBe(all);
+  });
+  it('enters with one follow read, one profile read and one visibility check per person, whatever the group count', async () => {
+    const extra = ['20000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000003'];
+    f.rows.comparison_groups.push(...extra.map((id, index) => ({ id, owner_id: owner, name: `Grupo ${index}`, revision: 1 })));
+    f.rows.comparison_group_members.push(...extra.flatMap(id => [owner, friend, third].map((user_id, position) => ({ id: `${id}-${position}`, group_id: id, user_id, position }))));
+    const entry = await listEntry(f.client, owner);
+    expect(entry.groups).toHaveLength(3); expect(entry.groups.every(group => group.members.every(member => member.available))).toBe(true);
+    expect(entry.candidates.map(person => person.userId).sort()).toEqual([owner, friend, third].sort());
+    // Before #1481 the page paid 15 table reads and 12 sequential RPCs for these three groups.
+    expect(f.queries.map(query => query.table)).toEqual(['follows', 'profiles', 'comparison_groups', 'comparison_group_members']);
+    expect(f.client.rpc).toHaveBeenCalledTimes(3);
+    expect(entry.groups).toEqual(await listGroups(f.client)); expect(entry.candidates).toEqual(await listCandidates(f.client, owner));
+  });
+  it('lets a failed visibility check fail the whole entry instead of hiding a person', async () => {
+    (f.client.rpc as ReturnType<typeof vi.fn>).mockImplementation(async (_name: string, args: { target_user_id: string }) =>
+      args.target_user_id === friend ? { data: null, error: { code: 'XX000', message: 'boom' } } : { data: true, error: null });
+    await expect(listEntry(f.client, owner)).rejects.toMatchObject({ code: 'XX000' });
   });
   it('lists only caller-owned groups and redacts deleted identity slots', async () => {
     f.rows.comparison_groups.push({ id: 'foreign', name: 'Foreign', owner_id: third, revision: 3 });

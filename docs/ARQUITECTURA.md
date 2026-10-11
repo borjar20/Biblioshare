@@ -11,7 +11,9 @@ los grupos y los candidatos bajo `Suspense`; `layout.tsx` entrega únicamente el
 isla usa sus propias traducciones. `error.tsx` ofrece recuperación de la ruta.
 
 `src/lib/comparisons/groups.ts` pagina seguimientos aceptados del dueño e identidades
-visibles; `actions.ts` autentica cada llamada y valida entradas antes de leer o invocar
+visibles. La entrada (`listEntry`) lee seguidos y perfiles una vez, comprueba
+`can_view_profile` una vez por persona con ocho llamadas concurrentes y resuelve los
+miembros de todos los grupos con ese mismo mapa y una sola lectura de puestos; `actions.ts` autentica cada llamada y valida entradas antes de leer o invocar
 las RPC. `load.ts` lee todas las páginas de `passes` y `episode_watches`, incluidos
 episodios sin pase, y obtiene catálogo/créditos por lotes. Después revalida grupo y
 disponibilidad: una revisión distinta devuelve conflicto; un puesto revocado conserva
@@ -20,7 +22,9 @@ Metadatos ausentes conservan pertenencia con `metadataMissing`, sin hidratar cat
 
 `normalize.ts` y `derive.ts` son funciones puras de historial, regiones exactas,
 hallazgos y facetas. `components/comparisons/explorer.tsx` coordina Obras/Gustos,
-editor, selección, formato y respuestas mediante secuencias; la frontera de sesión
+editor, selección, formato y respuestas mediante secuencias. Cada grupo y revisión se
+carga una vez en formato `all` (`source`); Libros, Películas y Series se derivan con
+`forFormat` sin nueva petición ni relevo del cargador. La frontera de sesión
 oculta evidencia durante comprobaciones y descarta auth/respuestas antiguas. El
 detalle se carga por obra y participantes disponibles, sin reseñas ni motivos privados.
 
