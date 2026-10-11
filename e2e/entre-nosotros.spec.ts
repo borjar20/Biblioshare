@@ -413,6 +413,37 @@ test('foreign owner isolation and revoke/block/delete redact actual action respo
   }, { integrated: true });
 });
 
+test('profile «Comparar» opens an unsaved pair and «Guardar como grupo» keeps it (#1484)', async ({ page }) => {
+  await withComparisonFixture(async fixture => {
+    const [owner, beatriz] = fixture.actors;
+    await loginComparisonActor(page, owner);
+    await page.goto(`/u/${beatriz.username}`);
+    await page.getByRole('link', { name: 'Comparar', exact: true }).click();
+    await expect(page).toHaveURL(url => url.pathname === '/comunidad/entre-nosotros' && url.searchParams.get('con') === beatriz.id);
+    await settled(page);
+    const select = page.getByRole('combobox', { name: 'Grupo', exact: true });
+    await expect(select).toHaveValue(`with:${beatriz.id}`);
+    await expect(select.locator('option:checked')).toHaveText('Tú y Beatriz QA · sin guardar');
+    // The pair shares the 30 fixture books; nothing was saved to get here.
+    await page.getByRole('button', { name: 'Tú, Beatriz QA 30 obras comunes', exact: true }).click(); await settled(page);
+    expect(await (await comparisonRest(`comparison_groups?owner_id=eq.${owner.id}&select=id`)).json()).toEqual([]);
+    await page.getByRole('button', { name: 'Guardar como grupo', exact: true }).click();
+    const form = page.getByRole('form', { name: 'Crear grupo' });
+    await expect(form.getByLabel('Nombre del grupo')).toHaveValue('Tú y Beatriz QA');
+    await expect(form.getByRole('checkbox', { name: 'Beatriz QA', exact: true })).toBeChecked();
+    await form.getByRole('button', { name: 'Guardar grupo', exact: true }).click();
+    // The unsaved pair already shows this name: wait for the saved group's URL instead.
+    await expect(page).toHaveURL(url => /^[0-9a-f-]{36}$/.test(url.searchParams.get('group') ?? '') && !url.searchParams.has('con')); await settled(page);
+    await expect(select.locator('option:checked')).toHaveText('Tú y Beatriz QA');
+    expect(await (await comparisonRest(`comparison_groups?owner_id=eq.${owner.id}&select=name`)).json()).toEqual([{ name: 'Tú y Beatriz QA' }]);
+    // A profile you do not follow offers no comparison.
+    await page.goto(`/u/${fixture.actors[2].username}`);
+    await comparisonRest(`follows?follower_id=eq.${owner.id}&followee_id=eq.${fixture.actors[2].id}`, { method: 'DELETE' });
+    await page.reload();
+    await expect(page.getByRole('link', { name: 'Comparar', exact: true })).toHaveCount(0);
+  });
+});
+
 test('read transport error clears visible evidence and explicit retry recovers real data', async ({ page }) => {
   await withComparisonFixture(async fixture => {
     await open(page, fixture, fixture.actors.slice(0, 3));

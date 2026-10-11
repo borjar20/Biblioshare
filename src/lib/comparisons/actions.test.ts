@@ -11,13 +11,22 @@ beforeEach(() => {
   vi.clearAllMocks(); mocks.user.mockResolvedValue({ id: owner });
   mocks.client.mockResolvedValue({ from: mocks.from, rpc: mocks.rpc });
   mocks.from.mockImplementation(() => {
-    const q = { select: () => q, eq: () => q, order: () => q, range: () => q,
+    const q = { select: () => q, eq: () => q, in: () => q, order: () => q, range: () => q,
       then: (resolve: (r: unknown) => unknown) => resolve({ data: [], error: null }) };
     return q;
   });
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 describe('comparison server actions', () => {
+  it('accepts an unsaved pair id only for an accepted follow, never for the viewer or for writes', async () => {
+    // No accepted follows in this fixture: the pair is unavailable before any consumption read.
+    expect(await loadComparison(`with:${other}`, 'all')).toEqual({ ok: false, code: 'unavailable' });
+    expect(mocks.from.mock.calls.map(([table]) => table)).not.toContain('passes');
+    expect(await loadComparison(`with:${owner}`, 'all')).toEqual({ ok: false, code: 'invalid' });
+    expect(await loadComparison('with:not-a-uuid', 'all')).toEqual({ ok: false, code: 'invalid' });
+    expect(await saveGroup({ id: `with:${other}`, name: 'Pareja', userIds: [owner, other], expectedRevision: 1 })).toEqual({ ok: false, code: 'invalid' });
+    expect(await deleteGroup(`with:${other}`, 1)).toEqual({ ok: false, code: 'invalid' });
+  });
   it('rejects every entry without session before any application query', async () => {
     mocks.user.mockResolvedValue(null);
     const results = await Promise.all([loadComparison(id, 'all'), loadComparisonWork(id, `book:${id}`, [owner]),

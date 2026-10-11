@@ -1,4 +1,5 @@
 import { facets, forFormat, regions } from '@/lib/comparisons/derive';
+import { withPersonTarget } from '@/lib/comparisons/with-person';
 import type { FacetKind, Format, Group, Result, Snapshot, WorkDetail, WorkKey } from '@/lib/comparisons/types';
 
 export type WorkOrigin = { kind: 'region'; mask: number } | { kind: 'facet'; facetKind: FacetKind; facetId: string };
@@ -51,7 +52,7 @@ export function changeSelection(state: ExplorerState, people: string[]): Explore
   return { ...setView(state, state.section, next), selection: people };
 }
 export function selectOwnedGroup(value: unknown, groups: Group[]): string | null {
-  return typeof value === 'string' && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value)
+  return typeof value === 'string' && (/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value) || withPersonTarget(value) !== null)
     && groups.some(group => group.id === value) ? value : null;
 }
 /** Group membership is independent of the snapshot's media filter. */

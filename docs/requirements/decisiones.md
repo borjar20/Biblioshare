@@ -7664,3 +7664,18 @@ Medido en `next dev` contra biblioshare-dev, fixture integrado (10 personas, 3 g
 - **Móvil (≤650 px).** Título de 34 px y la intro en un solo párrafo.
 
 Evidencia en `docs/testing/2026-10-11-entre-nosotros-pulido.md`.
+
+## 2026-10-11 — Entre nosotros: comparar desde un perfil sin guardar grupo (#1484)
+
+Cada perfil que sigues (seguimiento aceptado) ofrece «Comparar», que abre
+`/comunidad/entre-nosotros?con=<userId>`. Es una pareja sin guardar, «Tú y {nombre}»:
+el identificador `with:<userId>` no se persiste y `resolveGroup` lo resuelve en cada
+carga y detalle con la sesión, con las mismas comprobaciones que un grupo guardado
+(seguimiento aceptado y `can_view_profile`); ver el perfil de alguien no basta.
+Guardar y borrar siguen aceptando solo grupos guardados. El selector la muestra como
+«… · sin guardar» y «Guardar como grupo» abre el editor con ambas personas.
+
+Solo parejas: es lo que se compara desde un perfil y evita inventar una selección
+temporal de varias personas. Al crear un grupo, el nombre se propone a partir de
+quien está en él («Tú, Ana y Carlos»; pasados 60 caracteres, «Tú, Ana y 3 más»)
+hasta que se edita; editar un grupo conserva su nombre.

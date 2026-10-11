@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { loadComparison } from '@/lib/comparisons/actions';
 import { sortGroups } from '@/lib/comparisons/order';
+import { withPersonId, withPersonTarget } from '@/lib/comparisons/with-person';
 import type { Candidate, Format, Group, Result, Snapshot } from '@/lib/comparisons/types';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -139,32 +140,43 @@ function SessionBoundary(props: Props) {
 function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
   const t = useTranslations('comparisons'); const router = useRouter(); const search = useSearchParams();
   const [groups, setGroups] = useState(initialGroups);
-  const [state, dispatch] = useReducer(explorerReducer, viewerId, id => ({ ...initialState(id), groupId: selectOwnedGroup(search.get('group'), initialGroups) }));
-  const [editor, setEditor] = useState<{ group: Group | null } | null>(null);
+  // Unsaved pair opened from a profile (#1484): only an accepted, visible follow is a candidate.
+  const conQuery = search.get('con');
+  const withPerson = candidates.find(person => person.userId === conQuery && person.userId !== viewerId) ?? null;
+  const self = candidates.find(person => person.userId === viewerId);
+  const withName = withPerson ? t('withName', { name: withPerson.name }) : '';
+  const withGroup = useMemo<Group | null>(() => withPerson && { id: withPersonId(withPerson.userId), name: withName, revision: 1, members: [
+    { slotId: 'self', userId: viewerId, name: self?.name ?? null, avatarUrl: self?.avatarUrl ?? null, available: true },
+    { slotId: 'with', userId: withPerson.userId, name: withPerson.name, avatarUrl: withPerson.avatarUrl, available: true }] }, [withPerson, withName, self, viewerId]);
+  const choices = withGroup ? [withGroup, ...groups] : groups;
+  const [state, dispatch] = useReducer(explorerReducer, viewerId, id => ({ ...initialState(id), groupId: withGroup?.id ?? selectOwnedGroup(search.get('group'), initialGroups) }));
+  const [editor, setEditor] = useState<{ group: Group | null; people?: string[] } | null>(null);
   const [reload, forceReload] = useReducer((value: number) => value + 1, 0);
   const [completedHandoff, setCompletedHandoff] = useState<number | null>(null);
   const sequence = useRef(0); const initialSignature = useRef(JSON.stringify(initialGroups));
   const groupSelector = useRef<HTMLSelectElement>(null);
-  const observedQuery = useRef(search.get('group'));
-  const active = groups.find(group => group.id === state.groupId) ?? null;
+  const groupQuery = withGroup?.id ?? search.get('group');
+  const observedQuery = useRef(groupQuery);
+  const active = choices.find(group => group.id === state.groupId) ?? null;
+  const activeIsUnsaved = !!active && active.id === withGroup?.id;
   const you = t('you');
   const loaded = state.snapshot.value;
   const snapshot = useMemo(() => loaded && presentViewer(loaded, viewerId, you), [loaded, viewerId, you]);
   const format = state.formats[state.section];
-  const groupQuery = search.get('group');
   useEffect(() => {
     if (observedQuery.current === groupQuery) return;
     observedQuery.current = groupQuery;
-    const next = selectOwnedGroup(groupQuery, groups);
+    const next = selectOwnedGroup(groupQuery, withGroup ? [withGroup, ...groups] : groups);
     if (next !== state.groupId) dispatch({ type: 'group', id: next });
-  }, [groupQuery, groups, state.groupId]);
+  }, [groupQuery, groups, withGroup, state.groupId]);
   useEffect(() => {
     const signature = JSON.stringify(initialGroups);
     if (signature === initialSignature.current) return;
     sequence.current += 1;
     initialSignature.current = signature;
     setGroups(initialGroups);
-    if (state.groupId && !initialGroups.some(group => group.id === state.groupId)) dispatch({ type: 'group', id: null });
+    // The unsaved pair is not a saved group: a groups refresh keeps it.
+    if (state.groupId && withPersonTarget(state.groupId) === null && !initialGroups.some(group => group.id === state.groupId)) dispatch({ type: 'group', id: null });
     else dispatch({ type: 'refresh' });
     forceReload();
   }, [initialGroups, state.groupId]);
@@ -183,7 +195,8 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
   function selectGroup(id: string | null) {
     sequence.current += 1; dispatch({ type: 'group', id }); setEditor(null);
     groupSelector.current?.focus();
-    router.replace(`/comunidad/entre-nosotros${id ? `?group=${id}` : ''}`, { scroll: false });
+    const person = id && withPersonTarget(id);
+    router.replace(`/comunidad/entre-nosotros${person ? `?con=${person}` : id ? `?group=${id}` : ''}`, { scroll: false });
   }
   function refresh() { sequence.current += 1; dispatch({ type: 'refresh' }); forceReload(); }
   function onSaved(group: Group) {
@@ -203,7 +216,7 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
   }
   const workspaceControls = snapshot && <>
     <div className={styles.workspaceControls}>
-      <h2 className={styles.srOnly}>{snapshot.group.name}</h2>
+      <h2 className={styles.srOnly}>{active?.name ?? snapshot.group.name}</h2>
       {(state.section === 'tastes' || state.views.works.level !== 'group') && <fieldset className={styles.people}><legend className={styles.srOnly}>{t(state.section === 'works' ? 'selectPair' : 'selectTastes')}</legend>{snapshot.group.members.map(member => member.available && member.userId ? <label key={member.slotId} className={styles.personChip} data-selected={state.selection.includes(member.userId)} style={{ '--person': personColor(snapshot, member.userId) } as CSSProperties}><input type="checkbox" checked={state.selection.includes(member.userId)} onChange={() => togglePerson(member.userId!)}/><span className={styles.personDot} aria-hidden="true"/>{member.name}</label> : <span key={member.slotId} className={styles.unavailable}>{t('unavailablePerson')}</span>)}</fieldset>}
       <Button variant="ghost" onClick={refresh} title={t('refreshAccessHint')}>{t('refreshAccess')}</Button>
     </div>
@@ -214,15 +227,16 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
       <div><h1 className={styles.title}>{t('title')}.</h1><p className={styles.intro}>{t('introShared')}{' '}<br/>{t('introDifferent')}</p></div>
       <div className={styles.groupControls}>
       <div className={styles.groupPicker}><span className={styles.private}><Icon kind="lock"/>{t('privateSelection')}</span>
-      <label><span className={styles.srOnly}>{t('group')}</span><select ref={groupSelector} className={styles.groupSelect} value={state.groupId ?? ''} onChange={event => selectGroup(selectOwnedGroup(event.target.value, groups))}>
-        <option value="">{t('chooseGroup')}</option>{groups.map(group => <option key={group.id} value={group.id}>{group.name}</option>)}
+      <label><span className={styles.srOnly}>{t('group')}</span><select ref={groupSelector} className={styles.groupSelect} value={state.groupId ?? ''} onChange={event => selectGroup(selectOwnedGroup(event.target.value, choices))}>
+        <option value="">{t('chooseGroup')}</option>{choices.map(group => <option key={group.id} value={group.id}>{group.id === withGroup?.id ? t('unsavedOption', { name: group.name }) : group.name}</option>)}
       </select></label></div>
-      {active && <button type="button" className={styles.iconButton} aria-label={t('editGroup')} title={t('editGroup')} onClick={() => setEditor({ group: active })}><Icon kind="edit"/></button>}
+      {active && !activeIsUnsaved && <button type="button" className={styles.iconButton} aria-label={t('editGroup')} title={t('editGroup')} onClick={() => setEditor({ group: active })}><Icon kind="edit"/></button>}
+      {activeIsUnsaved && withGroup && <Button variant="secondary" onClick={() => setEditor({ group: null, people: withGroup.members.flatMap(member => member.userId ? [member.userId] : []) })}>{t('saveAsGroup')}</Button>}
       <button type="button" className={styles.iconButton} aria-label={t('createGroup')} title={t('createGroup')} onClick={() => setEditor({ group: null })}><Icon kind="plus"/></button>
       </div>
     </header>
-    {editor && <GroupEditor key={editor.group?.id ?? 'new'} group={editor.group} candidates={candidates} viewerId={viewerId} onSaved={onSaved} onDeleted={id => { setGroups(current => current.filter(group => group.id !== id)); selectGroup(null); }} onCancel={() => { setEditor(null); groupSelector.current?.focus(); }} onReload={() => { setEditor(null); groupSelector.current?.focus(); refresh(); router.refresh(); }}/>}
-    {!groups.length && !editor && (candidates.some(person => person.userId !== viewerId)
+    {editor && <GroupEditor key={editor.group?.id ?? 'new'} group={editor.group} initialPeople={editor.people} candidates={candidates} viewerId={viewerId} onSaved={onSaved} onDeleted={id => { setGroups(current => current.filter(group => group.id !== id)); selectGroup(null); }} onCancel={() => { setEditor(null); groupSelector.current?.focus(); }} onReload={() => { setEditor(null); groupSelector.current?.focus(); refresh(); router.refresh(); }}/>}
+    {!choices.length && !editor && (candidates.some(person => person.userId !== viewerId)
       ? <EmptyState variant="panel" glyph={<Icon kind="works"/>} title={t('noGroups')} message={t('noGroupsMessage')} action={<Button onClick={() => setEditor({ group: null })}>{t('createFirstGroup')}</Button>}/>
       : <EmptyState variant="panel" glyph={<Icon kind="works"/>} title={t('noFollowsTitle')} message={t('noFollowsMessage')} action={<Link href="/comunidad?tab=personas" className={buttonVariants('primary')}>{t('findPeopleToFollow')}</Link>}/>)}
     {active && <>

@@ -200,6 +200,23 @@ describe('Explorer request boundaries', () => {
     const button = screen.getByRole('button', { name: 'Crear grupo' }); button.focus(); expect(document.activeElement).toBe(button);
     fireEvent.click(button); expect(screen.getByRole('textbox', { name: 'Nombre del grupo' })).toBeTruthy(); expect(mocks.load).not.toHaveBeenCalled();
   });
+  it('opens an unsaved pair from ?con= for an accepted follow and offers to save it with both people (#1484)', async () => {
+    const bea = '10000000-0000-4000-8000-000000000002';
+    mocks.query = `con=${bea}`;
+    render(<NextIntlClientProvider locale="es" messages={messages}><Explorer initialGroups={[]} candidates={[{ userId: 'a', name: 'Ana', avatarUrl: null }, { userId: bea, name: 'Bea', avatarUrl: null }]} viewerId="a"/></NextIntlClientProvider>);
+    await waitFor(() => expect(mocks.load).toHaveBeenCalledWith(`with:${bea}`, 'all'));
+    const select = screen.getByRole('combobox', { name: 'Grupo' }) as HTMLSelectElement;
+    expect(select.value).toBe(`with:${bea}`); expect(select.selectedOptions[0].textContent).toBe('Tú y Bea · sin guardar');
+    expect(screen.queryByText('Compara con quien sigues')).toBeNull(); expect(screen.queryByRole('button', { name: 'Editar grupo' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar como grupo' }));
+    const sheet = screen.getByRole('dialog', { name: 'Crear grupo' });
+    expect((within(sheet).getByRole('textbox', { name: 'Nombre del grupo' }) as HTMLInputElement).value).toBe('Tú y Bea');
+    expect((within(sheet).getByRole('checkbox', { name: 'Bea' }) as HTMLInputElement).checked).toBe(true);
+  });
+  it('ignores ?con= for someone who is not an accepted follow', () => {
+    mocks.query = 'con=10000000-0000-4000-8000-000000000099'; render(ui([]));
+    expect(mocks.load).not.toHaveBeenCalled(); expect(screen.getByText('Compara con quien sigues')).toBeTruthy();
+  });
   it('offers a primary create action in the empty state, or people to follow when there is nobody to compare with', () => {
     const mounted = render(ui([]));
     fireEvent.click(screen.getByRole('button', { name: 'Crear tu primer grupo' }));
