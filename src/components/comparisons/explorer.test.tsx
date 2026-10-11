@@ -16,7 +16,10 @@ const group = (suffix: string, name: string): Group => ({ id: `${suffix.repeat(8
 const first = group('a', 'Lectores'); const second = group('b', 'Cine');
 const snapshot = (g: Group): Snapshot => ({ group: g, format: 'all', catalog: [], works: [], excludedSeriesWithoutEpisodes: 0 });
 function ui(groups = [first, second], viewerId = 'a') { return <NextIntlClientProvider locale="es" messages={messages}><Explorer initialGroups={groups} candidates={[{ userId: 'a', name: 'Ana', avatarUrl: null }, { userId: 'b', name: 'Bea', avatarUrl: null }]} viewerId={viewerId}/></NextIntlClientProvider>; }
-beforeEach(() => { vi.clearAllMocks(); mocks.query = ''; mocks.load.mockResolvedValue({ ok: true, data: snapshot(first) }); mocks.getUser.mockReset().mockResolvedValue({ data: { user: { id: 'a' } }, error: null }); });
+let cookieTurn = 0;
+// Another tab's login/logout rewrites the shared Supabase session cookies.
+function rotateSessionCookies() { cookieTurn += 1; document.cookie = `sb-test-auth-token=turn-${cookieTurn}; path=/`; }
+beforeEach(() => { document.cookie = 'sb-test-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'; vi.clearAllMocks(); mocks.query = ''; mocks.load.mockResolvedValue({ ok: true, data: snapshot(first) }); mocks.getUser.mockReset().mockResolvedValue({ data: { user: { id: 'a' } }, error: null }); });
 afterEach(cleanup);
 describe('independent format view retention', () => {
   it('retains controlled taste category and signal across sections and its own reload', () => {
@@ -234,12 +237,35 @@ describe('Explorer request boundaries', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Editar grupo' })); fireEvent.submit(screen.getByRole('form'));
     await waitFor(() => expect(mocks.save).toHaveBeenLastCalledWith({ id: first.id, name: saved.name, userIds: ['a', 'b'], expectedRevision: 2 }));
   });
-  it('deduplicates focus and visibility identity checks, hides evidence meanwhile and preserves the same-account draft', async () => {
+  it('keeps evidence, scroll extent and draft visible while unchanged session cookies are verified in the background', async () => {
     mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('checkbox', { name: 'Ana' });
     fireEvent.click(screen.getByRole('button', { name: 'Editar grupo' })); fireEvent.change(screen.getByLabelText('Nombre del grupo'), { target: { value: 'Borrador' } });
     let finish!: (result: { data: { user: { id: string } }; error: null }) => void;
     mocks.getUser.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
     act(() => { window.dispatchEvent(new Event('focus')); document.dispatchEvent(new Event('visibilitychange')); });
+    expect(mocks.getUser).toHaveBeenCalledOnce(); expect(screen.getByRole('form')).toBeTruthy();
+    expect(screen.queryByText(messages.comparisons.checkingSession)).toBeNull();
+    await act(async () => finish({ data: { user: { id: 'a' } }, error: null }));
+    expect((screen.getByLabelText('Nombre del grupo') as HTMLInputElement).value).toBe('Borrador');
+  });
+  it('hides evidence synchronously when session cookies change even behind a quiet check in flight', async () => {
+    mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('checkbox', { name: 'Ana' });
+    let finishQuiet!: (result: { data: { user: { id: string } }; error: null }) => void;
+    mocks.getUser.mockImplementationOnce(() => new Promise(resolve => { finishQuiet = resolve; }))
+      .mockResolvedValueOnce({ data: { user: { id: 'b' } }, error: null });
+    act(() => window.dispatchEvent(new Event('focus')));
+    expect(screen.getByRole('combobox', { name: 'Grupo' })).toBeTruthy();
+    rotateSessionCookies(); act(() => window.dispatchEvent(new Event('focus')));
+    expect(screen.queryByRole('combobox', { name: 'Grupo' })).toBeNull(); expect(screen.getByText(messages.comparisons.checkingSession)).toBeTruthy();
+    await act(async () => finishQuiet({ data: { user: { id: 'a' } }, error: null }));
+    await screen.findByText(messages.comparisons.sessionChanged); expect(mocks.getUser).toHaveBeenCalledTimes(2);
+  });
+  it('deduplicates focus and visibility identity checks, hides evidence meanwhile and preserves the same-account draft', async () => {
+    mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('checkbox', { name: 'Ana' });
+    fireEvent.click(screen.getByRole('button', { name: 'Editar grupo' })); fireEvent.change(screen.getByLabelText('Nombre del grupo'), { target: { value: 'Borrador' } });
+    let finish!: (result: { data: { user: { id: string } }; error: null }) => void;
+    mocks.getUser.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    rotateSessionCookies(); act(() => { window.dispatchEvent(new Event('focus')); document.dispatchEvent(new Event('visibilitychange')); });
     expect(mocks.getUser).toHaveBeenCalledOnce(); expect(screen.queryByRole('form')).toBeNull(); expect(screen.getByText(messages.comparisons.checkingSession)).toBeTruthy();
     await act(async () => finish({ data: { user: { id: 'a' } }, error: null }));
     expect((screen.getByLabelText('Nombre del grupo') as HTMLInputElement).value).toBe('Borrador');
@@ -256,7 +282,7 @@ describe('Explorer request boundaries', () => {
     let finishOld!: (answer: Answer) => void, rejectOld!: (error: Error) => void, finishFresh!: (answer: Answer) => void;
     mocks.getUser.mockImplementationOnce(() => new Promise((resolve, reject) => { finishOld = resolve; rejectOld = reject; }))
       .mockImplementationOnce(() => new Promise(resolve => { finishFresh = resolve; }));
-    act(() => window.dispatchEvent(new Event('focus')));
+    rotateSessionCookies(); act(() => window.dispatchEvent(new Event('focus')));
     act(() => { window.dispatchEvent(new Event('focus')); window.dispatchEvent(new Event('focus')); document.dispatchEvent(new Event('visibilitychange')); });
     expect(mocks.getUser).toHaveBeenCalledOnce();
     await act(async () => {
@@ -279,7 +305,7 @@ describe('Explorer request boundaries', () => {
     let finishOld!: (answer: Answer) => void, finishFresh!: (answer: Answer) => void;
     mocks.getUser.mockImplementationOnce(() => new Promise(resolve => { finishOld = resolve; }))
       .mockImplementationOnce(() => new Promise(resolve => { finishFresh = resolve; }));
-    act(() => window.dispatchEvent(new Event('focus'))); act(() => window.dispatchEvent(new Event('focus')));
+    rotateSessionCookies(); act(() => window.dispatchEvent(new Event('focus'))); act(() => window.dispatchEvent(new Event('focus')));
     await act(async () => finishOld({ data: { user: { id: 'a' } }, error: null }));
     expect(mocks.getUser).toHaveBeenCalledTimes(2); expect(screen.queryByRole('form')).toBeNull();
     await act(async () => finishFresh({ data: { user: { id: 'a' } }, error: null }));
@@ -312,7 +338,7 @@ describe('Explorer request boundaries', () => {
   it('accepts a freshly authenticated server payload and ignores the previous identity check', async () => {
     mocks.query = `group=${first.id}`; const mounted = render(ui()); await screen.findByRole('checkbox', { name: 'Ana' });
     let finish!: (result: { data: { user: { id: string } }; error: null }) => void;
-    mocks.getUser.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; })); act(() => window.dispatchEvent(new Event('focus')));
+    mocks.getUser.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; })); rotateSessionCookies(); act(() => window.dispatchEvent(new Event('focus')));
     expect(screen.queryByRole('combobox', { name: 'Grupo' })).toBeNull(); mounted.rerender(ui());
     await screen.findByRole('combobox', { name: 'Grupo' });
     await act(async () => finish({ data: { user: { id: 'old-check' } }, error: null }));
