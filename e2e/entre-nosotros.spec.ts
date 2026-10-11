@@ -272,7 +272,15 @@ test('two real tabs conflict, same-account focus preserves context, cookie logou
     const conflict = await comparisonResponse(page, () => page.getByRole('form', { name: 'Editar grupo' }).getByRole('button', { name: 'Guardar grupo', exact: true }).click(), request => request.includes('expectedRevision'));
     expect(resultBody(conflict)).toEqual({ ok: false, code: 'conflict' });
     await expect(page.getByRole('form', { name: 'Editar grupo' }).getByRole('alert')).toContainText('otra pestaña');
-    await page.getByRole('button', { name: 'Recargar grupo', exact: true }).click(); await settled(page);
+    // «Recargar grupo» loads at once and again when router.refresh brings the new
+    // revision. Selecting people between both found no chips (CI #1491): wait for
+    // the comparison request issued after the refreshed groups arrive.
+    let groupsRefreshed = false;
+    const refreshedGroups = page.waitForResponse(response => response.request().method() === 'GET' && response.request().headers()['rsc'] === '1'
+      && response.url().includes('/comunidad/entre-nosotros')).then(response => { groupsRefreshed = true; return response; });
+    const reloadAfterRefresh = page.waitForRequest(request => groupsRefreshed && request.method() === 'POST' && !!request.headers()['next-action']);
+    await page.getByRole('button', { name: 'Recargar grupo', exact: true }).click();
+    await refreshedGroups; await (await reloadAfterRefresh).response(); await settled(page);
     await selectPeople(page, fixture, [0, 1]); await page.getByRole('button', { name: 'Gustos', exact: true }).click();
     await page.getByRole('button', { name: 'Explorar Drama', exact: true }).click(); await settled(page);
     await other.bringToFront(); await page.bringToFront();
