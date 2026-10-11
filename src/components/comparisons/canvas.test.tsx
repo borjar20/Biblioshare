@@ -43,6 +43,26 @@ describe('comparison canvas', () => {
     const diana = screen.getByText('Diana').closest('[data-empty]')!;
     expect(diana.getAttribute('data-empty')).toBe('true'); expect(screen.getByText('Ana').closest('[data-empty]')!.getAttribute('data-empty')).toBe('false');
   });
+  it('lights a person or pair connections on hover and focus, dimming the rest of the map (#1498)', () => {
+    const { container } = render(<Harness initial={{ level: 'group' }} selection/>);
+    const canvas = container.querySelector('[data-intro]')!;
+    expect(canvas.getAttribute('data-intro')).toBe('true');
+    const person = (name: string) => screen.getByText(name).closest('[data-dimmed]')!;
+    fireEvent.pointerEnter(person('Ana'));
+    expect(canvas.getAttribute('data-highlight')).toBe('true');
+    expect(person('Carlos').getAttribute('data-dimmed')).toBe('true');
+    expect(person('Bea').getAttribute('data-dimmed')).toBe('false');
+    expect(container.querySelectorAll('[data-comparison-world] svg path[data-lit]')).toHaveLength(1);
+    fireEvent.pointerLeave(person('Ana'));
+    expect(canvas.getAttribute('data-highlight')).toBe('false');
+    expect(person('Carlos').getAttribute('data-dimmed')).toBe('false');
+    const card = container.querySelector('[data-map-pair]') as HTMLButtonElement;
+    fireEvent.focus(card);
+    expect(person('Carlos').getAttribute('data-dimmed')).toBe('true');
+    fireEvent.click(card);
+    expect(container.querySelector('[data-intro]')!.getAttribute('data-intro')).toBe('false');
+    expect(container.querySelector('[data-intro]')!.getAttribute('data-highlight')).toBe('false');
+  });
   it('reveals an item return button occluded by the sticky app header and restores the original page position', async () => {
     render(<><header style={{ position: 'sticky', top: 0 }}>Cabecera</header><Harness initial={{ level: 'region', people: ['0', '1'], mask: 3 }}/></>);
     vi.stubGlobal('scrollY', 1600);

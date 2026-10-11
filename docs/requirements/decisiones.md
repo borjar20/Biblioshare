@@ -7707,3 +7707,18 @@ comparten fila y los nombres de la pareja quedan solo para lectores de pantalla,
 porque los chips ya los muestran; por debajo de 380 px la ruta muestra solo el nivel
 actual. Con diez personas el Venn queda entero dentro del marco a 1280, 390 y 320 px.
 Evidencia en `docs/testing/2026-10-11-entre-nosotros-venn-visible.md`.
+
+## 2026-10-11 — Entre nosotros: mapa del grupo con entrada y conexiones que se resaltan (#1498)
+
+El mapa ya no aparece como una imagen fija. Cuando el lienzo se abre en él, las
+personas se asientan una tras otra, las curvas se dibujan de la más fuerte a la más
+débil, el contador «historias os conectan» sube hasta su valor y las tarjetas de
+pareja llegan escalonadas. La entrada se reproduce solo al abrir el lienzo en el
+mapa: al volver desde el Venn manda la transformación de #1497.
+
+Pasar el ratón o el foco por una persona enciende todas sus conexiones con obras
+(también las que el esqueleto del mapa no dibuja) y atenúa al resto. Sobre una
+tarjeta o fila de pareja se enciende su curva y se atenúa a quien no participa.
+Nombres y recuentos llevan un halo del color del papel para que las curvas no los
+corten. Con movimiento reducido no hay entrada; el resaltado se mantiene porque
+comunica estado. Evidencia en `docs/testing/2026-10-11-entre-nosotros-mapa-vivo.md`.

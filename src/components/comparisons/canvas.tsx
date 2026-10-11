@@ -28,6 +28,18 @@ function Cover({ work, title }: { work: CatalogWork; title: string }) {
       : <span className={styles.fallback}><span>{title}</span><small>{t('noCover')}</small></span>}
   </span><span className={styles.coverTitle}>{title}</span></>;
 }
+/** Counts up once on the first map entrance; everywhere else it is just the number. */
+function useCountUp(target: number, run: boolean): number {
+  const [shown, setShown] = useState(0);
+  useEffect(() => {
+    if (!run) return;
+    const start = performance.now(); let frame = 0;
+    const tick = (now: number) => { const t = Math.min(1, (now - start) / 900); setShown(Math.round(target * (1 - (1 - t) ** 3))); if (t < 1) frame = requestAnimationFrame(tick); };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [target, run]);
+  return run ? shown : target;
+}
 type NavigationMemory = { pair: string | null; mapOrigin: 'pair' | 'selection'; region: number | null; refreshFocus: boolean; scroll: Record<string, number> };
 export function ComparisonCanvas(props: Props) {
   const navigationRef = useRef<NavigationMemory>({ pair: null, mapOrigin: 'pair', region: null, refreshFocus: false, scroll: {} });
@@ -65,6 +77,10 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, nav
   const [morphPeople, setMorphPeople] = useState<string[]>(view.level === 'venn' ? view.people : []);
   if (view.level === 'venn' && view.people.join() !== morphPeople.join()) setMorphPeople(view.people);
   const [morePairs, setMorePairs] = useState(false);
+  // The map plays its entrance only when the canvas opens on it (#1498); returns use the morph.
+  const [intro, setIntro] = useState(view.level === 'group');
+  if (intro && view.level !== 'group') setIntro(false);
+  const [highlight, setHighlight] = useState<string[] | null>(null);
   useLayoutEffect(() => {
     if (typeof matchMedia === 'undefined') return;
     const media = matchMedia('(prefers-reduced-motion: reduce)');
@@ -96,6 +112,7 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, nav
   const sharedAll = facetMode ? [] : snapshot.catalog.filter(work => members.length >= 2 && members.every(member => snapshot.works.some(row => row.userId === member.userId && row.key === work.key)))
     .toSorted((a, b) => a.title.localeCompare(b.title) || a.key.localeCompare(b.key)).map(work => work.key);
   const connectedKeys = [...new Set(pairs.flatMap(pair => pair.keys))];
+  const sharedCount = useCountUp(connectedKeys.length, intro && !reduced && view.level === 'group');
   const sampleSize = width <= 360 ? 1 : 3;
   const mapPile = connectedKeys;
   const representatives = facetMode ? [] : view.level === 'group' ? mapPile.slice(0, sampleSize)
@@ -133,11 +150,18 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, nav
   const morphCircles = morphing ? morphPeople.map((id, index) => morphCircle({ ...avatarCenter(id), radius: 26.5 / overview.camera.scale }, vennCircles(morphPeople.length)[index], layers.circle)) : [];
   const shownVenn = view.level === 'venn' ? vennPeople : morphing ? morphPeople : [];
   const shownZones = view.level === 'venn' ? zones : morphing ? regions(snapshot, morphPeople) : [];
+  // Hovering or focusing a person or pair lights its connections and dims the rest of the map.
+  const lit = view.level === 'group' && !morphing ? highlight : null;
+  const touches = (pair: { people: string[] }) => !!lit && (lit.length === 1 ? pair.people.includes(lit[0]) : lit.every(id => pair.people.includes(id)));
+  const backbone = mapBackbone(pairs);
+  const drawn = lit ? [...backbone, ...pairs.filter(pair => pair.keys.length && touches(pair) && !backbone.includes(pair))] : backbone;
+  const litPeople = new Set(lit?.length === 1 ? [lit[0], ...pairs.filter(pair => pair.keys.length && touches(pair)).flatMap(pair => pair.people)] : lit ?? []);
+  const highlightOn = (people: string[]) => ({ onPointerEnter: () => setHighlight(people), onPointerLeave: () => setHighlight(null), onFocus: () => setHighlight(people), onBlur: () => setHighlight(null) });
   const poses = { ...destination.poses, ...scene.poses };
   const catalog = new Map(snapshot.catalog.map(work => [work.key, work]));
   const titleFor = (work: CatalogWork) => work.metadataMissing || !work.title ? t('missingMetadata') : work.title;
   function rememberScroll() { navigationRef.current.scroll[viewId] = host.current?.scrollTop ?? 0; }
-  function openPair(people: string[], mapOrigin: NavigationMemory['mapOrigin'] = 'pair') { rememberScroll(); navigationRef.current.pair = JSON.stringify(people); navigationRef.current.mapOrigin = mapOrigin; focusAfter.current = 'back'; onView({ level: 'venn', people }); }
+  function openPair(people: string[], mapOrigin: NavigationMemory['mapOrigin'] = 'pair') { setHighlight(null); rememberScroll(); navigationRef.current.pair = JSON.stringify(people); navigationRef.current.mapOrigin = mapOrigin; focusAfter.current = 'back'; onView({ level: 'venn', people }); }
   function openRegion(nextMask: number) { rememberScroll(); navigationRef.current.region = nextMask; focusAfter.current = 'back'; onView({ level: 'region', people: vennPeople, mask: nextMask }); }
   function openWork(key: WorkKey) {
     if (facetMode && onOpenFacetWork && view.level === 'facet') {
@@ -214,7 +238,7 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, nav
   // Reserve its destination immediately instead of tweening page geometry.
   const stageHeight = isWork ? Math.max(destination.height, evidenceHeight) : destination.height;
   const overviewControls = view.level === 'group' || view.level === 'venn';
-  return <div ref={host} tabIndex={-1} className={styles.canvas} data-view={view.level} data-camera-moving={moving} data-canvas-scroll onKeyDown={event => { if (event.key === 'Escape' && view.level !== 'group') { event.preventDefault(); back(); } }}>
+  return <div ref={host} tabIndex={-1} className={styles.canvas} data-view={view.level} data-camera-moving={moving} data-intro={intro} data-highlight={!!lit} data-canvas-scroll onKeyDown={event => { if (event.key === 'Escape' && view.level !== 'group') { event.preventDefault(); back(); } }}>
     {controls}
     <div ref={entry} className={styles.toolbar} data-canvas-toolbar>
       {view.level !== 'group' && <button ref={backButton} type="button" onClick={back}>{t(isWork ? facetMode ? 'backToFacet' : 'backToRegion' : view.level === 'region' ? 'backToVenn' : 'backToGroup')}</button>}
@@ -233,13 +257,15 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, nav
     <div className={styles.stage} style={{ height: stageHeight }} data-comparison-stage data-scene-height={stageHeight}>
       <div className={styles.world} data-comparison-world style={{ width: WORLD_WIDTH, height: worldHeight, '--camera-scale': scene.camera.scale, transform: `translate(${scene.camera.x}px, ${scene.camera.y}px) scale(${scene.camera.scale})` } as CSSProperties}>
         <svg key={view.level === 'group' ? 'map' : 'scene'} className={styles.background} data-focused={!overviewControls} width={WORLD_WIDTH} height={worldHeight} aria-hidden="true">
-          {(view.level === 'group' || morphing) && <g opacity={morphing ? layers.map : 1}>{mapBackbone(pairs).map(pair => {
+          {(view.level === 'group' || morphing) && <g opacity={morphing ? layers.map : 1}>{drawn.map((pair, rank) => {
             const start = personCenter(members.findIndex(member => member.userId === pair.people[0]), members.length, width);
             const end = personCenter(members.findIndex(member => member.userId === pair.people[1]), members.length, width);
             const strength = pairs[0]?.keys.length ? pair.keys.length / pairs[0].keys.length : 0;
             const middle = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
             const curve = { x: middle.x + (500 - middle.x) * .18, y: middle.y + (mapLayout.centerY - middle.y) * .18 };
-            return <path key={pair.people.join(':')} d={`M ${start.x} ${start.y} Q ${curve.x} ${curve.y} ${end.x} ${end.y}`} className={styles.connection} stroke={personColor(snapshot, pair.people[0])} strokeWidth={1 + strength * 5} opacity={pair.keys.length ? .2 + strength * .3 : .08}/>;
+            const extra = !backbone.includes(pair); const on = touches(pair);
+            return <path key={pair.people.join(':')} d={`M ${start.x} ${start.y} Q ${curve.x} ${curve.y} ${end.x} ${end.y}`} pathLength={1} className={extra ? `${styles.connection} ${styles.connectionExtra}` : styles.connection} data-lit={on || undefined}
+              stroke={personColor(snapshot, pair.people[0])} style={{ strokeWidth: 1 + strength * 5 + (on ? 2 : 0), opacity: lit ? on ? .9 : .05 : pair.keys.length ? .2 + strength * .3 : .08, '--draw-delay': extra ? '0ms' : `${150 + Math.min(rank, 10) * 90}ms` } as CSSProperties}/>;
           })}</g>}
           {morphing && <g data-morph={morph.toFixed(2)}>
             {morphCircles.length >= 2 && <line className={styles.morphLink} x1={morphCircles[0].x} y1={morphCircles[0].y} x2={morphCircles[1].x} y2={morphCircles[1].y} stroke={personColor(snapshot, morphPeople[0])} strokeWidth={6 / overview.camera.scale} opacity={layers.link * .45}/>}
@@ -271,7 +297,8 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, nav
             const name = member.name ?? t('unavailablePerson');
             const count = new Set(snapshot.works.filter(work => work.userId === member.userId).map(work => work.key)).size;
             const content = <><Avatar key={member.avatarUrl} name={name} url={member.avatarUrl}/><span className={styles.personName}>{name}</span><small>{t('mapPersonCount', { count })}</small></>;
-            const style = { left: overview.camera.x + point.x * overview.camera.scale, top: point.y * overview.camera.scale, '--person': personColor(snapshot, member.userId!), '--person-ink': personInk(snapshot, member.userId!) } as CSSProperties;
+            const style = { left: overview.camera.x + point.x * overview.camera.scale, top: point.y * overview.camera.scale, '--person': personColor(snapshot, member.userId!), '--person-ink': personInk(snapshot, member.userId!), '--enter-delay': `${index * 45}ms` } as CSSProperties;
+            const dimmed = !!lit && !litPeople.has(member.userId!);
             if (morphing) {
               // The pair hands over to its travelling avatars; everyone else scatters outward.
               const away = { x: point.x - 500, y: point.y - mapLayout.centerY }; const length = Math.hypot(away.x, away.y) || 1;
@@ -279,10 +306,10 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, nav
               Object.assign(style, { opacity: morphPeople.includes(member.userId!) ? 0 : layers.map * (count ? 1 : .5),
                 transform: `translate(-50%, -50%) translate(${away.x / length * drift}px, ${away.y / length * drift}px) scale(${1 - layers.scatter * .15})` });
             }
-            return selectedPeople && onTogglePerson && view.level === 'group' ? <label key={member.slotId} className={styles.person} data-compact={width <= 300} data-empty={count === 0} data-selected={selectedPeople.includes(member.userId!)} style={style}><input type="checkbox" aria-label={name} checked={selectedPeople.includes(member.userId!)} onChange={() => onTogglePerson(member.userId!)}/>{content}</label>
-              : <span key={member.slotId} className={styles.person} data-compact={width <= 300} data-empty={count === 0} style={style}>{content}</span>;
+            return selectedPeople && onTogglePerson && view.level === 'group' ? <label key={member.slotId} className={styles.person} data-compact={width <= 300} data-empty={count === 0} data-dimmed={dimmed} data-selected={selectedPeople.includes(member.userId!)} style={style} {...highlightOn([member.userId!])}><input type="checkbox" aria-label={name} checked={selectedPeople.includes(member.userId!)} onChange={() => onTogglePerson(member.userId!)}/>{content}</label>
+              : <span key={member.slotId} className={styles.person} data-compact={width <= 300} data-empty={count === 0} data-dimmed={dimmed} style={style} {...(view.level === 'group' ? highlightOn([member.userId!]) : {})}>{content}</span>;
           })}
-          <div className={styles.shared} data-compact={width <= 300} style={{ top: mapLayout.summaryY, opacity: morphing ? layers.map : undefined }}><strong>{connectedKeys.length}</strong><span>{t('connectedStories', { count: connectedKeys.length })}</span></div>
+          <div className={styles.shared} data-compact={width <= 300} style={{ top: mapLayout.summaryY, opacity: morphing ? layers.map : undefined }}><strong>{sharedCount}</strong><span>{t('connectedStories', { count: connectedKeys.length })}</span></div>
         </div>}
         {(view.level === 'venn' || morphing) && <div className={styles.layer} inert={view.level !== 'venn'}>
           {shownVenn.map((id, index) => {
@@ -316,8 +343,8 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, nav
     {view.level === 'group' && <>
       {snapshot.group.members.some(member => !member.available || !member.userId) && <p className={styles.unavailable}>{t('unavailablePerson')}</p>}
       {selectedPeople && <div className={styles.mapFooter}><p>{t('selectPair')}</p><button ref={selectionButton} type="button" disabled={selectedPeople.length < 2 || selectedPeople.length > 3} onClick={() => openPair(selectedPeople, 'selection')}>{t('compareSelection')}</button></div>}
-      <div className={styles.pairs} aria-label={t('pairConnections')}>{pairs.slice(0, 3).map(pair => <button type="button" className={styles.pairCard} data-map-pair={JSON.stringify(pair.people)} key={pair.people.join(':')} style={{ '--person': personColor(snapshot, pair.people[0]) } as CSSProperties} aria-label={`${names(pair.people)} ${t('commonCount', { count: pair.keys.length })}`} onClick={() => openPair(pair.people)}><span>{names(pair.people)}</span><strong>{t('commonCount', { count: pair.keys.length })}</strong><span className={styles.miniCovers} aria-hidden="true">{pair.keys.slice(0, 3).map(key => { const work = catalog.get(key); return work ? <span key={key}><Cover work={work} title={titleFor(work)}/></span> : null; })}</span><span className={styles.cardArrow} aria-hidden="true">↗</span></button>)}</div>
-      {pairs.length > 3 && <details className={styles.morePairs} open={morePairs} onToggle={event => setMorePairs(event.currentTarget.open)}><summary>{t('mapMoreConnections', { count: pairs.length - 3 })}</summary><div className={styles.pairRows}>{pairs.slice(3).map(pair => <button type="button" data-map-pair={JSON.stringify(pair.people)} key={pair.people.join(':')} onClick={() => openPair(pair.people)}><span>{names(pair.people)}</span>{' '}<strong>{t('commonCount', { count: pair.keys.length })}</strong></button>)}</div></details>}
+      <div className={styles.pairs} aria-label={t('pairConnections')}>{pairs.slice(0, 3).map((pair, index) => <button type="button" className={styles.pairCard} data-map-pair={JSON.stringify(pair.people)} key={pair.people.join(':')} style={{ '--person': personColor(snapshot, pair.people[0]), '--enter-delay': `${450 + index * 80}ms` } as CSSProperties} {...highlightOn(pair.people)} aria-label={`${names(pair.people)} ${t('commonCount', { count: pair.keys.length })}`} onClick={() => openPair(pair.people)}><span>{names(pair.people)}</span><strong>{t('commonCount', { count: pair.keys.length })}</strong><span className={styles.miniCovers} aria-hidden="true">{pair.keys.slice(0, 3).map(key => { const work = catalog.get(key); return work ? <span key={key}><Cover work={work} title={titleFor(work)}/></span> : null; })}</span><span className={styles.cardArrow} aria-hidden="true">↗</span></button>)}</div>
+      {pairs.length > 3 && <details className={styles.morePairs} open={morePairs} onToggle={event => setMorePairs(event.currentTarget.open)}><summary>{t('mapMoreConnections', { count: pairs.length - 3 })}</summary><div className={styles.pairRows}>{pairs.slice(3).map(pair => <button type="button" data-map-pair={JSON.stringify(pair.people)} key={pair.people.join(':')} {...highlightOn(pair.people)} onClick={() => openPair(pair.people)}><span>{names(pair.people)}</span>{' '}<strong>{t('commonCount', { count: pair.keys.length })}</strong></button>)}</div></details>}
       {!!sharedAll.length && <section className={styles.sharedShelf}><header><h3>{t('sharedShelf')}</h3><p>{t('commonCount', { count: sharedAll.length })}</p></header><ul>{sharedAll.slice(0, 6).map(key => { const work = catalog.get(key); return work ? <li key={key}><Cover work={work} title={titleFor(work)}/></li> : null; })}</ul></section>}
     </>}
     {view.level === 'region' && <div className={styles.pagination}><p aria-live="polite">{t('renderedCount', { count: pageKeys.length, total: fullKeys.length })}</p>{limit < fullKeys.length && <button type="button" onClick={() => setPages(current => ({ ...current, [pageId]: limit + 24 }))}>{t('loadMore')}</button>}</div>}
