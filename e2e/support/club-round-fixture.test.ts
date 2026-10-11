@@ -58,7 +58,8 @@ async function replaySpec(options: {
       test: register,
       expect() { throw new Error("The controlled UI checkpoint should stop before assertions"); },
     };
-    if (id === "./support/club-round-fixture") return nativeRequire(id);
+    // The shared login helper (#1494) runs only after `goto`, which the replay stops at.
+    if (id === "./support/club-round-fixture" || id === "./support/visible-form") return nativeRequire(id);
     throw new Error(`Unexpected spec import: ${id}`);
   };
   // Only synthetic configuration; never load the environment or local secrets.
