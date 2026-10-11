@@ -120,6 +120,8 @@ export async function chooseComparisonParticipants(form: Locator, owner: Compari
   await form.getByRole('checkbox', { name: 'Incluirme en la comparación', exact: true }).setChecked(actors.some(actor => actor.id === owner.id));
   for (const actor of actors) if (actor.id !== owner.id) await form.getByRole('checkbox', { name: actor.name, exact: true }).check();
 }
+/** The signed-in owner (actors[0]) reads as «Tú» in the comparison; the editor keeps real names. */
+export function shownName(fixture: ComparisonFixture, actor: ComparisonActor) { return actor.id === fixture.actors[0].id ? 'Tú' : actor.name; }
 export async function openComparisonFixture(page: Page, fixture: ComparisonFixture) {
   await loginComparisonActor(page, fixture.actors[0]);
   await page.goto('/comunidad/entre-nosotros');

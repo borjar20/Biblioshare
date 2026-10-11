@@ -4,7 +4,7 @@ import { useTranslations } from 'next-intl';
 import { findings, regions } from '@/lib/comparisons/derive';
 import type { CatalogWork, Finding, Snapshot, WorkKey } from '@/lib/comparisons/types';
 import type { View } from './state';
-import { groupMapLayout, layoutScene, mapConnections, personCenter, regionCenter, vennCircles, WORLD_HEIGHT, WORLD_WIDTH, type Scene } from './geometry';
+import { groupMapLayout, layoutScene, mapBackbone, mapConnections, personCenter, regionCenter, vennCircles, WORLD_HEIGHT, WORLD_WIDTH, type Scene } from './geometry';
 import { useCamera } from './use-camera';
 import { WorkDetail } from './work-detail';
 import { initials, personColor, personInk } from './presentation';
@@ -221,7 +221,7 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, nav
     <div className={styles.stage} style={{ height: stageHeight }} data-comparison-stage data-scene-height={stageHeight}>
       <div className={styles.world} data-comparison-world style={{ width: WORLD_WIDTH, height: worldHeight, '--camera-scale': scene.camera.scale, transform: `translate(${scene.camera.x}px, ${scene.camera.y}px) scale(${scene.camera.scale})` } as CSSProperties}>
         <svg className={styles.background} data-focused={!overviewControls} width={WORLD_WIDTH} height={worldHeight} aria-hidden="true">
-          {view.level === 'group' ? pairs.map(pair => {
+          {view.level === 'group' ? mapBackbone(pairs).map(pair => {
             const start = personCenter(members.findIndex(member => member.userId === pair.people[0]), members.length, width);
             const end = personCenter(members.findIndex(member => member.userId === pair.people[1]), members.length, width);
             const strength = pairs[0]?.keys.length ? pair.keys.length / pairs[0].keys.length : 0;
@@ -252,10 +252,11 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, nav
           {members.map((member, index) => {
             const point = personCenter(index, members.length, width);
             const name = member.name ?? t('unavailablePerson');
-            const content = <><Avatar key={member.avatarUrl} name={name} url={member.avatarUrl}/><span className={styles.personName}>{name}</span><small>{t('mapPersonCount', { count: new Set(snapshot.works.filter(work => work.userId === member.userId).map(work => work.key)).size })}</small></>;
+            const count = new Set(snapshot.works.filter(work => work.userId === member.userId).map(work => work.key)).size;
+            const content = <><Avatar key={member.avatarUrl} name={name} url={member.avatarUrl}/><span className={styles.personName}>{name}</span><small>{t('mapPersonCount', { count })}</small></>;
             const style = { left: overview.camera.x + point.x * overview.camera.scale, top: point.y * overview.camera.scale, '--person': personColor(snapshot, member.userId!), '--person-ink': personInk(snapshot, member.userId!) } as CSSProperties;
-            return selectedPeople && onTogglePerson ? <label key={member.slotId} className={styles.person} data-compact={width <= 300} data-selected={selectedPeople.includes(member.userId!)} style={style}><input type="checkbox" aria-label={name} checked={selectedPeople.includes(member.userId!)} onChange={() => onTogglePerson(member.userId!)}/>{content}</label>
-              : <span key={member.slotId} className={styles.person} data-compact={width <= 300} style={style}>{content}</span>;
+            return selectedPeople && onTogglePerson ? <label key={member.slotId} className={styles.person} data-compact={width <= 300} data-empty={count === 0} data-selected={selectedPeople.includes(member.userId!)} style={style}><input type="checkbox" aria-label={name} checked={selectedPeople.includes(member.userId!)} onChange={() => onTogglePerson(member.userId!)}/>{content}</label>
+              : <span key={member.slotId} className={styles.person} data-compact={width <= 300} data-empty={count === 0} style={style}>{content}</span>;
           })}
           <div className={styles.shared} data-compact={width <= 300} style={{ top: mapLayout.summaryY }}><strong>{connectedKeys.length}</strong><span>{t('connectedStories', { count: connectedKeys.length })}</span></div>
         </> : <>

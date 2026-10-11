@@ -9,7 +9,7 @@ import type { View } from './state';
 const load = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/comparisons/actions', () => ({ loadComparisonWork: load }));
 import { ComparisonCanvas } from './canvas';
-import { layoutScene } from './geometry';
+import { layoutScene, mapBackbone, mapConnections } from './geometry';
 const snapshot: Snapshot = { group: { id: 'g', name: 'Grupo', revision: 1, members: ['Ana', 'Bea', 'Carlos'].map((name, i) => ({ slotId: `${i}`, userId: `${i}`, name, avatarUrl: null, available: true })) }, format: 'all', catalog: Array.from({ length: 83 }, (_, i) => ({ key: `book:${i}` as WorkKey, title: `Libro ${String(i).padStart(2, '0')}`, coverUrl: '/cover.jpg', genres: [], creators: [] })), works: Array.from({ length: 83 }, (_, i) => ['0', '1'].map(userId => ({ key: `book:${i}` as WorkKey, userId, rating: null, orderUnknown: false, progress: null }))).flat(), excludedSeriesWithoutEpisodes: 0 };
 function Harness({ initial = { level: 'venn', people: ['0', '1', '2'] }, data = snapshot, selection = false }: { initial?: View; data?: Snapshot; selection?: boolean }) {
   const [view, setView] = useState<View>(initial);
@@ -25,6 +25,24 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 describe('comparison canvas', () => {
+  it('keeps a backbone of the strongest pairs plus the strongest of each person, never empty ones', () => {
+    const pair = (people: string[], count: number) => ({ people, keys: Array.from({ length: count }, (_, index) => index) });
+    const pairs = [pair(['a', 'b'], 9), pair(['a', 'c'], 8), pair(['b', 'c'], 7), pair(['a', 'd'], 6), pair(['b', 'd'], 5), pair(['c', 'd'], 4), pair(['e', 'd'], 1), pair(['a', 'e'], 1), pair(['a', 'z'], 0)];
+    expect(mapBackbone(pairs).map(item => item.people.join(''))).toEqual(['ab', 'ac', 'bc', 'ad', 'ed']);
+    const ten = Array.from({ length: 10 }, (_, index) => String(index));
+    const all = ten.flatMap((person, index) => ten.slice(index + 1).map(other => pair([person, other], 3)));
+    const drawn = mapBackbone(all); expect(all).toHaveLength(45); expect(drawn.length).toBeLessThanOrEqual(13);
+    expect(new Set(drawn.flatMap(item => item.people))).toEqual(new Set(ten));
+  });
+  it('draws only the map backbone and dims people without works', () => {
+    const withEmpty: Snapshot = { ...snapshot, group: { ...snapshot.group, members: [...snapshot.group.members, { slotId: '3', userId: '3', name: 'Diana', avatarUrl: null, available: true }] } };
+    const { container } = render(<Harness initial={{ level: 'group' }} data={withEmpty}/>);
+    const connections = mapConnections(withEmpty);
+    expect(connections.some(pair => pair.keys.length === 0)).toBe(true);
+    expect(container.querySelectorAll('[data-comparison-world] svg path')).toHaveLength(mapBackbone(connections).length);
+    const diana = screen.getByText('Diana').closest('[data-empty]')!;
+    expect(diana.getAttribute('data-empty')).toBe('true'); expect(screen.getByText('Ana').closest('[data-empty]')!.getAttribute('data-empty')).toBe('false');
+  });
   it('reveals an item return button occluded by the sticky app header and restores the original page position', async () => {
     render(<><header style={{ position: 'sticky', top: 0 }}>Cabecera</header><Harness initial={{ level: 'region', people: ['0', '1'], mask: 3 }}/></>);
     vi.stubGlobal('scrollY', 1600);

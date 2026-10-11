@@ -8,6 +8,12 @@ import { ComparisonCanvas } from './canvas';
 import { personColor, initials } from './presentation';
 import styles from './tastes.module.css';
 
+function PersonAvatar({ name, url }: { name: string; url: string | null }) {
+  const [failed, setFailed] = useState(false);
+  return <span className={styles.avatar} aria-hidden="true">{url && !failed
+    // eslint-disable-next-line @next/next/no-img-element
+    ? <img src={url} alt="" width={22} height={22} loading="lazy" onError={() => setFailed(true)}/> : initials(name)}</span>;
+}
 function EvidenceCover({ work }: { work?: CatalogWork }) {
   const [failed, setFailed] = useState(false);
   return <span className={styles.evidenceCover} aria-hidden="true">{work?.coverUrl && !failed ?
@@ -38,6 +44,7 @@ export function Tastes({ snapshot, people, onOpenWork, view, onView, controls, o
   const available = new Set(snapshot.group.members.filter(member => member.available && member.userId).map(member => member.userId));
   if (people.length < 2 || people.length > 10 || new Set(people).size !== people.length || people.some(id => !available.has(id))) return <p>{t('chooseTastePeople')}</p>;
   const name = (id: string) => snapshot.group.members.find(member => member.userId === id)?.name ?? t('unavailablePerson');
+  const avatar = (id: string) => <PersonAvatar key={id} name={name(id)} url={snapshot.group.members.find(member => member.userId === id)?.avatarUrl ?? null}/>;
   const largestConsumption = Math.max(1, ...categories.flatMap(category => category.people.map(person => person.consumed.length)));
   const bubbleSize = (count: number) => 80 * Math.sqrt(count / largestConsumption);
   const isWork = view.level === 'work';
@@ -77,8 +84,8 @@ export function Tastes({ snapshot, people, onOpenWork, view, onView, controls, o
             <div className={styles.ratingTopic}><h4>{visibleCategory.label}</h4><small>{t('ratingScale')}</small></div>
             <div className={styles.axis} aria-hidden="true"><span>0</span><span>5</span><span>10</span></div>
             {visibleCategory.people.map(person => <div className={styles.ratingRow} key={person.userId} style={{ '--person': personColor(snapshot, person.userId) } as CSSProperties}>
-              <div className={styles.ratingName}><span className={styles.avatar} aria-hidden="true">{initials(name(person.userId))}</span><span>{name(person.userId)}</span></div>
-              <div className={styles.ratingTrack} aria-hidden="true">{person.mean !== null && <><span className={styles.ratingFill} style={{ width: `${person.mean * 10}%` }}/><span className={styles.ratingEnd} style={{ left: `${person.mean * 10}%` }}/></>}</div>
+              <div className={styles.ratingName}>{avatar(person.userId)}<span>{name(person.userId)}</span></div>
+              <div className={styles.ratingTrack} aria-hidden="true">{person.mean !== null && <span className={styles.ratingFill} style={{ width: `${person.mean * 10}%` }}/>}</div>
               <div className={styles.ratingValue}><output aria-label={t('ratedSample', { count: person.rated.length })}>{person.mean == null ? t('unrated') : person.mean.toFixed(1)}</output><small>{t('ratedSample', { count: person.rated.length })}</small></div>
               <p className={styles.ratingRange}>{person.min === null ? t('noRatingRange') : t('ratingRange', { min: person.min, max: person.max! })}</p>
             </div>)}
@@ -92,7 +99,7 @@ export function Tastes({ snapshot, people, onOpenWork, view, onView, controls, o
         const covered = new Set(categories.flatMap(category => category.people.find(person => person.userId === userId)?.consumed ?? []));
         return <p key={userId}>{t('metadataCoverage', { name: name(userId), count: covered.size, total: eligible.length })}</p>;
       })}</div>
-      {selected && <section className={styles.evidence}><div className={styles.evidenceHeading}><h3>{t('facetStories', { label: selected.label })}</h3><span>{t('uniqueFacetWorks', { count: keys.length })}</span></div><div className={styles.facetEvidence}>{selected.people.map(person => <section key={person.userId} aria-label={t('personEvidence', { name: name(person.userId) })} style={{ '--person': personColor(snapshot, person.userId) } as CSSProperties}><h4><span className={styles.avatar} aria-hidden="true">{initials(name(person.userId))}</span>{name(person.userId)}</h4><ul>{person.consumed.map(key => <li key={key}><EvidenceCover key={key} work={catalog.get(key)}/><span>{t('individualWorkRating', { title: title(key), rating: snapshot.works.find(work => work.userId === person.userId && work.key === key)?.rating ?? t('unrated') })}</span></li>)}</ul>{!person.consumed.length && <p>{t('noVisibleRecord')}</p>}</section>)}</div></section>}
+      {selected && <section className={styles.evidence}><div className={styles.evidenceHeading}><h3>{t('facetStories', { label: selected.label })}</h3><span>{t('uniqueFacetWorks', { count: keys.length })}</span></div><div className={styles.facetEvidence}>{selected.people.map(person => <section key={person.userId} aria-label={t('personEvidence', { name: name(person.userId) })} style={{ '--person': personColor(snapshot, person.userId) } as CSSProperties}><h4>{avatar(person.userId)}{name(person.userId)}</h4><ul>{person.consumed.map(key => <li key={key}><EvidenceCover key={key} work={catalog.get(key)}/><span>{t('individualWorkRating', { title: title(key), rating: snapshot.works.find(work => work.userId === person.userId && work.key === key)?.rating ?? t('unrated') })}</span></li>)}</ul>{!person.consumed.length && <p>{t('noVisibleRecord')}</p>}</section>)}</div></section>}
     </div>
     {selected && <ComparisonCanvas snapshot={snapshot} view={view} onView={onView} facetKeys={keys} onOpenFacetWork={key => onOpenWork(key, { kind: 'facet', facetKind: controls.facetKind, facetId: selected.id })}/>}
   </div>;

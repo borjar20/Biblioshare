@@ -33,10 +33,10 @@
 .ratingRow { display: grid; grid-template-columns: 96px minmax(0,1fr) 76px; align-items: center; gap: 6px 10px; margin: 16px 0; }
 .ratingName { font-size: 11px; display: flex; align-items: center; gap: 5px; min-width: 0; }
 .ratingName > span:last-child { overflow-wrap: anywhere; }
-.avatar { width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 50%; background: color-mix(in srgb,var(--person) 18%,var(--surface)); color: var(--foreground); font-size: 9px; font-weight: 700; }
+.avatar { width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; border-radius: 50%; background: color-mix(in srgb,var(--person) 18%,var(--surface)); color: var(--foreground); font-size: 9px; font-weight: 700; overflow: hidden; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
 .ratingTrack { height: 7px; border-radius: 10px; background: var(--surface-muted); position: relative; }
 .ratingFill { display: block; height: 100%; border-radius: 10px; background: var(--person); }
-.ratingEnd { position: absolute; top: 50%; width: 13px; height: 13px; border-radius: 50%; background: var(--person); border: 3px solid var(--surface); box-shadow: 0 0 0 1px var(--person); transform: translate(-50%,-50%); }
 .ratingValue { font-size: 13px; font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; }
 .ratingValue small { font-size: 9px; font-weight: 400; color: var(--muted-foreground); display: block; }
 .ratingRange { grid-column: 2 / -1; font-size: 10px; color: var(--muted-foreground); }
