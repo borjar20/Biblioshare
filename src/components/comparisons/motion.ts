@@ -16,5 +16,7 @@ export function sampleMotion(from: Scene, to: Scene, elapsed: number, duration: 
     const lift = Math.min(40, Math.hypot(b.x - a.x, b.y - a.y) * .1) * 4 * t * (1 - t);
     poses[workKey] = { x: mix(a.x, b.x), y: mix(a.y, b.y) - lift, width: mix(a.width, b.width), height: mix(a.height, b.height), rotate: mix(a.rotate, b.rotate) };
   }
-  return { camera: { x: mix(from.camera.x, to.camera.x), y: mix(from.camera.y, to.camera.y), scale: mix(from.camera.scale, to.camera.scale) }, height: mix(from.height, to.height), poses };
+  const scene: Scene = { camera: { x: mix(from.camera.x, to.camera.x), y: mix(from.camera.y, to.camera.y), scale: mix(from.camera.scale, to.camera.scale) }, height: mix(from.height, to.height), poses };
+  if (from.morph !== undefined || to.morph !== undefined) scene.morph = mix(from.morph ?? 1, to.morph ?? 1);
+  return scene;
 }

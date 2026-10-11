@@ -24,6 +24,9 @@
 .fallback { display: flex; flex-direction: column; justify-content: space-between; height: 100%; padding: 12%; font-family: var(--font-serif), Georgia, serif; font-size: calc(13px / var(--camera-scale)); overflow: hidden; overflow-wrap: anywhere; border-left: 4px solid var(--accent); }
 .fallback small { font-family: sans-serif; font-size: calc(11px / var(--camera-scale)); color: var(--muted-foreground); }
 .controls { position: absolute; inset: 0; pointer-events: none; }
+.layer { position: absolute; inset: 0; pointer-events: none; }
+.morphLink { stroke-linecap: round; }
+.traveller { position: absolute; z-index: 1; pointer-events: none; }
 .person, .region { position: absolute; transform: translate(-50%, -50%); }
 .person { width: 100px; height: 110px; padding: 3px; font-size: 12px; line-height: 1.2; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: auto; }
 .person[data-compact=true] { width: 68px; font-size: 11px; }
@@ -144,4 +147,7 @@
 }
 @media(prefers-reduced-motion: reduce) {
   .canvas *, .canvas *::before, .canvas *::after { scroll-behavior: auto; transition: none; }
+  /* No travelling between map and Venn: the new layer simply fades in. */
+  .background, .controls { animation: settle 200ms ease-out both; }
 }
+@keyframes settle { from { opacity: 0; } }

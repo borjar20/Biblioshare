@@ -7679,3 +7679,20 @@ Solo parejas: es lo que se compara desde un perfil y evita inventar una selecci�
 temporal de varias personas. Al crear un grupo, el nombre se propone a partir de
 quien está en él («Tú, Ana y Carlos»; pasados 60 caracteres, «Tú, Ana y 3 más»)
 hasta que se edita; editar un grupo conserva su nombre.
+
+## 2026-10-11 — Entre nosotros: el mapa del grupo se transforma en el Venn (#1497)
+
+Al abrir una pareja o un trío, el Venn ya no sustituye al mapa en un fotograma. Cada
+avatar crece hasta convertirse en su círculo, el resto del grupo se dispersa y se
+desvanece, la curva de la pareja se contrae hacia la intersección, los nombres llegan
+a su sitio y los contadores de región entran escalonados contando desde cero. Volver
+recorre lo mismo al revés.
+
+La secuencia comparte el reloj de la cámara: `Scene` lleva un valor `morph` (0 en el
+mapa, 1 en cualquier escena enfocada) que `sampleMotion` interpola con portadas y
+encuadre. Así una vuelta o una interrupción continúan desde lo que se ve, como ya
+pasaba con las portadas. Cada capa lee su tramo de ese valor (`morph.ts`). El tono
+lo eligió el usuario en la revisión visual («espectacular»), con los 850 ms ya
+aprobados para el salto entre mapa y Venn. Con movimiento reducido no hay recorrido:
+la capa nueva aparece con un fundido de 200 ms. Evidencia en
+`docs/testing/2026-10-11-entre-nosotros-mapa-venn.md`.

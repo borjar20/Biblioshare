@@ -4,8 +4,9 @@ import { useTranslations } from 'next-intl';
 import { findings, regions } from '@/lib/comparisons/derive';
 import type { CatalogWork, Finding, Snapshot, WorkKey } from '@/lib/comparisons/types';
 import type { View } from './state';
-import { groupMapLayout, layoutScene, mapBackbone, mapConnections, personCenter, regionCenter, vennCircles, WORLD_HEIGHT, WORLD_WIDTH, type Scene } from './geometry';
+import { groupMapLayout, layoutScene, mapBackbone, mapConnections, personCenter, regionCenter, vennCircles, vennLabelPoint, WORLD_HEIGHT, WORLD_WIDTH, type Scene } from './geometry';
 import { useCamera } from './use-camera';
+import { morphCircle, morphLayers, regionEntry } from './morph';
 import { WorkDetail } from './work-detail';
 import { initials, personColor, personInk } from './presentation';
 import styles from './canvas.module.css';
@@ -60,6 +61,9 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, nav
     return { [JSON.stringify([view.people, origin.mask, 'all'])]: Math.max(24, Math.ceil((index + 1) / 24) * 24) };
   });
   const [signal, setSignal] = useState<'all' | Finding['kind']>('all');
+  // The last opened pair: the Venn grows out of its avatars and folds back into them.
+  const [morphPeople, setMorphPeople] = useState<string[]>(view.level === 'venn' ? view.people : []);
+  if (view.level === 'venn' && view.people.join() !== morphPeople.join()) setMorphPeople(view.people);
   const [morePairs, setMorePairs] = useState(false);
   useLayoutEffect(() => {
     if (typeof matchMedia === 'undefined') return;
@@ -121,6 +125,14 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, nav
   const destination = target.scene;
   const scene = useCamera(destination, journey.transition, reduced);
   const moving = scene !== destination;
+  const morph = scene.morph ?? 1;
+  const morphing = !facetMode && morph > 0 && morph < 1 && morphPeople.length >= 2 && morphPeople.length <= 3;
+  const layers = morphLayers(morph);
+  // The avatar disc sits 25.5px above its person point (110px label, 3px padding, 53px disc).
+  const avatarCenter = (id: string) => { const point = personCenter(members.findIndex(member => member.userId === id), members.length, width); return { x: point.x, y: point.y - 25.5 / overview.camera.scale }; };
+  const morphCircles = morphing ? morphPeople.map((id, index) => morphCircle({ ...avatarCenter(id), radius: 26.5 / overview.camera.scale }, vennCircles(morphPeople.length)[index], layers.circle)) : [];
+  const shownVenn = view.level === 'venn' ? vennPeople : morphing ? morphPeople : [];
+  const shownZones = view.level === 'venn' ? zones : morphing ? regions(snapshot, morphPeople) : [];
   const poses = { ...destination.poses, ...scene.poses };
   const catalog = new Map(snapshot.catalog.map(work => [work.key, work]));
   const titleFor = (work: CatalogWork) => work.metadataMissing || !work.title ? t('missingMetadata') : work.title;
@@ -220,15 +232,20 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, nav
     </header>}
     <div className={styles.stage} style={{ height: stageHeight }} data-comparison-stage data-scene-height={stageHeight}>
       <div className={styles.world} data-comparison-world style={{ width: WORLD_WIDTH, height: worldHeight, '--camera-scale': scene.camera.scale, transform: `translate(${scene.camera.x}px, ${scene.camera.y}px) scale(${scene.camera.scale})` } as CSSProperties}>
-        <svg className={styles.background} data-focused={!overviewControls} width={WORLD_WIDTH} height={worldHeight} aria-hidden="true">
-          {view.level === 'group' ? mapBackbone(pairs).map(pair => {
+        <svg key={view.level === 'group' ? 'map' : 'scene'} className={styles.background} data-focused={!overviewControls} width={WORLD_WIDTH} height={worldHeight} aria-hidden="true">
+          {(view.level === 'group' || morphing) && <g opacity={morphing ? layers.map : 1}>{mapBackbone(pairs).map(pair => {
             const start = personCenter(members.findIndex(member => member.userId === pair.people[0]), members.length, width);
             const end = personCenter(members.findIndex(member => member.userId === pair.people[1]), members.length, width);
             const strength = pairs[0]?.keys.length ? pair.keys.length / pairs[0].keys.length : 0;
             const middle = { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 };
             const curve = { x: middle.x + (500 - middle.x) * .18, y: middle.y + (mapLayout.centerY - middle.y) * .18 };
             return <path key={pair.people.join(':')} d={`M ${start.x} ${start.y} Q ${curve.x} ${curve.y} ${end.x} ${end.y}`} className={styles.connection} stroke={personColor(snapshot, pair.people[0])} strokeWidth={1 + strength * 5} opacity={pair.keys.length ? .2 + strength * .3 : .08}/>;
-          }) : !facetMode && vennCircles(vennPeople.length).map(({ x, y, radius }, index) => <circle key={index} cx={x} cy={y} r={radius} className={styles.vennCircle} style={{ '--person': personColor(snapshot, vennPeople[index]) } as CSSProperties} data-person={index}/>)}
+          })}</g>}
+          {morphing && <g data-morph={morph.toFixed(2)}>
+            {morphCircles.length >= 2 && <line className={styles.morphLink} x1={morphCircles[0].x} y1={morphCircles[0].y} x2={morphCircles[1].x} y2={morphCircles[1].y} stroke={personColor(snapshot, morphPeople[0])} strokeWidth={6 / overview.camera.scale} opacity={layers.link * .45}/>}
+            {morphCircles.map((circle, index) => <circle key={morphPeople[index]} cx={circle.x} cy={circle.y} r={circle.radius} className={styles.vennCircle} style={{ '--person': personColor(snapshot, morphPeople[index]), strokeOpacity: layers.circle } as CSSProperties}/>)}
+          </g>}
+          {!morphing && view.level !== 'group' && !facetMode && vennCircles(vennPeople.length).map(({ x, y, radius }, index) => <circle key={index} cx={x} cy={y} r={radius} className={styles.vennCircle} style={{ '--person': personColor(snapshot, vennPeople[index]) } as CSSProperties} data-person={index}/>)}
         </svg>
         {keys.map(key => {
           const work = catalog.get(key); const pose = poses[key];
@@ -247,29 +264,52 @@ function CanvasSession({ snapshot, view, onView, facetKeys, onOpenFacetWork, nav
           </button>;
         })}
       </div>
-      {overviewControls && <div className={styles.controls}>
-        {view.level === 'group' ? <>
+      {(overviewControls || morphing) && <div key={view.level === 'group' ? 'map' : 'venn'} className={styles.controls}>
+        {(view.level === 'group' || morphing) && <div className={styles.layer} inert={view.level !== 'group'}>
           {members.map((member, index) => {
             const point = personCenter(index, members.length, width);
             const name = member.name ?? t('unavailablePerson');
             const count = new Set(snapshot.works.filter(work => work.userId === member.userId).map(work => work.key)).size;
             const content = <><Avatar key={member.avatarUrl} name={name} url={member.avatarUrl}/><span className={styles.personName}>{name}</span><small>{t('mapPersonCount', { count })}</small></>;
             const style = { left: overview.camera.x + point.x * overview.camera.scale, top: point.y * overview.camera.scale, '--person': personColor(snapshot, member.userId!), '--person-ink': personInk(snapshot, member.userId!) } as CSSProperties;
-            return selectedPeople && onTogglePerson ? <label key={member.slotId} className={styles.person} data-compact={width <= 300} data-empty={count === 0} data-selected={selectedPeople.includes(member.userId!)} style={style}><input type="checkbox" aria-label={name} checked={selectedPeople.includes(member.userId!)} onChange={() => onTogglePerson(member.userId!)}/>{content}</label>
+            if (morphing) {
+              // The pair hands over to its travelling avatars; everyone else scatters outward.
+              const away = { x: point.x - 500, y: point.y - mapLayout.centerY }; const length = Math.hypot(away.x, away.y) || 1;
+              const drift = layers.scatter * 70;
+              Object.assign(style, { opacity: morphPeople.includes(member.userId!) ? 0 : layers.map * (count ? 1 : .5),
+                transform: `translate(-50%, -50%) translate(${away.x / length * drift}px, ${away.y / length * drift}px) scale(${1 - layers.scatter * .15})` });
+            }
+            return selectedPeople && onTogglePerson && view.level === 'group' ? <label key={member.slotId} className={styles.person} data-compact={width <= 300} data-empty={count === 0} data-selected={selectedPeople.includes(member.userId!)} style={style}><input type="checkbox" aria-label={name} checked={selectedPeople.includes(member.userId!)} onChange={() => onTogglePerson(member.userId!)}/>{content}</label>
               : <span key={member.slotId} className={styles.person} data-compact={width <= 300} data-empty={count === 0} style={style}>{content}</span>;
           })}
-          <div className={styles.shared} data-compact={width <= 300} style={{ top: mapLayout.summaryY }}><strong>{connectedKeys.length}</strong><span>{t('connectedStories', { count: connectedKeys.length })}</span></div>
-        </> : <>
-          {vennPeople.map((id, index) => {
-            const circle = vennCircles(vennPeople.length)[index];
-            const x = vennPeople.length === 2 ? circle.x + (index ? 115 : -115) : index === 2 ? circle.x : circle.x + (index ? 115 : -115);
-            const y = vennPeople.length === 2 ? circle.y - circle.radius + 32 : index === 2 ? circle.y + circle.radius + 22 : circle.y - circle.radius + 32;
-            return <span key={id} className={styles.vennLabel} style={{ left: overview.camera.x + x * overview.camera.scale, top: y * overview.camera.scale, '--person': personColor(snapshot, id) } as CSSProperties}><i aria-hidden="true"/>{names([id])}</span>;
+          <div className={styles.shared} data-compact={width <= 300} style={{ top: mapLayout.summaryY, opacity: morphing ? layers.map : undefined }}><strong>{connectedKeys.length}</strong><span>{t('connectedStories', { count: connectedKeys.length })}</span></div>
+        </div>}
+        {(view.level === 'venn' || morphing) && <div className={styles.layer} inert={view.level !== 'venn'}>
+          {shownVenn.map((id, index) => {
+            const point = vennLabelPoint(shownVenn.length, index);
+            const style = { left: overview.camera.x + point.x * overview.camera.scale, top: point.y * overview.camera.scale, '--person': personColor(snapshot, id) } as CSSProperties;
+            if (morphing) Object.assign(style, { opacity: layers.label, transform: `translate(-50%, -50%) translateY(${(1 - layers.label) * 10}px)` });
+            return <span key={id} className={styles.vennLabel} style={style}><i aria-hidden="true"/>{names([id])}</span>;
           })}
-          {zones.map(zone => { const point = regionCenter(vennPeople.length, zone.mask); return <button type="button" key={zone.mask} className={styles.region} data-region-mask={zone.mask} data-empty={!zone.keys.length}
-            style={{ left: overview.camera.x + point.x * overview.camera.scale + (zone.keys.length ? 25 : 0), top: point.y * overview.camera.scale + (zone.keys.length ? 30 : 0) }}
-            aria-label={t('openRegion', { people: names(zone.people), count: zone.keys.length })} onClick={() => openRegion(zone.mask)}><strong>{zone.keys.length}</strong>{signal !== 'all' && <span>{t('matchingCount', { count: matchingKeys(zone.keys, zone.people).length })}</span>}</button>; })}
-        </>}
+          {shownZones.map((zone, index) => {
+            const point = regionCenter(shownVenn.length, zone.mask);
+            const entry = morphing ? regionEntry(morph, index, zone.keys.length) : null;
+            const style = { left: overview.camera.x + point.x * overview.camera.scale + (zone.keys.length ? 25 : 0), top: point.y * overview.camera.scale + (zone.keys.length ? 30 : 0) } as CSSProperties;
+            if (entry) Object.assign(style, { opacity: entry.t, transform: `translate(-50%, -50%) scale(${entry.scale})` });
+            const shown = <><strong>{entry ? entry.shown : zone.keys.length}</strong>{signal !== 'all' && !entry && <span>{t('matchingCount', { count: matchingKeys(zone.keys, zone.people).length })}</span>}</>;
+            return view.level === 'venn' ? <button type="button" key={zone.mask} className={styles.region} data-region-mask={zone.mask} data-empty={!zone.keys.length} style={style}
+              aria-label={t('openRegion', { people: names(zone.people), count: zone.keys.length })} onClick={() => openRegion(zone.mask)}>{shown}</button>
+              : <span key={zone.mask} className={styles.region} data-empty={!zone.keys.length} style={style}>{shown}</span>;
+          })}
+        </div>}
+        {morphing && morphPeople.map((id, index) => {
+          const member = members.find(item => item.userId === id); if (!member) return null;
+          const from = avatarCenter(id); const to = vennLabelPoint(morphPeople.length, index);
+          const x = from.x + (to.x - from.x) * layers.travel; const y = from.y + (to.y - from.y) * layers.travel;
+          return <span key={id} className={styles.traveller} aria-hidden="true" style={{ left: overview.camera.x + x * overview.camera.scale, top: y * overview.camera.scale, opacity: layers.avatar,
+            transform: `translate(-50%, -50%) scale(${1 - layers.travel * .7})`, '--person': personColor(snapshot, id), '--person-ink': personInk(snapshot, id) } as CSSProperties}>
+            <Avatar name={member.name ?? t('unavailablePerson')} url={member.avatarUrl}/></span>;
+        })}
       </div>}
       {isWork && catalog.has(view.key) && <WorkDetail snapshot={snapshot} view={view} work={catalog.get(view.key)!} onEvidenceHeight={setEvidenceHeight}/>}
     </div>
