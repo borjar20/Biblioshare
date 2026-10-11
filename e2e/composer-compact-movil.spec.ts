@@ -1,4 +1,5 @@
 import { test, expect, type Page, type Locator } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 // El recuadro para editar un comentario del hilo era inservible en móvil: el
 // modo `compact` de CommentComposer ponía textarea, "Cancelar" y "Guardar" en
@@ -42,9 +43,7 @@ const MARCA = "e2e-ancho-editor";
 
 async function login(page: Page) {
   await page.goto("/login");
-  await page.fill('input[name="email"]', EMAIL);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, EMAIL, PASSWORD);
   await page.waitForURL("/");
 }
 

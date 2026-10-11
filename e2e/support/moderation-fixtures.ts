@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+import { submitLogin } from "./visible-form";
 
 export const namespace = "qa1183moderation";
 export const ids = {
@@ -80,8 +81,6 @@ export async function seed(owner: ModerationUser, admin: ModerationUser) {
 }
 export async function login(page: Page, user: ModerationUser) {
   await page.goto("/login");
-  await page.locator('input[name="email"]').fill(user.email);
-  await page.locator('input[name="password"]').fill(user.password);
-  await page.locator('button[type="submit"]').click();
+  await submitLogin(page, user.email, user.password);
   await page.waitForURL("/");
 }

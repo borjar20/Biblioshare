@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 // E2E de la issue #198: la ficha lee la colocación curada de un bloque
 // (`sagas.position_in_parent`/`placement_in_parent`), en vez de la heurística
@@ -37,9 +38,7 @@ const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 async function loginAsDevtest(page: Page) {
   await page.goto("/login");
-  await page.fill('input[name="email"]', EMAIL);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, EMAIL, PASSWORD);
   await page.waitForURL("/");
 }
 

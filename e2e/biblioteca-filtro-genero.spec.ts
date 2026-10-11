@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
@@ -15,9 +16,7 @@ const ITEM_LINKS = 'a[href^="/libro/"], a[href^="/pelicula/"], a[href^="/serie/"
 // catalogados) el test pasa igualmente en vez de fallar por dato de seed.
 test("filtro de género acota la biblioteca", async ({ page }) => {
   await page.goto("/login");
-  await page.fill('input[name="email"]', EMAIL);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, EMAIL, PASSWORD);
   await page.waitForURL("/");
 
   await page.goto("/coleccion?tab=todo");

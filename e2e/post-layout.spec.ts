@@ -1,4 +1,5 @@
 import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 // Layout responsive de `/post/[id]` en TRES áreas (OBRA · CONVERSACIÓN · SOCIAL):
 // las tres columnas se mantienen hasta ~1000, los raíles se compactan antes de
@@ -73,9 +74,7 @@ async function deleteUser(id: string) {
 
 async function login(page: Page) {
   await page.goto("/login");
-  await page.fill('input[name="email"]', EMAIL);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, EMAIL, PASSWORD);
   await page.waitForURL("/");
 }
 

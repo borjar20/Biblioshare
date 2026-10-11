@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 // Issue #514. La ruta genérica de actividad, `/club/[slug]/actividad/[id]`, se
 // compila como Partial Prerender (`◐` en `next build`) y en un build de
@@ -67,9 +68,7 @@ test("la ruta genérica de actividad no sirve la ficha de un evento (#514)", asy
   test.skip(!evento, "no hay ningún evento en dev con el que probar");
 
   await page.goto("/login");
-  await page.fill('input[name="email"]', process.env.TEST_USER_EMAIL!);
-  await page.fill('input[name="password"]', process.env.TEST_USER_PASSWORD!);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, process.env.TEST_USER_EMAIL!, process.env.TEST_USER_PASSWORD!);
   await page.waitForURL("/");
 
   const respuesta = await page.goto(`/club/${CLUB_SLUG}/actividad/${evento.id}`);

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 // Visor de animaciones de la mascota (spec bellota-visor §3): guardia de admin y rejilla.
 const EMAIL = process.env.TEST_USER_EMAIL!;
@@ -28,9 +29,7 @@ test("admin: 19 sprites, la escala 3× ensancha el sprite y los controles mueven
   // Prueba el retorno tras autenticarse, además de abrir la galería.
   await page.goto("/admin/mascota");
   await expect(page).toHaveURL(/\/login\?next=%2Fadmin%2Fmascota$/);
-  await page.fill('input[name="email"]', EMAIL);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, EMAIL, PASSWORD);
   await page.waitForURL((url) => url.pathname === "/admin/mascota");
   const sprites = page.getByTestId("pet-gallery").getByRole("img");
   await expect(sprites).toHaveCount(19);

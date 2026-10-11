@@ -4,6 +4,7 @@ import { BROTE, RULESET } from "../src/lib/pet/battle/content";
 import { POLICIES, runPolicy } from "../src/lib/pet/battle/policies";
 import type { BattleSnapshot } from "../src/lib/pet/battle/types";
 import { createUltiPuzzle } from "../src/lib/pet/battle/ulti";
+import { submitLogin } from "./support/visible-form";
 
 test.use({ actionTimeout: 20_000 });
 
@@ -26,9 +27,7 @@ async function cleanPreviousRun(request: APIRequestContext) {
 
 async function login(page: Page, user: { email: string; password: string }) {
   await page.goto(`/login?next=${encodeURIComponent("/mascota?view=training")}`);
-  await page.locator('input[name="email"]').fill(user.email);
-  await page.locator('input[name="password"]').fill(user.password);
-  await page.locator('button[type="submit"]').click();
+  await submitLogin(page, user.email, user.password);
   await expect(page).toHaveURL(/\/mascota\?view=training$/, { timeout: 30_000 });
   // Wait for the authenticated destination to commit. Starting a second hard
   // navigation on the URL change alone can race the login response's cookies.

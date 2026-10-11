@@ -1,4 +1,5 @@
 import { test, expect, type APIRequestContext } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
@@ -59,9 +60,7 @@ test("evento: se crea, no aparece en Actividades, se ve en el calendario, y se m
 
   await page.setViewportSize({ width: 420, height: 1100 });
   await page.goto("/login");
-  await page.fill('input[name="email"]', EMAIL);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, EMAIL, PASSWORD);
   await page.waitForURL("/");
 
   const headers = adminHeaders();
@@ -357,9 +356,7 @@ test("evento: un miembro raso no ve la tarjeta 'Evento' en el asistente", async 
     membershipAdded = true;
 
     await page.goto("/login");
-    await page.fill('input[name="email"]', miembro.email);
-    await page.fill('input[name="password"]', miembro.password);
-    await page.click('button[type="submit"]');
+    await submitLogin(page, miembro.email, miembro.password);
     await page.waitForURL("/");
 
     await page.goto(`/club/${CLUB_SLUG}?tab=actividades`);

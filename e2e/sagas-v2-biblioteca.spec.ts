@@ -1,4 +1,5 @@
 import { test, expect, type Locator, type Page } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 // e2e de la pestaña «Sagas» de Mi Biblioteca (Sagas v2 fase 5, Task 5):
 // seguir/dejar de seguir desde la ficha y ver reflejado el estado en
@@ -22,9 +23,7 @@ const SAGA_UNIVERSO_NAME = "[QA Sagas v2] Universo";
 // `sagas-v2-editor.spec.ts` (patrón del repo: no importar entre specs de e2e).
 async function loginAs(page: Page, email: string, password: string) {
   await page.goto("/login");
-  await page.fill('input[name="email"]', email);
-  await page.fill('input[name="password"]', password);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, email, password);
   await page.waitForURL("/");
 }
 

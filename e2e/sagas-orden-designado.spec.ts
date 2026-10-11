@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 // E2E de la fase 4 (A): el curador DESIGNA cuál de sus itinerarios ocupa el
 // puesto y la etiqueta de «Orden de lectura» en la ficha, y con uno designado
@@ -30,9 +31,7 @@ let routeId: string;
 
 async function loginAsDevtest(page: Page) {
   await page.goto("/login");
-  await page.fill('input[name="email"]', EMAIL);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, EMAIL, PASSWORD);
   await page.waitForURL("/");
 }
 

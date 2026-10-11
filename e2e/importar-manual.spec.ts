@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { withBattleUsers } from "./support/battle-users";
+import { submitLogin } from "./support/visible-form";
 
 test("alta manual directa y cola de otro usuario usan la RPC de catálogo", async ({ page }) => {
   test.setTimeout(180_000);
@@ -37,9 +38,7 @@ test("alta manual directa y cola de otro usuario usan la RPC de catálogo", asyn
           publisher: null, pageCount: 100, status: "planned", rating: null, bookFormat: null,
           diaryDates: [], unknownStatusLabel: null } });
       await page.goto("/login");
-      await page.locator('input[name="email"]').fill(reviewer.email);
-      await page.locator('input[name="password"]').fill(reviewer.password);
-      await page.getByRole("button", { name: "Entrar", exact: true }).click();
+      await submitLogin(page, reviewer.email, reviewer.password);
       await page.waitForURL("/");
 
       await page.goto("/importar");

@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 // Arranque copiado de e2e/posts.spec.ts (los specs de e2e no se importan entre
 // sí: se copian los helpers). Cubre lo que en esta rama no puede cubrir un
@@ -57,9 +58,7 @@ async function devtestId(): Promise<string> {
 
 async function login(page: Page) {
   await page.goto("/login");
-  await page.fill('input[name="email"]', EMAIL);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, EMAIL, PASSWORD);
   await page.waitForURL("/");
 }
 

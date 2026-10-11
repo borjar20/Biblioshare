@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 // e2e de curación de sagas (Sagas v2 fase 3.5, Task 6): crear desde /sagas,
 // anidar en universo, editar la ficha de una saga, y multi-chip + "hacer
@@ -44,9 +45,7 @@ const SAGA_URL_RE = new RegExp(`/saga/(${UUID_PART})$`, "i");
 // no importar entre specs de e2e).
 async function loginAs(page: Page, email: string, password: string) {
   await page.goto("/login");
-  await page.fill('input[name="email"]', email);
-  await page.fill('input[name="password"]', password);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, email, password);
   await page.waitForURL("/");
 }
 

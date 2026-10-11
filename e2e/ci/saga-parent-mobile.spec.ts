@@ -3,6 +3,7 @@ import { appendFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { submitLogin } from "../support/visible-form";
 
 if (process.env.NEXT_PUBLIC_SUPABASE_URL !== "http://127.0.0.1:54321") {
   throw new Error("#1311 requires disposable local Supabase");
@@ -200,9 +201,7 @@ for (const fixture of fixtures) {
       const errors: string[] = [];
       page.on("pageerror", error => errors.push(error.message));
       await page.goto("/login?next=/sagas/nueva");
-      await page.locator('input[name="email"]').fill(credentials.email);
-      await page.locator('input[name="password"]').fill(credentials.password);
-      await page.locator('button[type="submit"]').click();
+      await submitLogin(page, credentials.email, credentials.password);
       await expect(page).toHaveURL(/\/sagas\/nueva$/);
       await expect(page.getByRole("heading", { name: "Nueva saga", level: 1, exact: true })).toBeVisible();
       await page.locator('input[name="name"]').fill(fixture.childName);

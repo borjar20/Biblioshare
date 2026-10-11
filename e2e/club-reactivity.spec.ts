@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
@@ -34,9 +35,7 @@ test("el feed de club refleja un post nuevo y su borrado sin recargar", async ({
   try {
     // ── Login (devtest, miembro del club público) ──
     await page.goto("/login");
-    await page.fill('input[name="email"]', EMAIL);
-    await page.fill('input[name="password"]', PASSWORD);
-    await page.click('button[type="submit"]');
+    await submitLogin(page, EMAIL, PASSWORD);
     await page.waitForURL("/");
 
     await page.goto(`/club/${CLUB_SLUG}`);

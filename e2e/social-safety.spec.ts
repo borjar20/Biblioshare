@@ -2,6 +2,7 @@ import { expect, test, type APIRequestContext, type Page } from "@playwright/tes
 // Importado, no copiado: el nombre accesible del emoji es un contrato del
 // catálogo y copiarlo a mano ya dejó specs en rojo dos veces (#750, #801).
 import { QUICK_REACTION_NAMES } from "@/lib/social/reaction-constants";
+import { submitLogin } from "./support/visible-form";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -35,9 +36,7 @@ async function createUser(request: APIRequestContext, username: string) {
 async function login(page: Page, email: string, password: string) {
   await page.context().clearCookies();
   await page.goto("/login");
-  await page.fill('input[name="email"]', email);
-  await page.fill('input[name="password"]', password);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, email, password);
   await page.waitForURL("/");
 }
 

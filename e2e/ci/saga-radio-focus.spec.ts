@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expect, test as base, type Locator, type Page } from "@playwright/test";
 import type { Database } from "../../src/lib/supabase/database.types";
+import { submitLogin } from "../support/visible-form";
 
 type LocalAuth = {
   database: SupabaseClient<Database>;
@@ -41,9 +42,7 @@ const test = base.extend<{ localAuth: LocalAuth }>({
         database, name, editId: randomUUID(),
         login: async (page, destination) => {
           await page.goto(`/login?next=${encodeURIComponent(destination)}`);
-          await page.locator('input[name="email"]').fill(credentials.email);
-          await page.locator('input[name="password"]').fill(credentials.password);
-          await page.locator('button[type="submit"]').click();
+          await submitLogin(page, credentials.email, credentials.password);
           await page.waitForURL(url => url.pathname === destination);
         },
       });

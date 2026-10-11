@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { withBattleUsers } from "./support/battle-users";
 import { hideNextDevOverlay } from "./support/dev-overlay";
+import { submitLogin } from "./support/visible-form";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -17,9 +18,7 @@ test("tienda: recoger con desglose, comprar, estrenar y sobrevivir a una recarga
     await hideNextDevOverlay(page);
     await page.setViewportSize({ width: 320, height: 844 });
     await page.goto("/login?next=/mascota");
-    await page.locator('input[name="email"]').fill(user.email);
-    await page.locator('input[name="password"]').fill(user.password);
-    await page.locator('button[type="submit"]').click();
+    await submitLogin(page, user.email, user.password);
     // Esperar al destino REAL: /login?next=/mascota también acaba en "/mascota" (#1174).
     await page.waitForURL((u) => u.pathname === "/mascota" && !u.search, { timeout: 30_000 });
 

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 // E2E de itinerarios de lectura (spec 2026-07-22-sagas-itinerarios-design.md,
 // Task 10). Contra un seed QA dedicado y AISLADO en dev (no comparte nada con
@@ -61,9 +62,7 @@ function adminHeaders() {
 // (patrón del repo: no importar entre specs de e2e, cada fichero es autónomo).
 async function loginAsCollaborator(page: Page) {
   await page.goto("/login");
-  await page.fill('input[name="email"]', COLLAB_EMAIL);
-  await page.fill('input[name="password"]', COLLAB_PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, COLLAB_EMAIL, COLLAB_PASSWORD);
   await page.waitForURL("/");
 }
 

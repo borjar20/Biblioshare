@@ -1,4 +1,6 @@
 import { expect, type Locator, type Page } from "@playwright/test";
+import { submitLogin } from "./visible-form";
+
 export const EXPERIENCE_QA_PREFIX="[QA Experiences] ";
 export async function experienceRest(path:string,init:RequestInit={}) {
   const url=process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -34,9 +36,7 @@ export async function clearExperienceFixtures(owner:string) {
 }
 export async function loginExperienceUser(page:Page,actor?:{email:string;password:string}) {
   await page.goto("/login");
-  await page.locator('input[name="email"]').fill(actor?.email??process.env.TEST_USER_EMAIL!);
-  await page.locator('input[name="password"]').fill(actor?.password??process.env.TEST_USER_PASSWORD!);
-  await page.locator('button[type="submit"]').click();
+  await submitLogin(page, actor?.email??process.env.TEST_USER_EMAIL!, actor?.password??process.env.TEST_USER_PASSWORD!);
   await expect(page).not.toHaveURL(/\/login/);
 }
 /** Native radio choices stay operable by keyboard, even with their input visually hidden. */

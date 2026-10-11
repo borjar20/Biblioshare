@@ -2,6 +2,7 @@ import { test, expect, type Page, type APIRequestContext } from "@playwright/tes
 import { withBattleUsers } from "./support/battle-users";
 import { resolveFinalEmpire } from "./support/book-fixture";
 import { hideNextDevOverlay } from "./support/dev-overlay";
+import { submitLogin } from "./support/visible-form";
 
 test.use({ actionTimeout: 20_000 });
 
@@ -53,9 +54,7 @@ async function seedActivity(request: APIRequestContext, userId: string, daysAgo:
 
 async function login(page: Page, user: { email: string; password: string }) {
   await page.goto("/login?next=/mascota");
-  await page.locator('input[name="email"]').fill(user.email);
-  await page.locator('input[name="password"]').fill(user.password);
-  await page.locator('button[type="submit"]').click();
+  await submitLogin(page, user.email, user.password);
   await page.waitForURL((url) => url.pathname === "/mascota" && url.search === "", { timeout: 30_000 });
 }
 

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { submitLogin } from "../support/visible-form";
 
 if (process.env.NEXT_PUBLIC_SUPABASE_URL !== "http://127.0.0.1:54321") {
   throw new Error("#1295 requires disposable local Supabase");
@@ -177,9 +178,7 @@ for (const viewport of [{ width: 320, height: 844 }, { width: 1280, height: 900 
         const errors: string[] = [];
         page.on("pageerror", error => errors.push(error.message));
         await page.goto(`/login?next=${encodeURIComponent(`${surface.path}?type=book`)}`);
-        await page.locator('input[name="email"]').fill(credentials.email);
-        await page.locator('input[name="password"]').fill(credentials.password);
-        await page.locator('button[type="submit"]').click();
+        await submitLogin(page, credentials.email, credentials.password);
         await assertSurface(page, surface, "book");
         const [books, movies, series] = await assertPills(page, info, surface, "book");
 

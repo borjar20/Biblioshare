@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 // Regresión: la hoja ItemConnectSheet (frame 14) de un reto por lista queda ROTA al
 // navegar a la ficha de un ítem ("Ver ficha") y volver atrás. Con Cache Components el
@@ -105,9 +106,7 @@ test("la hoja del reto por lista se cierra al ir a la ficha del ítem y volver",
 
     // ── Login y navegación a la ficha del reto ──
     await page.goto("/login");
-    await page.fill('input[name="email"]', EMAIL);
-    await page.fill('input[name="password"]', PASSWORD);
-    await page.click('button[type="submit"]');
+    await submitLogin(page, EMAIL, PASSWORD);
     await page.waitForURL("/");
 
     await page.goto(`/club/${CLUB_SLUG}/actividad/${activityId}`);

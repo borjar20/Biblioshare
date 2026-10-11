@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 // Ficha de persona (`/persona/[id]`) como explorador de créditos a tres áreas
 // (FICHA · OBRAS · RAÍL), y con la obra COMPLETA de la persona hidratada desde
@@ -60,9 +61,7 @@ async function waitForWorks(page: Page) {
 
 async function login(page: Page) {
   await page.goto("/login");
-  await page.fill('input[name="email"]', EMAIL);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, EMAIL, PASSWORD);
   await page.waitForURL("/");
 }
 

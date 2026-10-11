@@ -3,6 +3,7 @@ import {withBattleUsers} from "./support/battle-users";
 import old from "../src/lib/pet/battle/versions/r4.1/normative.json";
 import current from "../src/lib/pet/battle/versions/r4.2/normative.json";
 import {LOOT_ITEMS} from "../src/lib/pet/loot/catalog";
+import { submitLogin } from "./support/visible-form";
 
 const url=process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const key=process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -108,8 +109,7 @@ test("R4b interfaz: comparar copias, equipar, efecto real y entrenamiento sin bo
   const errors:string[]=[];page.on("pageerror",error=>errors.push(error.message));
   await page.setViewportSize({width:390,height:844});
   await page.goto("/login?next=/mascota");
-  await page.locator('input[name="email"]').fill(user.email);await page.locator('input[name="password"]').fill(user.password);
-  await page.locator('button[type="submit"]').click();await page.waitForURL((url)=>url.pathname==="/mascota"&&url.search==="",{timeout:30_000});
+  await submitLogin(page, user.email, user.password);await page.waitForURL((url)=>url.pathname==="/mascota"&&url.search==="",{timeout:30_000});
   // El equipo vive en Personaje desde #1166: la Mochila dejó de ser destino.
   await page.getByRole("navigation",{name:"Navegación de la mascota"}).getByRole("button",{name:"Personaje",exact:true}).click();
   await expect(page).toHaveURL(/\/mascota\?view=character$/);

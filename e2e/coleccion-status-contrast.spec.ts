@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { withBattleUsers } from "./support/battle-users";
+import { submitLogin } from "./support/visible-form";
 
 test("Colección muestra estado legible en claro y oscuro, móvil y escritorio", async ({ page }, testInfo) => {
   test.setTimeout(150_000);
@@ -31,9 +32,7 @@ test("Colección muestra estado legible en claro y oscuro, móvil y escritorio",
         status: statuses[i], finished_on: i >= 2 ? new Date().toISOString().slice(0, 10) : null,
         is_active: true, is_public: true })));
       await page.goto("/login");
-      await page.locator('input[name="email"]').fill(user.email);
-      await page.locator('input[name="password"]').fill(user.password);
-      await page.getByRole("button", { name: "Entrar", exact: true }).click();
+      await submitLogin(page, user.email, user.password);
       await page.waitForURL("/");
       const badges = page.locator('[data-testid="status-badge"]:visible');
       for (const target of ["collection", "profile"]) {

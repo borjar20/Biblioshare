@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import path from "node:path";
+import { submitLogin } from "./support/visible-form";
 
 // Cobertura end-to-end del plan «Obra / Edición / Representación» (Task 17).
 // Los tres flujos que la rama estrenó y que ningún spec cubría:
@@ -65,9 +66,7 @@ async function userId(): Promise<string> {
 
 async function login(page: Page) {
   await page.goto("/login");
-  await page.fill('input[name="email"]', EMAIL);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, EMAIL, PASSWORD);
   await page.waitForURL("/");
 }
 

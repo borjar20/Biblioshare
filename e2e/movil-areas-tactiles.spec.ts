@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import { FINAL_EMPIRE_FILTER } from "./support/book-fixture";
+import { submitLogin } from "./support/visible-form";
 
 // Áreas táctiles (F4-010/013/015 de la auditoría 2026-08). La auditoría midió
 // en vivo que el 60-80% de los controles de cada vista baja de 40px en su lado
@@ -34,9 +35,7 @@ function headers() {
 
 async function login(page: Page) {
   await page.goto("/login");
-  await page.fill('input[name="email"]', EMAIL);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, EMAIL, PASSWORD);
   await page.waitForURL("/");
 }
 

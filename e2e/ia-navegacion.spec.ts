@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 // Los recorridos parten de Inicio: que una ruta responda 200 no demuestra
 // que sea alcanzable. Son lecturas con la cuenta persistente, sin escribir.
@@ -15,9 +16,7 @@ test.beforeEach(async ({ page }) => {
 
 async function login(page: Page) {
   await page.goto("/login");
-  await page.fill('input[name="email"]', EMAIL);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, EMAIL, PASSWORD);
   await page.waitForURL("/");
 }
 

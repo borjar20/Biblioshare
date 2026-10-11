@@ -1,5 +1,6 @@
 import { test, expect, type Request } from "@playwright/test";
 import { formatMonthYear } from "@/lib/clubs/activities/format-date";
+import { submitLogin } from "./support/visible-form";
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
@@ -30,9 +31,7 @@ function adminHeaders() {
 
 async function login(page: import("@playwright/test").Page, email: string, password: string) {
   await page.goto("/login");
-  await page.fill('input[name="email"]', email);
-  await page.fill('input[name="password"]', password);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, email, password);
   await page.waitForURL("/");
 }
 

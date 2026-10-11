@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 // Catálogo server-authoritative (#674): la búsqueda ya NO escribe en la base
 // (§7.32) — la fila nace vacía ("shell", hydrated_at null) al abrir la ficha
@@ -71,9 +72,7 @@ async function setOnboardedAt(value: string | null) {
 
 async function login(page: Page) {
   await page.goto("/login");
-  await page.fill('input[name="email"]', EMAIL);
-  await page.fill('input[name="password"]', PASSWORD);
-  await page.click('button[type="submit"]');
+  await submitLogin(page, EMAIL, PASSWORD);
   await page.waitForURL("/");
   // El proxy cachea "ya onboardeado" en una cookie por usuario; al forzar el
   // estado por debajo hay que tirarla, o el gate decide con el valor viejo.

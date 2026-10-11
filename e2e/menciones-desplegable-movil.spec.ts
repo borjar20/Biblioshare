@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { test, expect, type Locator, type Page, type TestInfo } from "@playwright/test";
+import { submitLogin } from "./support/visible-form";
 
 // Una única suite, también importada por e2e/ci. Los cambios de viewport y
 // scroll son nativos; login, búsqueda y selección usan el producto real.
@@ -141,9 +142,7 @@ test.describe("El desplegable de @menciones sigue cabiendo sin teclear (#765)", 
 
   async function login(page: Page) {
     await page.goto("/login");
-    await page.fill('input[name="email"]', owner.email);
-    await page.fill('input[name="password"]', owner.password);
-    await page.click('button[type="submit"]');
+    await submitLogin(page, owner.email, owner.password);
     await page.waitForURL("/");
     await page.goto(`/post/${postId}`);
     await page.evaluate(() => document.fonts.ready);
