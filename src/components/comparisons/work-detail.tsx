@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { loadComparisonWork } from '@/lib/comparisons/actions';
 import { itemHref } from '@/lib/catalog/item-href';
@@ -64,7 +65,7 @@ export function WorkDetail({ snapshot, view, work, onEvidenceHeight }: { snapsho
           {result.data.commonEpisodes.map(episode => <div key={`${episode.season}:${episode.episode}`}><h5>{t('episodeLabel', { season: episode.season, episode: episode.episode })}</h5><ul>{people.map(userId => <li key={userId}>{t('episodePersonRating', { name: snapshot.group.members.find(member => member.userId === userId)?.name ?? t('unavailablePerson'), rating: episode.notes.find(note => note.userId === userId)?.rating ?? t('unrated') })}</li>)}</ul></div>)}
         </section>}
         {media === 'series' && people.length === 1 && <p>{t('singlePersonEpisodes')}</p>}
-        {!result.data.work.metadataMissing && <a href={itemHref(media, id)}>{t('openItem')}</a>}
+        {!result.data.work.metadataMissing && <Link href={itemHref(media, id)}>{t('openItem')}</Link>}
       </>}
     </div>
     </div>

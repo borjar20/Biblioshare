@@ -175,13 +175,13 @@ describe('Explorer request boundaries', () => {
     mocks.query = `group=${first.id}`; mocks.load.mockImplementation(async (_id, format) => ({ ok: true, data: { ...data, format } }));
     vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })); vi.stubGlobal('scrollTo', vi.fn());
     render(ui([available])); fireEvent.click(await screen.findByRole('checkbox', { name: 'Ana' })); fireEvent.click(screen.getByRole('checkbox', { name: 'Bea' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Gustos' })); fireEvent.change(screen.getByLabelText('Formato'), { target: { value: 'book' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Gustos' })); fireEvent.click(within(screen.getByRole('group', { name: 'Filtrar por tipo de obra' })).getByRole('button', { name: 'Libros' }));
     await screen.findByLabelText('Agrupar por'); fireEvent.change(screen.getByLabelText('Agrupar por'), { target: { value: 'author' } });
     fireEvent.click(screen.getByRole('button', { name: 'Lo que valoráis' })); fireEvent.click(screen.getByRole('button', { name: 'Explorar Autora' })); fireEvent.click(screen.getByRole('button', { name: 'Abrir obra: Libro' })); await screen.findByRole('alert');
     fireEvent.click(screen.getByRole('button', { name: 'Obras' })); await screen.findByRole('button', { name: 'Ana, Bea 0 obras comunes' });
     fireEvent.click(screen.getByRole('button', { name: 'Gustos' })); await screen.findByRole('button', { name: 'Volver a la categoría' });
     fireEvent.click(screen.getByRole('button', { name: 'Volver a la categoría' }));
-    expect((screen.getByLabelText('Agrupar por') as HTMLSelectElement).value).toBe('author'); expect((screen.getByLabelText('Formato') as HTMLSelectElement).value).toBe('book');
+    expect((screen.getByLabelText('Agrupar por') as HTMLSelectElement).value).toBe('author'); expect(within(screen.getByRole('group', { name: 'Filtrar por tipo de obra' })).getByRole('button', { name: 'Libros' }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByRole('button', { name: 'Lo que valoráis' }).getAttribute('aria-pressed')).toBe('true'); expect(screen.getByText('Ana, Bea')).toBeTruthy();
     vi.unstubAllGlobals();
   });
@@ -395,11 +395,12 @@ describe('Explorer request boundaries', () => {
   });
   it('starts each section with all formats and restores the previous section filter', async () => {
     mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('checkbox', { name: 'Ana' });
-    fireEvent.change(screen.getByLabelText('Formato'), { target: { value: 'book' } });
+    const pills = () => within(screen.getByRole('group', { name: 'Filtrar por tipo de obra' }));
+    fireEvent.click(pills().getByRole('button', { name: 'Libros' }));
     fireEvent.click(screen.getByRole('button', { name: 'Gustos' }));
-    expect((screen.getByLabelText('Formato') as HTMLSelectElement).value).toBe('all');
+    expect(pills().getByRole('button', { name: 'Todos' }).getAttribute('aria-pressed')).toBe('true');
     fireEvent.click(screen.getByRole('button', { name: 'Obras' }));
-    expect((screen.getByLabelText('Formato') as HTMLSelectElement).value).toBe('book');
+    expect(pills().getByRole('button', { name: 'Libros' }).getAttribute('aria-pressed')).toBe('true');
     // Formats and sections derive from the one `all` load (#1481).
     expect(mocks.load.mock.calls).toEqual([[first.id, 'all']]);
   });
@@ -411,12 +412,13 @@ describe('Explorer request boundaries', () => {
     await screen.findByRole('checkbox', { name: 'Ana' }); expect(mocks.load.mock.calls).toEqual([[first.id, 'all'], [first.id, 'all']]);
     expect(within(pills).getByRole('button', { name: 'Libros' }).getAttribute('aria-pressed')).toBe('true');
   });
-  it('keeps visible format pills and the native selector synchronized through one request state', async () => {
+  it('exposes format only through the visible pills, one pressed at a time', async () => {
     mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('checkbox', { name: 'Ana' });
+    // A second, hidden native control duplicated the pills for screen readers.
+    expect(screen.queryByRole('combobox', { name: 'Formato' })).toBeNull();
     const pills = screen.getByRole('group', { name: 'Filtrar por tipo de obra' });
     fireEvent.click(within(pills).getByRole('button', { name: 'Películas' }));
-    expect((screen.getByLabelText('Formato') as HTMLSelectElement).value).toBe('movie');
-    fireEvent.change(screen.getByLabelText('Formato'), { target: { value: 'series' } });
+    fireEvent.click(within(pills).getByRole('button', { name: 'Series' }));
     expect(within(pills).getByRole('button', { name: 'Series' }).getAttribute('aria-pressed')).toBe('true');
     expect(within(pills).getByRole('button', { name: 'Películas' }).getAttribute('aria-pressed')).toBe('false');
     expect(mocks.load.mock.calls).toEqual([[first.id, 'all']]);

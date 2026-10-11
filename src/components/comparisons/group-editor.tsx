@@ -45,7 +45,8 @@ export function GroupEditor({ group, candidates, viewerId, onSaved, onDeleted, o
     deleteFocus.current = false;
   }, [confirmDelete]);
   const pending = useRef(false);
-  const valid = !!name.trim() && [...name.trim()].length <= 60 && selected.length >= 2 && selected.length <= 10 && unavailable.length === 0;
+  const nameLength = [...name.trim()].length;
+  const valid = !!name.trim() && nameLength <= 60 && selected.length >= 2 && selected.length <= 10 && unavailable.length === 0;
   const participantCount = selected.length + unavailable.length;
   const matches = others.filter(person => person.name.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
   const toggle = (userId: string, on: boolean) => setSelected(current => on ? [...current, userId] : current.filter(id => id !== userId));
@@ -75,8 +76,10 @@ export function GroupEditor({ group, candidates, viewerId, onSaved, onDeleted, o
       </header>
       {/* Children keep their height: in a scrolling column they would otherwise shrink and overlap. */}
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-5 py-4 [&>*]:shrink-0">
-        <label className="flex flex-col gap-2 text-sm font-medium">{t('groupName')}<Input ref={nameInput} value={name} onChange={event => setName(event.target.value)} maxLength={120} disabled={busy} autoFocus required/></label>
-        {[...name.trim()].length > 60 && <p role="alert" className="text-sm text-status-dropped">{t('nameTooLong')}</p>}
+        {/* maxLength counts UTF-16 units; 120 lets 60 emoji through. The 60-character limit is the counter's. */}
+        <label className="flex flex-col gap-2 text-sm font-medium">{t('groupName')}<Input ref={nameInput} value={name} onChange={event => setName(event.target.value)} maxLength={120} aria-describedby="comparison-group-name-count" disabled={busy} autoFocus required/></label>
+        <p id="comparison-group-name-count" className={`-mt-2 self-end text-xs tabular-nums ${nameLength > 60 ? 'text-status-dropped' : 'text-muted-foreground'}`}>{t('nameCounter', { count: nameLength })}</p>
+        {nameLength > 60 && <p role="alert" className="text-sm text-status-dropped">{t('nameTooLong')}</p>}
         <section aria-labelledby="comparison-selected-title" className="flex flex-col gap-2">
           <h3 id="comparison-selected-title" className="label-section">{t('selectedPeople')}</h3>
           {selected.length === 0 && unavailable.length === 0 ? <p className="text-sm text-muted-foreground">{t('nobodySelected')}</p> : <ul className="flex flex-wrap gap-1.5">
