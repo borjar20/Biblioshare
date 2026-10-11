@@ -1,4 +1,4 @@
-import { facets, regions } from '@/lib/comparisons/derive';
+import { facets, forFormat, regions } from '@/lib/comparisons/derive';
 import type { FacetKind, Format, Group, Result, Snapshot, WorkDetail, WorkKey } from '@/lib/comparisons/types';
 
 export type WorkOrigin = { kind: 'region'; mask: number } | { kind: 'facet'; facetKind: FacetKind; facetId: string };
@@ -15,9 +15,13 @@ export function acceptResponse<T>(state: RequestState<T>, seq: number, result: R
 }
 export type ExplorerState = { viewerId: string; groupId: string | null; section: Section; formats: Record<Section, Format>; tasteControls: TasteControls;
   selection: string[]; views: Record<Section, View>; snapshot: RequestState<Snapshot>; detail: RequestState<WorkDetail>;
-  loadError: Extract<Result<never>, { ok: false }>['code'] | null };
+  loadError: Extract<Result<never>, { ok: false }>['code'] | null;
+  /** The loaded all-format snapshot; every format of this load derives from it without a request. */
+  source: Snapshot | null;
+  /** Snapshot seq that came from the network; only those play the loader hand-off. */
+  revealSeq: number };
 export function initialState(viewerId: string): ExplorerState {
-  return { viewerId, groupId: null, section: 'works', formats: { works: 'all', tastes: 'all' }, tasteControls: { facetKind: 'genre', signal: 'consumed' }, selection: [], loadError: null,
+  return { viewerId, groupId: null, section: 'works', formats: { works: 'all', tastes: 'all' }, tasteControls: { facetKind: 'genre', signal: 'consumed' }, selection: [], loadError: null, source: null, revealSeq: 0,
     views: { works: { level: 'group' }, tastes: { level: 'group' } },
     snapshot: { seq: 0, value: null, status: 'idle' }, detail: { seq: 0, value: null, status: 'idle' } };
 }
@@ -31,7 +35,7 @@ export function clearEvidence(state: ExplorerState): ExplorerState {
     detail: { seq: state.detail.seq + 1, value: null, status: 'idle' } };
 }
 export function changeGroup(state: ExplorerState, groupId: string | null): ExplorerState {
-  return { ...clearEvidence(state), groupId, selection: [], views: { works: { level: 'group' }, tastes: { level: 'group' } } };
+  return { ...clearEvidence(state), source: null, groupId, selection: [], views: { works: { level: 'group' }, tastes: { level: 'group' } } };
 }
 export function setView(state: ExplorerState, section: Section, view: View): ExplorerState {
   return { ...state, views: { ...state.views, [section]: view }, detail: { seq: state.detail.seq + 1, value: null, status: 'idle' } };
@@ -77,4 +81,12 @@ export function reconcileView(view: View, snapshot: Snapshot): View {
   }
   if (view.level === 'region' && (view.mask < 1 || view.mask >= 1 << view.people.length)) return { level: 'venn', people: view.people };
   return view;
+}
+/** Show the active section's format from the loaded source: a new ready snapshot, no request. */
+export function deriveFormat(state: ExplorerState): ExplorerState {
+  if (!state.source) return state;
+  const value = forFormat(state.source, state.formats[state.section]);
+  return { ...state, loadError: null, snapshot: { seq: state.snapshot.seq + 1, value, status: 'ready' },
+    detail: { seq: state.detail.seq + 1, value: null, status: 'idle' },
+    views: { ...state.views, [state.section]: reconcileView(state.views[state.section], value) } };
 }

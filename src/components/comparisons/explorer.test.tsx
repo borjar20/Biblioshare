@@ -27,35 +27,54 @@ describe('independent format view retention', () => {
     expect(ready.tasteControls).toEqual({ facetKind: 'director', signal: 'rated' });
   });
   const availableGroup: Group = { ...first, members: [{ ...first.members[0] }, { slotId: 'two', userId: 'b', name: 'Bea', avatarUrl: null, available: true }] };
-  const bookSnapshot: Snapshot = { ...snapshot(availableGroup), format: 'book', catalog: [{ key: 'book:x', title: 'Libro', coverUrl: null, genres: ['Ensayo'], creators: [] }], works: [{ key: 'book:x', userId: 'a', rating: null, orderUnknown: false, progress: null }] };
-  const movieSnapshot: Snapshot = { ...snapshot(availableGroup), format: 'movie', catalog: [{ key: 'movie:y', title: 'Película', coverUrl: null, genres: ['Drama'], creators: [] }], works: [{ key: 'movie:y', userId: 'a', rating: null, orderUnknown: false, progress: null }] };
+  const book = { catalog: { key: 'book:x' as const, title: 'Libro', coverUrl: null, genres: ['Ensayo'], creators: [] }, work: { key: 'book:x' as const, userId: 'a', rating: null, orderUnknown: false, progress: null } };
+  const movie = { catalog: { key: 'movie:y' as const, title: 'Película', coverUrl: null, genres: ['Drama'], creators: [] }, work: { key: 'movie:y' as const, userId: 'a', rating: null, orderUnknown: false, progress: null } };
+  const bookSnapshot: Snapshot = { ...snapshot(availableGroup), format: 'book', catalog: [book.catalog], works: [book.work] };
+  // Every request is `all`; each section's format is derived from it (#1481).
+  const allSnapshot: Snapshot = { ...snapshot(availableGroup), format: 'all', catalog: [book.catalog, movie.catalog], works: [book.work, movie.work], excludedSeriesWithoutEpisodes: 2 };
   const stateFor = (section: 'works' | 'tastes', views: ExplorerState['views']): ExplorerState => ({ ...initialState('a'), section, formats: { works: 'book', tastes: 'movie' }, views, selection: ['a', 'b'], snapshot: { seq: 2, value: null, status: 'loading' } });
   it.each<View>([
     { level: 'facet', people: ['a', 'b'], facetKind: 'genre', facetId: 'Drama' },
     { level: 'work', people: ['a', 'b'], origin: { kind: 'facet', facetKind: 'genre', facetId: 'Drama' }, key: 'movie:y' },
-  ])('retains the inactive movie context %j through an active book load and restores it on its own load', tasteView => {
+  ])('retains the inactive movie context %j through the book view and restores it from the same load', tasteView => {
     const state = stateFor('works', { works: { level: 'group' }, tastes: tasteView });
-    const books = explorerReducer(state, { type: 'response', seq: 2, result: { ok: true, data: bookSnapshot } });
-    expect(books.views.tastes).toEqual(tasteView);
+    const books = explorerReducer(state, { type: 'response', seq: 2, result: { ok: true, data: allSnapshot } });
+    expect(books.views.tastes).toEqual(tasteView); expect(books.snapshot.value).toEqual({ ...bookSnapshot, excludedSeriesWithoutEpisodes: 0 });
     const switched = explorerReducer(books, { type: 'section', section: 'tastes' });
-    const loading = explorerReducer(switched, { type: 'loading', seq: 3 });
-    expect(explorerReducer(loading, { type: 'response', seq: 3, result: { ok: true, data: movieSnapshot } }).views.tastes).toEqual(tasteView);
+    expect(switched.snapshot.status).toBe('ready'); expect(switched.snapshot.value!.format).toBe('movie');
+    expect(switched.snapshot.value!.works.map(work => work.key)).toEqual(['movie:y']); expect(switched.views.tastes).toEqual(tasteView);
   });
-  it('preserves an inactive book work/region origin while loading movies', () => {
+  it('preserves an inactive book work/region origin while the movie section loads', () => {
     const bookView: View = { level: 'work', people: ['a', 'b'], origin: { kind: 'region', mask: 1 }, key: 'book:x' };
     const state = stateFor('tastes', { works: bookView, tastes: { level: 'group' } });
-    expect(explorerReducer(state, { type: 'response', seq: 2, result: { ok: true, data: movieSnapshot } }).views.works).toEqual(bookView);
+    expect(explorerReducer(state, { type: 'response', seq: 2, result: { ok: true, data: allSnapshot } }).views.works).toEqual(bookView);
   });
   it('invalidates inactive contexts and selection when a participant loses access', () => {
     const tasteView: View = { level: 'work', people: ['a', 'b'], origin: { kind: 'facet', facetKind: 'genre', facetId: 'Drama' }, key: 'movie:y' };
     const state = stateFor('works', { works: { level: 'venn', people: ['a', 'b'] }, tastes: tasteView });
-    const revoked: Snapshot = { ...bookSnapshot, group: { ...availableGroup, members: [availableGroup.members[0], { slotId: 'two', userId: null, name: null, avatarUrl: null, available: false }] } };
+    const revoked: Snapshot = { ...allSnapshot, group: { ...availableGroup, members: [availableGroup.members[0], { slotId: 'two', userId: null, name: null, avatarUrl: null, available: false }] } };
     const next = explorerReducer(state, { type: 'response', seq: 2, result: { ok: true, data: revoked } });
     expect(next.views).toEqual({ works: { level: 'group' }, tastes: { level: 'group' } }); expect(next.selection).toEqual(['a']);
   });
-  it('validates the active facet against its own loaded format', () => {
+  it('validates the active facet against its own derived format', () => {
     const state = stateFor('tastes', { works: { level: 'group' }, tastes: { level: 'facet', people: ['a', 'b'], facetKind: 'genre', facetId: 'Gone' } });
-    expect(explorerReducer(state, { type: 'response', seq: 2, result: { ok: true, data: movieSnapshot } }).views.tastes).toEqual({ level: 'group' });
+    expect(explorerReducer(state, { type: 'response', seq: 2, result: { ok: true, data: allSnapshot } }).views.tastes).toEqual({ level: 'group' });
+  });
+  it('derives a format switch from the loaded source without a new load or a loader hand-off', () => {
+    const ready = explorerReducer(stateFor('works', { works: { level: 'group' }, tastes: { level: 'group' } }), { type: 'response', seq: 2, result: { ok: true, data: allSnapshot } });
+    expect(ready.revealSeq).toBe(2);
+    const all = explorerReducer(ready, { type: 'format', format: 'all' });
+    expect(all.snapshot).toEqual({ seq: 3, value: allSnapshot, status: 'ready' }); expect(all.revealSeq).toBe(2);
+    const series = explorerReducer(all, { type: 'format', format: 'series' });
+    expect(series.snapshot.value).toMatchObject({ format: 'series', works: [], catalog: [], excludedSeriesWithoutEpisodes: 2 });
+    expect(explorerReducer(series, { type: 'refresh' }).source).toBeNull();
+  });
+  it('keeps a load in flight across format and section changes and derives the format current on arrival', () => {
+    const loading = stateFor('works', { works: { level: 'group' }, tastes: { level: 'group' } });
+    const moved = explorerReducer(explorerReducer(loading, { type: 'format', format: 'movie' }), { type: 'section', section: 'tastes' });
+    expect(moved.snapshot).toEqual(loading.snapshot);
+    const arrived = explorerReducer(explorerReducer(moved, { type: 'format', format: 'book' }), { type: 'response', seq: 2, result: { ok: true, data: allSnapshot } });
+    expect(arrived.snapshot.value!.format).toBe('book'); expect(arrived.source).toBe(allSnapshot);
   });
   it('validates a retained destination view on switching sections when its format is already loaded', () => {
     const state: ExplorerState = { ...stateFor('works', { works: { level: 'group' }, tastes: { level: 'facet', people: ['a', 'b'], facetKind: 'genre', facetId: 'Gone' } }), formats: { works: 'book', tastes: 'book' }, snapshot: { seq: 2, value: bookSnapshot, status: 'ready' } };
@@ -335,23 +354,29 @@ describe('Explorer request boundaries', () => {
   it('starts each section with all formats and restores the previous section filter', async () => {
     mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('checkbox', { name: 'Ana' });
     fireEvent.change(screen.getByLabelText('Formato'), { target: { value: 'book' } });
-    await waitFor(() => expect(mocks.load).toHaveBeenLastCalledWith(first.id, 'book'));
     fireEvent.click(screen.getByRole('button', { name: 'Gustos' }));
     expect((screen.getByLabelText('Formato') as HTMLSelectElement).value).toBe('all');
-    await waitFor(() => expect(mocks.load).toHaveBeenLastCalledWith(first.id, 'all'));
     fireEvent.click(screen.getByRole('button', { name: 'Obras' }));
     expect((screen.getByLabelText('Formato') as HTMLSelectElement).value).toBe('book');
-    await waitFor(() => expect(mocks.load).toHaveBeenLastCalledWith(first.id, 'book'));
+    // Formats and sections derive from the one `all` load (#1481).
+    expect(mocks.load.mock.calls).toEqual([[first.id, 'all']]);
+  });
+  it('retries the load on a format change after a failed load', async () => {
+    mocks.query = `group=${first.id}`; mocks.load.mockResolvedValueOnce({ ok: false, code: 'load-failed' }); render(ui());
+    await screen.findByRole('button', { name: 'Recargar comparación' });
+    const pills = screen.getByRole('group', { name: 'Filtrar por tipo de obra' });
+    fireEvent.click(within(pills).getByRole('button', { name: 'Libros' }));
+    await screen.findByRole('checkbox', { name: 'Ana' }); expect(mocks.load.mock.calls).toEqual([[first.id, 'all'], [first.id, 'all']]);
+    expect(within(pills).getByRole('button', { name: 'Libros' }).getAttribute('aria-pressed')).toBe('true');
   });
   it('keeps visible format pills and the native selector synchronized through one request state', async () => {
     mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('checkbox', { name: 'Ana' });
     const pills = screen.getByRole('group', { name: 'Filtrar por tipo de obra' });
     fireEvent.click(within(pills).getByRole('button', { name: 'Películas' }));
     expect((screen.getByLabelText('Formato') as HTMLSelectElement).value).toBe('movie');
-    await waitFor(() => expect(mocks.load).toHaveBeenLastCalledWith(first.id, 'movie'));
     fireEvent.change(screen.getByLabelText('Formato'), { target: { value: 'series' } });
     expect(within(pills).getByRole('button', { name: 'Series' }).getAttribute('aria-pressed')).toBe('true');
     expect(within(pills).getByRole('button', { name: 'Películas' }).getAttribute('aria-pressed')).toBe('false');
-    await waitFor(() => expect(mocks.load).toHaveBeenLastCalledWith(first.id, 'series'));
+    expect(mocks.load.mock.calls).toEqual([[first.id, 'all']]);
   });
 });
