@@ -1,5 +1,5 @@
 'use client';
-import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { useTranslations } from 'next-intl';
 import { facets } from '@/lib/comparisons/derive';
 import type { CatalogWork, FacetKind, Snapshot, WorkKey } from '@/lib/comparisons/types';
@@ -19,6 +19,24 @@ function EvidenceCover({ work }: { work?: CatalogWork }) {
   return <span className={styles.evidenceCover} aria-hidden="true">{work?.coverUrl && !failed ?
     // eslint-disable-next-line @next/next/no-img-element
     <img src={work.coverUrl} alt="" width="26" height="38" loading="lazy" onError={() => setFailed(true)}/> : <span/>}</span>;
+}
+
+/** A number that counts from its previous value to the new one (#1499); exact with reduced motion. */
+function Tween({ value, digits = 0 }: { value: number; digits?: number }) {
+  const reduced = typeof matchMedia === 'undefined' || matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const [shown, setShown] = useState(0);
+  const current = useRef(0);
+  useEffect(() => {
+    if (reduced) { current.current = value; return; }
+    const from = current.current; const start = performance.now(); let frame = 0;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / 650); const next = from + (value - from) * (1 - (1 - t) ** 3);
+      current.current = next; setShown(next); if (t < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [value, reduced]);
+  return <>{(reduced ? value : shown).toFixed(digits)}</>;
 }
 
 type Props = { snapshot: Snapshot; people: string[];
@@ -55,7 +73,8 @@ export function Tastes({ snapshot, people, onOpenWork, view, onView, controls, o
   const uniqueCount = (category: typeof categories[number]) => new Set(category.people.flatMap(person => person.consumed)).size;
   const largestCategory = Math.max(1, ...categories.map(uniqueCount));
   const consumptionCategories = [...categories].sort((a, b) => uniqueCount(b) - uniqueCount(a) || a.label.localeCompare(b.label)).slice(0, 5);
-  const bubblePositions = [[27, 23], [76, 23], [50, 58], [15, 84], [85, 84]];
+  // One or two worlds sit in the middle of the cloud instead of its top-left corner.
+  const bubblePositions = consumptionCategories.length === 1 ? [[50, 48]] : consumptionCategories.length === 2 ? [[31, 42], [69, 58]] : [[27, 23], [76, 23], [50, 58], [15, 84], [85, 84]];
   const categoryColor = (index: number) => ['var(--accent)', 'var(--green)', 'var(--type-series)', 'var(--gold)', 'var(--type-movie)'][index % 5];
   function exploreCategory(id: string) { origin.current = id; onView({ level: 'facet', people, facetKind: controls.facetKind, facetId: id }); }
   return <div ref={host} tabIndex={-1} className={styles.tastes}>
@@ -70,11 +89,11 @@ export function Tastes({ snapshot, people, onOpenWork, view, onView, controls, o
           <h3>{t('consumptionTitle')}</h3><p className={styles.description}>{t('consumptionInvitation')}</p>
           <div className={styles.bubbleCloud}>{consumptionCategories.map((category, index) => {
             const ratio = Math.sqrt(uniqueCount(category) / largestCategory);
-            return <button type="button" key={category.id} className={styles.categoryBubble} data-facet-origin={category.id} aria-label={t('exploreFacet', { label: category.label })} aria-pressed={visibleCategory?.id === category.id} style={{ '--bubble-color': categoryColor(index), '--bubble-ratio': ratio, '--bubble-type': `${ratio < .59 ? 12 : ratio < .79 ? 14 : 18}px`, left: `${bubblePositions[index][0]}%`, top: `${bubblePositions[index][1]}%` } as CSSProperties} onClick={() => exploreCategory(category.id)}><strong>{category.label}</strong><span>{t('uniqueFacetWorks', { count: uniqueCount(category) })}</span></button>;
+            return <button type="button" key={category.id} className={styles.categoryBubble} data-facet-origin={category.id} aria-label={t('exploreFacet', { label: category.label })} aria-pressed={visibleCategory?.id === category.id} style={{ '--bubble-color': categoryColor(index), '--bubble-ratio': ratio, '--bubble-type': `${ratio < .59 ? 12 : ratio < .79 ? 14 : 18}px`, left: `${bubblePositions[index][0]}%`, top: `${bubblePositions[index][1]}%`, '--i': index } as CSSProperties} onClick={() => exploreCategory(category.id)}><strong>{category.label}</strong><span>{t('uniqueFacetWorks', { count: uniqueCount(category) })}</span></button>;
           })}</div>
           {categories.length > 0 && <label className={styles.allFacets}>{t('allConnections')}<select value={visibleCategory?.id ?? ''} onChange={event => exploreCategory(event.target.value)}>{categories.map(category => <option key={category.id} value={category.id}>{category.label} ({uniqueCount(category)})</option>)}</select></label>}
           <p className={styles.caption}>{t('bubbleAreaMeaning')}{controls.facetKind === 'genre' && <> {t('overlappingGenres')}</>}</p>
-          {visibleCategory && <div className={styles.presence} aria-label={t('personConsumption')}><h4>{visibleCategory.label}</h4><div className={styles.presencePeople}>{visibleCategory.people.map(person => <div key={person.userId} style={{ '--person': personColor(snapshot, person.userId) } as CSSProperties}><div className={styles.presenceCircle}><span className={styles.consumptionBubble} data-consumption-count={person.consumed.length} style={{ width: bubbleSize(person.consumed.length), height: bubbleSize(person.consumed.length) }} aria-hidden="true"/><strong>{person.consumed.length}</strong></div><span>{name(person.userId)}</span><small>{t('consumedBase', { count: person.consumed.length, total: person.eligibleTotal })}</small></div>)}</div></div>}
+          {visibleCategory && <div className={styles.presence} aria-label={t('personConsumption')}><h4>{visibleCategory.label}</h4><div className={styles.presencePeople}>{visibleCategory.people.map((person, index) => <div key={person.userId} style={{ '--person': personColor(snapshot, person.userId), '--i': index } as CSSProperties}><div className={styles.presenceCircle}><span className={styles.consumptionBubble} data-consumption-count={person.consumed.length} style={{ width: bubbleSize(person.consumed.length), height: bubbleSize(person.consumed.length) }} aria-hidden="true"/><strong><Tween value={person.consumed.length}/></strong></div><span>{name(person.userId)}</span><small>{t('consumedBase', { count: person.consumed.length, total: person.eligibleTotal })}</small></div>)}</div></div>}
           {!categories.length && <p className={styles.empty}>{t('noFacetMetadata')}</p>}
         </section>
         <section className={styles.panel} aria-label={t('preferenceTitle')}>
@@ -83,10 +102,10 @@ export function Tastes({ snapshot, people, onOpenWork, view, onView, controls, o
           {visibleCategory ? <section aria-label={visibleCategory.label} className={styles.ratedCategory}>
             <div className={styles.ratingTopic}><h4>{visibleCategory.label}</h4><small>{t('ratingScale')}</small></div>
             <div className={styles.axis} aria-hidden="true"><span>0</span><span>5</span><span>10</span></div>
-            {visibleCategory.people.map(person => <div className={styles.ratingRow} key={person.userId} style={{ '--person': personColor(snapshot, person.userId) } as CSSProperties}>
+            {visibleCategory.people.map((person, index) => <div className={styles.ratingRow} key={person.userId} style={{ '--person': personColor(snapshot, person.userId), '--i': index } as CSSProperties}>
               <div className={styles.ratingName}>{avatar(person.userId)}<span>{name(person.userId)}</span></div>
-              <div className={styles.ratingTrack} aria-hidden="true">{person.mean !== null && <span className={styles.ratingFill} style={{ width: `${person.mean * 10}%` }}/>}</div>
-              <div className={styles.ratingValue}><output aria-label={t('ratedSample', { count: person.rated.length })}>{person.mean == null ? t('unrated') : person.mean.toFixed(1)}</output><small>{t('ratedSample', { count: person.rated.length })}</small></div>
+              <div className={styles.ratingTrack} aria-hidden="true">{person.mean !== null && <span className={styles.ratingFill} style={{ transform: `scaleX(${person.mean / 10})` }}/>}</div>
+              <div className={styles.ratingValue}><output aria-label={t('ratedSample', { count: person.rated.length })}>{person.mean == null ? t('unrated') : <Tween value={person.mean} digits={1}/>}</output><small>{t('ratedSample', { count: person.rated.length })}</small></div>
               <p className={styles.ratingRange}>{person.min === null ? t('noRatingRange') : t('ratingRange', { min: person.min, max: person.max! })}</p>
             </div>)}
             <p className={styles.sample} role={visibleCategory.people.every(person => person.rated.length >= 3) ? undefined : 'status'}>{visibleCategory.people.every(person => person.rated.length >= 3) ? t('jointTrendSample') : t('insufficientTasteSample', { names: visibleCategory.people.filter(person => person.rated.length < 3).map(person => name(person.userId)).join(', ') })}</p>

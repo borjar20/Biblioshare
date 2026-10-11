@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { useState } from 'react';
 import { NextIntlClientProvider } from 'next-intl';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -20,7 +20,7 @@ function Harness({ snapshot = data, people = ['0', '1'] }: { snapshot?: Snapshot
   return <NextIntlClientProvider locale="es" messages={messages}><Tastes snapshot={snapshot} people={people} view={view} onView={onView} controls={controls} onControlsChange={onControlsChange} onOpenWork={(key, origin) => onView({ level: 'work', people, key, origin })}/></NextIntlClientProvider>;
 }
 beforeEach(() => { vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })); vi.stubGlobal('scrollTo', vi.fn()); });
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 describe('tastes evidence', () => {
   it('shows avatars when available and rating bars without a draggable-looking knob', () => {
     const withAvatar: Snapshot = { ...data, group: { ...data.group, members: data.group.members.map((member, index) => index === 0 ? { ...member, avatarUrl: '/ana.png' } : member) } };
@@ -40,6 +40,26 @@ describe('tastes evidence', () => {
     expect(within(rated).getByLabelText('2 obras valoradas').textContent).toBe('8.0');
     expect(within(rated).getByText(/No es un porcentaje de afinidad/)).toBeTruthy();
     expect(screen.getByText('Ana: metadatos en 3 de 3 obras elegibles')).toBeTruthy();
+  });
+  it('draws rating bars as a transform of their mean and centers a lone world (#1499)', () => {
+    const { container } = render(<Harness snapshot={{ ...data, catalog: data.catalog.map(work => ({ ...work, genres: ['Drama'] })) }}/>);
+    const fills = Array.from(container.querySelectorAll<HTMLElement>('[class*="ratingFill"]'));
+    expect(fills.map(fill => fill.style.transform)).toEqual(['scaleX(0.9)', 'scaleX(0.8)']);
+    const drama = screen.getByRole('button', { name: 'Explorar Drama' });
+    expect([drama.style.left, drama.style.top]).toEqual(['50%', '48%']);
+  });
+  it('counts numbers up from zero and then between values when motion is allowed (#1499)', () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+    const frames: FrameRequestCallback[] = []; let now = 0;
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => frames.push(callback));
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+    render(<Harness/>);
+    const value = () => within(screen.getByRole('region', { name: 'Lo que os gusta' })).getByLabelText('3 obras valoradas').textContent;
+    expect(value()).toBe('0.0');
+    const run = (time: number) => act(() => { now = time; frames.splice(0).forEach(callback => callback(time)); });
+    run(200); expect(Number(value())).toBeGreaterThan(0); expect(Number(value())).toBeLessThan(9);
+    run(650); expect(value()).toBe('9.0');
   });
   it('restores the exact category after Canvas unmounts and falls back when it disappears', () => {
     const { rerender } = render(<Harness/>);
