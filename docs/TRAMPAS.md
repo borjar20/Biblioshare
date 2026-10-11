@@ -58,6 +58,11 @@ Cuando una pantalla pinta lo mismo en dos árboles por breakpoint (`lg:hidden` /
 Ha roto tests tres veces: 5 asserts en la ficha (#50), 2 en el feed (#69), y otra vez en
 Inicio. El patrón de dos árboles solo es seguro para **duplicados sin estado**.
 
+El login es un caso del mismo problema: el streaming puede dejar una copia oculta del
+formulario de `/login` y `page.fill('input[name="email"]')` resuelve a dos elementos (fallo
+intermitente en CI, #1494). En los e2e, el login va siempre por `submitLogin(page, email,
+password)` de `e2e/support/visible-form.ts`, que acota al formulario visible.
+
 ---
 
 ## 4. Un `loading.tsx` mata el 404
