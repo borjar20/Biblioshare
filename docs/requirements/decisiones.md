@@ -7696,3 +7696,14 @@ lo eligió el usuario en la revisión visual («espectacular»), con los 850 ms 
 aprobados para el salto entre mapa y Venn. Con movimiento reducido no hay recorrido:
 la capa nueva aparece con un fundido de 200 ms. Evidencia en
 `docs/testing/2026-10-11-entre-nosotros-mapa-venn.md`.
+
+## 2026-10-11 — Entre nosotros: controles compactos para que el Venn quepa (#1500)
+
+Las personas del grupo, encima del lienzo, pasan a una sola fila desplazable con un
+fundido en el borde, en lugar de envolver en varias filas. Siguen siendo casillas
+visibles: elegir pareja o trío no queda detrás de un desplegable. Los filtros de
+notas también ocupan una fila desplazable. En móvil, «Volver» y la ruta de niveles
+comparten fila y los nombres de la pareja quedan solo para lectores de pantalla,
+porque los chips ya los muestran; por debajo de 380 px la ruta muestra solo el nivel
+actual. Con diez personas el Venn queda entero dentro del marco a 1280, 390 y 320 px.
+Evidencia en `docs/testing/2026-10-11-entre-nosotros-venn-visible.md`.

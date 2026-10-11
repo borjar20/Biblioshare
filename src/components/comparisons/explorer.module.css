@@ -30,7 +30,7 @@
 @keyframes dismissLoadingReduced { from { opacity: 0; } to { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .workspaceContent { animation: none; } .loadingExit { animation: dismissLoadingReduced 1ms both; } }
 .workspace > [role=status], .workspace > [role=alert] { padding: 28px; }
-.workspaceControls { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px 15px; padding: 14px 22px 0; }
+.workspaceControls { display: flex; align-items: center; justify-content: flex-end; gap: 8px 12px; padding: 12px 22px 0; }
 .workspaceControls h2 { font-family: var(--font-geist-sans), sans-serif; }
 .workspaceControls > button { min-height: 38px; font-size: 11px; padding: 6px 0 6px 12px; margin-left: auto; flex-shrink: 0; }
 .workspaceContent [data-comparison-coverage] { margin: 0 22px; }
@@ -39,8 +39,10 @@
 .tasteWorkspace .workspaceContent { height: auto; }
 .tasteWorkspace .canvasSlot { flex: auto; }
 .tasteWorkspace .workspaceControls { padding: 0 0 8px; }
-.people { display: flex; flex: 1; flex-wrap: wrap; gap: 6px; min-width: 0; }
-.personChip { position: relative; display: flex; align-items: center; gap: 6px; min-height: 38px; padding: 6px 11px; background: var(--surface); border: 1px solid var(--border); border-radius: 22px; font-size: 11px; cursor: pointer; }
+/* One scrolling row (#1500): ten people used to wrap into four rows and push the Venn out of the frame. */
+.people { display: flex; flex: 1; flex-wrap: nowrap; gap: 6px; min-width: 0; overflow-x: auto; scrollbar-width: none; padding: 2px 0; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }
+.people::-webkit-scrollbar { display: none; }
+.personChip { position: relative; flex-shrink: 0; white-space: nowrap; display: flex; align-items: center; gap: 6px; min-height: 38px; padding: 6px 11px; background: var(--surface); border: 1px solid var(--border); border-radius: 22px; font-size: 11px; cursor: pointer; }
 .personChip[data-selected=true] { border-color: var(--person); background: color-mix(in srgb,var(--person) 10%,var(--surface)); }
 .personChip input { width: 14px; height: 14px; accent-color: var(--person); }
 .personDot { width: 6px; height: 6px; border-radius: 50%; background: var(--person); flex-shrink: 0; }
@@ -51,4 +53,4 @@
 .srOnly:focus-within { position: relative; width: auto; height: auto; padding: 5px; margin: 0; overflow: visible; clip: auto; }
 .explorer :focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
 @media (max-width: 800px) { .page { padding: 24px; } .title { font-size: 44px; } .heading { gap: 16px; } .intro { max-width: 280px; font-size: 12px; } }
-@media (max-width: 650px) { .page { padding: 22px 16px; } .heading { align-items: flex-start; flex-direction: column; gap: 12px; } .title { font-size: 34px; letter-spacing: -1.2px; } .intro { max-width: 100%; } .intro br { display: none; } .groupControls { width: 100%; } .groupPicker { flex: 1; } .groupSelect { width: 100%; } .private { font-size: 10px; } .toolbar { gap: 13px; } .tabs { gap: 25px; } .formats { gap: 0; flex-wrap: nowrap; width: 100%; margin: 0 0 10px; } .formats button { padding: 8px 10px; flex: 1; font-size: 11px; } .workspaceControls { padding: 14px 16px 0; } .people { flex-basis: 100%; } }
+@media (max-width: 650px) { .page { padding: 22px 16px; } .heading { align-items: flex-start; flex-direction: column; gap: 12px; } .title { font-size: 34px; letter-spacing: -1.2px; } .intro { max-width: 100%; } .intro br { display: none; } .groupControls { width: 100%; } .groupPicker { flex: 1; } .groupSelect { width: 100%; } .private { font-size: 10px; } .toolbar { gap: 13px; } .tabs { gap: 25px; } .formats { gap: 0; flex-wrap: nowrap; width: 100%; margin: 0 0 10px; } .formats button { padding: 8px 10px; flex: 1; font-size: 11px; } .workspaceControls { padding: 12px 16px 0; } }
