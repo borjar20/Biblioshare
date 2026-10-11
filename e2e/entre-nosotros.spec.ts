@@ -158,13 +158,14 @@ test('ten-person CRUD, owner-free group, exact pair/trio, formats, notes, persis
     await page.getByRole('form', { name: 'Editar grupo' }).getByRole('button', { name: 'Eliminar grupo', exact: true }).focus(); await page.keyboard.press('Enter');
     const focusAfterConfirm = await page.evaluate(() => ({ tag: document.activeElement?.tagName, text: document.activeElement?.textContent?.slice(0, 100) }));
     await attachJson(info, 'editor-confirmation-focus-observation', { focusAfterConfirm });
-    const safeCancel = form.getByRole('button', { name: 'Cancelar', exact: true }).last();
+    // The confirmation's Cancel sits in the sheet body, before the footer's Cancel.
+    const safeCancel = form.getByRole('button', { name: 'Cancelar', exact: true }).first();
     await expect(safeCancel).toBeFocused(); await page.keyboard.press('Enter');
     await expect(form.getByRole('button', { name: 'Eliminar grupo', exact: true })).toBeFocused();
     await page.keyboard.press('Enter'); await expect(safeCancel).toBeFocused();
     await page.keyboard.press('Shift+Tab');
     await expect(form.getByRole('button', { name: 'Confirmar eliminación', exact: true })).toBeFocused(); await page.keyboard.press('Enter');
-    const empty = page.getByRole('main').getByText('Crea un grupo para empezar a comparar.', { exact: true });
+    const empty = page.getByRole('main').getByText('Compara con quien sigues', { exact: true });
     await expect(empty).toHaveCount(1); await expect(empty).toBeVisible();
   }, { integrated: true });
 });
@@ -353,7 +354,8 @@ test('two real tabs conflict, same-account focus preserves context, cookie logou
     // A legitimate intermediate null refresh may redirect to login. The brief
     // requires old-state removal, not automatic navigation back into the feature.
     await page.goto(`/comunidad/entre-nosotros?group=${group}`);
-    const empty = page.getByRole('main').getByText('Crea un grupo para empezar a comparar.', { exact: true });
+    // B follows nobody in the fixture: the empty state points to people to follow.
+    const empty = page.getByRole('main').getByText('Aún no sigues a nadie', { exact: true });
     await expect(empty).toHaveCount(1); await expect(empty).toBeVisible();
     await expect(page.getByRole('link', { name: 'Mi perfil', exact: true })).toHaveAttribute('href', `/u/${fixture.actors[2].username}`);
     await expect(page.getByRole('option', { name: 'Otra pestaña QA', exact: true })).toHaveCount(0);
