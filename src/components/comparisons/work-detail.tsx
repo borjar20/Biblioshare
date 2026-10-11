@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { loadComparisonWork } from '@/lib/comparisons/actions';
@@ -7,6 +7,7 @@ import { itemHref } from '@/lib/catalog/item-href';
 import type { CatalogWork, Media, Result, Snapshot, WorkDetail as Detail } from '@/lib/comparisons/types';
 import type { View } from './state';
 import { ComparisonLoading } from './loading';
+import { personColor } from './presentation';
 import styles from './canvas.module.css';
 
 export function detailPeople(view: Extract<View, { level: 'work' }>): string[] {
@@ -48,11 +49,14 @@ export function WorkDetail({ snapshot, view, work, onEvidenceHeight }: { snapsho
       {result && !result.ok && <div role="alert"><p>{t('detailFailed')}</p><button type="button" onClick={() => setAttempt(value => value + 1)}>{t('retry')}</button></div>}
       {result?.ok && <>
         {media === 'series' && <h4>{t('seriesGeneralNotes')}</h4>}
-        <dl className={styles.peopleNotes}>{people.map(userId => {
+        <dl className={styles.peopleNotes}>{people.map((userId, index) => {
           const person = result.data.people.find(item => item.userId === userId);
           const member = snapshot.group.members.find(item => item.userId === userId);
-          return <div key={userId}><dt>{member?.name ?? t('unavailablePerson')}</dt><dd>
+          return <div key={userId} style={{ '--person': personColor(snapshot, userId), '--i': index } as CSSProperties}><dt>{member?.name ?? t('unavailablePerson')}</dt><dd>
             <strong>{person ? person.rating === null ? t('unrated') : t('rating', { rating: person.rating }) : t('noVisibleRecord')}</strong>
+            {/* Each note on the same 0–10 scale (#1501); an unrated pass is an empty dashed track. */}
+            {person && <span className={styles.noteScale} aria-hidden="true" data-unrated={person.rating === null}>{person.rating !== null && <>
+              <span className={styles.noteFill} style={{ transform: `scaleX(${person.rating / 10})` }}/><span className={styles.noteDot} style={{ left: `${person.rating * 10}%` }}/></>}</span>}
             {person?.orderUnknown && <small>{t('orderUnknown')}</small>}
             {media === 'series' && person && !person.progress && <small>{t('progressUnavailable')}</small>}
             {person?.progress && <><small>{t('seenEver', { count: person.progress.seenEver })}</small>

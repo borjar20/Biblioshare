@@ -7733,3 +7733,15 @@ crecen hasta su área. Las barras se dibujan como `scaleX` de su media en lugar 
 un ancho, para animar solo con transformaciones. Con una o dos categorías, la nube se
 centra en vez de dejarlas arriba a la izquierda. Con movimiento reducido todo aparece
 con su valor final. Evidencia en `docs/testing/2026-10-11-entre-nosotros-gustos-animados.md`.
+
+## 2026-10-11 — Entre nosotros: detalle de obra sobre una tarjeta de papel (#1501)
+
+En el nivel Obra, el título, las notas y «Ver ficha» van sobre una tarjeta de papel
+casi opaca, con la sombra de tarjeta, que sube cuando la cámara aterriza en la portada.
+La colección sigue desenfocada detrás, como fijó la maqueta, pero ya no compite con el
+texto. Cada nota se dibuja además en una misma escala 0–10, con el color de su persona,
+que crece y termina en un punto. Una pasada sin nota es una pista discontinua vacía,
+siguiendo el patrón «Vacío». La escala es decorativa (`aria-hidden`); la cifra sigue
+siendo el dato. El SVG del fondo deja de recortar sus círculos desenfocados, que
+dibujaban un rectángulo, y en este nivel no se muestra. Evidencia en
+`docs/testing/2026-10-11-entre-nosotros-detalle-obra.md`.
