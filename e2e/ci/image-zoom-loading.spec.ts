@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test } from "@playwright/test";
+import { submitLogin } from "../support/visible-form";
 
 const marker = `qa1278-${Date.now()}`;
 if (process.env.NEXT_PUBLIC_SUPABASE_URL !== "http://127.0.0.1:54321") {
@@ -109,9 +110,7 @@ for (const viewport of [
           });
           if (fixture.label === "club") {
             await page.goto(`/login?next=${encodeURIComponent(fixture.path)}`);
-            await page.locator('input[name="email"]').fill(credentials.email);
-            await page.locator('input[name="password"]').fill(credentials.password);
-            await page.locator('button[type="submit"]').click();
+            await submitLogin(page, credentials.email, credentials.password);
           } else await page.goto(fixture.path);
           await expect(page.getByRole("heading", { level: 1, name: fixture.name, exact: true })).toBeVisible();
           const trigger = page.getByRole("button", { name: "Ampliar imagen", exact: true });
