@@ -207,9 +207,6 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
       <div className={styles.toolbar}>
         <nav aria-label={t('sections')} className={styles.tabs}>{(['works', 'tastes'] as const).map(section => <button key={section} type="button" aria-pressed={state.section === section} onClick={() => dispatch({ type: 'section', section })} className={styles.tab}><Icon kind={section}/>{t(section)}</button>)}</nav>
         <div className={styles.formats} role="group" aria-label={t('formatPills')}>{(['all', 'book', 'movie', 'series'] as const).map(next => <button key={next} type="button" aria-pressed={format === next} onClick={() => setFormat(next)}>{t(next === 'all' ? 'allFormatsShort' : `formats.${next}`)}</button>)}</div>
-        <label className={styles.srOnly}>{t('format')}<select value={format} onChange={event => setFormat(event.target.value as Format)}>
-          {(['all', 'book', 'movie', 'series'] as const).map(format => <option key={format} value={format}>{t(`formats.${format}`)}</option>)}
-        </select></label>
       </div>
       <section aria-label={t('canvas')} aria-busy={state.snapshot.status === 'loading'} className={`${styles.workspace} ${state.section === 'tastes' ? styles.tasteWorkspace : ''}`}>
         {state.snapshot.status === 'loading' && <div className={styles.workspaceLoading}><ComparisonLoading label={t('loading')}/></div>}

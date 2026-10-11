@@ -132,7 +132,7 @@ test('ten-person CRUD, owner-free group, exact pair/trio, formats, notes, persis
     await page.getByRole('checkbox', { name: 'Carlos QA', exact: true }).check(); await settled(page);
     await expect(page.getByRole('button', { name: 'Abrir región: Ana QA, Beatriz QA; 0 obras', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Abrir región: Ana QA, Beatriz QA, Carlos QA; 32 obras', exact: true })).toBeVisible();
-    await page.getByRole('combobox', { name: 'Formato', exact: true }).selectOption('book'); await settled(page);
+    await page.getByRole('group', { name: 'Filtrar por tipo de obra', exact: true }).getByRole('button', { name: 'Libros', exact: true }).click(); await settled(page);
     await expect(page.getByRole('button', { name: 'Abrir región: Ana QA, Beatriz QA, Carlos QA; 30 obras', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Abrir región: Ana QA, Beatriz QA, Carlos QA; 30 obras', exact: true }).click(); await settled(page);
     const cover = page.locator(`[data-work-key="book:${fixture.books[0].id}"]`);
@@ -570,7 +570,7 @@ test('final fixes: natural origin focus, 320px selector, all-person episode samp
     await explore.focus(); await page.keyboard.press('Enter'); await settled(page);
     await page.getByRole('button', { name: 'Volver al grupo', exact: true }).click(); await expect(explore).toBeFocused();
     await page.getByRole('button', { name: 'Obras', exact: true }).click();
-    await page.getByRole('combobox', { name: 'Formato', exact: true }).selectOption('series'); await settled(page);
+    await page.getByRole('group', { name: 'Filtrar por tipo de obra', exact: true }).getByRole('button', { name: 'Series', exact: true }).click(); await settled(page);
     await selectPeople(page, fixture, [0, 1]);
     await page.getByRole('button', { name: 'Comparar selección', exact: true }).click(); await settled(page);
     await page.getByRole('button', { name: /^Abrir región: (Ana QA, Beatriz QA|Beatriz QA, Ana QA); 1 obras$/ }).click(); await settled(page);
