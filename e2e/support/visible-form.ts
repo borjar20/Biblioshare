@@ -8,3 +8,11 @@ export function visibleFormContaining(page: Page, controlSelector: string): Loca
     has: page.locator(controlSelector).filter({ visible: true }),
   });
 }
+
+/** Logs in through the visible login form; a hidden streamed copy is never ambiguous (#1494). */
+export async function submitLogin(page: Page, email: string, password: string): Promise<void> {
+  const form = visibleFormContaining(page, 'input[name="email"]');
+  await form.locator('input[name="email"]:visible').fill(email);
+  await form.locator('input[name="password"]:visible').fill(password);
+  await form.locator('button[type="submit"]:visible').click();
+}
