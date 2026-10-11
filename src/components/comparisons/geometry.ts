@@ -3,7 +3,8 @@ import type { View } from './state';
 import { regions } from '@/lib/comparisons/derive';
 export type Pose = { x: number; y: number; width: number; height: number; rotate: number };
 export type Camera = { x: number; y: number; scale: number };
-export type Scene = { camera: Camera; height: number; poses: Record<WorkKey, Pose> };
+/** `morph` runs from the group map (0) to any focused scene (1); it shares the camera clock. */
+export type Scene = { camera: Camera; height: number; poses: Record<WorkKey, Pose>; morph?: number };
 export const WORLD_WIDTH = 1000;
 export const WORLD_HEIGHT = 900;
 const overviewScale = (width: number) => Math.min(.6, Math.max(160, width) / WORLD_WIDTH);
@@ -11,6 +12,12 @@ export type VennCircle = { x: number; y: number; radius: number };
 export function vennCircles(count: number): VennCircle[] {
   return count === 2 ? [{ x: 370, y: 420, radius: 290 }, { x: 630, y: 420, radius: 290 }]
     : [{ x: 370, y: 330, radius: 270 }, { x: 630, y: 330, radius: 270 }, { x: 500, y: 550, radius: 270 }];
+}
+/** Where each person's name sits on its Venn circle, in world units. */
+export function vennLabelPoint(count: number, index: number): { x: number; y: number } {
+  const circle = vennCircles(count)[index];
+  const bottom = count === 3 && index === 2;
+  return { x: bottom ? circle.x : circle.x + (index ? 115 : -115), y: bottom ? circle.y + circle.radius + 22 : circle.y - circle.radius + 32 };
 }
 export function regionCenter(count: number, mask: number): { x: number; y: number } {
   const centers = count === 2 ? [[240, 420], [760, 420], [500, 420]]
@@ -118,7 +125,7 @@ export function layoutScene(snapshot: Snapshot, view: View, viewport: { width: n
   const scale = overview ? overviewScale(width) : Math.min(1, width / WORLD_WIDTH);
   const camera = { x: (width - WORLD_WIDTH * scale) / 2, y: 0, scale };
   const poses: Record<WorkKey, Pose> = {};
-  const scene = { camera, height: Math.max(360, WORLD_HEIGHT * scale), poses };
+  const scene: Scene = { camera, height: Math.max(360, WORLD_HEIGHT * scale), poses, morph: view.level === 'group' ? 0 : 1 };
   if (overview) {
     const zones = view.level === 'venn' ? regions(snapshot, view.people) : [];
     const members = snapshot.group.members.filter(member => member.available && member.userId);
