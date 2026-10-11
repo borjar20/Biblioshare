@@ -220,7 +220,7 @@ describe('Explorer request boundaries', () => {
   });
   it('updates saved group data and uses its new revision on the next edit', async () => {
     mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('checkbox', { name: 'Ana' });
-    const saved: Group = { ...first, name: 'Nombre nuevo', revision: 2, members: [first.members[0], { slotId: 'new-member', userId: 'b', name: 'Bea', avatarUrl: null, available: true }] };
+    const saved: Group = { ...first, name: 'Ateneo', revision: 2, members: [first.members[0], { slotId: 'new-member', userId: 'b', name: 'Bea', avatarUrl: null, available: true }] };
     mocks.save.mockResolvedValue({ ok: true, data: saved }); mocks.load.mockResolvedValue({ ok: true, data: snapshot(saved) });
     fireEvent.click(screen.getByRole('button', { name: 'Editar grupo' }));
     fireEvent.change(screen.getByLabelText('Nombre del grupo'), { target: { value: saved.name } });
@@ -228,6 +228,8 @@ describe('Explorer request boundaries', () => {
     fireEvent.click(within(screen.getByRole('form')).getByLabelText('Bea'));
     fireEvent.submit(screen.getByRole('form')); await waitFor(() => expect(screen.queryByRole('form')).toBeNull());
     await screen.findByRole('heading', { name: saved.name });
+    // A rename re-sorts the selector instead of moving the group to the end.
+    expect(within(screen.getByRole('combobox', { name: 'Grupo' })).getAllByRole('option').map(option => option.textContent)).toEqual(['Elige un grupo', 'Ateneo', 'Cine']);
     expect(mocks.save).toHaveBeenLastCalledWith({ id: first.id, name: saved.name, userIds: ['a', 'b'], expectedRevision: 1 });
     fireEvent.click(screen.getByRole('button', { name: 'Editar grupo' })); fireEvent.submit(screen.getByRole('form'));
     await waitFor(() => expect(mocks.save).toHaveBeenLastCalledWith({ id: first.id, name: saved.name, userIds: ['a', 'b'], expectedRevision: 2 }));
