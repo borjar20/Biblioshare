@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
+import { submitLogin } from "../support/visible-form";
 
 const API_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -39,9 +40,7 @@ function bookPath(fixture: Fixture, select = "id,openlibrary_work_key,title") {
 }
 async function login(page: Page, email: string, password: string) {
   await page.goto("/login");
-  await page.locator('input[name="email"]').fill(email);
-  await page.locator('input[name="password"]').fill(password);
-  await page.locator('button[type="submit"]').click();
+  await submitLogin(page, email, password);
   await page.waitForURL("/");
 }
 async function waitForHydration() {
