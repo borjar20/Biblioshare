@@ -149,4 +149,12 @@ select pg_temp.assert_true((select count(*) from public.posts where author_id = 
 select pg_temp.assert_true((select published_post_id is null from public.wrap_ups
   where user_id = '00000000-0000-4000-8000-00000000a001' and kind = 'month'), 'sustituir suelta el enlace');
 
+-- Qué crónicas despacha el cron (hora local de Madrid). El 2026-10-12 el lunes
+-- a las 9:00 reventaba con «malformed array literal» al añadir 'week'.
+select pg_temp.assert_true(private.wrap_up_kinds_due('2026-10-12 09:00') = array['week'], 'lunes 9:00 → week');
+select pg_temp.assert_true(private.wrap_up_kinds_due('2026-10-12 08:00') = '{}'::text[], 'lunes 8:00 → nada');
+select pg_temp.assert_true(private.wrap_up_kinds_due('2026-11-01 09:00') = array['month'], 'día 1 9:00 → month');
+select pg_temp.assert_true(private.wrap_up_kinds_due('2029-01-01 09:00') = array['week', 'month'], 'lunes día 1 → week y month');
+select pg_temp.assert_true(private.wrap_up_kinds_due('2026-12-26 10:00') = array['year'], '26-dic 10:00 → year');
+
 rollback;
