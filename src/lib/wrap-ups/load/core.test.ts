@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { seriesProgressFacts, activityFacts, collapseFinished, loadCore, openAtClose, seriesPercent, sessionsForMinutes, streakWithin, topGenres, type OpenPassRow } from "./core";
+import { seriesProgressFacts, activityFacts, collapseFinished, loadCore, openAtClose, finishedLoggedAt, rhythmFacts, seriesPercent, sessionsForMinutes, streakWithin, topGenres, type OpenPassRow } from "./core";
 import { wrapUpWindow } from "../windows";
 
 describe("collapseFinished", () => {
@@ -265,3 +265,58 @@ describe("loadCore", () => {
  expect(facts.time.episodesWithoutRuntime).toBe(2);
  expect(facts.inProgress).toEqual([]);
  });
+
+describe("openAtClose sin fecha de inicio (caso K-PAX)", () => {
+  const END = "2026-10-01";
+  const row = (over: Partial<OpenPassRow>): OpenPassRow => ({
+    id: "p", item_type: "movie", item_id: "m", position: null, status: "completed",
+    started_on: null, finished_on: "2026-10-12", created_at: "2026-10-13T08:45:36Z", ...over,
+  });
+  it("creado después del cierre y sin inicio: no estaba abierto, no entra", () =>
+    expect(openAtClose([row({})], END)).toHaveLength(0));
+  it("creado antes del cierre y sin inicio: entra", () =>
+    expect(openAtClose([row({ created_at: "2026-09-20T10:00:00Z" })], END)).toHaveLength(1));
+  it("la creación se lee en hora de Madrid (22:30Z del 30-sep = 1-oct)", () =>
+    expect(openAtClose([row({ status: "in_progress", finished_on: null, created_at: "2026-09-30T22:30:00Z" })], END)).toHaveLength(0));
+  it("con inicio, manda el inicio aunque se creara después", () =>
+    expect(openAtClose([row({ started_on: "2026-09-25", created_at: "2026-10-13T08:00:00Z" })], END)).toHaveLength(1));
+});
+
+describe("finishedLoggedAt", () => {
+  it("usa la creación si cae el día de fin (Madrid)", () =>
+    expect(finishedLoggedAt({ finished_on: "2026-09-10", created_at: "2026-09-09T22:40:00Z", updated_at: "2026-09-20T10:00:00Z" }))
+      .toBe("2026-09-09T22:40:00Z"));
+  it("si no, la última edición si cae ese día", () =>
+    expect(finishedLoggedAt({ finished_on: "2026-09-16", created_at: "2026-09-01T10:00:00Z", updated_at: "2026-09-16T15:01:00Z" }))
+      .toBe("2026-09-16T15:01:00Z"));
+  it("ninguna cae el día de fin: sin hora (no se inventa franja)", () =>
+    expect(finishedLoggedAt({ finished_on: "2026-09-16", created_at: "2026-09-01T10:00:00Z", updated_at: "2026-10-02T10:00:00Z" }))
+      .toBeNull());
+});
+
+describe("rhythmFacts (mismas fuentes que el calendario)", () => {
+  // Caso real de septiembre 2026: 14 días activos, 10 de ellos solo con una película terminada.
+  const days = ["2026-09-05", "2026-09-10", "2026-09-11", "2026-09-14", "2026-09-16", "2026-09-17", "2026-09-19",
+    "2026-09-21", "2026-09-22", "2026-09-23", "2026-09-26", "2026-09-27", "2026-09-28", "2026-09-30"];
+  it("por día de la semana cuenta DÍAS activos, no sesiones", () => {
+    const r = rhythmFacts(days, []);
+    expect(r.byWeekday).toEqual([3, 1, 3, 2, 1, 3, 1]);
+    expect(r.byWeekday.reduce((a, b) => a + b, 0)).toBe(days.length);
+    expect(r.favoriteWeekday).toBe(0); // empate L/X/S a 3: gana el primero, como en computeHabits
+  });
+  it("por hora cuenta pares distintos (día, franja) en hora de Madrid", () => {
+    const r = rhythmFacts(days, [
+      { day: "2026-09-28", at: "2026-09-28T13:44:00Z" }, // 15:44 Madrid
+      { day: "2026-09-28", at: "2026-09-28T13:45:00Z" }, // mismo día y franja: cuenta una vez
+      { day: "2026-09-16", at: "2026-09-16T14:01:00Z" }, // 16:01
+      { day: "2026-09-10", at: "2026-09-09T22:40:00Z" }, // 00:40 del día 10
+      { day: "2026-09-11", at: null },
+    ]);
+    expect(r.byBand[7]).toBe(1);
+    expect(r.byBand[8]).toBe(1);
+    expect(r.byBand[0]).toBe(1);
+    expect(r.byBand.reduce((a, b) => a + b, 0)).toBe(3);
+    expect(r.favoriteBandStartHour).toBe(0);
+  });
+  it("sin horas: sin franja favorita", () => expect(rhythmFacts(days, []).favoriteBandStartHour).toBeNull());
+});
