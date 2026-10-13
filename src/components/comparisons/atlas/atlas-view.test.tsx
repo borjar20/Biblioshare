@@ -1,0 +1,66 @@
+// @vitest-environment jsdom
+import { cleanup, fireEvent, render, screen, act } from '@testing-library/react';
+import { NextIntlClientProvider } from 'next-intl';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import messages from '../../../../messages/es.json';
+import type { Snapshot, WorkKey } from '@/lib/comparisons/types';
+
+const push = vi.fn();
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
+type CanvasProps = { onActivate: (hit: { key: WorkKey; x: number; y: number } | null, type: string) => void; onHover: (hit: { key: WorkKey; x: number; y: number } | null) => void; active: string[] };
+let canvas: CanvasProps;
+vi.mock('./atlas-canvas', () => ({ AtlasCanvas: (props: CanvasProps) => { canvas = props; return <div data-testid="canvas"/>; } }));
+import { AtlasView } from './atlas-view';
+
+const member = (id: string, name: string, available = true) => ({ slotId: id, userId: available ? id : null, name: available ? name : null, avatarUrl: null, available });
+const snapshot: Snapshot = { group: { id: 'g', name: 'G', revision: 1, members: [member('me', 'Tú'), member('b', 'Bea'), member('c', 'Carla'), member('x', '', false)] },
+  format: 'all', excludedSeriesWithoutEpisodes: 0,
+  catalog: [{ key: 'book:1', title: 'Proyecto Salvación', coverUrl: null, genres: [], creators: [] }],
+  works: ['me', 'b', 'c'].map(userId => ({ userId, key: 'book:1' as WorkKey, rating: null, date: null, orderUnknown: false, progress: null }))
+    .concat([{ userId: 'b', key: 'book:2' as WorkKey, rating: null, date: null, orderUnknown: false, progress: null }]) };
+const view = () => render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={snapshot} viewerId="me"/></NextIntlClientProvider>);
+afterEach(() => { cleanup(); push.mockReset(); });
+const summary = () => screen.getByRole('status').textContent;
+
+describe('AtlasView', () => {
+  it('empieza con todas las caras activas y resume lo común', () => {
+    view();
+    const faces = screen.getByRole('group', { name: 'Personas del cruce' });
+    expect([...faces.querySelectorAll('button')].map(b => [b.textContent, b.getAttribute('aria-pressed'), b.disabled])).toEqual([
+      ['TTú', 'true', false], ['BBea', 'true', false], ['CCarla', 'true', false], ['?Persona no disponible', null, true]]);
+    expect(summary()).toBe('1 obra en común entre Tú, Bea y Carla');
+  });
+  it('alternar caras cambia el resumen y nunca deja menos de una', () => {
+    view();
+    fireEvent.click(screen.getByRole('button', { name: 'Carla' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tú' }));
+    expect(summary()).toBe('2 obras de Bea. Suma a alguien para ver el cruce.');
+    fireEvent.click(screen.getByRole('button', { name: 'Bea' }));
+    expect(screen.getByRole('button', { name: 'Bea' }).getAttribute('aria-pressed')).toBe('true');
+    expect(canvas.active).toEqual(['b']);
+  });
+  it('ratón: hover muestra la mini-ficha y clic navega', () => {
+    view();
+    act(() => canvas.onHover({ key: 'book:1', x: 10, y: 10 }));
+    expect(screen.getByText('Proyecto Salvación')).toBeTruthy();
+    act(() => canvas.onActivate({ key: 'book:1', x: 10, y: 10 }, 'mouse'));
+    expect(push).toHaveBeenCalledWith('/libro/1');
+  });
+  it('táctil: primer toque abre la hoja, segundo navega; tocar vacío la cierra', () => {
+    view();
+    act(() => canvas.onActivate({ key: 'book:1', x: 10, y: 10 }, 'touch'));
+    const sheet = screen.getByRole('dialog', { name: 'Proyecto Salvación' });
+    expect(sheet.querySelector('a')?.getAttribute('href')).toBe('/libro/1');
+    expect(push).not.toHaveBeenCalled();
+    act(() => canvas.onActivate({ key: 'book:1', x: 10, y: 10 }, 'touch'));
+    expect(push).toHaveBeenCalledWith('/libro/1');
+    act(() => canvas.onActivate(null, 'touch'));
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+  it('una obra sin metadatos no ofrece ficha', () => {
+    view();
+    act(() => canvas.onActivate({ key: 'book:2', x: 10, y: 10 }, 'touch'));
+    const sheet = screen.getByRole('dialog', { name: 'Obra sin información de catálogo' });
+    expect(sheet.querySelector('a')).toBeNull();
+  });
+});
