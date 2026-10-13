@@ -122,20 +122,6 @@ export async function chooseComparisonParticipants(form: Locator, owner: Compari
 }
 /** The signed-in owner (actors[0]) reads as «Tú» in the comparison; the editor keeps real names. */
 export function shownName(fixture: ComparisonFixture, actor: ComparisonActor) { return actor.id === fixture.actors[0].id ? 'Tú' : actor.name; }
-export async function openComparisonFixture(page: Page, fixture: ComparisonFixture) {
-  await loginComparisonActor(page, fixture.actors[0]);
-  await page.goto('/comunidad/entre-nosotros');
-  await page.getByRole('button', { name: 'Crear grupo', exact: true }).click();
-  const form = page.getByRole('form', { name: 'Crear grupo' });
-  await form.getByLabel('Nombre del grupo').fill('qa_comp_motion');
-  await chooseComparisonParticipants(form, fixture.actors[0], fixture.actors);
-  await form.getByRole('button', { name: 'Guardar grupo', exact: true }).click();
-  await expect(page.locator('[data-camera-moving][data-view="group"]')).toBeVisible();
-  return page.locator('[data-camera-moving]');
-}
-
-
-
 export async function deleteComparisonActor(actor: ComparisonActor) {
   if (!usernames.includes(actor.username) || actor.email !== `${actor.username}@example.invalid`) throw new Error('Not an owned disposable actor');
   await request(`auth/v1/admin/users/${actor.id}`, { method: 'DELETE' });
