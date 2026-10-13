@@ -10,6 +10,7 @@ import { narratorSheet } from "@/lib/wrap-ups/narrator";
 import type { NarratorVariant, OwnPet, Palette } from "@/lib/wrap-ups/types";
 import type { PosterModel } from "@/lib/wrap-ups/view-models";
 import { PosterCover } from "./poster-cover";
+import { CoverGrid, ProgressList, RhythmCharts, TogetherBlock } from "./poster-blocks";
 import styles from "./poster.module.css";
 
 /** Campo de color por paleta; `mixed` (periodo repartido) va en terracota. */
@@ -26,9 +27,11 @@ export type PosterProps = {
   narrator: NarratorVariant;
   pet: OwnPet | null;
   showPet: boolean;
+  /** El reproductor está en pausa: congela el scroll de la rejilla. */
+  paused?: boolean;
 };
 
-export function Poster({ model, palette, narrator, pet, showPet }: PosterProps) {
+export function Poster({ model, palette, narrator, pet, showPet, paused }: PosterProps) {
   const { layout, eyebrow, figure, lines } = model;
   // Un h2 por póster: la cifra si la hay; en los «hero», el título; si no, el rótulo.
   const heroHeading = layout === "hero" && lines.length > 0;
@@ -36,7 +39,7 @@ export function Poster({ model, palette, narrator, pet, showPet }: PosterProps) 
   const restLines = heroHeading ? lines.slice(1) : lines;
 
   return (
-    <article lang="es" className={styles.poster} style={{ "--field": POSTER_FIELD[palette] } as CSSProperties} data-layout={layout}>
+    <article lang="es" className={styles.poster} style={{ "--field": POSTER_FIELD[palette] } as CSSProperties} data-layout={layout} data-paused={paused ? "true" : undefined}>
       {eyebrowIsHeading
         ? <h2 className={styles.eyebrow}>{eyebrow}</h2>
         : <p className={styles.eyebrow}>{eyebrow}</p>}
@@ -72,6 +75,14 @@ function LayoutBody({ model }: { model: PosterModel }) {
     case "figure":
       return figure ? <Figure figure={figure} /> : null;
     case "covers":
+      return (
+        <>
+          {figure && <Figure figure={figure} />}
+          {model.coverGrid
+            ? <CoverGrid model={model} />
+            : covers && covers.length > 0 && <Covers covers={covers} />}
+        </>
+      );
     case "closing":
       return (
         <>
@@ -79,6 +90,22 @@ function LayoutBody({ model }: { model: PosterModel }) {
           {covers && covers.length > 0 && <Covers covers={covers} />}
         </>
       );
+    case "progress":
+      return (
+        <>
+          {figure && <Figure figure={figure} />}
+          {model.progress && model.progress.length > 0 && <ProgressList rows={model.progress} />}
+        </>
+      );
+    case "calendar":
+      return (
+        <>
+          {figure && <Figure figure={figure} />}
+          <RhythmCharts model={model} />
+        </>
+      );
+    case "together":
+      return model.together ? <TogetherBlock data={model.together} /> : null;
     case "strip":
       return (
         <>

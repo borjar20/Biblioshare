@@ -266,6 +266,93 @@
 .quoteRow .covers { flex: 0 0 96px; padding: 0; }
 .quoteRow .figure { align-self: center; }
 
+/* ---- Rejilla de portadas (Terminado) ---- */
+.coverGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px 12px;
+  margin: 0;
+  padding: 6px 8px 12px 2px;
+  list-style: none;
+}
+.coverGrid[data-big="true"] { grid-template-columns: repeat(2, minmax(0, 1fr)); padding-inline: 12%; }
+.coverGrid .coverCard { flex: none; width: 100%; }
+/* El scroller ocupa el alto libre; el fundido es una máscara, no un degradado de color
+   (el campo cambia por paleta). */
+.coverScroller {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 240px;
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, transparent 0, #000 14%, #000 86%, transparent 100%);
+}
+.coverTrack { animation: coverLoop var(--scroll-ms) linear infinite; }
+.poster[data-paused="true"] .coverTrack { animation-play-state: paused; }
+@keyframes coverLoop {
+  from { transform: translateY(0); }
+  to { transform: translateY(-50%); }
+}
+.reducedOnly { display: none; }
+
+/* ---- En marcha ---- */
+.progressList { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 12px 14px; list-style: none; }
+.progressRow { display: grid; grid-template-columns: 52px 1fr; align-items: center; gap: 12px; }
+.progressRow[data-touched="false"] { opacity: 0.6; }
+.progressList[data-big="true"] .progressRow { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+.progressList[data-big="true"] .progressCover { width: 50%; }
+.progressCover { margin: 0; padding: 0; list-style: none; }
+.progressCover .coverCard { width: 100%; transform: none; }
+.progressText { display: flex; min-width: 0; width: 100%; flex-direction: column; gap: 6px; }
+.progressTitle { margin: 0; font-size: 1rem; font-weight: 700; line-height: 1.25; overflow-wrap: break-word; }
+.progressIdle { margin: 0; font-size: 0.8125rem; font-weight: 600; }
+.progressBar { height: 10px; border: 2px solid var(--ink); background: var(--paper); }
+.progressBar > span { display: block; height: 100%; background: var(--ink); }
+
+/* ---- Ritmo: calendario y mapas ---- */
+.calendar {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  padding: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+}
+.calendarHead { font-family: var(--font-pixel), ui-monospace, monospace; font-weight: 400; font-synthesis: none; }
+.calendarDay {
+  display: grid;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 2px solid var(--ink);
+}
+.calendarDay[data-active="true"] { background: var(--ink); color: var(--paper); }
+.heatmap { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; }
+.heatTitle { margin: 0; font-size: 0.8125rem; font-weight: 700; }
+.heatRow { display: grid; grid-template-columns: repeat(var(--cells), minmax(0, 1fr)); gap: 4px; }
+.heatCell { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 0.6875rem; font-weight: 700; }
+.heatMark { width: 100%; aspect-ratio: 1; border: 2px solid var(--ink); }
+.heatCell[data-level="1"] .heatMark { background: rgb(28 23 20 / 0.25); }
+.heatCell[data-level="2"] .heatMark { background: rgb(28 23 20 / 0.55); }
+.heatCell[data-level="3"] .heatMark { background: var(--ink); }
+/* El máximo no depende solo del tono: lleva la etiqueta resaltada. */
+.heatCell[data-peak="true"] .heatLabel { background: var(--ink); color: var(--paper); padding: 0 3px; }
+
+/* ---- En compañía ---- */
+.together { display: flex; flex-direction: column; gap: 18px; }
+.togetherSection { display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; }
+.togetherTitle { margin: 0; font-family: var(--font-pixel), ui-monospace, monospace; font-size: 1rem; font-weight: 400; font-synthesis: none; }
+.togetherList { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.togetherRow { display: grid; grid-template-columns: 52px 1fr; align-items: center; gap: 12px; }
+.together[data-single="true"] .togetherRow { grid-template-columns: 76px 1fr; }
+.togetherPeople { display: flex; align-items: center; gap: 8px; font-size: 0.875rem; font-weight: 600; }
+.togetherPeople p { margin: 0; }
+.avatars { display: flex; }
+.avatars > * + * { margin-left: -8px; }
+.avatarMore { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 999px; background: var(--ink); color: var(--paper); font-size: 0.6875rem; font-weight: 700; }
+.clubRow { display: flex; justify-content: space-between; gap: 12px; font-weight: 700; }
+.clubName { overflow-wrap: break-word; min-width: 0; }
+.clubValue { flex: none; font-weight: 500; }
+
 /* ---- Ardilla propia ---- */
 .pet { display: flex; justify-content: center; }
 
@@ -329,4 +416,9 @@
 @media (prefers-reduced-motion: reduce) {
   .narratorSprite { animation: none !important; }
   .enter > * { animation: none; }
+  .coverTrack { animation: none; }
+  .coverTrack > [aria-hidden="true"] { display: none; }
+  .coverTrack .coverCard:nth-child(n + 10) { display: none; }
+  .coverScroller { mask-image: none; }
+  .reducedOnly { display: block; }
 }
