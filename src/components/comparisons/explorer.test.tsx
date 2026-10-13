@@ -262,15 +262,17 @@ describe('Explorer request boundaries', () => {
     expect(screen.getByRole('button', { name: 'Tú' })).toBeTruthy(); expect(mocks.refresh).not.toHaveBeenCalled();
   });
   it('starts a fresh subtree after the same account authenticates again on the server', async () => {
-    // Two available people, so the «Tú» face can be switched off.
-    const pair: Group = { ...first, members: [{ ...first.members[0] }, { slotId: 'two', userId: 'b', name: 'Bea', avatarUrl: null, available: true }] };
-    mocks.query = `group=${first.id}`; mocks.load.mockResolvedValue({ ok: true, data: snapshot(pair) });
-    const mounted = render(ui([pair, second])); await screen.findByRole('button', { name: 'Tú' });
-    fireEvent.click(screen.getByRole('button', { name: 'Tú' })); expect(screen.getByRole('button', { name: 'Tú' }).getAttribute('aria-pressed')).toBe('false'); openGroupSheet(); fireEvent.click(screen.getByRole('button', { name: 'Editar grupo' }));
+    mocks.query = `group=${first.id}`;
+    const mounted = render(ui()); await screen.findByRole('button', { name: 'Tú' });
+    // Reducer-held selection survives reloads; only a fresh subtree resets it.
+    fireEvent.click(screen.getByRole('button', { name: 'Gustos' })); fireEvent.click(screen.getByRole('checkbox', { name: 'Tú' }));
+    expect((screen.getByRole('checkbox', { name: 'Tú' }) as HTMLInputElement).checked).toBe(true);
+    openGroupSheet(); fireEvent.click(screen.getByRole('button', { name: 'Editar grupo' }));
     fireEvent.change(screen.getByLabelText('Nombre del grupo'), { target: { value: 'Borrador antiguo' } });
     act(() => mocks.auth!('SIGNED_OUT', null)); expect(screen.queryByLabelText('Grupo')).toBeNull();
-    mounted.rerender(ui([pair, second])); await screen.findByRole('button', { name: 'Tú' });
-    expect(screen.getByRole('button', { name: 'Tú' }).getAttribute('aria-pressed')).toBe('true');
+    mounted.rerender(ui()); await screen.findByRole('button', { name: 'Tú' });
+    fireEvent.click(screen.getByRole('button', { name: 'Gustos' }));
+    expect((screen.getByRole('checkbox', { name: 'Tú' }) as HTMLInputElement).checked).toBe(false);
     expect(screen.queryByLabelText('Nombre del grupo')).toBeNull();
   });
   it('updates saved group data and uses its new revision on the next edit', async () => {

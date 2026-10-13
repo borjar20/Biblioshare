@@ -223,7 +223,7 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
   </>;
   return <div className={`dark ${styles.immersive}`}>
     <header className={styles.bar}>
-      <Link href="/comunidad" className={styles.back}>← {t('backToCommunity')}</Link>
+      <Link href="/comunidad" className={styles.back}><span aria-hidden="true">←</span> {t('backToCommunity')}</Link>
       <h1>{t('title')}</h1>
       <GroupSheet chipRef={groupChip} choices={choices} value={state.groupId} unsavedId={withGroup?.id ?? null} activeName={active?.name ?? null}
         canEdit={!!active && !activeIsUnsaved} canSaveUnsaved={activeIsUnsaved && !!withGroup} showRefresh={!!active}
