@@ -25,7 +25,9 @@ export function categoriesOf(work: AtlasWork, mode: IslandMode): { id: string; l
 
 export function layoutIslands(people: AtlasPerson[], works: AtlasWork[], active: string[], mode: IslandMode): IslandsLayout {
   const touching = works.filter(work => work.owners.some(owner => active.includes(owner.userId)));
-  const rank = (work: AtlasWork) => workState(work, active).glow ? 0 : work.owners.filter(owner => active.includes(owner.userId)).length > 1 ? 1 : 2;
+  const ranks = new Map<WorkKey, number>(touching.map(work => [work.key,
+    workState(work, active).glow ? 0 : work.owners.filter(owner => active.includes(owner.userId)).length > 1 ? 1 : 2]));
+  const rank = (work: AtlasWork) => ranks.get(work.key)!;
   const buckets = new Map<string, { label: string | null; works: AtlasWork[] }>();
   for (const work of touching) for (const category of categoriesOf(work, mode)) {
     const bucket = buckets.get(category.id) ?? { label: category.label, works: [] };
@@ -34,9 +36,12 @@ export function layoutIslands(people: AtlasPerson[], works: AtlasWork[], active:
   const count = (list: AtlasWork[], r: number) => list.filter(work => rank(work) <= r).length;
   let chosen: string[];
   if (mode === 'type') chosen = TYPE_ORDER.filter(type => buckets.has(type));
-  else chosen = [...buckets].toSorted(([aId, a], [bId, b]) => count(b.works, 0) - count(a.works, 0) || count(b.works, 1) - count(a.works, 1)
-    || b.works.length - a.works.length || (a.label ?? aId).localeCompare(b.label ?? bId) || aId.localeCompare(bId))
-    .slice(0, ISLAND_LIMIT).map(([id]) => id);
+  else {
+    const tally = new Map([...buckets].map(([id, bucket]) => [id, { common: count(bucket.works, 0), shared: count(bucket.works, 1), total: bucket.works.length }]));
+    chosen = [...buckets].toSorted(([aId, a], [bId, b]) => { const ta = tally.get(aId)!, tb = tally.get(bId)!;
+      return tb.common - ta.common || tb.shared - ta.shared || tb.total - ta.total || (a.label ?? aId).localeCompare(b.label ?? bId) || aId.localeCompare(bId); })
+      .slice(0, ISLAND_LIMIT).map(([id]) => id);
+  }
   const drawn = new Set(chosen);
   const groups: { id: string; label: string | null; works: AtlasWork[] }[] = chosen.map(id => ({ id, label: buckets.get(id)!.label, works: buckets.get(id)!.works }));
   const rest = touching.filter(work => !categoriesOf(work, mode).some(category => drawn.has(category.id)));
@@ -59,7 +64,7 @@ export function layoutIslands(people: AtlasPerson[], works: AtlasWork[], active:
   for (let i = 0; i < sized.length; i += perRow) rows.push(sized.slice(i, i + perRow));
   const islands: Island[] = []; let y = 0;
   for (const row of rows) {
-    const height = Math.max(...row.map(item => item.r)) ;
+    const height = Math.max(...row.map(item => item.r));
     const width = row.reduce((sum, item) => sum + item.r * 2, 0) + GAP * (row.length - 1);
     let x = -width / 2; y += LABEL_ROOM + height;
     for (const item of row) { islands.push({ ...item, x: x + item.r, y }); x += item.r * 2 + GAP; }

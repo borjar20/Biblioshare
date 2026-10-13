@@ -12,7 +12,7 @@ export type TiempoSummary = { kind: 'first'; first: number; total: number; undat
 
 /** `YYYY-MM-DD` as a fractional year, taken at the middle of the day. */
 export function yearOf(date: string): number {
-  const [y, m, d] = date.split('-').map(Number);
+  const [y, m, d] = date.slice(0, 10).split('-').map(Number);
   const start = Date.UTC(y, 0, 1), end = Date.UTC(y + 1, 0, 1);
   return y + (Date.UTC(y, m - 1, d) - start + 43_200_000) / (end - start);
 }
@@ -23,8 +23,11 @@ export function layoutTiempo(people: AtlasPerson[], works: AtlasWork[], active: 
   const activePeople = people.filter(person => active.includes(person.id));
   const lanes = activePeople.map((person, index) => ({ userId: person.id, y: laneY(index, activePeople.length) }));
   const laneOf = new Map(lanes.map(lane => [lane.userId, lane.y]));
-  const dated = works.flatMap(work => work.owners.flatMap(owner => laneOf.has(owner.userId) && owner.date
-    ? [{ key: work.key, userId: owner.userId, year: yearOf(owner.date) }] : []));
+  const dated = works.flatMap(work => work.owners.flatMap(owner => {
+    if (!laneOf.has(owner.userId) || !owner.date) return [];
+    const year = yearOf(owner.date);
+    return Number.isFinite(year) ? [{ key: work.key, userId: owner.userId, year }] : [];
+  }));
   let low = Infinity, high = -Infinity;
   for (const item of dated) { low = Math.min(low, item.year); high = Math.max(high, item.year); }
   const startYear = dated.length ? Math.floor(low) : new Date().getUTCFullYear();

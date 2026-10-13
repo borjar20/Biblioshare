@@ -54,6 +54,21 @@ describe('layoutTiempo', () => {
   });
 });
 
+describe('robustez', () => {
+  it('timestamp ISO equivale a su fecha', () => {
+    expect(yearOf('2024-01-01T10:00:00Z')).toBe(yearOf('2024-01-01'));
+  });
+  it('una fecha invalida no genera aparicion ni rompe el rango', () => {
+    const layout = layoutTiempo(people, [works[0], work('book:9', { me: 'nope' })], ['me', 'b']);
+    expect(layout.instances.some(i => i.key === ('book:9' as WorkKey))).toBe(false);
+    expect([layout.startYear, layout.endYear]).toEqual([2021, 2024]);
+    expect(Number.isFinite(layout.extent.minX)).toBe(true);
+  });
+  it('es determinista', () => {
+    expect(layoutTiempo(people, works, ['me', 'b'])).toEqual(layoutTiempo(people, works, ['me', 'b']));
+  });
+});
+
 describe('summarizeTiempo', () => {
   it('cuenta primeras llegadas solo entre compartidas con fecha en todos sus dueños activos', () => {
     expect(summarizeTiempo(people, works, ['me', 'b'])).toEqual({ kind: 'first', first: 1, total: 2, undated: 1 });

@@ -59,6 +59,18 @@ describe('layoutIslands', () => {
     const drama = layoutIslands(people, rated, ['me', 'b'], 'genre').islands.find(i => i.id === 'g:Drama')!;
     expect(drama.means).toEqual([{ userId: 'me', mean: 8 }]);
   });
+  it('el top 10 prioriza las obras comunes a todas: la categoria sin ninguna comun va a Otros', () => {
+    const lots = Array.from({ length: 10 }, (_, k) => work(`c${k}`, ['me', 'b'], { genres: [`Z${String(k).padStart(2, '0')}`] }));
+    const lone = work('lone', ['me'], { genres: ['AAA'] });
+    const layout = layoutIslands(people, [lone, ...lots], ['me', 'b'], 'genre');
+    expect(layout.islands.some(i => i.id === 'g:AAA')).toBe(false);
+    expect(layout.islands.find(i => i.id === OTHER_ISLAND)!.keys).toEqual(['book:lone']);
+  });
+  it('dentro de una isla, la comun a todas va antes que una compartida de clave menor', () => {
+    const pair = [work('a', ['me', 'b'], { genres: ['Drama'] }), work('z', ['me', 'b', 'c'], { genres: ['Drama'] })];
+    const drama = layoutIslands(people, pair, ['me', 'b', 'c'], 'genre').islands.find(i => i.id === 'g:Drama')!;
+    expect(drama.keys).toEqual(['book:z', 'book:a']);
+  });
   it('las islas no se solapan', () => {
     const { islands } = layoutIslands(people, works, ['me', 'b', 'c'], 'genre');
     for (const a of islands) for (const b of islands) if (a !== b)
