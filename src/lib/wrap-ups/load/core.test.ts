@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { seriesProgressFacts, activityFacts, collapseFinished, loadCore, sessionsForMinutes, streakWithin, topGenres } from "./core";
+import { seriesProgressFacts, activityFacts, collapseFinished, loadCore, openAtClose, seriesPercent, sessionsForMinutes, streakWithin, topGenres, type OpenPassRow } from "./core";
 import { wrapUpWindow } from "../windows";
 
 describe("collapseFinished", () => {
@@ -49,6 +49,26 @@ function recordingClient() {
   return { client: { from: builder, rpc: () => Promise.resolve({ data: [], error: null }) }, calls };
 }
 
+/** Cliente falso que aplica eq/gte/lt/in sobre filas en memoria. */
+function filteringClient(tables: Record<string, Record<string, unknown>[]>) {
+  return {
+    from: (table: string) => {
+      const preds: ((r: Record<string, unknown>) => boolean)[] = [];
+      const q: Record<string, unknown> = {};
+      for (const m of ["select", "order", "range", "not", "is", "limit"]) q[m] = () => q;
+      q.eq = (c: string, v: unknown) => { preds.push((r) => r[c] === undefined || r[c] === v); return q; };
+      q.gte = (c: string, v: string) => { preds.push((r) => r[c] === undefined || (r[c] != null && String(r[c]) >= v)); return q; };
+      q.lt = (c: string, v: string) => { preds.push((r) => r[c] === undefined || (r[c] != null && String(r[c]) < v)); return q; };
+      q.lte = (c: string, v: string) => { preds.push((r) => r[c] === undefined || (r[c] != null && String(r[c]) <= v)); return q; };
+      q.in = (c: string, vs: unknown[]) => { preds.push((r) => r[c] === undefined || vs.includes(r[c])); return q; };
+      q.then = (res: (v: unknown) => unknown) =>
+        Promise.resolve({ data: (tables[table] ?? []).filter((r) => preds.every((p) => p(r))), error: null }).then(res);
+      return q;
+    },
+    rpc: () => Promise.resolve({ data: [], error: null }),
+  };
+}
+
 describe("sessionsForMinutes", () => {
   it("excluye las sesiones antiguas de serie: sus minutos salen de episode_watches", () => {
     const rows = [
@@ -76,10 +96,59 @@ describe("activityFacts", () => {
   });
 });
 
+describe("openAtClose", () => {
+  const row = (over: Partial<OpenPassRow>): OpenPassRow => ({
+    id: "p", item_type: "book", item_id: "b", position: null, status: "in_progress",
+    started_on: "2026-08-13", finished_on: null, ...over,
+  });
+  const END = "2026-10-01";
+  it("abierto hoy y empezado antes del cierre: entra", () => expect(openAtClose([row({})], END)).toHaveLength(1));
+  it("empezado después del cierre: no entra", () => expect(openAtClose([row({ started_on: "2026-10-03" })], END)).toHaveLength(0));
+  it("sin fecha de inicio: entra", () => expect(openAtClose([row({ started_on: null })], END)).toHaveLength(1));
+  it("terminado después del cierre: seguía abierto, entra", () =>
+    expect(openAtClose([row({ status: "completed", finished_on: "2026-10-03" })], END)).toHaveLength(1));
+  it("terminado dentro de la ventana: no entra", () =>
+    expect(openAtClose([row({ status: "completed", finished_on: "2026-09-20" })], END)).toHaveLength(0));
+  it("abandonado: no entra (sin fecha de abandono)", () =>
+    expect(openAtClose([row({ status: "dropped" })], END)).toHaveLength(0));
+});
+
+describe("seriesPercent", () => {
+  const ep = (s: number, e: number) => ({ season_number: s, episode_number: e });
+  it("episodios distintos entre el total", () => expect(seriesPercent([ep(1, 1), ep(1, 1), ep(1, 2)], 8, true)).toBe(25));
+  it("sin total, null", () => expect(seriesPercent([ep(1, 1)], null, true)).toBeNull());
+  it("abierto no llega al 100", () => expect(seriesPercent([ep(1, 1), ep(1, 2)], 2, true)).toBe(99));
+});
+
+describe("loadCore · En marcha al cierre (caso @maxteryo)", () => {
+  it("3 abiertas, 1 tocada: tocada primero, todas presentes, openTotal 3", async () => {
+    const tables: Record<string, Record<string, unknown>[]> = {
+      passes: [
+        { id: "ps", user_id: "u1", item_type: "series", item_id: "s1", position: null, status: "in_progress", started_on: "2026-08-25", finished_on: null },
+        { id: "pm", user_id: "u1", item_type: "movie", item_id: "m1", position: null, status: "in_progress", started_on: "2026-08-14", finished_on: null },
+        { id: "pb", user_id: "u1", item_type: "book", item_id: "b1", position: { page: 100 }, status: "in_progress", started_on: "2026-08-13", finished_on: null },
+      ],
+      episode_watches: [
+        { user_id: "u1", series_id: "s1", pass_id: "ps", season_number: 1, episode_number: 1, watched_on: "2026-09-05", created_at: "2026-09-05T21:49:00Z" },
+      ],
+      series: [{ id: "s1", title: "Reacher", cover_url: null, genres: null, episode_runtime_minutes: 50, total_episodes: 8 }],
+      movies: [{ id: "m1", title: "Peli", cover_url: null, genres: null, duration_minutes: 100 }],
+      books: [{ id: "b1", title: "Elantris", cover_url: null, genres: null, total_pages: 400 }],
+    };
+    const facts = await loadCore(filteringClient(tables) as never, "u1", wrapUpWindow("month", new Date("2026-10-01T07:00:00Z")));
+    expect(facts.openTotal).toBe(3);
+    expect(facts.inProgress.map((i) => [i.title, i.touched, i.percent])).toEqual([
+      ["Reacher", true, 13],
+      ["Peli", false, null],
+      ["Elantris", false, 25],
+    ]);
+  });
+});
+
 describe("loadCore", () => {
   it("lista una serie abierta con un episodio visto en la ventana", async () => {
     const tables: Record<string, unknown[]> = {
-      passes: [{ id: "ps1", item_type: "series", item_id: "s1", position: null, status: "in_progress" }],
+      passes: [{ id: "ps1", item_type: "series", item_id: "s1", position: null, status: "in_progress", started_on: "2026-09-01", finished_on: null }],
       episode_watches: [{ series_id: "s1", watched_on: "2026-09-10", created_at: "2026-09-10T20:00:00Z" }],
       series: [{ id: "s1", title: "Serie", cover_url: null, genres: null, episode_runtime_minutes: 40 }],
     };
@@ -99,7 +168,7 @@ describe("loadCore", () => {
     };
     const facts = await loadCore(client as never, "u1", wrapUpWindow("month", new Date("2026-10-01T07:00:00Z")));
     expect(facts.inProgress).toEqual([
-      { type: "series", id: "s1", title: "Serie", coverUrl: null, times: 1, percent: null },
+      { type: "series", id: "s1", title: "Serie", coverUrl: null, times: 1, percent: null, touched: true },
     ]);
     expect(facts.time.minutes.series).toBe(40);
   });
@@ -108,7 +177,7 @@ describe("loadCore", () => {
     // Regresión: 668/669
     // salía «· 100 %» en «En marcha» mientras la home decía 99 %.
     const tables: Record<string, unknown[]> = {
-      passes: [{ id: "pb1", item_type: "book", item_id: "b1", position: { page: 668 }, status: "in_progress" }],
+      passes: [{ id: "pb1", item_type: "book", item_id: "b1", position: { page: 668 }, status: "in_progress", started_on: "2026-09-01", finished_on: null }],
       progress_sessions: [{ pass_id: "pb1", session_date: "2026-09-10", duration_minutes: 30, started_at: "2026-09-10T20:00:00Z", passes: { item_type: "book" } }],
       books: [{ id: "b1", title: "Libro", cover_url: null, genres: null, total_pages: 669 }],
     };

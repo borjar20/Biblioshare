@@ -16,10 +16,14 @@ import type { WrapUpWindow } from "../windows";
 
 export type WrapUpClient = SupabaseClient<Database>;
 export type CoreFacts = Pick<WrapUpInputs, "time" | "activeDays" | "finished" | "inProgress" | "bestStreak"
-  | "favoriteWeekday" | "favoriteBandStartHour" | "genres" | "seriesProgress">;
+  | "favoriteWeekday" | "favoriteBandStartHour" | "genres" | "seriesProgress" | "openTotal" | "byWeekday" | "byBand">;
 export type FinishedPassRow = { item_type: ItemType; item_id: string; finished_on: string };
 type Meta = { title: string; coverUrl: string | null; genres: string[] | null };
-type FullMeta = Meta & { runtime: number | null; duration: number | null; totalPages: number | null };
+type FullMeta = Meta & { runtime: number | null; duration: number | null; totalPages: number | null; totalEpisodes: number | null };
+export type OpenPassRow = {
+  id: string; item_type: ItemType; item_id: string; position: unknown;
+  status: string; started_on: string | null; finished_on: string | null;
+};
 
 const key = (type: ItemType, id: string) => `${type}:${id}`;
 
@@ -68,14 +72,14 @@ export function topGenres(items: ItemRef[], meta: Map<string, Pick<Meta, "genres
 
 const TABLE: Record<ItemType, "books" | "movies" | "series"> = { book: "books", movie: "movies", series: "series" };
 
-async function loadMeta(client: WrapUpClient, refs: { type: ItemType; id: string }[]): Promise<Map<string, FullMeta>> {
+export async function loadMeta(client: WrapUpClient, refs: { type: ItemType; id: string }[]): Promise<Map<string, FullMeta>> {
   const out = new Map<string, FullMeta>();
   for (const type of ["book", "movie", "series"] as const) {
     const ids = [...new Set(refs.filter((r) => r.type === type).map((r) => r.id))];
     if (ids.length === 0) continue;
     const cols = type === "book" ? "id,title,cover_url,genres,total_pages"
       : type === "movie" ? "id,title,cover_url,genres,duration_minutes"
-      : "id,title,cover_url,genres,episode_runtime_minutes";
+      : "id,title,cover_url,genres,episode_runtime_minutes,total_episodes";
     const rows: Record<string, unknown>[] = [];
     for (const chunk of chunkIds(ids)) {
       const { data, error } = await client.from(TABLE[type]).select(cols).in("id", chunk);
@@ -89,6 +93,7 @@ async function loadMeta(client: WrapUpClient, refs: { type: ItemType; id: string
         runtime: (r.episode_runtime_minutes as number | null) ?? null,
         duration: (r.duration_minutes as number | null) ?? null,
         totalPages: (r.total_pages as number | null) ?? null,
+        totalEpisodes: (r.total_episodes as number | null) ?? null,
       });
     }
   }
@@ -170,30 +175,63 @@ async function minutesIn(
   };
 }
 
+/** Abierto el último día de la ventana: sigue abierto, o se terminó después del cierre. Los abandonados no
+ *  guardan fecha de abandono: no se puede saber si seguían abiertos, así que no entran. */
+export function openAtClose(rows: OpenPassRow[], endExclusive: string): OpenPassRow[] {
+  return rows.filter((r) => (r.started_on == null || r.started_on < endExclusive)
+    && (r.status === "in_progress" || (r.status === "completed" && r.finished_on != null && r.finished_on >= endExclusive)));
+}
+
+/** % de una serie: episodios distintos vistos entre el total; abierto, tope 99 (como passPercent). */
+export function seriesPercent(
+  watched: { season_number: number; episode_number: number }[], total: number | null, stillOpen: boolean,
+): number | null {
+  if (!total) return null;
+  const distinct = new Set(watched.map((w) => `${w.season_number}:${w.episode_number}`)).size;
+  const pct = Math.min(100, Math.round((distinct * 100) / total));
+  return stillOpen ? Math.min(99, pct) : pct;
+}
+
 export async function loadCore(client: WrapUpClient, userId: string, w: WrapUpWindow): Promise<CoreFacts> {
   const b = { start: w.start, endExclusive: w.endExclusive };
-  const [cur, prevRows, finishedRows, openQ] = await Promise.all([
+  const [cur, prevRows, finishedRows, openQ, laterQ] = await Promise.all([
     loadWindowRows(client, userId, b),
     w.previous ? loadWindowRows(client, userId, w.previous) : Promise.resolve(null),
     readAllRows<FinishedPassRow>((from, to) => client.from("passes").select("item_type, item_id, finished_on")
       .eq("user_id", userId).eq("status", "completed")
       .gte("finished_on", w.start).lt("finished_on", w.endExclusive).order("id").range(from, to) as unknown as PromiseLike<{ data: FinishedPassRow[] | null; error?: unknown }>),
     // Pases abiertos: pocos por usuario (no pasan del tope de filas).
-    client.from("passes").select("id, item_type, item_id, position").eq("user_id", userId)
-      .eq("status", "in_progress"),
+    client.from("passes").select("id, item_type, item_id, position, status, started_on, finished_on")
+      .eq("user_id", userId).eq("status", "in_progress"),
+    // Terminados DESPUÉS del cierre: el último día de la ventana seguían abiertos.
+    client.from("passes").select("id, item_type, item_id, position, status, started_on, finished_on")
+      .eq("user_id", userId).eq("status", "completed").gte("finished_on", w.endExclusive),
   ]);
   if (openQ.error) throw openQ.error;
+  if (laterQ.error) throw laterQ.error;
   const [now, prev] = await Promise.all([
     minutesIn(client, userId, b, cur),
     w.previous && prevRows ? minutesIn(client, userId, w.previous, prevRows) : Promise.resolve(null),
   ]);
 
-  // En marcha = pases abiertos tocados en la ventana: con una sesión, o (series)
-  // con algún episodio visto de esa serie.
-  const touched = new Set(cur.sessions.map((r) => r.pass_id));
-  const watchedSeries = new Set(cur.watches.map((r) => r.series_id));
-  const openRows = ((openQ.data ?? []) as { id: string; item_type: ItemType; item_id: string; position: unknown }[])
-    .filter((r) => touched.has(r.id) || (r.item_type === "series" && watchedSeries.has(r.item_id)));
+  // En marcha = abierto al cierre (spec 2026-10-13 §2). `touched`: avanzó en la ventana
+  // (sesión del pase, o episodio de esa serie).
+  const lastTouch = new Map<string, string>();
+  for (const s of cur.sessions) if (s.session_date > (lastTouch.get(s.pass_id) ?? "")) lastTouch.set(s.pass_id, s.session_date);
+  const seriesTouch = new Map<string, string>();
+  for (const x of cur.watches) if (x.watched_on > (seriesTouch.get(x.series_id) ?? "")) seriesTouch.set(x.series_id, x.watched_on);
+  const touchOf = (r: OpenPassRow) => lastTouch.get(r.id) ?? (r.item_type === "series" ? seriesTouch.get(r.item_id) : undefined) ?? null;
+
+  const openRows = openAtClose([
+    ...((openQ.data ?? []) as OpenPassRow[]),
+    ...((laterQ.data ?? []) as OpenPassRow[]),
+  ], w.endExclusive);
+
+  const seriesPassIds = openRows.filter((r) => r.item_type === "series").map((r) => r.id);
+  const seriesWatches = seriesPassIds.length === 0 ? [] : await readAllRows<{ pass_id: string | null; season_number: number; episode_number: number }>(
+    (from, to) => client.from("episode_watches").select("pass_id, season_number, episode_number")
+      .eq("user_id", userId).in("pass_id", seriesPassIds).lt("watched_on", w.endExclusive)
+      .order("id").range(from, to));
 
   const meta = await loadMeta(client, [
     ...finishedRows.map((r) => ({ type: r.item_type, id: r.item_id })),
@@ -201,16 +239,27 @@ export async function loadCore(client: WrapUpClient, userId: string, w: WrapUpWi
     ...(w.kind === "week" ? cur.watches.map((r) => ({ type: "series" as const, id: r.series_id })) : []),
   ]);
   const finished = collapseFinished(finishedRows, meta);
-  const inProgress = openRows.flatMap((r) => {
+  const ordered = openRows.flatMap((r) => {
     const m = meta.get(key(r.item_type, r.item_id));
     if (!m) return [];
-    // Solo los libros tienen porcentaje: position.page / books.total_pages.
-    const pos = r.item_type === "book" ? parsePosition("book", r.position) : null;
-    const page = pos && "page" in pos && pos.page !== undefined ? pos.page : null;
-    // passPercent: el 100 solo con la última página leída (668/669 redondeaba a 100 en un pase abierto).
-    const percent = page != null && m.totalPages ? passPercent(page, m.totalPages) : null;
-    return [{ type: r.item_type, id: r.item_id, title: m.title, coverUrl: m.coverUrl, times: 1, percent }];
-  });
+    const stillOpen = r.status === "in_progress";
+    let percent: number | null = null;
+    if (r.item_type === "book" && stillOpen) {
+      // Solo con el pase aún abierto: la posición guardada es la de HOY, no la del cierre.
+      const pos = parsePosition("book", r.position);
+      const page = pos && "page" in pos && pos.page !== undefined ? pos.page : null;
+      // passPercent: el 100 solo con la última página leída (668/669 redondeaba a 100 en un pase abierto).
+      percent = page != null && m.totalPages ? passPercent(page, m.totalPages) : null;
+    } else if (r.item_type === "series") {
+      percent = seriesPercent(seriesWatches.filter((x) => x.pass_id === r.id), m.totalEpisodes, stillOpen);
+    }
+    const touch = touchOf(r);
+    return [{
+      item: { type: r.item_type, id: r.item_id, title: m.title, coverUrl: m.coverUrl, times: 1, percent, touched: touch !== null },
+      sortKey: touch ?? r.started_on ?? "",
+    }];
+  }).sort((a, b) => Number(b.item.touched) - Number(a.item.touched) || b.sortKey.localeCompare(a.sortKey));
+  const inProgress = ordered.map((x) => x.item);
 
   const { activeDays, habits } = activityFacts(cur.sessions, cur.watches, finishedRows.map((r) => r.finished_on));
 
@@ -222,6 +271,7 @@ export async function loadCore(client: WrapUpClient, userId: string, w: WrapUpWi
   return {
     time: computeTime({ ...now, previousMinutes }),
     activeDays, finished, inProgress,
+    openTotal: inProgress.length, byWeekday: habits.byWeekday, byBand: habits.byBand,
     seriesProgress: w.kind === "week" ? seriesProgressFacts(cur.watches, meta) : [],
     bestStreak: streakWithin(activeDays),
     favoriteWeekday: habits.favoriteWeekday,
