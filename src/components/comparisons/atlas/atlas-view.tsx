@@ -27,7 +27,8 @@ function WorkCard({ work, people, title }: { work: AtlasWork; people: AtlasPerso
   </>;
 }
 
-export function AtlasView({ snapshot, viewerId }: { snapshot: Snapshot; viewerId: string }) {
+/** `notice` is a coverage note shown right under the summary (e.g. series without episodes). */
+export function AtlasView({ snapshot, viewerId, notice }: { snapshot: Snapshot; viewerId: string; notice?: ReactNode }) {
   const t = useTranslations('comparisons'); const locale = useLocale(); const router = useRouter();
   const you = t('you');
   const { people, works } = useMemo(() => atlasModel(snapshot, viewerId, you), [snapshot, viewerId, you]);
@@ -62,9 +63,10 @@ export function AtlasView({ snapshot, viewerId }: { snapshot: Snapshot; viewerId
     <AtlasCanvas ref={camera} label={t('atlas.canvasLabel')} people={people} works={works} active={active} layout={layout}
       countLabel={count => t('atlas.poleCount', { count })} onTogglePerson={toggle} onHover={setHover} onActivate={activate}/>
     <div className={styles.overlayTop}>
-      <p className={styles.summary} role="status" aria-live="polite">{summary.kind === 'solo'
+      <div><p className={styles.summary} role="status" aria-live="polite">{summary.kind === 'solo'
         ? t.rich('atlas.summary.solo', { count: summary.count, name: summary.name, b: bold })
         : t.rich('atlas.summary.common', { count: summary.count, names: list.format(summary.names), b: bold })}</p>
+        {notice}</div>
       <div className={styles.faces} role="group" aria-label={t('atlas.faces')}>
         {people.map(person => <button key={person.id} type="button" className={styles.face} aria-pressed={active.includes(person.id)}
           aria-label={person.name} style={{ '--person': person.color } as CSSProperties} onClick={() => toggle(person.id)}>

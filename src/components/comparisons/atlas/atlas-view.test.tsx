@@ -30,6 +30,12 @@ describe('AtlasView', () => {
       ['TTú', 'true', false], ['BBea', 'true', false], ['CCarla', 'true', false], ['?Persona no disponible', null, true]]);
     expect(summary()).toBe('1 obra en común entre Tú, Bea y Carla');
   });
+  it('pinta el aviso de cobertura bajo el resumen cuando se le pasa', () => {
+    render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={snapshot} viewerId="me" notice={<p data-testid="notice">Aviso</p>}/></NextIntlClientProvider>);
+    const notice = screen.getByTestId('notice');
+    expect(notice.textContent).toBe('Aviso');
+    expect(notice.previousElementSibling).toBe(screen.getByRole('status'));
+  });
   it('alternar caras cambia el resumen y nunca deja menos de una', () => {
     view();
     fireEvent.click(screen.getByRole('button', { name: 'Carla' }));

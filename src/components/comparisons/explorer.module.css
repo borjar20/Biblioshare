@@ -54,3 +54,34 @@
 .explorer :focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
 @media (max-width: 800px) { .page { padding: 24px; } .title { font-size: 44px; } .heading { gap: 16px; } .intro { max-width: 280px; font-size: 12px; } }
 @media (max-width: 650px) { .page { padding: 22px 16px; } .heading { align-items: flex-start; flex-direction: column; gap: 12px; } .title { font-size: 34px; letter-spacing: -1.2px; } .intro { max-width: 100%; } .intro br { display: none; } .groupControls { width: 100%; } .groupPicker { flex: 1; } .groupSelect { width: 100%; } .private { font-size: 10px; } .toolbar { gap: 13px; } .tabs { gap: 25px; } .formats { gap: 0; flex-wrap: nowrap; width: 100%; margin: 0 0 10px; } .formats button { padding: 8px 10px; flex: 1; font-size: 11px; } .workspaceControls { padding: 12px 16px 0; } }
+.immersive { --atlas-ground:#1d1713; --atlas-panel:#2a221d; --atlas-line:#4a3d34; --atlas-fg:#f1e7dd; --atlas-muted:#b2a293; --atlas-faint:#7d6e62; --atlas-glow:#f2c27b; --atlas-clash:#e2735f; --atlas-agree:#8fcfb4; --atlas-cream:#e9dccf;
+  position: fixed; inset: 0; display: flex; flex-direction: column; background: var(--atlas-ground); color: var(--atlas-fg); overflow: hidden; font-family: var(--font-geist-sans), sans-serif; }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 8px; z-index: 3; }
+.bar h1 { font-size: clamp(20px, 2.4vw, 28px); font-weight: 800; letter-spacing: -.01em; margin: 0 8px 0 0; }
+.back { color: var(--atlas-muted); font-size: 13px; min-height: 44px; display: inline-flex; align-items: center; }
+.barSpacer { flex: 1; }
+.groupChip { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 999px; background: var(--atlas-panel); color: var(--atlas-fg); font-size: 13px; font-weight: 700; max-width: 60vw; }
+.groupChip span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.immersive .formats { margin: 0; }
+.immersive .formats button { color: var(--atlas-muted); min-height: 36px; }
+.immersive .formats button[aria-pressed=true] { background: var(--atlas-fg); color: var(--atlas-ground); }
+.immersive .tabs { gap: 4px; align-self: auto; }
+.immersive .tab { font-size: 13px; min-height: 36px; padding: 0 12px; border-radius: 999px; color: var(--atlas-muted); }
+.immersive .tab[aria-pressed=true] { background: var(--atlas-panel); color: var(--atlas-fg); }
+.immersive .tab[aria-pressed=true]::after { display: none; }
+.stage { position: relative; flex: 1; min-height: 0; }
+.stage > [role=status], .stage > [role=alert] { padding: 28px; }
+.canvasWrap { position: absolute; inset: 0; }
+.tastePanel { position: absolute; inset: 0; overflow: auto; padding: 8px 16px calc(24px + env(safe-area-inset-bottom, 0px)); }
+.coverageNote { margin: 4px 0 0; font-size: 12px; color: var(--atlas-faint); max-width: 46ch; line-height: 1.4; }
+.immersiveEmpty { padding: 24px 16px; overflow: auto; }
+.immersive .loadingExit, .immersive .workspaceLoading { background: var(--atlas-ground); }
+.groupSheet { margin: auto auto 0; width: min(520px, 100%); border: 0; border-radius: 20px 20px 0 0; background: var(--atlas-panel); color: var(--atlas-fg); padding: 0; }
+.groupSheet::backdrop { background: rgba(0,0,0,.55); }
+@media (min-width: 1024px) { .groupSheet { margin: auto; border-radius: 20px; } }
+.groupSheetBody { display: grid; gap: 14px; padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 0px)); }
+.groupField { display: grid; gap: 6px; font-size: 12px; color: var(--atlas-muted); }
+.groupActions { display: flex; flex-wrap: wrap; gap: 8px; }
+.groupActions button { min-height: 44px; padding: 0 16px; border-radius: 999px; background: var(--atlas-ground); color: var(--atlas-fg); font-size: 13px; font-weight: 600; }
+.sheetFooter { font-size: 12px; color: var(--atlas-faint); margin: 0; }
+@media (max-width: 640px) { .bar h1 { font-size: 20px; } .immersive .formats { order: 5; width: 100%; } }

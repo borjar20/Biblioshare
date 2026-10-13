@@ -16,6 +16,9 @@ const group = (suffix: string, name: string): Group => ({ id: `${suffix.repeat(8
 const first = group('a', 'Lectores'); const second = group('b', 'Cine');
 const snapshot = (g: Group): Snapshot => ({ group: g, format: 'all', catalog: [], works: [], excludedSeriesWithoutEpisodes: 0 });
 function ui(groups = [first, second], viewerId = 'a') { return <NextIntlClientProvider locale="es" messages={messages}><Explorer initialGroups={groups} candidates={[{ userId: 'a', name: 'Ana', avatarUrl: null }, { userId: 'b', name: 'Bea', avatarUrl: null }]} viewerId={viewerId}/></NextIntlClientProvider>; }
+// Group actions and the group select live in the group sheet, opened from its chip.
+const openGroupSheet = () => fireEvent.click(screen.getByRole('button', { name: /^Grupo: / }));
+const loadingStatuses = () => screen.queryAllByRole('status').filter(status => status.textContent?.includes(messages.comparisons.loading));
 let cookieTurn = 0;
 // Another tab's login/logout rewrites the shared Supabase session cookies.
 function rotateSessionCookies() { cookieTurn += 1; document.cookie = `sb-test-auth-token=turn-${cookieTurn}; path=/`; }
@@ -23,6 +26,8 @@ beforeEach(() => {
   // jsdom does not implement <dialog>.showModal; the editor sheet opens with it.
   HTMLDialogElement.prototype.showModal = function () { this.open = true; };
   HTMLDialogElement.prototype.close = function () { this.open = false; this.dispatchEvent(new Event('close')); };
+  // The atlas engine draws on a <canvas>; jsdom has no 2D context.
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
   document.cookie = 'sb-test-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'; vi.clearAllMocks(); mocks.query = ''; mocks.load.mockResolvedValue({ ok: true, data: snapshot(first) }); mocks.getUser.mockReset().mockResolvedValue({ data: { user: { id: 'a' } }, error: null }); });
 afterEach(cleanup);
 describe('independent format view retention', () => {
@@ -96,12 +101,13 @@ describe('Explorer request boundaries', () => {
     const { container } = render(ui());
     expect(screen.getByRole('status').textContent).toContain(messages.comparisons.loading);
     await act(async () => finish({ ok: true, data: snapshot(first) }));
-    expect(screen.queryByRole('status')).toBeNull();
+    // The atlas summary is a permanent status; none may announce loading.
+    expect(loadingStatuses()).toEqual([]);
     const handoff = container.querySelector('[data-comparison-handoff]')!;
     expect(handoff).not.toBeNull();
     expect(handoff.getAttribute('aria-hidden')).toBe('true');
     expect(handoff.hasAttribute('inert')).toBe(true);
-    const refresh = screen.getByRole('button', { name: 'Actualizar' });
+    openGroupSheet(); const refresh = screen.getByRole('button', { name: 'Actualizar' });
     refresh.focus(); expect(document.activeElement).toBe(refresh);
     expect(container.querySelector('[data-comparison-slot="works"]')).not.toBeNull();
     // JSDOM has no AnimationEvent, so React selects the prefixed DOM event.
@@ -115,28 +121,28 @@ describe('Explorer request boundaries', () => {
   it('discards fading evidence on refresh and accepts only the most recent load', async () => {
     mocks.query = `group=${first.id}`;
     const { container } = render(ui());
-    await screen.findByRole('checkbox', { name: 'Tú' });
+    await screen.findByRole('button', { name: 'Tú' });
     expect(container.querySelector('[data-comparison-handoff]')).not.toBeNull();
     let finishOld!: (value: Result<Snapshot>) => void;
     let finishNew!: (value: Result<Snapshot>) => void;
     mocks.load.mockImplementationOnce(() => new Promise(resolve => { finishOld = resolve; }))
       .mockImplementationOnce(() => new Promise(resolve => { finishNew = resolve; }));
-    fireEvent.click(screen.getByRole('button', { name: 'Actualizar' }));
+    openGroupSheet(); fireEvent.click(screen.getByRole('button', { name: 'Actualizar' }));
     expect(container.querySelector('[data-comparison-handoff]')).toBeNull();
     expect(container.querySelector('[data-comparison-slot]')).toBeNull();
-    fireEvent.change(screen.getByLabelText('Grupo'), { target: { value: second.id } });
+    openGroupSheet(); fireEvent.change(screen.getByLabelText('Grupo'), { target: { value: second.id } });
     await act(async () => finishOld({ ok: true, data: snapshot(first) }));
     expect(container.querySelector('[data-comparison-slot]')).toBeNull();
     expect(screen.getByRole('status').textContent).toContain(messages.comparisons.loading);
     await act(async () => finishNew({ ok: true, data: snapshot(second) }));
     expect(screen.getByRole('heading', { name: second.name })).toBeTruthy();
     expect(container.querySelector('[data-comparison-handoff]')).not.toBeNull();
-    expect(screen.queryByRole('status')).toBeNull();
+    expect(loadingStatuses()).toEqual([]);
   });
   it('drops both the fade and fresh evidence immediately when the account signs out', async () => {
     mocks.query = `group=${first.id}`;
     const { container } = render(ui());
-    await screen.findByRole('checkbox', { name: 'Tú' });
+    await screen.findByRole('button', { name: 'Tú' });
     expect(container.querySelector('[data-comparison-handoff]')).not.toBeNull();
     act(() => mocks.auth!('SIGNED_OUT', null));
     expect(container.querySelector('[data-comparison-handoff]')).toBeNull();
@@ -153,15 +159,17 @@ describe('Explorer request boundaries', () => {
     expect(screen.getByText(/2 historiales de persona y serie del grupo cargado/)).toBeTruthy();
     expect(screen.getByText(/Selecciona entre 2 y 10/)).toBeTruthy();
   });
-  it('restores facet participants in the checkboxes after another section adds Carlos', async () => {
+  it('restores facet participants in the checkboxes: Obras face toggles do not change Gustos participants', async () => {
     const available: Group = { ...first, members: ['Ana', 'Bea', 'Carlos'].map((name, i) => ({ slotId: `${i}`, userId: ['a', 'b', 'c'][i], name, avatarUrl: null, available: true })) };
     const data: Snapshot = { ...snapshot(available), catalog: [{ key: 'book:x', title: 'Libro', coverUrl: null, genres: ['Drama'], creators: [] }], works: [{ userId: 'a', key: 'book:x', rating: 9, date: null, orderUnknown: false, progress: null }] };
     mocks.query = `group=${first.id}`; mocks.load.mockResolvedValue({ ok: true, data });
     vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
-    render(ui([available])); fireEvent.click(await screen.findByRole('checkbox', { name: 'Tú' })); fireEvent.click(screen.getByRole('checkbox', { name: 'Bea' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Gustos' })); fireEvent.click(screen.getByRole('button', { name: 'Lo que valoráis' })); fireEvent.click(screen.getByRole('button', { name: 'Explorar Drama' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Obras' })); fireEvent.click(screen.getByRole('checkbox', { name: 'Carlos' }));
-    expect((screen.getByRole('checkbox', { name: 'Carlos' }) as HTMLInputElement).checked).toBe(true);
+    render(ui([available])); await screen.findByRole('button', { name: 'Tú' });
+    fireEvent.click(screen.getByRole('button', { name: 'Gustos' })); fireEvent.click(screen.getByRole('checkbox', { name: 'Tú' })); fireEvent.click(screen.getByRole('checkbox', { name: 'Bea' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Lo que valoráis' })); fireEvent.click(screen.getByRole('button', { name: 'Explorar Drama' }));
+    // The atlas keeps its own face selection; toggling a face must not leak into Gustos.
+    fireEvent.click(screen.getByRole('button', { name: 'Obras' })); fireEvent.click(screen.getByRole('button', { name: 'Carlos' }));
+    expect(screen.getByRole('button', { name: 'Carlos' }).getAttribute('aria-pressed')).toBe('false');
     fireEvent.click(screen.getByRole('button', { name: 'Gustos' }));
     expect(screen.getByText('Tú, Bea')).toBeTruthy(); expect(screen.getByRole('button', { name: 'Lo que valoráis' }).getAttribute('aria-pressed')).toBe('true');
     expect((screen.getByRole('checkbox', { name: 'Tú' }) as HTMLInputElement).checked).toBe(true); expect((screen.getByRole('checkbox', { name: 'Bea' }) as HTMLInputElement).checked).toBe(true);
@@ -174,30 +182,22 @@ describe('Explorer request boundaries', () => {
     const data: Snapshot = { ...snapshot(available), catalog: [{ key: 'book:x', title: 'Libro', coverUrl: null, genres: ['Drama'], creators: [{ id: 'author', name: 'Autora', role: 'author' }] }], works: [{ userId: 'a', key: 'book:x', rating: 9, date: null, orderUnknown: false, progress: null }] };
     mocks.query = `group=${first.id}`; mocks.load.mockImplementation(async (_id, format) => ({ ok: true, data: { ...data, format } }));
     vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })); vi.stubGlobal('scrollTo', vi.fn());
-    render(ui([available])); fireEvent.click(await screen.findByRole('checkbox', { name: 'Tú' })); fireEvent.click(screen.getByRole('checkbox', { name: 'Bea' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Gustos' })); fireEvent.click(within(screen.getByRole('group', { name: 'Filtrar por tipo de obra' })).getByRole('button', { name: 'Libros' }));
+    render(ui([available])); await screen.findByRole('button', { name: 'Tú' });
+    fireEvent.click(screen.getByRole('button', { name: 'Gustos' })); fireEvent.click(screen.getByRole('checkbox', { name: 'Tú' })); fireEvent.click(screen.getByRole('checkbox', { name: 'Bea' }));
+    fireEvent.click(within(screen.getByRole('group', { name: 'Filtrar por tipo de obra' })).getByRole('button', { name: 'Libros' }));
     await screen.findByLabelText('Agrupar por'); fireEvent.change(screen.getByLabelText('Agrupar por'), { target: { value: 'author' } });
     fireEvent.click(screen.getByRole('button', { name: 'Lo que valoráis' })); fireEvent.click(screen.getByRole('button', { name: 'Explorar Autora' })); fireEvent.click(screen.getByRole('button', { name: 'Abrir obra: Libro' })); await screen.findByRole('alert');
-    fireEvent.click(screen.getByRole('button', { name: 'Obras' })); await screen.findByRole('button', { name: 'Tú, Bea 0 obras comunes' });
+    fireEvent.click(screen.getByRole('button', { name: 'Obras' })); await screen.findByRole('button', { name: 'Tú' });
+    expect(document.querySelector('[data-comparison-stage]')).not.toBeNull(); expect(screen.getByRole('status').textContent).toContain('en común');
     fireEvent.click(screen.getByRole('button', { name: 'Gustos' })); await screen.findByRole('button', { name: 'Volver a la categoría' });
     fireEvent.click(screen.getByRole('button', { name: 'Volver a la categoría' }));
     expect((screen.getByLabelText('Agrupar por') as HTMLSelectElement).value).toBe('author'); expect(within(screen.getByRole('group', { name: 'Filtrar por tipo de obra' })).getByRole('button', { name: 'Libros' }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByRole('button', { name: 'Lo que valoráis' }).getAttribute('aria-pressed')).toBe('true'); expect(screen.getByText('Tú, Bea')).toBeTruthy();
     vi.unstubAllGlobals();
   });
-  it('synchronizes a map pair with the participant controls before adding a third person', async () => {
-    const available: Group = { ...first, members: ['Ana', 'Bea', 'Carlos'].map((name, index) => ({ slotId: `${index}`, userId: ['a', 'b', 'c'][index], name, avatarUrl: null, available: true })) };
-    mocks.query = `group=${first.id}`; mocks.load.mockResolvedValue({ ok: true, data: snapshot(available) });
-    render(ui([available]));
-    fireEvent.click(await screen.findByRole('button', { name: 'Tú, Bea 0 obras comunes' }));
-    expect((screen.getByRole('checkbox', { name: 'Tú' }) as HTMLInputElement).checked).toBe(true);
-    expect((screen.getByRole('checkbox', { name: 'Bea' }) as HTMLInputElement).checked).toBe(true);
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Carlos' }));
-    expect(screen.getAllByRole('button', { name: /Abrir región:/ })).toHaveLength(7);
-  });
   it('starts with no arbitrary selected group and lets keyboard users create one', () => {
     render(ui([])); expect(screen.getByText('Compara con quien sigues')).toBeTruthy();
-    const button = screen.getByRole('button', { name: 'Crear grupo' }); button.focus(); expect(document.activeElement).toBe(button);
+    openGroupSheet(); const button = screen.getByRole('button', { name: 'Crear grupo' }); button.focus(); expect(document.activeElement).toBe(button);
     fireEvent.click(button); expect(screen.getByRole('textbox', { name: 'Nombre del grupo' })).toBeTruthy(); expect(mocks.load).not.toHaveBeenCalled();
   });
   it('opens an unsaved pair from ?con= for an accepted follow and offers to save it with both people (#1484)', async () => {
@@ -205,10 +205,10 @@ describe('Explorer request boundaries', () => {
     mocks.query = `con=${bea}`;
     render(<NextIntlClientProvider locale="es" messages={messages}><Explorer initialGroups={[]} candidates={[{ userId: 'a', name: 'Ana', avatarUrl: null }, { userId: bea, name: 'Bea', avatarUrl: null }]} viewerId="a"/></NextIntlClientProvider>);
     await waitFor(() => expect(mocks.load).toHaveBeenCalledWith(`with:${bea}`, 'all'));
-    const select = screen.getByRole('combobox', { name: 'Grupo' }) as HTMLSelectElement;
+    openGroupSheet(); const select = screen.getByRole('combobox', { name: 'Grupo' }) as HTMLSelectElement;
     expect(select.value).toBe(`with:${bea}`); expect(select.selectedOptions[0].textContent).toBe('Tú y Bea · sin guardar');
     expect(screen.queryByText('Compara con quien sigues')).toBeNull(); expect(screen.queryByRole('button', { name: 'Editar grupo' })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Guardar como grupo' }));
+    openGroupSheet(); fireEvent.click(screen.getByRole('button', { name: 'Guardar como grupo' }));
     const sheet = screen.getByRole('dialog', { name: 'Crear grupo' });
     expect((within(sheet).getByRole('textbox', { name: 'Nombre del grupo' }) as HTMLInputElement).value).toBe('Tú y Bea');
     expect((within(sheet).getByRole('checkbox', { name: 'Bea' }) as HTMLInputElement).checked).toBe(true);
@@ -230,9 +230,9 @@ describe('Explorer request boundaries', () => {
   it('clears old members immediately and ignores late replies after group change', async () => {
     let finish!: (value: Result<Snapshot>) => void;
     mocks.load.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; })).mockResolvedValueOnce({ ok: true, data: snapshot(second) });
-    render(ui()); fireEvent.change(screen.getByLabelText('Grupo'), { target: { value: first.id } });
+    render(ui()); openGroupSheet(); fireEvent.change(screen.getByLabelText('Grupo'), { target: { value: first.id } });
     await waitFor(() => expect(mocks.load).toHaveBeenCalledTimes(1));
-    fireEvent.change(screen.getByLabelText('Grupo'), { target: { value: second.id } });
+    openGroupSheet(); fireEvent.change(screen.getByLabelText('Grupo'), { target: { value: second.id } });
     await screen.findByText('Persona no disponible');
     await act(async () => finish({ ok: true, data: snapshot(first) }));
     expect((screen.getByLabelText('Grupo') as HTMLSelectElement).value).toBe(second.id);
@@ -241,7 +241,7 @@ describe('Explorer request boundaries', () => {
   it('removes all previous account evidence and does not accept its pending request', async () => {
     let finish!: (value: Result<Snapshot>) => void;
     mocks.load.mockImplementation(() => new Promise(resolve => { finish = resolve; }));
-    const mounted = render(ui()); fireEvent.change(screen.getByLabelText('Grupo'), { target: { value: first.id } });
+    const mounted = render(ui()); openGroupSheet(); fireEvent.change(screen.getByLabelText('Grupo'), { target: { value: first.id } });
     await waitFor(() => expect(mocks.load).toHaveBeenCalledTimes(1)); mounted.rerender(ui([], 'new'));
     await act(async () => finish({ ok: true, data: snapshot(first) }));
     expect(screen.queryByText('Tú')).toBeNull(); expect(screen.getByText('Compara con quien sigues')).toBeTruthy();
@@ -257,39 +257,41 @@ describe('Explorer request boundaries', () => {
     mounted.unmount(); expect(mocks.unsubscribe).toHaveBeenCalled();
   });
   it('keeps evidence for repeated SIGNED_IN and token refresh of the same account', async () => {
-    mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('checkbox', { name: 'Tú' });
+    mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('button', { name: 'Tú' });
     act(() => mocks.auth!('SIGNED_IN', { user: { id: 'a' } })); act(() => mocks.auth!('TOKEN_REFRESHED', { user: { id: 'a' } }));
-    expect(screen.getByRole('checkbox', { name: 'Tú' })).toBeTruthy(); expect(mocks.refresh).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Tú' })).toBeTruthy(); expect(mocks.refresh).not.toHaveBeenCalled();
   });
   it('starts a fresh subtree after the same account authenticates again on the server', async () => {
-    mocks.query = `group=${first.id}`;
-    const mounted = render(ui()); await screen.findByRole('checkbox', { name: 'Tú' });
-    fireEvent.click(screen.getByLabelText('Tú')); fireEvent.click(screen.getByRole('button', { name: 'Editar grupo' }));
+    // Two available people, so the «Tú» face can be switched off.
+    const pair: Group = { ...first, members: [{ ...first.members[0] }, { slotId: 'two', userId: 'b', name: 'Bea', avatarUrl: null, available: true }] };
+    mocks.query = `group=${first.id}`; mocks.load.mockResolvedValue({ ok: true, data: snapshot(pair) });
+    const mounted = render(ui([pair, second])); await screen.findByRole('button', { name: 'Tú' });
+    fireEvent.click(screen.getByRole('button', { name: 'Tú' })); expect(screen.getByRole('button', { name: 'Tú' }).getAttribute('aria-pressed')).toBe('false'); openGroupSheet(); fireEvent.click(screen.getByRole('button', { name: 'Editar grupo' }));
     fireEvent.change(screen.getByLabelText('Nombre del grupo'), { target: { value: 'Borrador antiguo' } });
     act(() => mocks.auth!('SIGNED_OUT', null)); expect(screen.queryByLabelText('Grupo')).toBeNull();
-    mounted.rerender(ui()); await screen.findByRole('checkbox', { name: 'Tú' });
-    expect((screen.getByLabelText('Tú') as HTMLInputElement).checked).toBe(false);
+    mounted.rerender(ui([pair, second])); await screen.findByRole('button', { name: 'Tú' });
+    expect(screen.getByRole('button', { name: 'Tú' }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.queryByLabelText('Nombre del grupo')).toBeNull();
   });
   it('updates saved group data and uses its new revision on the next edit', async () => {
-    mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('checkbox', { name: 'Tú' });
+    mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('button', { name: 'Tú' });
     const saved: Group = { ...first, name: 'Ateneo', revision: 2, members: [first.members[0], { slotId: 'new-member', userId: 'b', name: 'Bea', avatarUrl: null, available: true }] };
     mocks.save.mockResolvedValue({ ok: true, data: saved }); mocks.load.mockResolvedValue({ ok: true, data: snapshot(saved) });
-    fireEvent.click(screen.getByRole('button', { name: 'Editar grupo' }));
+    openGroupSheet(); fireEvent.click(screen.getByRole('button', { name: 'Editar grupo' }));
     fireEvent.change(screen.getByLabelText('Nombre del grupo'), { target: { value: saved.name } });
     fireEvent.click(screen.getByRole('button', { name: 'Retirar persona no disponible' }));
     fireEvent.click(within(screen.getByRole('form')).getByRole('checkbox', { name: 'Bea' }));
     fireEvent.submit(screen.getByRole('form')); await waitFor(() => expect(screen.queryByRole('form')).toBeNull());
     await screen.findByRole('heading', { name: saved.name });
     // A rename re-sorts the selector instead of moving the group to the end.
-    expect(within(screen.getByRole('combobox', { name: 'Grupo' })).getAllByRole('option').map(option => option.textContent)).toEqual(['Elige un grupo', 'Ateneo', 'Cine']);
+    openGroupSheet(); expect(within(screen.getByRole('combobox', { name: 'Grupo' })).getAllByRole('option').map(option => option.textContent)).toEqual(['Elige un grupo', 'Ateneo', 'Cine']);
     expect(mocks.save).toHaveBeenLastCalledWith({ id: first.id, name: saved.name, userIds: ['a', 'b'], expectedRevision: 1 });
-    fireEvent.click(screen.getByRole('button', { name: 'Editar grupo' })); fireEvent.submit(screen.getByRole('form'));
+    openGroupSheet(); fireEvent.click(screen.getByRole('button', { name: 'Editar grupo' })); fireEvent.submit(screen.getByRole('form'));
     await waitFor(() => expect(mocks.save).toHaveBeenLastCalledWith({ id: first.id, name: saved.name, userIds: ['a', 'b'], expectedRevision: 2 }));
   });
   it('keeps evidence, scroll extent and draft visible while unchanged session cookies are verified in the background', async () => {
-    mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('checkbox', { name: 'Tú' });
-    fireEvent.click(screen.getByRole('button', { name: 'Editar grupo' })); fireEvent.change(screen.getByLabelText('Nombre del grupo'), { target: { value: 'Borrador' } });
+    mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('button', { name: 'Tú' });
+    openGroupSheet(); fireEvent.click(screen.getByRole('button', { name: 'Editar grupo' })); fireEvent.change(screen.getByLabelText('Nombre del grupo'), { target: { value: 'Borrador' } });
     let finish!: (result: { data: { user: { id: string } }; error: null }) => void;
     mocks.getUser.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
     act(() => { window.dispatchEvent(new Event('focus')); document.dispatchEvent(new Event('visibilitychange')); });
@@ -299,20 +301,20 @@ describe('Explorer request boundaries', () => {
     expect((screen.getByLabelText('Nombre del grupo') as HTMLInputElement).value).toBe('Borrador');
   });
   it('hides evidence synchronously when session cookies change even behind a quiet check in flight', async () => {
-    mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('checkbox', { name: 'Tú' });
+    mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('button', { name: 'Tú' });
     let finishQuiet!: (result: { data: { user: { id: string } }; error: null }) => void;
     mocks.getUser.mockImplementationOnce(() => new Promise(resolve => { finishQuiet = resolve; }))
       .mockResolvedValueOnce({ data: { user: { id: 'b' } }, error: null });
     act(() => window.dispatchEvent(new Event('focus')));
-    expect(screen.getByRole('combobox', { name: 'Grupo' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /^Grupo: / })).toBeTruthy();
     rotateSessionCookies(); act(() => window.dispatchEvent(new Event('focus')));
-    expect(screen.queryByRole('combobox', { name: 'Grupo' })).toBeNull(); expect(screen.getByText(messages.comparisons.checkingSession)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /^Grupo: / })).toBeNull(); expect(screen.getByText(messages.comparisons.checkingSession)).toBeTruthy();
     await act(async () => finishQuiet({ data: { user: { id: 'a' } }, error: null }));
     await screen.findByText(messages.comparisons.sessionChanged); expect(mocks.getUser).toHaveBeenCalledTimes(2);
   });
   it('deduplicates focus and visibility identity checks, hides evidence meanwhile and preserves the same-account draft', async () => {
-    mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('checkbox', { name: 'Tú' });
-    fireEvent.click(screen.getByRole('button', { name: 'Editar grupo' })); fireEvent.change(screen.getByLabelText('Nombre del grupo'), { target: { value: 'Borrador' } });
+    mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('button', { name: 'Tú' });
+    openGroupSheet(); fireEvent.click(screen.getByRole('button', { name: 'Editar grupo' })); fireEvent.change(screen.getByLabelText('Nombre del grupo'), { target: { value: 'Borrador' } });
     let finish!: (result: { data: { user: { id: string } }; error: null }) => void;
     mocks.getUser.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
     rotateSessionCookies(); act(() => { window.dispatchEvent(new Event('focus')); document.dispatchEvent(new Event('visibilitychange')); });
@@ -321,13 +323,13 @@ describe('Explorer request boundaries', () => {
     expect((screen.getByLabelText('Nombre del grupo') as HTMLInputElement).value).toBe('Borrador');
   });
   it('uses fresh identity on focus to catch cookie changes that emitted no browser auth event', async () => {
-    mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('checkbox', { name: 'Tú' });
+    mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('button', { name: 'Tú' });
     mocks.getUser.mockResolvedValueOnce({ data: { user: { id: 'new-account' } }, error: null });
     act(() => window.dispatchEvent(new Event('focus'))); await screen.findByText(messages.comparisons.sessionChanged);
     expect(screen.queryByText('Tú')).toBeNull(); expect(screen.queryByLabelText('Grupo')).toBeNull();
   });
   it.each(['resolve', 'error', 'reject'])('discards an older %s completion and coalesces a fresh check without reopening A', async completion => {
-    mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('checkbox', { name: 'Tú' });
+    mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('button', { name: 'Tú' });
     type Answer = { data: { user: { id: string } }; error: Error | null };
     let finishOld!: (answer: Answer) => void, rejectOld!: (error: Error) => void, finishFresh!: (answer: Answer) => void;
     mocks.getUser.mockImplementationOnce(() => new Promise((resolve, reject) => { finishOld = resolve; rejectOld = reject; }))
@@ -341,7 +343,7 @@ describe('Explorer request boundaries', () => {
     });
     expect(mocks.getUser).toHaveBeenCalledTimes(2);
     expect(screen.getByText(messages.comparisons.checkingSession)).toBeTruthy();
-    expect(screen.queryByRole('combobox', { name: 'Grupo' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Grupo: / })).toBeNull();
     expect(screen.queryByText(messages.comparisons.sessionCheckFailed)).toBeNull();
     await act(async () => finishFresh({ data: { user: { id: 'b' } }, error: null }));
     expect(screen.getByText(messages.comparisons.sessionChanged)).toBeTruthy();
@@ -349,8 +351,8 @@ describe('Explorer request boundaries', () => {
     act(() => window.dispatchEvent(new Event('focus'))); expect(mocks.getUser).toHaveBeenCalledTimes(2);
   });
   it('keeps the same-account draft hidden until its queued fresh answer completes', async () => {
-    mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('checkbox', { name: 'Tú' });
-    fireEvent.click(screen.getByRole('button', { name: 'Editar grupo' })); fireEvent.change(screen.getByLabelText('Nombre del grupo'), { target: { value: 'Borrador' } });
+    mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('button', { name: 'Tú' });
+    openGroupSheet(); fireEvent.click(screen.getByRole('button', { name: 'Editar grupo' })); fireEvent.change(screen.getByLabelText('Nombre del grupo'), { target: { value: 'Borrador' } });
     type Answer = { data: { user: { id: string } }; error: null };
     let finishOld!: (answer: Answer) => void, finishFresh!: (answer: Answer) => void;
     mocks.getUser.mockImplementationOnce(() => new Promise(resolve => { finishOld = resolve; }))
@@ -362,7 +364,7 @@ describe('Explorer request boundaries', () => {
     expect((screen.getByLabelText('Nombre del grupo') as HTMLInputElement).value).toBe('Borrador');
   });
   it.each(['unmount', 'auth-invalidation'])('does not launch queued verification after %s', async end => {
-    mocks.query = `group=${first.id}`; const mounted = render(ui()); await screen.findByRole('checkbox', { name: 'Tú' });
+    mocks.query = `group=${first.id}`; const mounted = render(ui()); await screen.findByRole('button', { name: 'Tú' });
     let finish!: (answer: { data: { user: { id: string } }; error: null }) => void;
     mocks.getUser.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
     act(() => { window.dispatchEvent(new Event('focus')); window.dispatchEvent(new Event('focus')); });
@@ -374,11 +376,11 @@ describe('Explorer request boundaries', () => {
     else expect(screen.queryByLabelText('Grupo')).toBeNull();
   });
   it('keeps a failed identity check gated until successful retry and discards stale checks on unmount', async () => {
-    mocks.query = `group=${first.id}`; const mounted = render(ui()); await screen.findByRole('checkbox', { name: 'Tú' });
+    mocks.query = `group=${first.id}`; const mounted = render(ui()); await screen.findByRole('button', { name: 'Tú' });
     mocks.getUser.mockResolvedValueOnce({ data: { user: null }, error: new Error('offline') });
     act(() => window.dispatchEvent(new Event('focus'))); await screen.findByText(messages.comparisons.sessionCheckFailed);
-    expect(screen.queryByRole('combobox', { name: 'Grupo' })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Reintentar' })); await screen.findByRole('combobox', { name: 'Grupo' });
+    expect(screen.queryByRole('button', { name: /^Grupo: / })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Reintentar' })); await screen.findByRole('button', { name: /^Grupo: / });
     let finish!: (result: { data: { user: { id: string } }; error: null }) => void;
     mocks.getUser.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; })); act(() => window.dispatchEvent(new Event('focus')));
     mounted.unmount(); await act(async () => finish({ data: { user: { id: 'another' } }, error: null }));
@@ -386,24 +388,24 @@ describe('Explorer request boundaries', () => {
     const before = mocks.getUser.mock.calls.length; act(() => window.dispatchEvent(new Event('focus'))); expect(mocks.getUser.mock.calls.length).toBe(before);
   });
   it('accepts a freshly authenticated server payload and ignores the previous identity check', async () => {
-    mocks.query = `group=${first.id}`; const mounted = render(ui()); await screen.findByRole('checkbox', { name: 'Tú' });
+    mocks.query = `group=${first.id}`; const mounted = render(ui()); await screen.findByRole('button', { name: 'Tú' });
     let finish!: (result: { data: { user: { id: string } }; error: null }) => void;
     mocks.getUser.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; })); rotateSessionCookies(); act(() => window.dispatchEvent(new Event('focus')));
-    expect(screen.queryByRole('combobox', { name: 'Grupo' })).toBeNull(); mounted.rerender(ui());
-    await screen.findByRole('combobox', { name: 'Grupo' });
+    expect(screen.queryByRole('button', { name: /^Grupo: / })).toBeNull(); mounted.rerender(ui());
+    await screen.findByRole('button', { name: /^Grupo: / });
     await act(async () => finish({ data: { user: { id: 'old-check' } }, error: null }));
-    expect(screen.queryByText(messages.comparisons.sessionChanged)).toBeNull(); expect(screen.getByRole('combobox', { name: 'Grupo' })).toBeTruthy();
+    expect(screen.queryByText(messages.comparisons.sessionChanged)).toBeNull(); expect(screen.getByRole('button', { name: /^Grupo: / })).toBeTruthy();
   });
   it('renders load conflict as reload and clears previous evidence while refreshing permissions', async () => {
-    render(ui()); fireEvent.change(screen.getByLabelText('Grupo'), { target: { value: first.id } }); await screen.findByText('Persona no disponible');
+    render(ui()); openGroupSheet(); fireEvent.change(screen.getByLabelText('Grupo'), { target: { value: first.id } }); await screen.findByText('Persona no disponible');
     mocks.load.mockResolvedValueOnce({ ok: false, code: 'conflict' });
-    fireEvent.click(screen.getByRole('button', { name: 'Actualizar' }));
+    openGroupSheet(); fireEvent.click(screen.getByRole('button', { name: 'Actualizar' }));
     expect(screen.queryByText('Persona no disponible')).toBeNull(); await screen.findByText(messages.comparisons.loadConflict);
     expect(screen.getByRole('button', { name: 'Recargar comparación' })).toBeTruthy(); expect(screen.queryByText('0 obras')).toBeNull();
   });
   it('shows read errors as errors and restores normal load on retry', async () => {
     mocks.load.mockResolvedValueOnce({ ok: false, code: 'load-failed' }); render(ui());
-    fireEvent.change(screen.getByLabelText('Grupo'), { target: { value: first.id } }); await screen.findByRole('alert');
+    openGroupSheet(); fireEvent.change(screen.getByLabelText('Grupo'), { target: { value: first.id } }); await screen.findByRole('alert');
     fireEvent.click(screen.getByRole('button', { name: 'Recargar comparación' })); await screen.findByText('Persona no disponible');
   });
   it('ignores a forged group query and selects an owned valid UUID', async () => {
@@ -411,7 +413,7 @@ describe('Explorer request boundaries', () => {
     mounted.unmount(); mocks.query = `group=${first.id}`; render(ui()); await screen.findByText('Persona no disponible'); expect(mocks.load).toHaveBeenCalledWith(first.id, 'all');
   });
   it('starts each section with all formats and restores the previous section filter', async () => {
-    mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('checkbox', { name: 'Tú' });
+    mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('button', { name: 'Tú' });
     const pills = () => within(screen.getByRole('group', { name: 'Filtrar por tipo de obra' }));
     fireEvent.click(pills().getByRole('button', { name: 'Libros' }));
     fireEvent.click(screen.getByRole('button', { name: 'Gustos' }));
@@ -426,11 +428,11 @@ describe('Explorer request boundaries', () => {
     await screen.findByRole('button', { name: 'Recargar comparación' });
     const pills = screen.getByRole('group', { name: 'Filtrar por tipo de obra' });
     fireEvent.click(within(pills).getByRole('button', { name: 'Libros' }));
-    await screen.findByRole('checkbox', { name: 'Tú' }); expect(mocks.load.mock.calls).toEqual([[first.id, 'all'], [first.id, 'all']]);
+    await screen.findByRole('button', { name: 'Tú' }); expect(mocks.load.mock.calls).toEqual([[first.id, 'all'], [first.id, 'all']]);
     expect(within(pills).getByRole('button', { name: 'Libros' }).getAttribute('aria-pressed')).toBe('true');
   });
   it('exposes format only through the visible pills, one pressed at a time', async () => {
-    mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('checkbox', { name: 'Tú' });
+    mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('button', { name: 'Tú' });
     // A second, hidden native control duplicated the pills for screen readers.
     expect(screen.queryByRole('combobox', { name: 'Formato' })).toBeNull();
     const pills = screen.getByRole('group', { name: 'Filtrar por tipo de obra' });
