@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Snapshot, WorkKey } from '../types';
 import { regions } from '../derive';
 import { atlasModel } from './model';
-import { clusterState, layoutQuien, polePositions, POLE_RADIUS, workState } from './layout';
+import { clusterState, layoutQuien, polePositions, POLE_CLEARANCE, POLE_RADIUS, workState } from './layout';
 import { summarizeQuien } from './summary';
 
 const member = (id: string) => ({ slotId: id, userId: id, name: id.toUpperCase(), avatarUrl: null, available: true });
@@ -31,6 +31,20 @@ describe('layoutQuien', () => {
     const [pa, pb] = ['a', 'b'].map(id => layout.poles.find(p => p.userId === id)!);
     expect(ab.x).toBeCloseTo((pa.x + pb.x) / 2 * 0.92); expect(ab.y).toBeCloseTo((pa.y + pb.y) / 2 * 0.92);
     expect(layout.poles.map(p => p.count)).toEqual([6, 5, 4]);
+  });
+  it('con muchas personas, los grupos compartidos dejan libre el anillo de polos', () => {
+    const ids = Array.from({ length: 10 }, (_, i) => `p${i}`);
+    const many: Record<string, string[]> = Object.fromEntries(ids.map(id => [id, []]));
+    for (let i = 0; i < 30; i++) for (const id of ids.slice(0, 3)) many[id].push(`book:${i}`);
+    for (let i = 30; i < 32; i++) for (const id of ids.slice(0, 2)) many[id].push(`book:${i}`);
+    const snap: Snapshot = { group: { id: 'g', name: 'G', revision: 1, members: ids.map(member) }, format: 'all', excludedSeriesWithoutEpisodes: 0,
+      catalog: [], works: Object.entries(many).flatMap(([userId, keys]) => keys.map(key => ({ userId, key: key as WorkKey, rating: null, date: null, orderUnknown: false, progress: null }))) };
+    const model = atlasModel(snap, 'p0', 'Tú');
+    const layout = layoutQuien(model.people, model.works);
+    const shared = layout.clusters.filter(c => c.owners.length > 1);
+    expect(shared.length).toBe(2);
+    for (const cluster of shared) for (const pole of layout.poles)
+      expect(Math.hypot(cluster.x - pole.x, cluster.y - pole.y)).toBeGreaterThanOrEqual(POLE_CLEARANCE + cluster.r);
   });
   it('con dos personas, polos en horizontal', () => {
     const [left, right] = polePositions(['x', 'y']);

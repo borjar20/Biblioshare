@@ -36,6 +36,17 @@ describe('AtlasView', () => {
       ['TTú', 'true', false], ['BBea', 'true', false], ['CCarla', 'true', false], ['?Persona no disponible', null, true]]);
     expect(summary()).toBe('1 obra en común entre Tú, Bea y Carla');
   });
+  it('desde 4 caras activas el resumen no lista nombres; al quitar una vuelve a la lista', () => {
+    const four = ['me', 'b', 'c', 'd'];
+    const names: Record<string, string> = { me: 'Tú', b: 'Bea', c: 'Carla', d: 'Dani' };
+    const big: Snapshot = { ...snapshot, group: { ...snapshot.group, members: four.map(id => member(id, names[id])) },
+      works: four.map(userId => ({ userId, key: 'book:1' as WorkKey, rating: null, date: null, orderUnknown: false, progress: null })) };
+    render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={big} viewerId="me" chosen={null} onChosenChange={vi.fn()}/></NextIntlClientProvider>);
+    expect(summary()).toBe('1 obra en común entre las 4 personas');
+    cleanup();
+    render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={big} viewerId="me" chosen={['me', 'b', 'c']} onChosenChange={vi.fn()}/></NextIntlClientProvider>);
+    expect(summary()).toBe('1 obra en común entre Tú, Bea y Carla');
+  });
   it('pinta el aviso de cobertura bajo el resumen cuando se le pasa', () => {
     view(<p data-testid="notice">Aviso</p>);
     const notice = screen.getByTestId('notice');

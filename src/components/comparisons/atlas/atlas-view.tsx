@@ -87,7 +87,9 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange }
     <div ref={overlay} className={styles.overlayTop}>
       <div><p className={styles.summary} role="status" aria-live="polite">{summary.kind === 'solo'
         ? t.rich('atlas.summary.solo', { count: summary.count, name: summary.name, b: bold })
-        : t.rich('atlas.summary.common', { count: summary.count, names: list.format(summary.names), b: bold })}</p>
+        : summary.names.length >= 4
+          ? t.rich('atlas.summary.commonMany', { count: summary.count, people: summary.names.length, b: bold })
+          : t.rich('atlas.summary.common', { count: summary.count, names: list.format(summary.names), b: bold })}</p>
         {notice}</div>
       <div className={styles.faces} role="group" aria-label={t('atlas.faces')}>
         {people.map(person => <button key={person.id} type="button" className={styles.face} aria-pressed={active.includes(person.id)}

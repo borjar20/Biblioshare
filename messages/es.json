@@ -8,7 +8,8 @@
       "caption": { "quien": "Cada obra cae entre quienes la tienen. Acércate y los puntos se vuelven portadas." },
       "summary": {
         "solo": "<b>{count}</b> {count, plural, one {obra} other {obras}} de {name}. Suma a alguien para ver el cruce.",
-        "common": "<b>{count}</b> {count, plural, one {obra} other {obras}} en común entre {names}"
+        "common": "<b>{count}</b> {count, plural, one {obra} other {obras}} en común entre {names}",
+        "commonMany": "<b>{count}</b> {count, plural, one {obra} other {obras}} en común entre las {people} personas"
       },
       "poleCount": "{count, plural, one {# obra} other {# obras}}",
       "zoomIn": "Acercar",

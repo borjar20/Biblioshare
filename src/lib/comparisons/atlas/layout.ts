@@ -6,6 +6,8 @@ export const SPIRAL_STEP = 12;
 const GOLDEN = Math.PI * (3 - Math.sqrt(5));
 /** Shared groups with fewer works draw no count nor thread (6–10 people would saturate the centre). */
 const LABEL_MIN = 3;
+/** Room (world units) a shared group keeps from the pole ring: avatar plus name/count labels. */
+export const POLE_CLEARANCE = 300;
 
 export type Pole = Point & { userId: string; count: number };
 export type Cluster = Point & { id: string; owners: string[]; r: number; keys: WorkKey[] };
@@ -36,11 +38,15 @@ export function layoutQuien(people: AtlasPerson[], works: AtlasWork[]): QuienLay
   }
   const positions = new Map<WorkKey, Point>();
   const clusters: Cluster[] = [...groups].map(([id, { owners, keys }]) => {
-    const f = owners.length > 1 ? 0.92 : 1;
-    const x = owners.reduce((sum, owner) => sum + at.get(owner)!.x, 0) / owners.length * f;
-    const y = owners.reduce((sum, owner) => sum + at.get(owner)!.y, 0) / owners.length * f;
+    const r = SPIRAL_STEP * Math.sqrt(keys.length) + 8;
+    const cx = owners.reduce((sum, owner) => sum + at.get(owner)!.x, 0) / owners.length;
+    const cy = owners.reduce((sum, owner) => sum + at.get(owner)!.y, 0) / owners.length;
+    const d = Math.hypot(cx, cy);
+    // Shared groups sit slightly inside the centroid, but never so far out that they cover a pole's label.
+    const f = owners.length > 1 ? (d > 0 ? Math.max(0, Math.min(0.92, (POLE_RADIUS - POLE_CLEARANCE - r) / d)) : 1) : 1;
+    const x = cx * f, y = cy * f;
     keys.forEach((key, i) => { const offset = spiral(i, SPIRAL_STEP); positions.set(key, { x: x + offset.x, y: y + offset.y }); });
-    return { id, owners, keys, x, y, r: SPIRAL_STEP * Math.sqrt(keys.length) + 8 };
+    return { id, owners, keys, x, y, r };
   });
   // Empty group (no available members): keep the extent finite so the camera fit does not become NaN.
   const empty = poles.length === 0 && clusters.length === 0;

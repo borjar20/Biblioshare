@@ -125,7 +125,7 @@ test('ten-person CRUD, owner-free group, atlas faces and formats, persistence an
     await expect(faces(page)).toHaveCount(10);
     expect(journal.some(row => row.body?.includes('PRIVATE PASS QA MUST NOT LEAVE'))).toBe(false);
     // All ten share the first three books; the first three also share 27 more, the movie and the series.
-    await expect(summary(page)).toContainText('3 obras en común entre Tú, Beatriz QA, Carlos QA');
+    await expect(summary(page)).toHaveText('3 obras en común entre las 10 personas');
     for (const actor of fixture.actors.slice(3)) await faces(page).filter({ hasText: actor.name }).click();
     await expect(summary(page)).toHaveText('32 obras en común entre Tú, Beatriz QA y Carlos QA');
     await page.getByRole('group', { name: 'Filtrar por tipo de obra', exact: true }).getByRole('button', { name: 'Libros', exact: true }).click(); await settled(page);

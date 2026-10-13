@@ -50,10 +50,11 @@ Las capturas de la primera pasada mostraban seis problemas; se arreglaron y las 
 4. **«Abrir ficha» partido en dos líneas.** Botones con `white-space: nowrap`; en móvil las acciones van debajo del título y los dueños.
 5. **El vuelo al grupo saltaba a títulos (k≈4,2) con letra de 6-7 px.** El vuelo se limita a `[1,6; 2,8]` (calculado con la franja libre y factor 0,38), así que aterriza en portadas. Los títulos (umbrales 1,1 y 3,2 intactos) usan `min(14, max(9, 1,5·k))` px, se ajustan al ancho de la portada (partiendo palabras largas), máximo 3 líneas con elipsis, sobre una banda oscura.
 6. **Hoja de grupos al ras del borde inferior.** El `<dialog>` es una tarjeta redondeada entera con margen inferior que incluye `env(safe-area-inset-bottom)`, `max-height: 85dvh` y `overflow: auto`; todos los botones quedan visibles.
+7. **Grupos compartidos sobre un polo con muchas personas.** El grupo se coloca al ×0,92 del centroide, pero con 10 personas el centroide de polos vecinos cae junto al aro y el grupo tapaba la etiqueta del polo. Ahora el radio del grupo se limita a `POLE_RADIUS - POLE_CLEARANCE - r` (`POLE_CLEARANCE = 300`: avatar más nombre y cifra; 140 dejaba el grupo sobre la etiqueta). Capturas `desktop-map` y `mobile-map` retomadas: ningún grupo sobre un polo; la cifra «29» queda pegada a la etiqueta de Beatriz QA en móvil sin taparla.
+8. **Resumen de 3 líneas con muchas caras.** Desde 4 caras activas el resumen dice «N obras en común entre las X personas» (`atlas.summary.commonMany`) en vez de listar nombres; con 3 o menos sigue la lista.
 
 Queda:
 - Títulos sin espacios y largos (como `qa_comp_motion_NN`) se parten por caracteres y acaban en elipsis a zoom bajo de títulos; se leen enteros acercando más.
-- Con 10 personas, en el mapa la etiqueta de un grupo pequeño puede quedar bajo un polo (p. ej. el «2» junto a Beatriz QA): es de la disposición, no de estos arreglos.
 - Siguen igual que en F1: el tooltip de escritorio tapa obras vecinas; en móvil no hay botones de zoom (solo gestos); portadas de color sin imagen (F4).
 
 ## No verificado
