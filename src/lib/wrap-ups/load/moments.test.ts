@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { experienceDaysIn, loadMoments, pickBestRated, pickPhrase } from "./moments";
+import { clubFacts, experienceDaysIn, jointViewingRefs, loadMoments, pickBestRated, pickPhrase, type ClubPostRow, type JointRow } from "./moments";
 import { wrapUpWindow } from "../windows";
 
 const a = { type: "book" as const, id: "a", title: "A", coverUrl: null, times: 1 };
@@ -130,7 +130,39 @@ describe("loadMoments", () => {
     expect(f.phrase).toEqual({ source: "quote", body: "cita", item: a });
     expect(f.experience).toEqual({ experienceId: "e1", title: "Feria", date: "2026-09-03" });
     expect(f.experienceDays).toBe(3);
-    expect(f.together).toEqual({ jointViewings: 2, clubDays: 2 });
+    expect(f.together).toEqual({ jointViewings: 2, clubDays: 2, viewings: [], clubs: [] });
+  });
+});
+
+describe("jointViewingRefs", () => {
+  it("obra, fecha y compañeros aceptados sin el propio usuario; más reciente primero", () => {
+    const rows = [
+      { viewing_id: "v1", joint_viewings: { watched_on: "2026-09-02", item_type: "movie", item_id: "m1",
+        joint_viewing_members: [
+          { user_id: "u1", status: "accepted" }, { user_id: "u2", status: "accepted" },
+          { user_id: "u3", status: "pending" }, { user_id: "u2", status: "accepted" },
+        ] } },
+      { viewing_id: "v2", joint_viewings: [{ watched_on: "2026-09-20", item_type: "series", item_id: "s1", joint_viewing_members: [] }] },
+    ] as JointRow[];
+    expect(jointViewingRefs(rows, "u1")).toEqual([
+      { type: "series", id: "s1", watchedOn: "2026-09-20", companionIds: [] },
+      { type: "movie", id: "m1", watchedOn: "2026-09-02", companionIds: ["u2"] },
+    ]);
+  });
+});
+
+describe("clubFacts", () => {
+  it("días distintos en Madrid por club, desc por días", () => {
+    const rows = [
+      { created_at: "2026-09-01T10:00:00Z", club_id: "a", clubs: { name: "Club A" } },
+      { created_at: "2026-09-01T12:00:00Z", club_id: "a", clubs: { name: "Club A" } },
+      { created_at: "2026-09-02T22:30:00Z", club_id: "a", clubs: { name: "Club A" } }, // 00:30 del 3 en Madrid
+      { created_at: "2026-09-05T10:00:00Z", club_id: "b", clubs: [{ name: "Club B" }] },
+    ] as ClubPostRow[];
+    expect(clubFacts(rows)).toEqual([
+      { clubId: "a", name: "Club A", days: 2 },
+      { clubId: "b", name: "Club B", days: 1 },
+    ]);
   });
 });
 

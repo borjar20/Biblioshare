@@ -4,10 +4,10 @@
 import type { ItemType } from "@/lib/catalog/types";
 import { addDaysISO } from "@/lib/stats/dates";
 import { readAllRows } from "@/lib/supabase/read-all-rows";
-import type { ItemRef, WrapUpInputs } from "../types";
+import type { ClubFact, ItemRef, JointViewingFact, WrapUpInputs } from "../types";
 import type { WrapUpWindow } from "../windows";
 import { madridToday } from "../windows";
-import type { WrapUpClient } from "./core";
+import { loadMeta, type WrapUpClient } from "./core";
 
 export type MomentFacts = Pick<WrapUpInputs, "bestRated" | "phrase" | "experience" | "together" | "experienceDays" | "socialDays">;
 export type RatedPassRow = {
@@ -45,7 +45,39 @@ export function pickPhrase(cands: PhraseCandidate[]): MomentFacts["phrase"] {
 
 type NoteRow = { kind: string; body: string; created_at: string; is_favorite: boolean; item_type: ItemType; item_id: string };
 type MarginRow = { body: string; created_at: string; item_type: ItemType; item_id: string };
-type JointRow = { viewing_id: string; joint_viewings: { watched_on: string } | { watched_on: string }[] };
+type Member = { user_id: string; status: string };
+type Viewing = { watched_on: string; item_type: ItemType; item_id: string; joint_viewing_members?: Member[] | null };
+export type JointRow = { viewing_id: string; joint_viewings: Viewing | Viewing[] };
+export type ClubPostRow = { created_at: string; club_id: string; clubs: { name: string } | { name: string }[] | null };
+
+const many = <X,>(x: X | X[] | null | undefined): X[] => (x == null ? [] : Array.isArray(x) ? x : [x]);
+
+/** Un visionado por id: su obra, su fecha y los demás miembros aceptados. Más reciente primero. */
+export function jointViewingRefs(rows: JointRow[], userId: string) {
+  const byId = new Map<string, { type: ItemType; id: string; watchedOn: string; companionIds: string[] }>();
+  for (const r of rows) {
+    for (const v of many(r.joint_viewings)) {
+      const companionIds = [...new Set(many(v.joint_viewing_members)
+        .filter((m) => m.status === "accepted" && m.user_id !== userId).map((m) => m.user_id))];
+      byId.set(r.viewing_id, { type: v.item_type, id: v.item_id, watchedOn: v.watched_on, companionIds });
+    }
+  }
+  return [...byId.values()].sort((a, b) => b.watchedOn.localeCompare(a.watchedOn));
+}
+
+/** Días distintos (Madrid) con algún post por club. */
+export function clubFacts(rows: ClubPostRow[]): ClubFact[] {
+  const by = new Map<string, { name: string; days: Set<string> }>();
+  for (const r of rows) {
+    const name = many(r.clubs)[0]?.name;
+    if (!name) continue;
+    const cur = by.get(r.club_id) ?? { name, days: new Set<string>() };
+    cur.days.add(madridToday(new Date(r.created_at)));
+    by.set(r.club_id, cur);
+  }
+  return [...by].map(([clubId, c]) => ({ clubId, name: c.name, days: c.days.size }))
+    .sort((a, b) => b.days - a.days || a.name.localeCompare(b.name, "es"));
+}
 type ExperienceRow = { id: string; title: string; starts_on: string | null; ends_on: string | null };
 
 /** Días distintos de la ventana cubiertos por alguna experiencia (starts_on..coalesce(ends_on, starts_on), recortado). */
@@ -87,14 +119,14 @@ export async function loadMoments(client: WrapUpClient, userId: string, w: WrapU
       .or(`ends_on.gte.${w.start},and(ends_on.is.null,starts_on.gte.${w.start})`)
       .order("starts_on", { ascending: false }),
     readAllRows<JointRow>((from, to) => client.from("joint_viewing_members")
-      .select("viewing_id, joint_viewings!inner(watched_on)")
+      .select("viewing_id, joint_viewings!inner(watched_on, item_type, item_id, joint_viewing_members(user_id, status))")
       .eq("user_id", userId).eq("status", "accepted")
       .gte("joint_viewings.watched_on", w.start).lt("joint_viewings.watched_on", w.endExclusive)
       .order("viewing_id").range(from, to) as unknown as PromiseLike<{ data: JointRow[] | null; error?: unknown }>),
-    readAllRows<{ created_at: string }>((from, to) => client.from("club_posts").select("created_at")
+    readAllRows<ClubPostRow>((from, to) => client.from("club_posts").select("created_at, club_id, clubs(name)")
       .eq("author_id", userId)
       .gte("created_at", w.start).lt("created_at", w.endExclusive)
-      .order("id").range(from, to)),
+      .order("id").range(from, to) as unknown as PromiseLike<{ data: ClubPostRow[] | null; error?: unknown }>),
   ]);
   if (experiencesQ.error) throw experiencesQ.error;
 
@@ -106,18 +138,24 @@ export async function loadMoments(client: WrapUpClient, userId: string, w: WrapU
   ];
 
   const xp = (experiencesQ.data ?? []) as ExperienceRow[];
+  const clubs = clubFacts(clubPosts);
   const clubDays = new Set(clubPosts.map((p) => madridToday(new Date(p.created_at))));
   const socialDays = new Set(clubDays);
   for (const joint of joints) {
-    const viewings = Array.isArray(joint.joint_viewings) ? joint.joint_viewings : [joint.joint_viewings];
-    for (const viewing of viewings) if (viewing?.watched_on) socialDays.add(viewing.watched_on);
+    for (const viewing of many(joint.joint_viewings)) if (viewing?.watched_on) socialDays.add(viewing.watched_on);
   }
+  const refs = jointViewingRefs(joints, userId);
+  const meta = refs.length ? await loadMeta(client, refs) : new Map();
+  const viewings: JointViewingFact[] = refs.flatMap((r) => {
+    const m = meta.get(`${r.type}:${r.id}`);
+    return m ? [{ item: { type: r.type, id: r.id, title: m.title, coverUrl: m.coverUrl, times: 1 }, watchedOn: r.watchedOn, companionIds: r.companionIds }] : [];
+  });
 
   return {
     bestRated: pickBestRated(rated, finished),
     phrase: pickPhrase(cands),
     experience: xp[0] ? { experienceId: xp[0].id, title: xp[0].title, date: xp[0].starts_on } : null,
-    together: { jointViewings: joints.length, clubDays: clubDays.size },
+    together: { jointViewings: joints.length, clubDays: clubDays.size, viewings, clubs },
     socialDays: socialDays.size,
     experienceDays: experienceDaysIn(xp, w),
   };
