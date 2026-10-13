@@ -10,7 +10,9 @@ export const TITLE_ZOOM = 3.2;
 export type AtlasHit = { key: WorkKey; x: number; y: number };
 export type EngineProps = { people: AtlasPerson[]; works: AtlasWork[]; active: string[]; layout: QuienLayout;
   countLabel: (count: number) => string; onTogglePerson: (id: string) => void;
-  onHover: (hit: AtlasHit | null) => void; onActivate: (hit: AtlasHit | null, pointerType: string) => void };
+  onHover: (hit: AtlasHit | null) => void; onActivate: (hit: AtlasHit | null, pointerType: string) => void;
+  /** Screen space covered by the overlays (summary + faces on top, lens dock below); fit and fly-to frame the free band. */
+  insets?: { top: number; bottom: number } };
 type Sprite = { x: number; y: number; tx: number; ty: number; a: number; ta: number; hl: number; thl: number };
 type Palette = { fg: string; muted: string; line: string; glow: string; cream: string; font: string;
   type: Record<AtlasWork['itemType'], string> };
@@ -33,14 +35,19 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
   let extentKey = ''; let raf = 0; let disposed = false; let dirtyProbe = true;
   const sprites = new Map<WorkKey, Sprite>();
 
-  const fitCamera = () => fit(props().layout.extent, vp, { x: 32, y: 150 });
+  const insets = () => props().insets ?? { top: 75, bottom: 75 };
+  /** Shifts a camera so that its focus lands in the middle of the band between the overlays. */
+  const framed = (c: Camera): Camera => { const { top, bottom } = insets(); return { ...c, y: c.y - (top - bottom) / 2 / c.k }; };
+  const fitCamera = () => { const { top, bottom } = insets(); return framed(fit(props().layout.extent, vp, { x: 32, y: top + bottom + 24 })); };
+  let lastFit: Camera | null = null; let insetsKey = '';
+  const refit = () => { lastFit = fitCamera(); target = lastFit; };
   function kick() { dirtyProbe = true; if (!raf && !disposed && typeof requestAnimationFrame === 'function') raf = requestAnimationFrame(frame); }
   function resize() {
     dpr = Math.min(2, globalThis.devicePixelRatio || 1);
     vp = { width: host.clientWidth, height: host.clientHeight };
     canvas.width = Math.round(vp.width * dpr); canvas.height = Math.round(vp.height * dpr);
     palette = readPalette(host);
-    if (!fitted && vp.width > 0 && vp.height > 0) { cam = fitCamera(); fitted = true; }
+    if (!fitted && vp.width > 0 && vp.height > 0) { cam = lastFit = fitCamera(); fitted = true; }
     kick();
   }
   function sync() {
@@ -55,7 +62,14 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
     }
     for (const key of [...sprites.keys()]) if (!seen.has(key)) sprites.delete(key);
     const nextExtent = JSON.stringify(layout.extent);
-    if (nextExtent !== extentKey) { extentKey = nextExtent; if (fitted) target = fitCamera(); }
+    if (nextExtent !== extentKey) { extentKey = nextExtent; if (fitted) refit(); }
+    // Overlays measured after the first fit: reframe only while the camera still rests on (or heads to) that fit.
+    const nextInsets = JSON.stringify(insets());
+    if (nextInsets !== insetsKey) {
+      insetsKey = nextInsets;
+      const atFit = lastFit && ((target ?? cam) === lastFit || (!target && Math.abs(cam.k / lastFit.k - 1) < 0.002 && Math.hypot(cam.x - lastFit.x, cam.y - lastFit.y) < 0.5));
+      if (fitted && atFit) refit();
+    }
     kick();
   }
   function frame() {
@@ -83,13 +97,30 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
   function text(value: string, x: number, y: number, font: string, color: string, align: CanvasTextAlign = 'left') {
     ctx!.font = font; ctx!.fillStyle = color; ctx!.textAlign = align; ctx!.fillText(value, x, y); ctx!.textAlign = 'left';
   }
-  function wrap(value: string, maxWidth: number): string[] {
+  /** Word wrap that also breaks words wider than the cover; at most `max` lines, the last one with an ellipsis if cut. */
+  function wrap(value: string, maxWidth: number, max = 3): string[] {
+    const fits = (t: string) => ctx!.measureText(t).width <= maxWidth;
     const lines: string[] = []; let line = '';
-    for (const word of value.split(' ')) {
+    const push = (t: string) => { lines.push(t); return lines.length < max; };
+    outer: for (const word of value.split(/\s+/).filter(Boolean)) {
       const next = line ? `${line} ${word}` : word;
-      if (ctx!.measureText(next).width > maxWidth && line) { lines.push(line); line = word; } else line = next;
+      if (fits(next)) { line = next; continue; }
+      if (line) { if (!push(line)) { line = ''; lines[lines.length - 1] += ` ${word}`; break; } line = ''; }
+      let rest = word;
+      while (!fits(rest)) {
+        let n = 1; while (n < rest.length && fits(rest.slice(0, n + 1))) n++;
+        if (!push(rest.slice(0, n))) { lines[lines.length - 1] += rest.slice(n); line = ''; break outer; }
+        rest = rest.slice(n);
+      }
+      line = rest;
     }
-    lines.push(line); return lines.slice(0, 3);
+    if (line && lines.length < max) lines.push(line);
+    const last = lines.length - 1;
+    if (last >= 0 && !fits(lines[last])) {
+      let cut = lines[last]; while (cut.length > 1 && !fits(`${cut}…`)) cut = cut.slice(0, -1);
+      lines[last] = `${cut}…`;
+    }
+    return lines;
   }
   function roundRect(x: number, y: number, w: number, h: number, r: number) {
     ctx!.beginPath(); ctx!.roundRect(x, y, w, h, r);
@@ -138,9 +169,16 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
         ctx.arc(x + cw - (1.6 + i * 1.9) * k, y + 1.6 * k, 0.8 * k, 0, Math.PI * 2); ctx.fill();
       });
       if (titles && work.title) {
-        ctx.font = `600 ${1.5 * k}px ${palette.font}`; ctx.fillStyle = '#fff';
-        const lines = wrap(work.title, cw - 1.6 * k);
-        lines.forEach((line, i) => ctx.fillText(line, x + 0.8 * k, y + ch - 0.9 * k - (lines.length - 1 - i) * 1.7 * k));
+        // Legible size regardless of zoom, wrapped to the cover with a scrim behind it.
+        const size = Math.min(14, Math.max(9, 1.5 * k)), step = size * 1.15, pad = Math.max(2, 0.6 * k);
+        ctx.font = `600 ${size}px ${palette.font}`;
+        const lines = wrap(work.title, cw - pad * 2);
+        const band = lines.length * step + pad * 1.4;
+        ctx.save(); roundRect(x, y, cw, ch, 1 + k * 0.4); ctx.clip();
+        ctx.fillStyle = 'rgba(20,14,10,.72)'; ctx.fillRect(x, y + ch - band, cw, band);
+        ctx.fillStyle = '#fff'; ctx.textBaseline = 'alphabetic';
+        lines.forEach((line, i) => ctx.fillText(line, x + pad, y + ch - pad - (lines.length - 1 - i) * step - size * 0.18));
+        ctx.restore();
       }
     }
     ctx.globalAlpha = 1;
@@ -176,7 +214,8 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
     if (pole) { onTogglePerson(pole.userId); return; }
     if (cam.k <= COVER_ZOOM) {
       const cluster = layout.clusters.find(item => dist(toScreen(cam, vp, item), p) < item.r * cam.k + 6);
-      if (cluster) { target = { x: cluster.x, y: cluster.y, k: clamp(Math.min(vp.width, vp.height) * 0.42 / cluster.r, 1.6, 10) }; kick(); return; }
+      if (cluster) { const band = Math.max(1, vp.height - insets().top - insets().bottom);
+        target = framed({ x: cluster.x, y: cluster.y, k: clamp(Math.min(vp.width, band) * 0.38 / cluster.r, 1.6, 2.8) }); kick(); return; }
     }
     const hit = hitWork(p);
     if (hit) { lastTap = null; onActivate(hit, pointerType); return; }
@@ -224,7 +263,7 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
   return {
     sync,
     zoomBy(factor: number) { target = { ...(target ?? cam), k: clamp((target ?? cam).k * factor, MIN_ZOOM, MAX_ZOOM) }; kick(); },
-    fitAll() { target = fitCamera(); kick(); },
+    fitAll() { refit(); kick(); },
     dispose() {
       disposed = true; if (raf) cancelAnimationFrame(raf); observer?.disconnect();
       canvas.removeEventListener('pointerdown', onDown); canvas.removeEventListener('pointermove', onMove);

@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
@@ -46,6 +46,21 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange }
   const [hover, setHover] = useState<AtlasHit | null>(null);
   const [picked, setPicked] = useState<WorkKey | null>(null);
   const camera = useRef<AtlasCanvasHandle>(null);
+  const stage = useRef<HTMLDivElement>(null); const overlay = useRef<HTMLDivElement>(null); const dock = useRef<HTMLDivElement>(null);
+  const [insets, setInsets] = useState<{ top: number; bottom: number } | undefined>(undefined);
+  // The camera frames the band left free by the overlays (summary + faces, lens dock), whatever their height.
+  useLayoutEffect(() => {
+    const measure = () => {
+      const host = stage.current, top = overlay.current, bottom = dock.current; if (!host || !top || !bottom) return;
+      const next = { top: Math.round(top.offsetHeight - parseFloat(getComputedStyle(top).paddingBottom || '0')), bottom: Math.round(host.clientHeight - bottom.offsetTop) };
+      setInsets(current => current && current.top === next.top && current.bottom === next.bottom ? current : next);
+    };
+    measure();
+    if (typeof ResizeObserver !== 'function') return;
+    const observer = new ResizeObserver(measure);
+    for (const element of [stage.current, overlay.current, dock.current]) if (element) observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
   const summary = summarizeQuien(people, works, active);
   const list = new Intl.ListFormat(locale, { type: 'conjunction' });
   const bold = (chunks: ReactNode) => <b>{chunks}</b>;
@@ -66,10 +81,10 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange }
   const sheet = picked && byKey.get(picked);
   const unavailable = snapshot.group.members.filter(member => !member.available);
 
-  return <div className={styles.canvasWrap} data-comparison-stage>
-    <AtlasCanvas ref={camera} label={t('atlas.canvasLabel')} people={people} works={works} active={active} layout={layout}
+  return <div ref={stage} className={styles.canvasWrap} data-comparison-stage>
+    <AtlasCanvas ref={camera} label={t('atlas.canvasLabel')} people={people} works={works} active={active} layout={layout} insets={insets}
       countLabel={count => t('atlas.poleCount', { count })} onTogglePerson={toggle} onHover={setHover} onActivate={activate}/>
-    <div className={styles.overlayTop}>
+    <div ref={overlay} className={styles.overlayTop}>
       <div><p className={styles.summary} role="status" aria-live="polite">{summary.kind === 'solo'
         ? t.rich('atlas.summary.solo', { count: summary.count, name: summary.name, b: bold })
         : t.rich('atlas.summary.common', { count: summary.count, names: list.format(summary.names), b: bold })}</p>
@@ -88,7 +103,7 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange }
       <button type="button" aria-label={t('atlas.zoomOut')} onClick={() => camera.current?.zoomBy(1 / 1.8)}>−</button>
       <button type="button" aria-label={t('atlas.zoomFit')} onClick={() => camera.current?.fit()}>⤢</button>
     </div>
-    <div className={styles.dock}>
+    <div ref={dock} className={styles.dock}>
       <div className={styles.lens} role="group" aria-label={t('atlas.lenses')}>
         <button type="button" aria-pressed="true" aria-label={t('atlas.lens.quien')}>
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><circle cx="8" cy="3" r="2"/><circle cx="3" cy="12" r="2"/><circle cx="13" cy="12" r="2"/><path d="M7 5 4 10M9 5l3 5M5 12h6"/></svg>

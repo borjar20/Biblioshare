@@ -58,7 +58,8 @@
   position: fixed; inset: 0; display: flex; flex-direction: column; background: var(--atlas-ground); color: var(--atlas-fg); overflow: hidden; font-family: var(--font-geist-sans), sans-serif; }
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 8px; z-index: 3; }
 .bar h1 { font-size: clamp(20px, 2.4vw, 28px); font-weight: 800; letter-spacing: -.01em; margin: 0 8px 0 0; }
-.back { color: var(--atlas-muted); font-size: 13px; min-height: 44px; display: inline-flex; align-items: center; }
+.back { color: var(--atlas-muted); font-size: 13px; min-height: 44px; display: inline-flex; align-items: center; gap: 4px; }
+.barNav { display: contents; }
 .barSpacer { flex: 1; }
 .groupChip { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 999px; background: var(--atlas-panel); color: var(--atlas-fg); font-size: 13px; font-weight: 700; max-width: 60vw; }
 .groupChip span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -77,7 +78,7 @@
 .coverageNote { margin: 4px 0 0; font-size: 12px; color: var(--atlas-faint); max-width: 46ch; line-height: 1.4; }
 .immersiveEmpty { padding: 24px 16px; overflow: auto; }
 .immersive .loadingExit, .immersive .workspaceLoading { background: var(--atlas-ground); }
-.groupSheet { margin: auto auto 0; width: min(520px, 100%); border: 0; border-radius: 20px 20px 0 0; background: var(--atlas-panel); color: var(--atlas-fg); padding: 0; }
+.groupSheet { margin: auto auto calc(8px + env(safe-area-inset-bottom, 0px)); width: min(520px, calc(100% - 16px)); max-height: 85dvh; overflow: auto; border: 0; border-radius: 20px; background: var(--atlas-panel); color: var(--atlas-fg); padding: 0; box-shadow: 0 -12px 40px rgba(0,0,0,.5); }
 .groupSheet::backdrop { background: rgba(0,0,0,.55); }
 @media (min-width: 1024px) { .groupSheet { margin: auto; border-radius: 20px; } }
 .groupSheetBody { display: grid; gap: 14px; padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 0px)); }
@@ -85,4 +86,17 @@
 .groupActions { display: flex; flex-wrap: wrap; gap: 8px; }
 .groupActions button { min-height: 44px; padding: 0 16px; border-radius: 999px; background: var(--atlas-ground); color: var(--atlas-fg); font-size: 13px; font-weight: 600; }
 .sheetFooter { font-size: 12px; color: var(--atlas-faint); margin: 0; }
-@media (max-width: 640px) { .bar h1 { font-size: 20px; } .immersive .formats { order: 5; width: 100%; } }
+/* Compact mobile bar: back icon + title + group chip, then one scrolling row of sections and formats. */
+@media (max-width: 640px) {
+  .bar { flex-wrap: wrap; gap: 4px 8px; padding: calc(4px + env(safe-area-inset-top, 0px)) 12px 6px 4px; }
+  .back { justify-content: center; width: 44px; min-width: 44px; font-size: 20px; }
+  .backLabel { display: none; }
+  .bar h1 { font-size: 18px; margin: 0; white-space: nowrap; flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .barSpacer { display: none; }
+  .groupChip { margin-left: auto; min-height: 40px; max-width: 44vw; flex-shrink: 0; padding: 0 12px; }
+  .barNav { display: flex; align-items: center; gap: 6px; width: calc(100% + 16px); margin: 0 -12px 0 -4px; padding: 0 12px; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
+  .barNav::-webkit-scrollbar { display: none; }
+  .barNav .tabs, .barNav .formats { flex: none; flex-wrap: nowrap; width: auto; margin: 0; }
+  .immersive .barNav .formats button { flex: none; white-space: nowrap; padding: 0 12px; }
+  .immersive .tab { white-space: nowrap; }
+}

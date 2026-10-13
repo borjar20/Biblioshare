@@ -29,10 +29,10 @@ Los e2e son los de la Task 9 (informe en `.superpowers/sdd/task-9-report.md`), c
 
 Carpeta `docs/testing/assets/2026-10-13-entre-nosotros-atlas-f1/`. Generadas con un script Playwright desechable (no commiteado).
 
-Escritorio 1280×800:
+Escritorio 1280×720 (retomadas tras los arreglos visuales; antes eran 1280×800):
 - [desktop-map.png](assets/2026-10-13-entre-nosotros-atlas-f1/desktop-map.png): mapa encajado (zoom de encaje).
-- [desktop-covers.png](assets/2026-10-13-entre-nosotros-atlas-f1/desktop-covers.png): portadas, zoom 2,35.
-- [desktop-titles.png](assets/2026-10-13-entre-nosotros-atlas-f1/desktop-titles.png): títulos, zoom 4,2 (> 3,2).
+- [desktop-covers.png](assets/2026-10-13-entre-nosotros-atlas-f1/desktop-covers.png): portadas, zoom 2,45 (aterrizaje del vuelo al grupo).
+- [desktop-titles.png](assets/2026-10-13-entre-nosotros-atlas-f1/desktop-titles.png): títulos, zoom 4,41 (> 3,2, tras un «Acercar»).
 - [desktop-tooltip.png](assets/2026-10-13-entre-nosotros-atlas-f1/desktop-tooltip.png): tooltip sobre una obra.
 
 Móvil (Pixel 7, con toque):
@@ -40,19 +40,21 @@ Móvil (Pixel 7, con toque):
 - [mobile-sheet.png](assets/2026-10-13-entre-nosotros-atlas-f1/mobile-sheet.png): hoja de una obra («Abrir ficha», «Cerrar»).
 - [mobile-groups.png](assets/2026-10-13-entre-nosotros-atlas-f1/mobile-groups.png): hoja de grupos (selector, Editar grupo, Crear grupo, Actualizar).
 
-## Observaciones visuales (sin tocar código)
+## Arreglos visuales tras F1
 
-Funciona: barra superior, resumen «30 obras en común entre Tú, Beatriz QA y Carlos QA», caras de colores, ejes y nube de puntos; el vuelo al grupo pasa de puntos a portadas y a títulos; el tooltip lista quién tiene la obra; no hay scroll horizontal en móvil (comprobado por el e2e).
+Las capturas de la primera pasada mostraban seis problemas; se arreglaron y las siete capturas se retomaron con el build del arreglo (e2e del atlas: 2 passed, 2 skipped; unitarios de `src/components/comparisons` y `src/lib/comparisons`: 504 pasan).
 
-Detalles dudosos:
-1. **Móvil, fila de caras recortada**: el chip «Tú» tiene el aro cortado en el borde izquierdo y el inferior de la fila (los tres chips se ven con el borde inferior recortado). Parece el `overflow` del contenedor desplazable.
-2. **Móvil, eje sobre el texto**: con zoom en el grupo, el eje vertical de «Tú» sube por encima del mapa y atraviesa el resumen y la fila de caras (`mobile-sheet.png`).
-3. **Escritorio, títulos diminutos**: a zoom 4,2 las etiquetas `qa_comp_motion_NN` miden unos 6-7 px y cuesta leerlas; el zoom del vuelo aterriza ya en 4,2, así que el nivel «portadas» (1,1 a 3,2) solo se ve alejando a mano.
-4. **Escritorio, tooltip**: tapa las obras vecinas y las portadas de la derecha (aceptable para un tooltip, pero conviene mirarlo).
-5. **Móvil, hoja de grupos**: el texto inferior («Solo obras visibles para ti…») queda al ras del borde de la captura; no se ve el cierre de la hoja, puede quedar recortada.
-6. **Móvil, sin botones de zoom**: no hay Acercar/Alejar/Ver todo (probable decisión de diseño, solo gestos).
-7. **Carga**: antes de que llegue la comparación se ve el loader «Cargando comparación…» (visto en una primera captura); la captura final espera a que desaparezca.
-8. **Portadas**: son placeholders de color (sin imagen), como se espera en F1.
+1. **Cabecera móvil (≤ 640 px) ocupaba un tercio de la pantalla.** Ahora la fila 1 es la flecha «Volver» solo icono (nombre accesible «Volver a Comunidad» por `aria-label`), el título a 18 px y el chip de grupo; la fila 2 junta secciones y formatos en una única fila con scroll horizontal y sin barra. Altura medida: 94 px a 412 px de ancho (antes ~150). Escritorio sin cambios.
+2. **Aro de la cara activa recortado.** La fila de caras móvil tiene 4 px de relleno interior y margen negativo que lo compensa; los aros se ven enteros.
+3. **Hilos del lienzo atravesando resumen y caras.** `.overlayTop` lleva un velo (`--atlas-ground` sólido y degradado a transparente en los 32 px de abajo), con `pointer-events: none` en el contenedor. Para que el velo no tape polos ni la etiqueta del grupo, el encaje y el vuelo al grupo enmarcan la franja libre entre la capa superior y el dock (la vista mide ambas con `ResizeObserver` y se las pasa al motor como `insets`); al cambiar la altura de la capa solo se reencaja si la cámara sigue en el encaje.
+4. **«Abrir ficha» partido en dos líneas.** Botones con `white-space: nowrap`; en móvil las acciones van debajo del título y los dueños.
+5. **El vuelo al grupo saltaba a títulos (k≈4,2) con letra de 6-7 px.** El vuelo se limita a `[1,6; 2,8]` (calculado con la franja libre y factor 0,38), así que aterriza en portadas. Los títulos (umbrales 1,1 y 3,2 intactos) usan `min(14, max(9, 1,5·k))` px, se ajustan al ancho de la portada (partiendo palabras largas), máximo 3 líneas con elipsis, sobre una banda oscura.
+6. **Hoja de grupos al ras del borde inferior.** El `<dialog>` es una tarjeta redondeada entera con margen inferior que incluye `env(safe-area-inset-bottom)`, `max-height: 85dvh` y `overflow: auto`; todos los botones quedan visibles.
+
+Queda:
+- Títulos sin espacios y largos (como `qa_comp_motion_NN`) se parten por caracteres y acaban en elipsis a zoom bajo de títulos; se leen enteros acercando más.
+- Con 10 personas, en el mapa la etiqueta de un grupo pequeño puede quedar bajo un polo (p. ej. el «2» junto a Beatriz QA): es de la disposición, no de estos arreglos.
+- Siguen igual que en F1: el tooltip de escritorio tapa obras vecinas; en móvil no hay botones de zoom (solo gestos); portadas de color sin imagen (F4).
 
 ## No verificado
 

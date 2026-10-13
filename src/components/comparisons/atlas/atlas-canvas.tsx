@@ -15,7 +15,7 @@ export function AtlasCanvas({ ref, label, ...props }: Props) {
     engine.current = created;
     return () => { created.dispose(); engine.current = null; };
   }, []);
-  useEffect(() => { engine.current?.sync(); }, [props.layout, props.active, props.works]);
+  useEffect(() => { engine.current?.sync(); }, [props.layout, props.active, props.works, props.insets?.top, props.insets?.bottom]);
   useImperativeHandle(ref, () => ({ zoomBy: factor => engine.current?.zoomBy(factor), fit: () => engine.current?.fitAll() }), []);
   return <div ref={host} className={styles.canvasWrap} data-atlas-moving="false">
     <canvas ref={canvas} className={styles.canvas} role="img" aria-label={label}/>

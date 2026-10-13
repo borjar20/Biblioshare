@@ -226,7 +226,7 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
   </>;
   return <div className={`dark ${styles.immersive}`}>
     <header className={styles.bar}>
-      <Link href="/comunidad" className={styles.back}><span aria-hidden="true">←</span> {t('backToCommunity')}</Link>
+      <Link href="/comunidad" className={styles.back} aria-label={t('backToCommunity')}><span aria-hidden="true">←</span><span className={styles.backLabel} aria-hidden="true">{t('backToCommunity')}</span></Link>
       <h1>{t('title')}</h1>
       <GroupSheet chipRef={groupChip} choices={choices} value={state.groupId} unsavedId={withGroup?.id ?? null} activeName={active?.name ?? null}
         canEdit={!!active && !activeIsUnsaved} canSaveUnsaved={activeIsUnsaved && !!withGroup} showRefresh={!!active}
@@ -235,10 +235,10 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
         onSaveUnsaved={() => withGroup && setEditor({ group: null, people: withGroup.members.flatMap(member => member.userId ? [member.userId] : []) })}
         onRefresh={refresh}/>
       <span className={styles.barSpacer}/>
-      {active && <>
+      {active && <div className={styles.barNav}>
         <nav aria-label={t('sections')} className={styles.tabs}>{(['works', 'tastes'] as const).map(section => <button key={section} type="button" aria-pressed={state.section === section} onClick={() => selectSection(section)} className={styles.tab}>{t(section)}</button>)}</nav>
         <div className={styles.formats} role="group" aria-label={t('formatPills')}>{(['all', 'book', 'movie', 'series'] as const).map(next => <button key={next} type="button" aria-pressed={format === next} onClick={() => setFormat(next)}>{t(next === 'all' ? 'allFormatsShort' : `formats.${next}`)}</button>)}</div>
-      </>}
+      </div>}
     </header>
     {editor && <GroupEditor key={editor.group?.id ?? 'new'} group={editor.group} initialPeople={editor.people} candidates={candidates} viewerId={viewerId} onSaved={onSaved} onDeleted={id => { setGroups(current => current.filter(group => group.id !== id)); selectGroup(null); }} onCancel={() => { setEditor(null); groupChip.current?.focus(); }} onReload={() => { setEditor(null); groupChip.current?.focus(); refresh(); router.refresh(); }}/>}
     {!choices.length && !editor && <div className={styles.immersiveEmpty}>{candidates.some(person => person.userId !== viewerId)
