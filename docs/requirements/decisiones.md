@@ -7745,3 +7745,17 @@ siguiendo el patrón «Vacío». La escala es decorativa (`aria-hidden`); la cif
 siendo el dato. El SVG del fondo deja de recortar sus círculos desenfocados, que
 dibujaban un rectángulo, y en este nivel no se muestra. Evidencia en
 `docs/testing/2026-10-11-entre-nosotros-detalle-obra.md`.
+
+## 2026-10-13 — Crónica mensual: payload v2 y En marcha = abierto al cierre
+
+La revisión visual de las cuatro stories del mes (Terminado, En marcha, Ritmo y En
+compañía) amplía el payload de las crónicas a `v: 2`, compatible con v1 (los guardados
+siguen pintándose). El CHECK de `wrap_ups` pasa a admitir `'1'` y `'2'`, y esa migración
+va a producción **antes** que el código que escribe v2; si no, el cron falla al guardar.
+«En marcha» deja de ser «tocado en la ventana» y pasa a ser «abierto al cierre»: el caso
+real fue un usuario con tres obras a medias al que la crónica enseñaba una. Los
+compañeros de «En compañía» se guardan como ids y se resuelven al pintar, con el filtro
+de bloqueos de quien mira; el resultado depende de la sesión y por eso no lleva
+`use cache` (regla #437). La franja de hábitos pasa a hora de Madrid también en
+`/estadisticas` (#1512), para que ambas pantallas cuenten el mismo día. Detalle en la
+[spec](../superpowers/specs/2026-10-13-wrap-up-mensual-revision-visual-design.md).
