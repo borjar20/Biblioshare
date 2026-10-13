@@ -1,29 +1,20 @@
 import type { WorkKey } from '@/lib/comparisons/types';
 import type { AtlasPerson, AtlasWork, Camera, Point, Viewport } from '@/lib/comparisons/atlas/types';
-import { clusterState, workState, type QuienLayout } from '@/lib/comparisons/atlas/layout';
+import type { QuienLayout } from '@/lib/comparisons/atlas/layout';
+import type { Scene } from '@/lib/comparisons/atlas/scene';
 import { approach, clamp, fit, panBy, stepCamera, toScreen, toWorld, zoomAt, zoomToward, MAX_ZOOM, MIN_ZOOM } from '@/lib/comparisons/atlas/camera';
 import { nearest } from '@/lib/comparisons/atlas/hit';
-import { initials } from '../presentation';
+import { COVER_ZOOM, readPalette, TITLE_ZOOM, type PaintView } from './atlas-palette';
+import { paintQuienBack, paintQuienFront } from './paint-quien';
 
-export const COVER_ZOOM = 1.1;
-export const TITLE_ZOOM = 3.2;
+export { COVER_ZOOM, TITLE_ZOOM } from './atlas-palette';
 export type AtlasHit = { key: WorkKey; x: number; y: number };
-export type EngineProps = { people: AtlasPerson[]; works: AtlasWork[]; active: string[]; layout: QuienLayout;
+export type EngineProps = { people: AtlasPerson[]; works: AtlasWork[]; active: string[]; scene: Scene; quien: QuienLayout;
   countLabel: (count: number) => string; onTogglePerson: (id: string) => void;
   onHover: (hit: AtlasHit | null) => void; onActivate: (hit: AtlasHit | null, pointerType: string) => void;
   /** Screen space covered by the overlays (summary + faces on top, lens dock below); fit and fly-to frame the free band. */
   insets?: { top: number; bottom: number } };
-type Sprite = { x: number; y: number; tx: number; ty: number; a: number; ta: number; hl: number; thl: number };
-type Palette = { fg: string; muted: string; line: string; glow: string; cream: string; font: string;
-  type: Record<AtlasWork['itemType'], string> };
-
-function readPalette(host: Element): Palette {
-  const css = getComputedStyle(host);
-  const v = (name: string, fallback: string) => css.getPropertyValue(name).trim() || fallback;
-  return { fg: v('--atlas-fg', '#f1e7dd'), muted: v('--atlas-muted', '#b2a293'), line: v('--atlas-line', '#4a3d34'),
-    glow: v('--atlas-glow', '#f2c27b'), cream: v('--atlas-cream', '#e9dccf'), font: css.fontFamily || 'system-ui, sans-serif',
-    type: { book: v('--type-book', '#cf8a54'), movie: v('--type-movie', '#6bb0b4'), series: v('--type-series', '#b592bd') } };
-}
+type Sprite = { x: number; y: number; tx: number; ty: number; a: number; ta: number; hl: number; thl: number; diff: number | null };
 const dist = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
 
 export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, props: () => EngineProps) {
@@ -38,7 +29,7 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
   const insets = () => props().insets ?? { top: 75, bottom: 75 };
   /** Shifts a camera so that its focus lands in the middle of the band between the overlays. */
   const framed = (c: Camera): Camera => { const { top, bottom } = insets(); return { ...c, y: c.y - (top - bottom) / 2 / c.k }; };
-  const fitCamera = () => { const { top, bottom } = insets(); return framed(fit(props().layout.extent, vp, { x: 32, y: top + bottom + 24 })); };
+  const fitCamera = () => { const { top, bottom } = insets(); return framed(fit(props().scene.extent, vp, { x: 32, y: top + bottom + 24 })); };
   let lastFit: Camera | null = null; let insetsKey = ''; let touched = false;
   const refit = () => { lastFit = fitCamera(); target = lastFit; };
   /** Jump straight to the fit, no glide (the user has not seen the previous framing as theirs). */
@@ -57,17 +48,17 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
     kick();
   }
   function sync() {
-    const { works, active, layout } = props(); const seen = new Set<WorkKey>();
-    for (const work of works) {
-      const p = layout.positions.get(work.key); if (!p) continue;
-      const state = workState(work, active); seen.add(work.key);
-      const sprite = sprites.get(work.key) ?? { x: p.x, y: p.y, tx: p.x, ty: p.y, a: state.alpha, ta: state.alpha, hl: state.glow ? 1 : 0, thl: 0 };
-      sprite.tx = p.x; sprite.ty = p.y; sprite.ta = state.alpha; sprite.thl = state.glow ? 1 : 0;
-      if (reduce) { sprite.x = p.x; sprite.y = p.y; sprite.a = sprite.ta; sprite.hl = sprite.thl; }
-      sprites.set(work.key, sprite);
+    const { scene } = props(); const seen = new Set<WorkKey>();
+    for (const [key, t] of scene.targets) {
+      seen.add(key);
+      const glow = t.glow ? 1 : 0;
+      const sprite = sprites.get(key) ?? { x: t.x, y: t.y, tx: t.x, ty: t.y, a: t.alpha, ta: t.alpha, hl: glow, thl: 0, diff: t.diff };
+      sprite.tx = t.x; sprite.ty = t.y; sprite.ta = t.alpha; sprite.thl = glow; sprite.diff = t.diff;
+      if (reduce) { sprite.x = t.x; sprite.y = t.y; sprite.a = sprite.ta; sprite.hl = sprite.thl; }
+      sprites.set(key, sprite);
     }
     for (const key of [...sprites.keys()]) if (!seen.has(key)) sprites.delete(key);
-    const nextExtent = JSON.stringify(layout.extent);
+    const nextExtent = JSON.stringify(scene.extent);
     if (nextExtent !== extentKey) { extentKey = nextExtent; if (fitted) refit(); }
     // Overlays measured after the first fit: reframe only while the camera still rests on (or heads to) that fit;
     // before any interaction (initial load) jump there instead of gliding.
@@ -133,29 +124,13 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
   }
   function draw() {
     if (!ctx) return;
-    const { works, active, layout, people, countLabel } = props();
+    const { works, active, scene, quien, people, countLabel } = props();
     const k = cam.k, covers = k > COVER_ZOOM, titles = k > TITLE_ZOOM;
     const color = new Map(people.map(person => [person.id, person.color]));
-    const poles = new Map(layout.poles.map(pole => [pole.userId, pole]));
+    const view: PaintView = { ctx, cam, vp, palette, text };
+    const quienPaint = { layout: quien, active, people, countLabel };
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, vp.width, vp.height);
-    // Threads from each owner to each labelled shared group, and the common glow.
-    for (const cluster of layout.clusters) {
-      const state = clusterState(cluster, active); if (!state.labelled) continue;
-      const c = toScreen(cam, vp, cluster);
-      for (const owner of cluster.owners) {
-        const p = toScreen(cam, vp, poles.get(owner)!);
-        ctx.strokeStyle = state.on ? color.get(owner)! : palette.line; ctx.globalAlpha = state.on ? 0.5 : 0.22;
-        ctx.lineWidth = Math.max(1, Math.sqrt(cluster.keys.length) * 0.9);
-        ctx.beginPath(); ctx.moveTo(p.x, p.y);
-        ctx.quadraticCurveTo((p.x + c.x) / 2 * 0.9 + vp.width / 2 * 0.1, (p.y + c.y) / 2 * 0.9 + vp.height / 2 * 0.1, c.x, c.y); ctx.stroke();
-      }
-      if (state.common) {
-        const r = cluster.r * k + 34; const g = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, r);
-        g.addColorStop(0, 'rgba(242,194,123,.22)'); g.addColorStop(1, 'rgba(242,194,123,0)');
-        ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(c.x, c.y, r, 0, Math.PI * 2); ctx.fill();
-      }
-    }
-    ctx.globalAlpha = 1;
+    if (scene.lens === 'quien') paintQuienBack(view, quienPaint);
     const byKey = new Map(works.map(work => [work.key, work]));
     for (const [key, s] of sprites) {
       if (s.a < 0.02) continue; const work = byKey.get(key); if (!work) continue;
@@ -188,22 +163,7 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
       }
     }
     ctx.globalAlpha = 1;
-    if (k > 0.12 && k < TITLE_ZOOM) for (const cluster of layout.clusters) {
-      const state = clusterState(cluster, active); if (!state.labelled) continue;
-      const c = toScreen(cam, vp, cluster); ctx.globalAlpha = state.on ? 1 : 0.35;
-      text(String(cluster.keys.length), c.x, c.y - cluster.r * k - 10, `800 ${Math.min(30, 14 + Math.sqrt(cluster.keys.length))}px ${palette.font}`,
-        state.common ? palette.glow : palette.fg, 'center');
-    }
-    for (const pole of layout.poles) {
-      const person = people.find(item => item.id === pole.userId); if (!person) continue;
-      const p = toScreen(cam, vp, pole); const on = active.includes(person.id);
-      ctx.globalAlpha = on ? 1 : 0.4; ctx.fillStyle = person.color; ctx.beginPath(); ctx.arc(p.x, p.y, 26, 0, Math.PI * 2); ctx.fill();
-      if (on) { ctx.strokeStyle = palette.fg; ctx.lineWidth = 3; ctx.stroke(); }
-      text(initials(person.name), p.x, p.y + 5, `800 15px ${palette.font}`, '#fff', 'center');
-      text(person.name, p.x, p.y + 44, `600 13px ${palette.font}`, palette.fg, 'center');
-      text(countLabel(pole.count), p.x, p.y + 59, `500 12px ${palette.font}`, palette.muted, 'center');
-    }
-    ctx.globalAlpha = 1;
+    if (scene.lens === 'quien') paintQuienFront(view, quienPaint);
   }
   function hitWork(s: Point): AtlasHit | null {
     const world = toWorld(cam, vp, s); const radius = Math.max(6, 10 / cam.k);
@@ -214,9 +174,11 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
   const pointers = new Map<number, Point>(); let pinch: { d: number; k: number } | null = null;
   let down: Point | null = null; let lastTap: (Point & { t: number }) | null = null;
   const local = (e: { clientX: number; clientY: number }): Point => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
-  const hitPole = (p: Point) => props().layout.poles.find(item => dist(toScreen(cam, vp, item), p) < 30);
+  const hitPole = (p: Point) => props().scene.lens !== 'quien' ? undefined
+    : props().quien.poles.find(item => dist(toScreen(cam, vp, item), p) < 30);
   /** Shared groups are only targets at map zoom; past COVER_ZOOM the covers inside them are. */
-  const hitCluster = (p: Point) => cam.k <= COVER_ZOOM ? props().layout.clusters.find(item => dist(toScreen(cam, vp, item), p) < item.r * cam.k + 6) : undefined;
+  const hitCluster = (p: Point) => props().scene.lens === 'quien' && cam.k <= COVER_ZOOM
+    ? props().quien.clusters.find(item => dist(toScreen(cam, vp, item), p) < item.r * cam.k + 6) : undefined;
   function tap(p: Point, pointerType: string, time: number) {
     const { onTogglePerson, onActivate } = props();
     const pole = hitPole(p);

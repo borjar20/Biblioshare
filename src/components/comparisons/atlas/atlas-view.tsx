@@ -8,6 +8,8 @@ import type { Snapshot, WorkKey } from '@/lib/comparisons/types';
 import type { AtlasPerson, AtlasWork } from '@/lib/comparisons/atlas/types';
 import { atlasModel } from '@/lib/comparisons/atlas/model';
 import { layoutQuien } from '@/lib/comparisons/atlas/layout';
+import { layoutOpinion } from '@/lib/comparisons/atlas/opinion';
+import { buildScene } from '@/lib/comparisons/atlas/scene';
 import { summarizeQuien } from '@/lib/comparisons/atlas/summary';
 import { initials } from '../presentation';
 import { AtlasCanvas, type AtlasCanvasHandle } from './atlas-canvas';
@@ -46,6 +48,9 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange }
     const ids = people.map(person => person.id), kept = ids.filter(id => !chosen || chosen.includes(id));
     return kept.length ? kept : ids;
   }, [people, chosen]);
+  const opinion = useMemo(() => layoutOpinion(people, works, active), [people, works, active]);
+  // The lens stays on Quién until the lens dock lands (F2, Task 4).
+  const scene = useMemo(() => buildScene('quien', works, active, layout, opinion), [works, active, layout, opinion]);
   const [hover, setHover] = useState<AtlasHit | null>(null);
   const [picked, setPicked] = useState<WorkKey | null>(null);
   const camera = useRef<AtlasCanvasHandle>(null);
@@ -90,7 +95,7 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange }
   const unavailable = snapshot.group.members.filter(member => !member.available);
 
   return <div ref={stage} className={styles.canvasWrap} data-comparison-stage>
-    <AtlasCanvas ref={camera} label={canvasLabel} people={people} works={works} active={active} layout={layout} insets={insets}
+    <AtlasCanvas ref={camera} label={canvasLabel} people={people} works={works} active={active} scene={scene} quien={layout} insets={insets}
       countLabel={count => t('atlas.poleCount', { count })} onTogglePerson={toggle} onHover={setHover} onActivate={activate}/>
     <div ref={overlay} className={styles.overlayTop}>
       <div><p className={styles.summary} role="status" aria-live="polite">{t.rich(summaryKey, { ...summaryValues, b: bold })}</p>

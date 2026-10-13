@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Snapshot, WorkKey } from '@/lib/comparisons/types';
 import { atlasModel } from '@/lib/comparisons/atlas/model';
 import { layoutQuien } from '@/lib/comparisons/atlas/layout';
+import { layoutOpinion } from '@/lib/comparisons/atlas/opinion';
+import { buildScene } from '@/lib/comparisons/atlas/scene';
 import { fit } from '@/lib/comparisons/atlas/camera';
 import { AtlasCanvas } from './atlas-canvas';
 
@@ -12,6 +14,7 @@ const snapshot: Snapshot = { group: { id: 'g', name: 'G', revision: 1, members: 
   works: ['a', 'b'].map(userId => ({ userId, key: 'book:1' as WorkKey, rating: null, date: null, orderUnknown: false, progress: null })) };
 const { people, works } = atlasModel(snapshot, 'a', 'Tú');
 const layout = layoutQuien(people, works);
+const scene = buildScene('quien', works, ['a', 'b'], layout, layoutOpinion(people, works, ['a', 'b']));
 let frames: FrameRequestCallback[] = [];
 beforeEach(() => {
   frames = [];
@@ -32,7 +35,7 @@ const flush = () => act(() => { for (let i = 0; i < 400 && frames.length; i++) f
 describe('AtlasCanvas', () => {
   it('se asienta, publica la sonda y tocar un polo alterna esa cara', () => {
     const toggle = vi.fn();
-    const { container } = render(<AtlasCanvas label="Mapa" people={people} works={works} active={['a', 'b']} layout={layout}
+    const { container } = render(<AtlasCanvas label="Mapa" people={people} works={works} active={['a', 'b']} scene={scene} quien={layout}
       countLabel={n => `${n} obras`} onTogglePerson={toggle} onHover={() => {}} onActivate={() => {}}/>);
     flush();
     const host = container.querySelector<HTMLElement>('[data-atlas-moving]')!;
@@ -51,7 +54,7 @@ describe('AtlasCanvas', () => {
 
   function setup() {
     const toggle = vi.fn();
-    const { container } = render(<AtlasCanvas label="Mapa" people={people} works={works} active={['a', 'b']} layout={layout}
+    const { container } = render(<AtlasCanvas label="Mapa" people={people} works={works} active={['a', 'b']} scene={scene} quien={layout}
       countLabel={n => `${n} obras`} onTogglePerson={toggle} onHover={() => {}} onActivate={() => {}}/>);
     flush();
     const host = container.querySelector<HTMLElement>('[data-atlas-moving]')!;
@@ -97,7 +100,7 @@ describe('AtlasCanvas', () => {
     expect(Number(host.dataset.atlasZoom)).toBe(k);
   });
 
-  const props = { label: 'Mapa', people, works, active: ['a', 'b'], layout, countLabel: (n: number) => `${n} obras`,
+  const props = { label: 'Mapa', people, works, active: ['a', 'b'], scene, quien: layout, countLabel: (n: number) => `${n} obras`,
     onTogglePerson: () => {}, onHover: () => {}, onActivate: () => {} };
   const fitZoom = (width: number, height: number, top: number, bottom: number) =>
     fit(layout.extent, { width, height }, { x: 32, y: top + bottom + 24 }).k.toFixed(3);
