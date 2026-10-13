@@ -39,15 +39,21 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
   /** Shifts a camera so that its focus lands in the middle of the band between the overlays. */
   const framed = (c: Camera): Camera => { const { top, bottom } = insets(); return { ...c, y: c.y - (top - bottom) / 2 / c.k }; };
   const fitCamera = () => { const { top, bottom } = insets(); return framed(fit(props().layout.extent, vp, { x: 32, y: top + bottom + 24 })); };
-  let lastFit: Camera | null = null; let insetsKey = '';
+  let lastFit: Camera | null = null; let insetsKey = ''; let touched = false;
   const refit = () => { lastFit = fitCamera(); target = lastFit; };
+  /** Jump straight to the fit, no glide (the user has not seen the previous framing as theirs). */
+  const snapFit = () => { cam = lastFit = fitCamera(); target = null; };
+  /** The camera still rests on (or heads to) the last fit: nobody has moved it since. */
+  const atFit = () => !!lastFit && ((target ?? cam) === lastFit
+    || (!target && Math.abs(cam.k / lastFit.k - 1) < 0.002 && Math.hypot(cam.x - lastFit.x, cam.y - lastFit.y) < 0.5));
   function kick() { dirtyProbe = true; if (!raf && !disposed && typeof requestAnimationFrame === 'function') raf = requestAnimationFrame(frame); }
   function resize() {
     dpr = Math.min(2, globalThis.devicePixelRatio || 1);
+    const wasAtFit = atFit();
     vp = { width: host.clientWidth, height: host.clientHeight };
     canvas.width = Math.round(vp.width * dpr); canvas.height = Math.round(vp.height * dpr);
     palette = readPalette(host);
-    if (!fitted && vp.width > 0 && vp.height > 0) { cam = lastFit = fitCamera(); fitted = true; }
+    if (vp.width > 0 && vp.height > 0 && (!fitted || wasAtFit)) { snapFit(); fitted = true; }
     kick();
   }
   function sync() {
@@ -63,12 +69,12 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
     for (const key of [...sprites.keys()]) if (!seen.has(key)) sprites.delete(key);
     const nextExtent = JSON.stringify(layout.extent);
     if (nextExtent !== extentKey) { extentKey = nextExtent; if (fitted) refit(); }
-    // Overlays measured after the first fit: reframe only while the camera still rests on (or heads to) that fit.
+    // Overlays measured after the first fit: reframe only while the camera still rests on (or heads to) that fit;
+    // before any interaction (initial load) jump there instead of gliding.
     const nextInsets = JSON.stringify(insets());
     if (nextInsets !== insetsKey) {
       insetsKey = nextInsets;
-      const atFit = lastFit && ((target ?? cam) === lastFit || (!target && Math.abs(cam.k / lastFit.k - 1) < 0.002 && Math.hypot(cam.x - lastFit.x, cam.y - lastFit.y) < 0.5));
-      if (fitted && atFit) refit();
+      if (fitted && atFit()) { if (touched) refit(); else snapFit(); }
     }
     kick();
   }
@@ -208,15 +214,16 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
   const pointers = new Map<number, Point>(); let pinch: { d: number; k: number } | null = null;
   let down: Point | null = null; let lastTap: (Point & { t: number }) | null = null;
   const local = (e: { clientX: number; clientY: number }): Point => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+  const hitPole = (p: Point) => props().layout.poles.find(item => dist(toScreen(cam, vp, item), p) < 30);
+  /** Shared groups are only targets at map zoom; past COVER_ZOOM the covers inside them are. */
+  const hitCluster = (p: Point) => cam.k <= COVER_ZOOM ? props().layout.clusters.find(item => dist(toScreen(cam, vp, item), p) < item.r * cam.k + 6) : undefined;
   function tap(p: Point, pointerType: string, time: number) {
-    const { layout, onTogglePerson, onActivate } = props();
-    const pole = layout.poles.find(item => dist(toScreen(cam, vp, item), p) < 30);
+    const { onTogglePerson, onActivate } = props();
+    const pole = hitPole(p);
     if (pole) { onTogglePerson(pole.userId); return; }
-    if (cam.k <= COVER_ZOOM) {
-      const cluster = layout.clusters.find(item => dist(toScreen(cam, vp, item), p) < item.r * cam.k + 6);
-      if (cluster) { const band = Math.max(1, vp.height - insets().top - insets().bottom);
-        target = framed({ x: cluster.x, y: cluster.y, k: clamp(Math.min(vp.width, band) * 0.38 / cluster.r, 1.6, 2.8) }); kick(); return; }
-    }
+    const cluster = hitCluster(p);
+    if (cluster) { const band = Math.max(1, vp.height - insets().top - insets().bottom);
+      target = framed({ x: cluster.x, y: cluster.y, k: clamp(Math.min(vp.width, band) * 0.38 / cluster.r, 1.6, 2.8) }); kick(); return; }
     const hit = hitWork(p);
     if (hit) { lastTap = null; onActivate(hit, pointerType); return; }
     if (pointerType !== 'mouse' && lastTap && time - lastTap.t < 300 && dist(p, lastTap) < 24) { target = zoomToward(cam, vp, p, 2.6); lastTap = null; kick(); return; }
@@ -224,7 +231,7 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
   }
   function onDown(e: PointerEvent) {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
-    canvas.style.cursor = ''; canvas.setPointerCapture?.(e.pointerId); const p = local(e); pointers.set(e.pointerId, p); target = null; down = p;
+    touched = true; canvas.style.cursor = ''; canvas.setPointerCapture?.(e.pointerId); const p = local(e); pointers.set(e.pointerId, p); target = null; down = p;
     if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch = { d: Math.max(dist(a, b), 1), k: cam.k }; down = null; }
     canvas.dataset.dragging = 'true';
   }
@@ -249,8 +256,13 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
   }
   function onCancel(e: PointerEvent) { pointers.delete(e.pointerId); pinch = null; down = null; delete canvas.dataset.dragging; kick(); }
   function onLeave(e: PointerEvent) { if (e.pointerType === 'mouse') props().onHover(null); }
-  function onWheel(e: WheelEvent) { e.preventDefault(); target = null; cam = zoomAt(cam, vp, local(e), Math.exp(-e.deltaY * 0.0018)); props().onHover(null); kick(); }
-  function onDoubleClick(e: MouseEvent) { const p = local(e); if (!hitWork(p)) { target = zoomToward(cam, vp, p, 2.6); kick(); } }
+  function onWheel(e: WheelEvent) { e.preventDefault(); touched = true; target = null; cam = zoomAt(cam, vp, local(e), Math.exp(-e.deltaY * 0.0018)); props().onHover(null); kick(); }
+  /** Same hit order as `tap`: the click already toggled a pole or flew to a group, so only empty space zooms. */
+  function onDoubleClick(e: MouseEvent) {
+    const p = local(e); touched = true;
+    if (hitPole(p) || hitCluster(p) || hitWork(p)) return;
+    target = zoomToward(cam, vp, p, 2.6); kick();
+  }
 
   canvas.addEventListener('pointerdown', onDown); canvas.addEventListener('pointermove', onMove);
   canvas.addEventListener('pointerup', onUp); canvas.addEventListener('pointercancel', onCancel);
@@ -262,8 +274,8 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
 
   return {
     sync,
-    zoomBy(factor: number) { target = { ...(target ?? cam), k: clamp((target ?? cam).k * factor, MIN_ZOOM, MAX_ZOOM) }; kick(); },
-    fitAll() { refit(); kick(); },
+    zoomBy(factor: number) { touched = true; target = { ...(target ?? cam), k: clamp((target ?? cam).k * factor, MIN_ZOOM, MAX_ZOOM) }; kick(); },
+    fitAll() { touched = true; refit(); kick(); },
     dispose() {
       disposed = true; if (raf) cancelAnimationFrame(raf); observer?.disconnect();
       canvas.removeEventListener('pointerdown', onDown); canvas.removeEventListener('pointermove', onMove);

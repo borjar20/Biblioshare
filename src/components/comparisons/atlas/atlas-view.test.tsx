@@ -8,7 +8,7 @@ import type { Snapshot, WorkKey } from '@/lib/comparisons/types';
 
 const push = vi.fn();
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
-type CanvasProps = { onActivate: (hit: { key: WorkKey; x: number; y: number } | null, type: string) => void; onHover: (hit: { key: WorkKey; x: number; y: number } | null) => void; active: string[] };
+type CanvasProps = { onActivate: (hit: { key: WorkKey; x: number; y: number } | null, type: string) => void; onHover: (hit: { key: WorkKey; x: number; y: number } | null) => void; active: string[]; label: string };
 let canvas: CanvasProps;
 vi.mock('./atlas-canvas', () => ({ AtlasCanvas: (props: CanvasProps) => { canvas = props; return <div data-testid="canvas"/>; } }));
 import { AtlasView } from './atlas-view';
@@ -75,6 +75,20 @@ describe('AtlasView', () => {
     render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={snapshot} viewerId="me" chosen={['gone']} onChosenChange={vi.fn()}/></NextIntlClientProvider>);
     for (const name of ['Tú', 'Bea', 'Carla']) expect(screen.getByRole('button', { name }).getAttribute('aria-pressed')).toBe('true');
     expect(summary()).toBe('1 obra en común entre Tú, Bea y Carla');
+  });
+  it('el hover no rehace la lista de caras activas que recibe el lienzo', () => {
+    view();
+    const before = canvas.active;
+    act(() => canvas.onHover({ key: 'book:1', x: 10, y: 10 }));
+    expect(screen.getByText('Proyecto Salvación')).toBeTruthy();
+    expect(canvas.active).toBe(before);
+  });
+  it('la etiqueta del lienzo describe la lente y el resumen en texto plano', () => {
+    view();
+    expect(canvas.label).toBe('Mapa de obras compartidas. Quién. 1 obra en común entre Tú, Bea y Carla');
+    fireEvent.click(screen.getByRole('button', { name: 'Carla' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Tú' }));
+    expect(canvas.label).toBe('Mapa de obras compartidas. Quién. 2 obras de Bea. Suma a alguien para ver el cruce.');
   });
   it('ratón: hover muestra la mini-ficha y clic navega', () => {
     view();

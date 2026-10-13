@@ -41,8 +41,11 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange }
   const layout = useMemo(() => layoutQuien(people, works), [people, works]);
   const byKey = useMemo(() => new Map(works.map(work => [work.key, work])), [works]);
   // People order, and only people that are still in the snapshot; if none of them remains, everyone.
-  const ids = people.map(person => person.id), kept = ids.filter(id => !chosen || chosen.includes(id));
-  const active = kept.length ? kept : ids;
+  // Memoized: a new array each render would re-sync (and redraw) the engine on every hover.
+  const active = useMemo(() => {
+    const ids = people.map(person => person.id), kept = ids.filter(id => !chosen || chosen.includes(id));
+    return kept.length ? kept : ids;
+  }, [people, chosen]);
   const [hover, setHover] = useState<AtlasHit | null>(null);
   const [picked, setPicked] = useState<WorkKey | null>(null);
   const camera = useRef<AtlasCanvasHandle>(null);
@@ -64,6 +67,11 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange }
   const summary = summarizeQuien(people, works, active);
   const list = new Intl.ListFormat(locale, { type: 'conjunction' });
   const bold = (chunks: ReactNode) => <b>{chunks}</b>;
+  // Same messages for the visible summary (rich) and the canvas label (plain text, spec §7).
+  const summaryKey = summary.kind === 'solo' ? 'atlas.summary.solo' : summary.names.length >= 4 ? 'atlas.summary.commonMany' : 'atlas.summary.common';
+  const summaryValues: Record<string, string | number> = summary.kind === 'solo' ? { count: summary.count, name: summary.name }
+    : summary.names.length >= 4 ? { count: summary.count, people: summary.names.length } : { count: summary.count, names: list.format(summary.names) };
+  const canvasLabel = `${t('atlas.canvasLabel')}. ${t('atlas.lens.quien')}. ${t.markup(summaryKey, { ...summaryValues, b: chunks => chunks })}`;
   const titleOf = (work: AtlasWork) => work.metadataMissing || !work.title ? t('missingMetadata') : work.title;
 
   function toggle(id: string) {
@@ -82,14 +90,10 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange }
   const unavailable = snapshot.group.members.filter(member => !member.available);
 
   return <div ref={stage} className={styles.canvasWrap} data-comparison-stage>
-    <AtlasCanvas ref={camera} label={t('atlas.canvasLabel')} people={people} works={works} active={active} layout={layout} insets={insets}
+    <AtlasCanvas ref={camera} label={canvasLabel} people={people} works={works} active={active} layout={layout} insets={insets}
       countLabel={count => t('atlas.poleCount', { count })} onTogglePerson={toggle} onHover={setHover} onActivate={activate}/>
     <div ref={overlay} className={styles.overlayTop}>
-      <div><p className={styles.summary} role="status" aria-live="polite">{summary.kind === 'solo'
-        ? t.rich('atlas.summary.solo', { count: summary.count, name: summary.name, b: bold })
-        : summary.names.length >= 4
-          ? t.rich('atlas.summary.commonMany', { count: summary.count, people: summary.names.length, b: bold })
-          : t.rich('atlas.summary.common', { count: summary.count, names: list.format(summary.names), b: bold })}</p>
+      <div><p className={styles.summary} role="status" aria-live="polite">{t.rich(summaryKey, { ...summaryValues, b: bold })}</p>
         {notice}</div>
       <div className={styles.faces} role="group" aria-label={t('atlas.faces')}>
         {people.map(person => <button key={person.id} type="button" className={styles.face} aria-pressed={active.includes(person.id)}

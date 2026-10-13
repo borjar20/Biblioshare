@@ -24,8 +24,16 @@ export function zoomToward(cam: Camera, vp: Viewport, s: Point, factor: number, 
   const w = toWorld(cam, vp, s);
   return { x: w.x, y: w.y, k: Math.min(maxK, cam.k * factor) };
 }
+/**
+ * Fits the extent in the viewport minus `pad`. An axis whose free room is under 40 % of the viewport
+ * (overlays eating a short screen) does not drive the zoom; the other axis does. If both are that
+ * tight, the whole viewport is used.
+ */
 export function fit(extent: Extent, vp: Viewport, pad: Point, maxK = 4): Camera {
-  const k = Math.min((vp.width - pad.x) / (extent.maxX - extent.minX), (vp.height - pad.y) / (extent.maxY - extent.minY));
+  const w = extent.maxX - extent.minX, h = extent.maxY - extent.minY;
+  const roomX = vp.width - pad.x, roomY = vp.height - pad.y;
+  const okX = roomX >= vp.width * 0.4, okY = roomY >= vp.height * 0.4;
+  const k = okX && okY ? Math.min(roomX / w, roomY / h) : okX ? roomX / w : okY ? roomY / h : Math.min(vp.width / w, vp.height / h);
   return { x: (extent.minX + extent.maxX) / 2, y: (extent.minY + extent.maxY) / 2, k: clamp(k, MIN_ZOOM, maxK) };
 }
 export function stepCamera(cam: Camera, target: Camera, f: number): { camera: Camera; done: boolean } {

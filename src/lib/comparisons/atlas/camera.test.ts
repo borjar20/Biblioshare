@@ -29,6 +29,16 @@ describe('cámara', () => {
     const tl = toScreen(c, vp, { x: extent.minX, y: extent.minY });
     expect(tl.x).toBeGreaterThanOrEqual(-0.001);
   });
+  it('fit con un eje casi sin hueco encaja por el otro eje en vez de hundirse al zoom mínimo', () => {
+    const extent = { minX: -500, minY: -300, maxX: 500, maxY: 300 };
+    const short = { width: 400, height: 200 };
+    const flat = fit(extent, short, { x: 32, y: 224 });
+    expect(Number.isFinite(flat.k)).toBe(true);
+    expect(flat.k).toBeCloseTo((400 - 32) / 1000);
+    expect(flat.k).toBeGreaterThan(MIN_ZOOM);
+    // Hueco vertical por debajo del 40 %: tampoco manda ese eje.
+    expect(fit(extent, { width: 800, height: 600 }, { x: 32, y: 400 }).k).toBeCloseTo((800 - 32) / 1000);
+  });
   it('zoomToward centra el punto tocado y multiplica el zoom con tope', () => {
     const next = zoomToward(cam, vp, { x: 400, y: 300 }, 2.6);
     expect(next).toEqual({ x: 120, y: -40, k: 0.7 * 2.6 });
