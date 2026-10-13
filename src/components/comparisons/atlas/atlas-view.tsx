@@ -66,12 +66,14 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange, 
   const camera = useRef<AtlasCanvasHandle>(null);
   const stage = useRef<HTMLDivElement>(null); const overlay = useRef<HTMLDivElement>(null); const dock = useRef<HTMLDivElement>(null);
   const [insets, setInsets] = useState<{ top: number; bottom: number } | undefined>(undefined);
+  const [stageHeight, setStageHeight] = useState(0);
   // The camera frames the band left free by the overlays (summary + faces, lens dock), whatever their height.
   useLayoutEffect(() => {
     const measure = () => {
       const host = stage.current, top = overlay.current, bottom = dock.current; if (!host || !top || !bottom) return;
       const next = { top: Math.round(top.offsetHeight - parseFloat(getComputedStyle(top).paddingBottom || '0')), bottom: Math.round(host.clientHeight - bottom.offsetTop) };
       setInsets(current => current && current.top === next.top && current.bottom === next.bottom ? current : next);
+      setStageHeight(host.clientHeight);
     };
     measure();
     if (typeof ResizeObserver !== 'function') return;
@@ -89,6 +91,8 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange, 
     if (active.includes(id)) { if (active.length > 1) onChosenChange(active.filter(item => item !== id)); }
     else onChosenChange([...active, id]);
   }
+  // A lens change can drop the hovered or picked work from the scene: start clean.
+  function changeLens(next: Lens) { setHover(null); setPicked(null); onLensChange(next); }
   function open(work: AtlasWork) { if (!work.metadataMissing) router.push(itemHref(work.itemType, work.itemId)); }
   function activate(hit: AtlasHit | null, pointerType: string) {
     if (!hit) { setPicked(null); return; }
@@ -122,17 +126,19 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange, 
     </div>
     <div ref={dock} className={styles.dock}>
       <div className={styles.lens} role="group" aria-label={t('atlas.lenses')}>
-        <button type="button" aria-pressed={lens === 'quien'} aria-label={t('atlas.lens.quien')} onClick={() => onLensChange('quien')}>
+        <button type="button" aria-pressed={lens === 'quien'} aria-label={t('atlas.lens.quien')} onClick={() => changeLens('quien')}>
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><circle cx="8" cy="3" r="2"/><circle cx="3" cy="12" r="2"/><circle cx="13" cy="12" r="2"/><path d="M7 5 4 10M9 5l3 5M5 12h6"/></svg>
           <span>{t('atlas.lens.quien')}</span></button>
-        <button type="button" aria-pressed={lens === 'opinion'} aria-label={t('atlas.lens.opinion')} onClick={() => onLensChange('opinion')}>
+        <button type="button" aria-pressed={lens === 'opinion'} aria-label={t('atlas.lens.opinion')} onClick={() => changeLens('opinion')}>
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M2 14 14 2"/><path d="M2 2v12h12"/><circle cx="10" cy="5" r="1.2" fill="currentColor"/><circle cx="5" cy="10" r="1.2" fill="currentColor"/></svg>
           <span>{t('atlas.lens.opinion')}</span></button>
       </div>
       <p className={styles.caption}>{t(`atlas.caption.${lens}`)}</p>
     </div>
     {hovered && !sheet && <div className={styles.tip} aria-hidden="true"
-      style={{ left: `min(${hover.x + 16}px, calc(100% - 290px))`, top: `min(${hover.y + 16}px, calc(100% - 110px))` }}>
+      style={{ left: `min(${hover.x + 16}px, calc(100% - 290px))`, ...(stageHeight && hover.y > stageHeight / 2
+        // Lower half: open upwards so the taller Opinión card is never cut by the bottom edge.
+        ? { bottom: `calc(100% - ${hover.y - 16}px)` } : { top: `min(${hover.y + 16}px, calc(100% - 110px))` }) }}>
       <WorkCard work={hovered} people={people} title={titleOf(hovered)} lens={lens}/></div>}
     {sheet && <div className={styles.sheet} role="dialog" aria-label={titleOf(sheet)}>
       <WorkCard work={sheet} people={people} title={titleOf(sheet)} lens={lens}/>

@@ -164,4 +164,39 @@ describe('AtlasView', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Tú' }));
     expect(summary()).toBe('Coincidís en 0 y chocáis en 1 de 1 obra compartida, con Bea como referencia');
   });
+  it('la mini-ficha se abre hacia arriba cuando el puntero está en la mitad baja del escenario', () => {
+    const height = vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(600);
+    try {
+      view();
+      act(() => canvas.onHover({ key: 'book:1', x: 10, y: 550 }));
+      const tip = screen.getByText('Proyecto Salvación').closest<HTMLElement>('[aria-hidden="true"]')!;
+      expect(tip.style.bottom).toBe('calc(100% - 534px)');
+      expect(tip.style.top).toBe('');
+      act(() => canvas.onHover({ key: 'book:1', x: 10, y: 100 }));
+      const high = screen.getByText('Proyecto Salvación').closest<HTMLElement>('[aria-hidden="true"]')!;
+      expect(high.style.top).not.toBe('');
+      expect(high.style.bottom).toBe('');
+    } finally { height.mockRestore(); }
+  });
+  it('cambiar de lente cierra la hoja táctil abierta', () => {
+    viewRated({ me: 9, b: 9, c: 4 });
+    act(() => canvas.onActivate({ key: 'book:1', x: 10, y: 10 }, 'touch'));
+    expect(screen.getByRole('dialog', { name: 'Proyecto Salvación' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Opinión' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+  it('de Opinión a Quién vuelven el pie, el resumen y la lista de dueños de la mini-ficha', () => {
+    viewRated({ me: 9, b: 9, c: 4 });
+    const caption = messages.comparisons.atlas.caption;
+    fireEvent.click(screen.getByRole('button', { name: 'Opinión' }));
+    expect(screen.getByText(caption.opinion)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Quién' }));
+    expect(screen.getByText(caption.quien)).toBeTruthy();
+    expect(screen.queryByText(caption.opinion)).toBeNull();
+    expect(summary()).toBe('1 obra en común entre Tú, Bea y Carla');
+    act(() => canvas.onHover({ key: 'book:1', x: 10, y: 10 }));
+    expect(screen.queryByRole('img', { hidden: true })).toBeNull();
+    const tip = screen.getByText('Proyecto Salvación').closest('[aria-hidden="true"]')!;
+    expect([...tip.querySelectorAll('li')].map(li => li.textContent)).toEqual(['Tú', 'Bea', 'Carla']);
+  });
 });

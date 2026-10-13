@@ -16,8 +16,12 @@ export function RatingScale({ owners, people }: { owners: AtlasOwner[]; people: 
   const unrated = known.filter(owner => owner.rating === null);
   const list = known.map(owner => `${byId.get(owner.userId)!.name} ${owner.rating ?? t('atlas.opinion.noRating')}`).join(', ');
   const level = new Map<number, number>();
+  // The track grows with the tallest stack of equal ratings (20px dot + 14px per extra + 8px air).
+  const stacks = new Map<number, number>();
+  for (const owner of rated) stacks.set(owner.rating, (stacks.get(owner.rating) ?? 0) + 1);
+  const height = Math.max(40, 20 + (Math.max(1, ...stacks.values()) - 1) * 14 + 8);
   return <div className={styles.scale} role="img" aria-label={t('atlas.opinion.ratings', { list })}>
-    <div className={styles.scaleTrack} aria-hidden="true">
+    <div className={styles.scaleTrack} style={{ height: `${height}px` }} aria-hidden="true">
       {rated.map(owner => {
         const stack = level.get(owner.rating) ?? 0; level.set(owner.rating, stack + 1);
         const person = byId.get(owner.userId)!;
