@@ -8,12 +8,12 @@ import styles from "./poster.module.css";
 
 export const TYPE_GLYPH: Record<ItemRef["type"], string> = { book: "●", movie: "■", series: "▲" };
 
-export function PosterCover({ item }: { item: ItemRef }) {
+export function PosterCover({ item, eager }: { item: ItemRef; eager?: boolean }) {
   const [broken, setBroken] = useState(false);
   return (
     <li className={styles.coverCard}>
       {item.coverUrl && !broken ? (
-        <Image src={item.coverUrl} alt={item.title} fill sizes="120px" onError={() => setBroken(true)} />
+        <Image src={item.coverUrl} alt={item.title} fill sizes="120px" loading={eager ? "eager" : undefined} onError={() => setBroken(true)} />
       ) : (
         <div className={styles.coverFallback}>
           <span className={styles.coverGlyph} aria-hidden="true">{TYPE_GLYPH[item.type]}</span>
