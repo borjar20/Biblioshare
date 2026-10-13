@@ -5,11 +5,16 @@ import type { Scene } from '@/lib/comparisons/atlas/scene';
 import { approach, clamp, fit, panBy, stepCamera, toScreen, toWorld, zoomAt, zoomToward, MAX_ZOOM, MIN_ZOOM } from '@/lib/comparisons/atlas/camera';
 import { nearest } from '@/lib/comparisons/atlas/hit';
 import { COVER_ZOOM, readPalette, TITLE_ZOOM, type PaintView } from './atlas-palette';
+import { diffMix } from '@/lib/comparisons/atlas/opinion';
+import { mixHex } from '@/lib/comparisons/atlas/color';
+import { paintOpinionBack, type OpinionLabels } from './paint-opinion';
 import { paintQuienBack, paintQuienFront } from './paint-quien';
 
 export { COVER_ZOOM, TITLE_ZOOM } from './atlas-palette';
 export type AtlasHit = { key: WorkKey; x: number; y: number };
 export type EngineProps = { people: AtlasPerson[]; works: AtlasWork[]; active: string[]; scene: Scene; quien: QuienLayout;
+  /** Texts of the Opinión background; the painter skips them while absent. */
+  opinionLabels?: OpinionLabels;
   countLabel: (count: number) => string; onTogglePerson: (id: string) => void;
   onHover: (hit: AtlasHit | null) => void; onActivate: (hit: AtlasHit | null, pointerType: string) => void;
   /** Screen space covered by the overlays (summary + faces on top, lens dock below); fit and fly-to frame the free band. */
@@ -128,21 +133,24 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
     const k = cam.k, covers = k > COVER_ZOOM, titles = k > TITLE_ZOOM;
     const color = new Map(people.map(person => [person.id, person.color]));
     const view: PaintView = { ctx, cam, vp, palette, text };
+    const tint = (s: Sprite) => s.diff === null ? null : mixHex(palette.glow, palette.clash, diffMix(s.diff));
     const quienPaint = { layout: quien, active, people, countLabel };
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, vp.width, vp.height);
     if (scene.lens === 'quien') paintQuienBack(view, quienPaint);
+    else paintOpinionBack(view, props().opinionLabels);
     const byKey = new Map(works.map(work => [work.key, work]));
     for (const [key, s] of sprites) {
       if (s.a < 0.02) continue; const work = byKey.get(key); if (!work) continue;
       const p = toScreen(cam, vp, s); if (!visible(p)) continue;
       ctx.globalAlpha = s.a; const shared = work.owners.length > 1;
+      const ink = tint(s);
       if (!covers) {
-        const r = Math.max(1.5, (shared ? 3.4 : 2.4) * k * 1.4) * (1 + s.hl * 0.45);
-        ctx.fillStyle = s.hl > 0.5 ? palette.glow : shared ? palette.cream : color.get(work.owners[0].userId)!;
+        const r = (ink ? Math.max(3, 4.2 * k * 1.4) : Math.max(1.5, (shared ? 3.4 : 2.4) * k * 1.4)) * (1 + s.hl * 0.45);
+        ctx.fillStyle = ink ?? (s.hl > 0.5 ? palette.glow : shared ? palette.cream : color.get(work.owners[0].userId)!);
         ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill(); continue;
       }
-      const cw = 8.4 * k, ch = 12.2 * k, x = p.x - cw / 2, y = p.y - ch / 2;
-      if (s.hl > 0.3) { ctx.fillStyle = palette.glow; roundRect(x - 2, y - 2, cw + 4, ch + 4, 3 + k * 0.3); ctx.fill(); }
+      const cw = (ink ? 10 : 8.4) * k, ch = (ink ? 14.5 : 12.2) * k, x = p.x - cw / 2, y = p.y - ch / 2;
+      if (ink || s.hl > 0.3) { ctx.fillStyle = ink ?? palette.glow; roundRect(x - 2, y - 2, cw + 4, ch + 4, 3 + k * 0.3); ctx.fill(); }
       ctx.fillStyle = palette.type[work.itemType]; roundRect(x, y, cw, ch, 1 + k * 0.4); ctx.fill();
       ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.fillRect(x, y + ch * 0.7, cw, ch * 0.3);
       work.owners.slice(0, 5).forEach((owner, i) => {

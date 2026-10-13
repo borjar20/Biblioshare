@@ -140,4 +140,25 @@ describe('AtlasCanvas', () => {
     flush();
     expect(host.dataset.atlasZoom).toBe(moved);
   });
+
+  it('en Opinión no hay polos que tocar y la sonda solo trae lo comparable', () => {
+    const rated: Snapshot = { ...snapshot, works: snapshot.works.map(w => ({ ...w, rating: 8 })) };
+    const model = atlasModel(rated, 'a', 'Tú'); const quien = layoutQuien(model.people, model.works);
+    const opinion = layoutOpinion(model.people, model.works, ['a', 'b']);
+    const opinionScene = buildScene('opinion', model.works, ['a', 'b'], quien, opinion);
+    const toggle = vi.fn();
+    const labels = { axisRef: 'x', axisOthers: 'y', loved: 'l', meh: 'm', refYes: 'r', othersYes: 'o' };
+    const { container } = render(<AtlasCanvas label="Mapa" people={model.people} works={model.works} active={['a', 'b']} scene={opinionScene} quien={quien}
+      opinionLabels={labels} countLabel={n => `${n}`} onTogglePerson={toggle} onHover={() => {}} onActivate={() => {}}/>);
+    flush();
+    const host = container.querySelector<HTMLElement>('[data-atlas-moving]')!;
+    expect(JSON.parse(host.dataset.atlasProbe!).map((p: { key: string }) => p.key)).toEqual(['book:1']);
+    const canvas = container.querySelector('canvas')!;
+    vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue({ left: 0, top: 0 } as DOMRect);
+    const k = Number(host.dataset.atlasZoom);
+    const x = (quien.poles[0].x - 0) * k + 400, y = (quien.poles[0].y - 0) * k + 300;
+    fireEvent.pointerDown(canvas, { pointerId: 1, clientX: x, clientY: y, pointerType: 'mouse', button: 0 });
+    fireEvent.pointerUp(canvas, { pointerId: 1, clientX: x, clientY: y, pointerType: 'mouse', button: 0 });
+    expect(toggle).not.toHaveBeenCalled();
+  });
 });
