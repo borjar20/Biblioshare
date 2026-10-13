@@ -1,4 +1,4 @@
-﻿import type { WorkKey } from '@/lib/comparisons/types';
+import type { WorkKey } from '@/lib/comparisons/types';
 import type { AtlasPerson, AtlasWork, Camera, Point, Viewport } from '@/lib/comparisons/atlas/types';
 import { clusterState, workState, type QuienLayout } from '@/lib/comparisons/atlas/layout';
 import { approach, clamp, fit, panBy, stepCamera, toScreen, toWorld, zoomAt, zoomToward, MAX_ZOOM, MIN_ZOOM } from '@/lib/comparisons/atlas/camera';
