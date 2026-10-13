@@ -134,3 +134,48 @@ describe("selectStories", () => {
  expect(selectStories(MONTH, inputs).some(s => s.id === "series_progress")).toBe(false);
  expect(selectStories(WEEK, emptyInputs()).some(s => s.id === "series_progress")).toBe(false);
  });
+
+describe("payload v2 del mes", () => {
+  const days = ["2026-09-01", "2026-09-02", "2026-09-03"];
+  const open = (id: string, touched: boolean) => ({ ...book(id), percent: null, touched });
+
+  it("Terminado guarda hasta 30 portadas y el total real", () => {
+    const finished = Array.from({ length: 40 }, (_, i) => book(`b${i}`));
+    const s = selectStories(MONTH, emptyInputs({ finished, activeDays: days }))
+      .find((x) => x.id === "finished") as Extract<ReturnType<typeof selectStories>[number], { id: "finished" }>;
+    expect(s.items).toHaveLength(30);
+    expect(s.total).toBe(40);
+  });
+
+  it("En marcha guarda 12 items, openTotal y touchedTotal", () => {
+    const inProgress = [
+      ...Array.from({ length: 13 }, (_, i) => open(`t${i}`, true)),
+      open("x", false),
+    ];
+    const s = selectStories(MONTH, emptyInputs({ inProgress, openTotal: 14, activeDays: days }))
+      .find((x) => x.id === "in_progress") as Extract<ReturnType<typeof selectStories>[number], { id: "in_progress" }>;
+    expect(s.items).toHaveLength(12);
+    expect(s.openTotal).toBe(14);
+    expect(s.touchedTotal).toBe(13);
+  });
+
+  it("Ritmo lleva las distribuciones", () => {
+    const byWeekday = [1, 0, 0, 0, 0, 2, 0];
+    const byBand = [3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
+    const s = selectStories(MONTH, emptyInputs({ activeDays: days, byWeekday, byBand }))
+      .find((x) => x.id === "rhythm") as Extract<ReturnType<typeof selectStories>[number], { id: "rhythm" }>;
+    expect(s.byWeekday).toEqual(byWeekday);
+    expect(s.byBand).toEqual(byBand);
+  });
+
+  it("En compañía lleva visionados y clubes", () => {
+    const together = {
+      jointViewings: 1, clubDays: 2,
+      viewings: [{ item: book("m1"), watchedOn: "2026-09-10", companionIds: ["u2"] }],
+      clubs: [{ clubId: "c1", name: "Club", days: 2 }],
+    };
+    const s = selectStories(MONTH, emptyInputs({ together, activeDays: days }))
+      .find((x) => x.id === "together");
+    expect(s).toEqual({ id: "together", ...together });
+  });
+});

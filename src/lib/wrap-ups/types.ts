@@ -10,6 +10,11 @@ export type ItemRef = { type: ItemType; id: string; title: string; coverUrl: str
 export type SeriesProgress = ItemRef & { episodes: number };
 export type MinutesByType = Record<ItemType, number>;
 
+export type InProgressItem = ItemRef & { percent: number | null; touched?: boolean };
+export type JointViewingFact = { item: ItemRef; watchedOn: string; companionIds: string[] };
+export type ClubFact = { clubId: string; name: string; days: number };
+export type TogetherFacts = { jointViewings: number; clubDays: number; viewings?: JointViewingFact[]; clubs?: ClubFact[] };
+
 export type TimeFacts = {
   minutes: MinutesByType;
   /** Episodios cuya serie no tiene episode_runtime_minutes: se cuentan, no se convierten. */
@@ -21,15 +26,16 @@ export type Story =
   | { id: "cover" }
   | ({ id: "time" } & TimeFacts)
   | { id: "finished"; items: ItemRef[]; total: number }
-  | { id: "in_progress"; items: (ItemRef & { percent: number | null })[] }
+  | { id: "in_progress"; items: InProgressItem[]; openTotal?: number; touchedTotal?: number }
   | { id: "series_progress"; items: SeriesProgress[]; total: number }
   | { id: "rhythm"; days: { date: string; active: boolean }[]; activeDays: number; bestStreak: number;
-      favoriteWeekday: number | null; favoriteBandStartHour: number | null }
+      favoriteWeekday: number | null; favoriteBandStartHour: number | null;
+      byWeekday?: number[]; byBand?: number[] }
   | { id: "genres"; top: { name: string; works: number }[] }
   | { id: "best_rated"; item: ItemRef; rating: number; review: string | null }
   | { id: "phrase"; source: "note" | "quote" | "margin"; body: string; item: ItemRef | null }
   | { id: "experience"; experienceId: string; title: string; date: string | null }
-  | { id: "together"; jointViewings: number; clubDays: number }
+  | ({ id: "together" } & TogetherFacts)
   | { id: "months"; months: { month: string; minutes: number; works: number }[] }
   | { id: "records"; busiestMonth: { month: string; minutes: number } | null;
       fastest: { item: ItemRef; days: number } | null; longestSessionMinutes: number | null }
@@ -53,7 +59,7 @@ export type ShareSummary = {
 };
 
 export type WrapUpPayload = {
-  v: 1;
+  v: 1 | 2;
   kind: WrapUpKind; periodStart: string; periodEnd: string;
   intensity: Intensity; narrator: NarratorVariant; palette: Palette;
   pet: OwnPet | null;
@@ -66,7 +72,10 @@ export type WrapUpInputs = {
   time: TimeFacts;
   activeDays: string[];            // fechas YYYY-MM-DD distintas con actividad (sesiones + días de serie + terminados)
   finished: ItemRef[];             // obras terminadas en la ventana, una por obra, `times` = pases
-  inProgress: (ItemRef & { percent: number | null })[];
+  inProgress: InProgressItem[];   // abiertas al cierre de la ventana (tocadas primero)
+  openTotal?: number;              // total de abiertas al cierre
+  byWeekday?: number[];            // filas de hábito por día (lunes = 0)
+  byBand?: number[];               // filas de hábito por franja de 2 h en Madrid
   seriesProgress?: SeriesProgress[]; // episodios vistos por serie en la ventana; compatible con fixtures antiguos
   bestStreak: number;              // racha máxima DENTRO de la ventana
   favoriteWeekday: number | null;
@@ -75,7 +84,7 @@ export type WrapUpInputs = {
   bestRated: { item: ItemRef; rating: number; review: string | null } | null;
   phrase: { source: "note" | "quote" | "margin"; body: string; item: ItemRef | null } | null;
   experience: { experienceId: string; title: string; date: string | null } | null;
-  together: { jointViewings: number; clubDays: number };
+  together: TogetherFacts;
   socialDays?: number;            // unión de fechas de visionados y club, sin duplicados
   experienceDays: number;          // días de la ventana con alguna experiencia vivida (para narradora)
   annual: {

@@ -28,7 +28,7 @@ describe("buildWrapUp", () => {
       finished: [book("a"), book("b"), book("c"), book("d"), book("e")],
       phrase: { source: "quote", body: "cita", item: null },
     }) as never);
-    expect(p).toMatchObject({ v: 1, kind: "month", periodStart: "2026-09-01", periodEnd: "2026-09-30",
+    expect(p).toMatchObject({ v: 2, kind: "month", periodStart: "2026-09-01", periodEnd: "2026-09-30",
       intensity: "full", narrator: "reader", palette: "book" });
     expect(p!.share).toMatchObject({ minutes: 300, episodesWithoutRuntime: 2, finished: 5, narrator: "reader" });
     expect(p!.share.covers).toHaveLength(4);
