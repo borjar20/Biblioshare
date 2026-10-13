@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { loginHref } from "@/lib/auth/safe-next";
 import { getCurrentUser } from "@/lib/supabase/server";
+import { resolveCompanions } from "@/lib/wrap-ups/companions";
 import { getOwnWrapUp } from "@/lib/wrap-ups/get-own-wrap-ups";
 import { posterFor, type T } from "@/lib/wrap-ups/view-models";
 import { isWrapUpKind } from "@/lib/wrap-ups/windows";
@@ -39,7 +40,8 @@ async function WrapContent({ params }: Props) {
   const wrapUp = await getOwnWrapUp(kind);
   if (!wrapUp) notFound();
   const t = await getTranslations();
-  const models = wrapUp.payload.stories.map((s) => posterFor(s, wrapUp.payload, t as unknown as T));
+  const people = await resolveCompanions([wrapUp.payload]);
+  const models = wrapUp.payload.stories.map((s) => posterFor(s, wrapUp.payload, t as unknown as T, people));
   return <WrapUpPlayerRoute wrapUp={wrapUp} models={models} />;
 }
 

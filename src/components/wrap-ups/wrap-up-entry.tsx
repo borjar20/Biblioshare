@@ -9,6 +9,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { getOwnWrapUps, type OwnWrapUp } from "@/lib/wrap-ups/get-own-wrap-ups";
 import { periodLabel } from "@/lib/wrap-ups/view-models";
+import { resolveCompanions } from "@/lib/wrap-ups/companions";
 import { narratorSheet } from "@/lib/wrap-ups/narrator";
 import { RouteMessages } from "@/components/route-messages";
 import { posterFor, type T } from "@/lib/wrap-ups/view-models";
@@ -92,7 +93,8 @@ export async function HomeWrapUpCover() {
   );
   const panel = await getTranslations("homePanels");
   const strings = await getTranslations();
-  const available = all.map((entry) => ({ wrapUp: entry, models: (entry.payload.stories ?? []).map((story) => posterFor(story, entry.payload, strings as unknown as T)) }));
+  const people = await resolveCompanions(all.map((w) => w.payload));
+  const available = all.map((entry) => ({ wrapUp: entry, models: (entry.payload.stories ?? []).map((story) => posterFor(story, entry.payload, strings as unknown as T, people)) }));
   const models = available.find((entry) => entry.wrapUp.kind === wrap.kind)!.models;
   return <RouteMessages ns={["wrapUps.ui", "wrapUps.stories.cover"]}><HomeWrapUp wrapUp={wrap} models={models} available={available} desktopCover={desktopCover} openLabel={panel("openWrap")} summary={<><span className="home-preview-name">{panel("wrap")}</span><span className="home-wrap-preview-body"><NarratorThumb variant={wrap.payload.narrator} /><span>{unseenFull && <span className="text-xs text-accent-ink">{panel("new")}</span>}<span className="home-preview-meta">{periodLabel(wrap.payload)}</span></span></span></>} /></RouteMessages>;
 }
