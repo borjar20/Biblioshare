@@ -1,0 +1,41 @@
+.canvasWrap { position: absolute; inset: 0; overflow: hidden; }
+.canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+.canvas[data-dragging='true'] { cursor: grabbing; }
+.overlayTop { position: absolute; left: 16px; right: 16px; top: 12px; display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-start; justify-content: space-between; pointer-events: none; z-index: 2; }
+.overlayTop > * { pointer-events: auto; }
+.summary { font-size: 14px; color: var(--atlas-muted); max-width: 46ch; line-height: 1.4; margin: 0; }
+.summary b { color: var(--atlas-glow); font-weight: 700; font-variant-numeric: tabular-nums; }
+.faces { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.face { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 5px 12px 5px 5px; border-radius: 999px; background: color-mix(in srgb, var(--atlas-panel) 85%, transparent); backdrop-filter: blur(8px); font-size: 13px; font-weight: 600; color: var(--atlas-fg); transition: opacity .2s, box-shadow .2s; }
+.face[aria-pressed='false'] { opacity: .42; }
+.face[aria-pressed='true'] { box-shadow: 0 0 0 2px var(--person); }
+.face:disabled { opacity: .3; box-shadow: none; }
+.faceDot { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 800; color: #fff; background: color-mix(in srgb, var(--person) 70%, #000); }
+.dock { position: absolute; left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; z-index: 2; }
+.lens { pointer-events: auto; display: flex; gap: 4px; padding: 5px; border-radius: 999px; background: color-mix(in srgb, var(--atlas-panel) 90%, transparent); backdrop-filter: blur(8px); box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+.lens button { display: flex; align-items: center; gap: 7px; padding: 9px 16px; min-height: 40px; border-radius: 999px; font-size: 14px; font-weight: 600; color: var(--atlas-muted); background: transparent; }
+.lens button[aria-pressed='true'] { background: var(--atlas-fg); color: var(--atlas-ground); }
+.lens svg { width: 16px; height: 16px; flex: none; }
+.caption { font-size: 12.5px; color: var(--atlas-faint); text-align: center; max-width: 56ch; line-height: 1.4; text-wrap: balance; margin: 0; }
+.zoom { position: absolute; right: 16px; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 6px; z-index: 2; }
+.zoom button { width: 40px; height: 40px; border-radius: 12px; background: var(--atlas-panel); display: grid; place-items: center; color: var(--atlas-fg); font-size: 18px; font-weight: 600; }
+.tip { position: absolute; z-index: 3; pointer-events: none; display: flex; gap: 10px; align-items: center; padding: 8px 12px 8px 8px; border-radius: 12px; background: var(--atlas-panel); box-shadow: 0 12px 30px rgba(0,0,0,.5); font-size: 13px; max-width: 280px; color: var(--atlas-fg); }
+.cover { width: 38px; height: 56px; border-radius: 4px; flex: none; }
+.workTitle { display: block; font-size: 14px; font-weight: 700; line-height: 1.15; margin-bottom: 5px; }
+.owners { display: grid; grid-template-columns: auto 1fr; gap: 3px 6px; align-items: center; color: var(--atlas-muted); font-size: 12px; margin: 0; padding: 0; list-style: none; }
+.owners li { display: contents; }
+.ownerDot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.sheet { position: absolute; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 4; display: flex; gap: 12px; align-items: flex-start; padding: 14px; border-radius: 18px; background: var(--atlas-panel); box-shadow: 0 -8px 30px rgba(0,0,0,.5); color: var(--atlas-fg); }
+.sheetBody { flex: 1; min-width: 0; display: grid; gap: 10px; }
+.sheetActions { display: flex; gap: 8px; }
+.open { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 999px; background: var(--atlas-glow); color: var(--atlas-ground); font-weight: 700; font-size: 14px; }
+.close { min-height: 44px; padding: 0 14px; border-radius: 999px; background: transparent; color: var(--atlas-muted); font-size: 14px; }
+.face:focus-visible, .lens button:focus-visible, .zoom button:focus-visible, .open:focus-visible, .close:focus-visible { outline: 2px solid var(--atlas-glow); outline-offset: 2px; }
+@media (max-width: 640px) {
+  .lens button span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .lens button { padding: 10px 14px; }
+  .zoom { display: none; }
+  .faces { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; width: 100%; scrollbar-width: none; }
+  .face { flex: none; }
+}
+@media (prefers-reduced-motion: reduce) { .face { transition: none; } }
