@@ -167,7 +167,7 @@ describe('AtlasCanvas', () => {
     expect(toggle).not.toHaveBeenCalled();
   });
 
-  it('en Tiempo la sonda trae cada obra una vez aunque tenga dos apariciones; al volver a Quién la extra desaparece', () => {
+  it('en Tiempo la sonda trae cada obra una vez; al volver a Quién la aparición extra se desvanece antes de borrarse', () => {
     const dated: Snapshot = { ...snapshot, works: snapshot.works.map((w, i) => ({ ...w, date: i ? '2025-06-10' : '2024-03-01' })) };
     const model = atlasModel(dated, 'a', 'Tú'); const quien = layoutQuien(model.people, model.works);
     const tiempo = sceneFor('tiempo', model.people, model.works, ['a', 'b']);
@@ -178,11 +178,14 @@ describe('AtlasCanvas', () => {
     flush();
     const host = container.querySelector<HTMLElement>('[data-atlas-moving]')!;
     expect(host.dataset.atlasMoving).toBe('false');
+    expect(host.dataset.atlasSprites).toBe('2');
     expect(JSON.parse(host.dataset.atlasProbe!).map((p: { key: string }) => p.key)).toEqual(['book:1']);
     rerender(<AtlasCanvas {...base} scene={sceneFor('quien', model.people, model.works, ['a', 'b'])}/>);
+    oneFrame();
+    expect(host.dataset.atlasSprites).toBe('2');   // the extra is fading back, not deleted at once
     flush();
     expect(host.dataset.atlasMoving).toBe('false');
+    expect(host.dataset.atlasSprites).toBe('1');
     expect(JSON.parse(host.dataset.atlasProbe!).map((p: { key: string }) => p.key)).toEqual(['book:1']);
-    expect(host.dataset.atlasProbe).not.toContain('@');
   });
 });

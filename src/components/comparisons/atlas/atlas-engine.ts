@@ -95,7 +95,7 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
       if (!(x.settled && y.settled && a.settled && h.settled)) moving = true;
     }
     draw(); if (pointers.size > 0) moving = true;
-    host.dataset.atlasMoving = String(moving); host.dataset.atlasZoom = cam.k.toFixed(3);
+    host.dataset.atlasMoving = String(moving); host.dataset.atlasZoom = cam.k.toFixed(3); host.dataset.atlasSprites = String(sprites.size);
     if (moving) { if (!pointers.size) kick(); } else if (dirtyProbe) { dirtyProbe = false; publishProbe(); }
   }
   function visible(p: Point) { return p.x >= -60 && p.y >= -80 && p.x <= vp.width + 60 && p.y <= vp.height + 80; }
@@ -192,7 +192,7 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
   }
   function hitWork(s: Point): AtlasHit | null {
     const world = toWorld(cam, vp, s); const radius = Math.max(6, 10 / cam.k);
-    const candidates = [...sprites.values()].filter(sprite => sprite.a >= 0.5).map(sprite => ({ key: sprite.key, x: sprite.x, y: sprite.y }));
+    const candidates = [...sprites.values()].filter(sprite => !sprite.dying && sprite.a >= 0.5).map(sprite => ({ key: sprite.key, x: sprite.x, y: sprite.y }));
     const hit = nearest(candidates, world, radius);
     return hit && { key: hit.key, x: s.x, y: s.y };
   }
