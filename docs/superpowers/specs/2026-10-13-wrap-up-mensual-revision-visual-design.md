@@ -41,8 +41,10 @@ terminado el 3 de octubre desaparecía del «En marcha» de septiembre.
 
 ## 1. Payload `v: 2`
 
-`WrapUpPayload.v` pasa a `1 | 2`; `build.ts` escribe `2`. No hay migración de esquema (el payload
-es JSON en `wrap_ups.payload`). Los payloads `v: 1` siguen pintándose: cada story nueva acepta los
+`WrapUpPayload.v` pasa a `1 | 2`; `build.ts` escribe `2`. **Hace falta una migración**: `wrap_ups`
+tenía `CHECK (payload->>'v' = '1')` (descubierto al verificar en dev). La migración
+`20261013100000_wrap_ups_payload_v2.sql` lo amplía a `'1','2'` y debe llegar a producción antes que
+el código. Los payloads `v: 1` siguen pintándose: cada story nueva acepta los
 campos ausentes y cae al pintado actual (ver §6).
 
 | Story | Campo | Cambio |

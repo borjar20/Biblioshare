@@ -18,6 +18,18 @@ insert into public.wrap_ups (user_id, kind, period_start, period_end, intensity,
   -- Sin 'share': publicar debe fallar con wrap_up_share_missing.
   ('00000000-0000-4000-8000-00000000a001', 'week', '2026-09-28', '2026-10-04', 'quiet', '{"v":1}');
 
+-- El payload admite v1 y v2 (ampliación compatible, 2026-10-13); otra versión no.
+insert into public.wrap_ups (user_id, kind, period_start, period_end, intensity, payload) values
+  ('00000000-0000-4000-8000-00000000a003', 'month', '2026-09-01', '2026-09-30', 'full', '{"v":2}');
+do $$ begin
+  begin
+    insert into public.wrap_ups (user_id, kind, period_start, period_end, intensity, payload)
+    values ('00000000-0000-4000-8000-00000000a003', 'week', '2026-09-28', '2026-10-04', 'full', '{"v":3}');
+    raise exception 'assertion_failed: payload v3 aceptado';
+  exception when check_violation then null; end;
+end $$;
+delete from public.wrap_ups where user_id = '00000000-0000-4000-8000-00000000a003';
+
 -- Alice ve su fila; Bob no.
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"00000000-0000-4000-8000-00000000a002","role":"authenticated"}';
