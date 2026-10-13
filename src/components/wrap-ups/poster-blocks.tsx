@@ -2,7 +2,6 @@
 // llega escrito en el PosterModel. Lo decorativo (copia del bucle, casillas) va
 // fuera del árbol accesible; cada gráfica se lee por su resumen.
 import type { CSSProperties } from "react";
-import { useTranslations } from "next-intl";
 import { UserAvatar } from "@/components/social/user-avatar";
 import type { PosterModel } from "@/lib/wrap-ups/view-models";
 import { storyDurationMs } from "@/lib/wrap-ups/view-models";
@@ -15,23 +14,25 @@ export function CoverGrid({ model }: { model: PosterModel }) {
   const big = covers.length <= 4;
   const list = (hidden: boolean) => (
     <ul data-grid={mode} aria-hidden={hidden || undefined} className={styles.coverGrid} data-big={big}>
-      {covers.map((c) => <PosterCover key={`${c.type}-${c.id}`} item={c} />)}
+      {covers.map((c) => <PosterCover key={`${c.type}-${c.id}`} item={c} eager />)}
     </ul>
   );
   if (mode === "static") return list(false);
   return (
-    <div className={styles.coverScroller} style={{ "--scroll-ms": `${storyDurationMs(model)}ms` } as CSSProperties}>
-      <div className={styles.coverTrack}>
-        {list(false)}
-        {list(true)}
+    <>
+      <div className={styles.coverScroller} style={{ "--scroll-ms": `${storyDurationMs(model)}ms` } as CSSProperties}>
+        <div className={styles.coverTrack}>
+          {list(false)}
+          {list(true)}
+        </div>
+        {model.reducedMoreLine && <p className={`${styles.plate} ${styles.reducedOnly}`}>{model.reducedMoreLine}</p>}
       </div>
-      {model.reducedMoreLine && <p className={`${styles.plate} ${styles.reducedOnly}`}>{model.reducedMoreLine}</p>}
-    </div>
+      {model.moreLine && <p className={`${styles.plate} ${styles.motionOnly}`}>{model.moreLine}</p>}
+    </>
   );
 }
 
 export function ProgressList({ rows }: { rows: NonNullable<PosterModel["progress"]> }) {
-  const t = useTranslations("wrapUps.stories.in_progress");
   return (
     <ul className={`${styles.plate} ${styles.progressList}`} data-big={rows.length <= 2}>
       {rows.map((r) => (
@@ -45,7 +46,7 @@ export function ProgressList({ rows }: { rows: NonNullable<PosterModel["progress
                 <span style={{ width: `${r.percent}%` }} />
               </div>
             )}
-            {!r.touched && <p className={styles.progressIdle}>{t("idle")}</p>}
+            {!r.touched && r.idleLabel && <p className={styles.progressIdle}>{r.idleLabel}</p>}
           </div>
         </li>
       ))}
@@ -84,7 +85,6 @@ export function RhythmCharts({ model }: { model: PosterModel }) {
 }
 
 export function TogetherBlock({ data }: { data: NonNullable<PosterModel["together"]> }) {
-  const t = useTranslations("wrapUps.stories.together");
   const single = data.viewings.length === 0 || data.clubs.length === 0;
   return (
     <div className={styles.together} data-single={single}>
@@ -93,7 +93,7 @@ export function TogetherBlock({ data }: { data: NonNullable<PosterModel["togethe
           <h3 className={styles.togetherTitle}>{data.viewingsTitle}</h3>
           <ul className={styles.togetherList}>
             {data.viewings.map((v) => (
-              <li key={`${v.item.type}-${v.item.id}`} className={styles.togetherRow}>
+              <li key={`${v.item.type}-${v.item.id}-${v.watchedOn}`} className={styles.togetherRow}>
                 <ul className={styles.progressCover} aria-hidden="true"><PosterCover item={v.item} /></ul>
                 <div className={styles.progressText}>
                   <p className={styles.progressTitle}>{v.item.title}</p>
@@ -103,7 +103,7 @@ export function TogetherBlock({ data }: { data: NonNullable<PosterModel["togethe
                         {v.companions.map((c) => <UserAvatar key={c.userId} name={c.displayName ?? c.username} avatarUrl={c.avatarUrl} size={28} />)}
                         {v.extra > 0 && <span className={styles.avatarMore}>+{v.extra}</span>}
                       </span>
-                      <p>{t("withPeople", { names: v.companions.map((c) => c.displayName ?? c.username).join(", ") })}</p>
+                      {v.peopleLine && <p>{v.peopleLine}</p>}
                     </div>
                   )}
                 </div>
@@ -117,7 +117,7 @@ export function TogetherBlock({ data }: { data: NonNullable<PosterModel["togethe
           <h3 className={styles.togetherTitle}>{data.clubsTitle}</h3>
           <ul className={styles.togetherList}>
             {data.clubs.map((c) => (
-              <li key={c.name} className={styles.clubRow}>
+              <li key={c.clubId} className={styles.clubRow}>
                 <span className={styles.clubName}>{c.name}</span>
                 <span className={styles.clubValue}>{c.value}</span>
               </li>

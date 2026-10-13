@@ -163,4 +163,23 @@ describe("bloques v2", () => {
     expect(screen.getByText("Club de los jueves")).toBeTruthy();
     expect(screen.getByText("2 días")).toBeTruthy();
   });
+
+  it("sin los espacios de nombres de las stories (home): las etiquetas llegan escritas en el modelo", () => {
+    const wr = messages.wrapUps as unknown as { ui: unknown; stories: { cover: unknown } };
+    const scoped = { wrapUps: { ui: wr.ui, stories: { cover: wr.stories.cover } } };
+    const renderScoped = (m: PosterModel) => render(
+      <NextIntlClientProvider locale="es" messages={scoped}>
+        <Poster model={m} palette="book" narrator="reader" pet={payload.pet} showPet={false} />
+      </NextIntlClientProvider>,
+    );
+    const inProgress = posterFor({ id: "in_progress", openTotal: 1, items: [{ ...ref("b"), percent: null, touched: false }] }, month, t);
+    renderScoped(inProgress);
+    expect(screen.getByText("Sin avances este mes")).toBeTruthy();
+    cleanup();
+    const together = posterFor({ id: "together", jointViewings: 1, clubDays: 0,
+      viewings: [{ item: ref("L"), watchedOn: "2026-09-10", companionIds: ["u2"] }], clubs: [] }, month, t,
+      { u2: { userId: "u2", username: "ana", displayName: "Ana", avatarUrl: null } });
+    renderScoped(together);
+    expect(screen.getByText("con Ana")).toBeTruthy();
+  });
 });

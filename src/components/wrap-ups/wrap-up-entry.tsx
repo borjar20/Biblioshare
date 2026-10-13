@@ -8,11 +8,10 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { getOwnWrapUps, type OwnWrapUp } from "@/lib/wrap-ups/get-own-wrap-ups";
-import { periodLabel } from "@/lib/wrap-ups/view-models";
 import { resolveCompanions } from "@/lib/wrap-ups/companions";
 import { narratorSheet } from "@/lib/wrap-ups/narrator";
 import { RouteMessages } from "@/components/route-messages";
-import { posterFor, type T } from "@/lib/wrap-ups/view-models";
+import { periodLabel, posterFor, type T } from "@/lib/wrap-ups/view-models";
 import { HomeWrapUp } from "./home-wrap-up";
 import { buttonVariants } from "@/components/ui/button";
 

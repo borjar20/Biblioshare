@@ -21,17 +21,19 @@ export type PosterModel = {
   covers?: ItemRef[];
   coverGrid?: "static" | "scroll";
   reducedMoreLine?: string;
+  /** «y N más» de la rejilla con scroll: solo con movimiento (con movimiento reducido manda reducedMoreLine). */
+  moreLine?: string;
   strip?: { label: string; value: string; active: boolean }[];
   stripValues?: boolean;
   ranking?: { label: string; value: string }[];
   quote?: { body: string; attribution: string | null };
-  progress?: { item: ItemRef; percent: number | null; touched: boolean; label: string }[];
+  progress?: { item: ItemRef; percent: number | null; touched: boolean; label: string; idleLabel?: string }[];
   calendar?: { offset: number; days: { day: number; active: boolean }[]; summary: string };
   heatmaps?: { title: string; cells: HeatCell[]; summary: string }[];
   together?: {
     viewingsTitle: string; clubsTitle: string;
-    viewings: { item: ItemRef; companions: Companion[]; extra: number }[];
-    clubs: { name: string; value: string }[];
+    viewings: { item: ItemRef; watchedOn: string; companions: Companion[]; extra: number; peopleLine?: string }[];
+    clubs: { clubId: string; name: string; value: string }[];
   };
   narratorLine: string;
 };
@@ -213,7 +215,8 @@ export function posterFor(story: Story, payload: WrapUpPayload, t: T, people: Pe
         figure: { value: String(story.total), unit: t(`${K}.finished.unit`, { count: story.total }) },
         covers,
         coverGrid: scroll ? "scroll" : "static",
-        lines: story.total > covers.length ? [more(story.total - covers.length)] : [],
+        lines: !scroll && story.total > covers.length ? [more(story.total - covers.length)] : [],
+        moreLine: scroll && story.total > covers.length ? more(story.total - covers.length) : undefined,
         // Con movimiento reducido la rejilla se queda en las 9 primeras: el resto se cuenta.
         reducedMoreLine: scroll ? more(story.total - STATIC_MAX) : undefined,
       });
@@ -239,13 +242,14 @@ export function posterFor(story: Story, payload: WrapUpPayload, t: T, people: Pe
           item: i,
           percent: i.percent == null ? null : Math.round(i.percent),
           touched: i.touched !== false,
+          idleLabel: i.touched === false ? t(`${K}.in_progress.idle`) : undefined,
           label: i.percent == null
             ? t(`${K}.in_progress.item`, { title: i.title })
             : t(`${K}.in_progress.itemPercent`, { title: i.title, percent: Math.round(i.percent) }),
         })),
         lines: [
           ...(story.touchedTotal != null ? [t(`${K}.in_progress.touched`, { count: story.touchedTotal })] : []),
-          ...(shown.length === PROGRESS_MAX && open > shown.length ? [t(`${K}.in_progress.more`, { count: open - shown.length })] : []),
+          ...(open > shown.length ? [t(`${K}.in_progress.more`, { count: open - shown.length })] : []),
         ],
       });
     }
@@ -308,7 +312,7 @@ export function posterFor(story: Story, payload: WrapUpPayload, t: T, people: Pe
 
     case "together": {
       const lines: string[] = [];
-      if (!story.viewings && !story.clubs) {
+      if (!story.viewings?.length && !story.clubs?.length) {
         // Payload v1: solo las líneas, sin la cifra sumada (mezclaba unidades).
         if (story.jointViewings > 0) lines.push(t(`${K}.together.jointViewings`, { count: story.jointViewings }));
         if (story.clubDays > 0) lines.push(t(`${K}.together.clubDays`, { count: story.clubDays }));
@@ -324,9 +328,18 @@ export function posterFor(story: Story, payload: WrapUpPayload, t: T, people: Pe
           viewings: viewings.slice(0, 4).map((v) => {
             // Los ids sin resolver (bloqueados, cuentas borradas) no se pintan.
             const resolved = v.companionIds.map((id) => people[id]).filter((c): c is Companion => !!c);
-            return { item: v.item, companions: resolved.slice(0, 3), extra: Math.max(0, resolved.length - 3) };
+            const shown = resolved.slice(0, 3);
+            return {
+              item: v.item,
+              watchedOn: v.watchedOn,
+              companions: shown,
+              extra: Math.max(0, resolved.length - 3),
+              peopleLine: shown.length > 0
+                ? t(`${K}.together.withPeople`, { names: shown.map((c) => c.displayName ?? c.username).join(", ") })
+                : undefined,
+            };
           }),
-          clubs: (story.clubs ?? []).slice(0, 3).map((c) => ({ name: c.name, value: t(`${K}.together.clubDaysValue`, { count: c.days }) })),
+          clubs: (story.clubs ?? []).slice(0, 3).map((c) => ({ clubId: c.clubId, name: c.name, value: t(`${K}.together.clubDaysValue`, { count: c.days }) })),
         },
         lines,
       });

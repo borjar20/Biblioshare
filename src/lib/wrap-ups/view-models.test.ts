@@ -65,12 +65,20 @@ describe("posterFor finished (rejilla)", () => {
     expect(m.coverGrid).toBe("static");
     expect(m.covers).toHaveLength(2);
     expect(m.lines).toEqual([]);
+    expect(m.moreLine).toBeUndefined();
+  });
+  it("estática con total mayor que las portadas: el «más» sigue en lines", () => {
+    const m = posterFor({ id: "finished", items: [ref("a"), ref("b")], total: 5 }, month, t);
+    expect(m.lines).toEqual(['wrapUps.stories.finished.more|{"count":3}']);
+    expect(m.moreLine).toBeUndefined();
   });
   it("> 9: scroll, línea de movimiento reducido y «más» si el payload no trae todas", () => {
     const items = Array.from({ length: 30 }, (_, i) => ref(`b${i}`));
     const m = posterFor({ id: "finished", items, total: 34 }, month, t);
     expect(m.coverGrid).toBe("scroll");
-    expect(m.lines).toEqual(['wrapUps.stories.finished.more|{"count":4}']);
+    // En scroll el «y N más» no va en lines: lo pinta la rejilla solo con movimiento.
+    expect(m.lines).toEqual([]);
+    expect(m.moreLine).toBe('wrapUps.stories.finished.more|{"count":4}');
     expect(m.reducedMoreLine).toBe('wrapUps.stories.finished.more|{"count":25}');
   });
 });
@@ -86,12 +94,14 @@ describe("storyDurationMs", () => {
 
 describe("posterFor in_progress", () => {
   it("v2: cifra openTotal, línea de tocadas, filas con touched", () => {
-    const m = posterFor({ id: "in_progress", openTotal: 3, touchedTotal: 1, items: [
+    const m = posterFor({ id: "in_progress", openTotal: 2, touchedTotal: 1, items: [
       { ...ref("Reacher"), percent: 13, touched: true },
       { ...ref("Elantris"), percent: null, touched: false },
     ] }, month, t);
     expect(m.layout).toBe("progress");
-    expect(m.figure).toEqual({ value: "3", unit: 'wrapUps.stories.in_progress.unit|{"count":3}' });
+    expect(m.figure).toEqual({ value: "2", unit: 'wrapUps.stories.in_progress.unit|{"count":2}' });
+    expect(m.progress![1].idleLabel).toBe("wrapUps.stories.in_progress.idle");
+    expect(m.progress![0].idleLabel).toBeUndefined();
     expect(m.lines).toEqual(['wrapUps.stories.in_progress.touched|{"count":1}']);
     expect(m.progress!.map((p) => [p.item.title, p.percent, p.touched])).toEqual([["Reacher", 13, true], ["Elantris", null, false]]);
   });
@@ -151,7 +161,21 @@ describe("posterFor together", () => {
     expect(m.layout).toBe("together");
     expect(m.figure).toBeUndefined();
     expect(m.together!.viewings[0].companions.map((c) => c.username)).toEqual(["ana"]);
-    expect(m.together!.clubs).toEqual([{ name: "Jueves", value: 'wrapUps.stories.together.clubDaysValue|{"count":2}' }]);
+    expect(m.together!.clubs).toEqual([{ clubId: "c", name: "Jueves", value: 'wrapUps.stories.together.clubDaysValue|{"count":2}' }]);
+  });
+  it("v2: cada visionado trae su línea de compañeros y la fecha; cada club, su id", () => {
+    const m = posterFor({ id: "together", jointViewings: 1, clubDays: 2,
+      viewings: [{ item: ref("Logan"), watchedOn: "2026-09-10", companionIds: ["u2"] }],
+      clubs: [{ clubId: "c1", name: "Jueves", days: 2 }] }, month, t, people);
+    expect(m.together!.viewings[0].watchedOn).toBe("2026-09-10");
+    expect(m.together!.viewings[0].peopleLine).toBe('wrapUps.stories.together.withPeople|{"names":"ana"}');
+    expect(m.together!.clubs[0].clubId).toBe("c1");
+  });
+  it("v2 con viewings y clubs vacíos: cae a las líneas de v1", () => {
+    const m = posterFor({ id: "together", jointViewings: 2, clubDays: 1, viewings: [], clubs: [] }, month, t, people);
+    expect(m.layout).toBe("figure");
+    expect(m.together).toBeUndefined();
+    expect(m.lines).toHaveLength(2);
   });
   it("v1: sin cifra sumada, solo las líneas", () => {
     const m = posterFor({ id: "together", jointViewings: 2, clubDays: 2 }, month, t);
