@@ -48,7 +48,8 @@ campos ausentes y cae al pintado actual (ver §6).
 | Story | Campo | Cambio |
 |---|---|---|
 | `finished` | `items` | tope de 8 → **30** (`total` sigue siendo el total real) |
-| `in_progress` | `items` | todo lo abierto al cierre, ordenado: tocadas primero (por último avance desc), luego el resto (por último avance desc); tope **12** |
+| `in_progress` | `items` | todo lo abierto al cierre, ordenado: tocadas primero (por último avance en la ventana desc), luego el resto (por `started_on` desc); tope **12** |
+| `in_progress` | `touchedTotal` | nuevo: cuántas abiertas avanzaron en la ventana (sin tope) |
 | `in_progress` | `items[].touched` | nuevo, `boolean`: avanzó dentro de la ventana |
 | `in_progress` | `items[].percent` | también para series (ver §2) |
 | `in_progress` | `openTotal` | nuevo: total de abiertas al cierre (puede superar 12) |
