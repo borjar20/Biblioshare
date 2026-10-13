@@ -5,7 +5,10 @@ import type { Snapshot, WorkKey } from '@/lib/comparisons/types';
 import { atlasModel } from '@/lib/comparisons/atlas/model';
 import { layoutQuien } from '@/lib/comparisons/atlas/layout';
 import { layoutOpinion } from '@/lib/comparisons/atlas/opinion';
-import { buildScene } from '@/lib/comparisons/atlas/scene';
+import { layoutTiempo } from '@/lib/comparisons/atlas/tiempo';
+import { layoutIslands } from '@/lib/comparisons/atlas/islands';
+import type { AtlasPerson, AtlasWork } from '@/lib/comparisons/atlas/types';
+import { buildScene, type Lens } from '@/lib/comparisons/atlas/scene';
 import { fit } from '@/lib/comparisons/atlas/camera';
 import { AtlasCanvas } from './atlas-canvas';
 
@@ -14,7 +17,10 @@ const snapshot: Snapshot = { group: { id: 'g', name: 'G', revision: 1, members: 
   works: ['a', 'b'].map(userId => ({ userId, key: 'book:1' as WorkKey, rating: null, date: null, orderUnknown: false, progress: null })) };
 const { people, works } = atlasModel(snapshot, 'a', 'Tú');
 const layout = layoutQuien(people, works);
-const scene = buildScene('quien', works, ['a', 'b'], layout, layoutOpinion(people, works, ['a', 'b']));
+const sceneFor = (lens: Lens, list: AtlasPerson[], items: AtlasWork[], active: string[]) => buildScene(lens, items, active, {
+  quien: layoutQuien(list, items), opinion: layoutOpinion(list, items, active),
+  tiempo: layoutTiempo(list, items, active), islas: layoutIslands(list, items, active, 'type') });
+const scene = sceneFor('quien', people, works, ['a', 'b']);
 let frames: FrameRequestCallback[] = [];
 beforeEach(() => {
   frames = [];
@@ -144,8 +150,7 @@ describe('AtlasCanvas', () => {
   it('en Opinión no hay polos que tocar y la sonda solo trae lo comparable', () => {
     const rated: Snapshot = { ...snapshot, works: snapshot.works.map(w => ({ ...w, rating: 8 })) };
     const model = atlasModel(rated, 'a', 'Tú'); const quien = layoutQuien(model.people, model.works);
-    const opinion = layoutOpinion(model.people, model.works, ['a', 'b']);
-    const opinionScene = buildScene('opinion', model.works, ['a', 'b'], quien, opinion);
+    const opinionScene = sceneFor('opinion', model.people, model.works, ['a', 'b']);
     const toggle = vi.fn();
     const labels = { axisRef: 'x', axisOthers: 'y', loved: 'l', meh: 'm', refYes: 'r', othersYes: 'o' };
     const { container } = render(<AtlasCanvas label="Mapa" people={model.people} works={model.works} active={['a', 'b']} scene={opinionScene} quien={quien}
@@ -160,5 +165,24 @@ describe('AtlasCanvas', () => {
     fireEvent.pointerDown(canvas, { pointerId: 1, clientX: x, clientY: y, pointerType: 'mouse', button: 0 });
     fireEvent.pointerUp(canvas, { pointerId: 1, clientX: x, clientY: y, pointerType: 'mouse', button: 0 });
     expect(toggle).not.toHaveBeenCalled();
+  });
+
+  it('en Tiempo la sonda trae cada obra una vez aunque tenga dos apariciones; al volver a Quién la extra desaparece', () => {
+    const dated: Snapshot = { ...snapshot, works: snapshot.works.map((w, i) => ({ ...w, date: i ? '2025-06-10' : '2024-03-01' })) };
+    const model = atlasModel(dated, 'a', 'Tú'); const quien = layoutQuien(model.people, model.works);
+    const tiempo = sceneFor('tiempo', model.people, model.works, ['a', 'b']);
+    expect([...tiempo.targets.keys()]).toEqual(['book:1', 'book:1@b']);
+    const base = { label: 'Mapa', people: model.people, works: model.works, active: ['a', 'b'], quien, countLabel: (n: number) => `${n}`,
+      onTogglePerson: () => {}, onHover: () => {}, onActivate: () => {} };
+    const { container, rerender } = render(<AtlasCanvas {...base} scene={tiempo}/>);
+    flush();
+    const host = container.querySelector<HTMLElement>('[data-atlas-moving]')!;
+    expect(host.dataset.atlasMoving).toBe('false');
+    expect(JSON.parse(host.dataset.atlasProbe!).map((p: { key: string }) => p.key)).toEqual(['book:1']);
+    rerender(<AtlasCanvas {...base} scene={sceneFor('quien', model.people, model.works, ['a', 'b'])}/>);
+    flush();
+    expect(host.dataset.atlasMoving).toBe('false');
+    expect(JSON.parse(host.dataset.atlasProbe!).map((p: { key: string }) => p.key)).toEqual(['book:1']);
+    expect(host.dataset.atlasProbe).not.toContain('@');
   });
 });

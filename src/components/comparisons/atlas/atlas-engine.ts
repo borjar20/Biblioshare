@@ -9,6 +9,7 @@ import { diffMix } from '@/lib/comparisons/atlas/opinion';
 import { mixHex } from '@/lib/comparisons/atlas/color';
 import { paintOpinionBack, type OpinionLabels } from './paint-opinion';
 import { paintQuienBack, paintQuienFront } from './paint-quien';
+import { paintLinks } from './paint-links';
 
 export { COVER_ZOOM, TITLE_ZOOM } from './atlas-palette';
 export type AtlasHit = { key: WorkKey; x: number; y: number };
@@ -19,7 +20,8 @@ export type EngineProps = { people: AtlasPerson[]; works: AtlasWork[]; active: s
   onHover: (hit: AtlasHit | null) => void; onActivate: (hit: AtlasHit | null, pointerType: string) => void;
   /** Screen space covered by the overlays (summary + faces on top, lens dock below); fit and fly-to frame the free band. */
   insets?: { top: number; bottom: number } };
-type Sprite = { x: number; y: number; tx: number; ty: number; a: number; ta: number; hl: number; thl: number; diff: number | null };
+/** One appearance of a work; `key` is the work, the map id may carry an `@person` / `#island` suffix. `dying` extras fly home and fade. */
+type Sprite = { key: WorkKey; x: number; y: number; tx: number; ty: number; a: number; ta: number; hl: number; thl: number; diff: number | null; dying: boolean };
 const dist = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
 
 export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, props: () => EngineProps) {
@@ -29,7 +31,7 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
   let vp: Viewport = { width: 0, height: 0 }; let dpr = 1;
   let cam: Camera = { x: 0, y: 0, k: 0.3 }; let target: Camera | null = null; let fitted = false;
   let extentKey = ''; let raf = 0; let disposed = false; let dirtyProbe = true;
-  const sprites = new Map<WorkKey, Sprite>();
+  const sprites = new Map<string, Sprite>();
 
   const insets = () => props().insets ?? { top: 75, bottom: 75 };
   /** Shifts a camera so that its focus lands in the middle of the band between the overlays. */
@@ -53,16 +55,24 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
     kick();
   }
   function sync() {
-    const { scene } = props(); const seen = new Set<WorkKey>();
-    for (const [key, t] of scene.targets) {
-      seen.add(key);
+    const { scene } = props();
+    for (const [id, t] of scene.targets) {
       const glow = t.glow ? 1 : 0;
-      const sprite = sprites.get(key) ?? { x: t.x, y: t.y, tx: t.x, ty: t.y, a: t.alpha, ta: t.alpha, hl: glow, thl: 0, diff: t.diff };
-      sprite.tx = t.x; sprite.ty = t.y; sprite.ta = t.alpha; sprite.thl = glow; sprite.diff = t.diff;
+      // An extra appearance is born on its main one, invisible, and flies out from there.
+      const main = id !== t.key ? sprites.get(t.key) : undefined;
+      const sprite = sprites.get(id) ?? (main ? { ...main, a: 0 }
+        : { key: t.key, x: t.x, y: t.y, tx: t.x, ty: t.y, a: t.alpha, ta: t.alpha, hl: glow, thl: 0, diff: t.diff, dying: false });
+      sprite.key = t.key; sprite.tx = t.x; sprite.ty = t.y; sprite.ta = t.alpha; sprite.thl = glow; sprite.diff = t.diff; sprite.dying = false;
       if (reduce) { sprite.x = t.x; sprite.y = t.y; sprite.a = sprite.ta; sprite.hl = sprite.thl; }
-      sprites.set(key, sprite);
+      sprites.set(id, sprite);
     }
-    for (const key of [...sprites.keys()]) if (!seen.has(key)) sprites.delete(key);
+    for (const [id, sprite] of [...sprites]) {
+      if (scene.targets.has(id)) continue;
+      // An extra whose work is still on stage folds back into its main appearance; anything else goes at once.
+      const home = id !== sprite.key && !reduce ? scene.targets.get(sprite.key) : undefined;
+      if (home) { sprite.dying = true; sprite.tx = home.x; sprite.ty = home.y; sprite.ta = 0; }
+      else sprites.delete(id);
+    }
     const nextExtent = JSON.stringify(scene.extent);
     if (nextExtent !== extentKey) { extentKey = nextExtent; if (fitted) refit(); }
     // Overlays measured after the first fit: reframe only while the camera still rests on (or heads to) that fit;
@@ -77,10 +87,11 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
   function frame() {
     raf = 0; if (disposed) return; let moving = false;
     if (target) { const step = stepCamera(cam, target, reduce ? 1 : 0.16); cam = step.camera; if (step.done) target = null; else moving = true; }
-    for (const s of sprites.values()) {
+    for (const [id, s] of sprites) {
       const x = approach(s.x, s.tx, 0.11, 0.15), y = approach(s.y, s.ty, 0.11, 0.15);
       const a = approach(s.a, s.ta, 0.14, 0.01), h = approach(s.hl, s.thl, 0.14, 0.01);
       s.x = x.value; s.y = y.value; s.a = a.value; s.hl = h.value;
+      if (s.dying && s.a < 0.02) { sprites.delete(id); continue; }
       if (!(x.settled && y.settled && a.settled && h.settled)) moving = true;
     }
     draw(); if (pointers.size > 0) moving = true;
@@ -88,11 +99,12 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
     if (moving) { if (!pointers.size) kick(); } else if (dirtyProbe) { dirtyProbe = false; publishProbe(); }
   }
   function visible(p: Point) { return p.x >= -60 && p.y >= -80 && p.x <= vp.width + 60 && p.y <= vp.height + 80; }
+  /** One entry per work: its first visible appearance. */
   function publishProbe() {
-    const probe: AtlasHit[] = [];
-    for (const [key, s] of sprites) {
-      if (s.a < 0.5) continue; const p = toScreen(cam, vp, s);
-      if (p.x >= 0 && p.y >= 0 && p.x <= vp.width && p.y <= vp.height) probe.push({ key, x: Math.round(p.x), y: Math.round(p.y) });
+    const probe: AtlasHit[] = []; const listed = new Set<WorkKey>();
+    for (const s of sprites.values()) {
+      if (s.a < 0.5 || listed.has(s.key)) continue; const p = toScreen(cam, vp, s);
+      if (p.x >= 0 && p.y >= 0 && p.x <= vp.width && p.y <= vp.height) { listed.add(s.key); probe.push({ key: s.key, x: Math.round(p.x), y: Math.round(p.y) }); }
     }
     host.dataset.atlasProbe = JSON.stringify(probe.toSorted((a, b) => a.key < b.key ? -1 : 1).slice(0, 60));
   }
@@ -136,11 +148,16 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
     const tint = (s: Sprite) => s.diff === null ? null : mixHex(palette.glow, palette.clash, diffMix(s.diff));
     const quienPaint = { layout: quien, active, people, countLabel };
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, vp.width, vp.height);
-    if (scene.lens === 'quien') paintQuienBack(view, quienPaint);
-    else paintOpinionBack(view, props().opinionLabels);
+    switch (scene.lens) {
+      case 'quien': paintQuienBack(view, quienPaint); break;
+      case 'opinion': paintOpinionBack(view, props().opinionLabels); break;
+      case 'tiempo': case 'islas': break; // painters arrive with their lenses
+    }
+    paintLinks(view, scene.links, id => { const s = sprites.get(id); return s ? { x: s.x, y: s.y, a: s.a } : null; },
+      id => (sprites.get(id)?.hl ?? 0) > 0.5);
     const byKey = new Map(works.map(work => [work.key, work]));
-    for (const [key, s] of sprites) {
-      if (s.a < 0.02) continue; const work = byKey.get(key); if (!work) continue;
+    for (const s of sprites.values()) {
+      if (s.a < 0.02) continue; const work = byKey.get(s.key); if (!work) continue;
       const p = toScreen(cam, vp, s); if (!visible(p)) continue;
       ctx.globalAlpha = s.a; const shared = work.owners.length > 1;
       const ink = tint(s);
@@ -175,7 +192,7 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
   }
   function hitWork(s: Point): AtlasHit | null {
     const world = toWorld(cam, vp, s); const radius = Math.max(6, 10 / cam.k);
-    const candidates = [...sprites].filter(([, sprite]) => sprite.a >= 0.5).map(([key, sprite]) => ({ key, x: sprite.x, y: sprite.y }));
+    const candidates = [...sprites.values()].filter(sprite => sprite.a >= 0.5).map(sprite => ({ key: sprite.key, x: sprite.x, y: sprite.y }));
     const hit = nearest(candidates, world, radius);
     return hit && { key: hit.key, x: s.x, y: s.y };
   }

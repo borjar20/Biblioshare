@@ -9,6 +9,8 @@ import type { AtlasPerson, AtlasWork } from '@/lib/comparisons/atlas/types';
 import { atlasModel } from '@/lib/comparisons/atlas/model';
 import { layoutQuien } from '@/lib/comparisons/atlas/layout';
 import { layoutOpinion } from '@/lib/comparisons/atlas/opinion';
+import { layoutTiempo } from '@/lib/comparisons/atlas/tiempo';
+import { layoutIslands } from '@/lib/comparisons/atlas/islands';
 import { buildScene, type Lens } from '@/lib/comparisons/atlas/scene';
 import { initials } from '../presentation';
 import { AtlasCanvas, type AtlasCanvasHandle } from './atlas-canvas';
@@ -52,7 +54,10 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange, 
     return kept.length ? kept : ids;
   }, [people, chosen]);
   const opinion = useMemo(() => layoutOpinion(people, works, active), [people, works, active]);
-  const scene = useMemo(() => buildScene(lens, works, active, layout, opinion), [lens, works, active, layout, opinion]);
+  const tiempo = useMemo(() => layoutTiempo(people, works, active), [people, works, active]);
+  const islas = useMemo(() => layoutIslands(people, works, active, 'type'), [people, works, active]);
+  const scene = useMemo(() => buildScene(lens, works, active, { quien: layout, opinion, tiempo, islas }),
+    [lens, works, active, layout, opinion, tiempo, islas]);
   // Corner and axis names follow the Opinión reference («Tú» unless she is out).
   const reference = people.find(person => person.id === opinion.reference);
   const refIsMe = String(reference?.isMe ?? true), refName = reference?.name ?? '';
