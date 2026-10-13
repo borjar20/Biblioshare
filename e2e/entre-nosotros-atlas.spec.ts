@@ -4,6 +4,14 @@ import { chooseComparisonParticipants, loginComparisonActor, withComparisonFixtu
 async function settled(page: Page) {
   await expect(page.locator('[data-atlas-moving]')).toHaveAttribute('data-atlas-moving', 'false');
 }
+/**
+ * After a lens change: the transition starts on the engine's next frame, so until then the host still
+ * reads as settled with the previous lens's probe. Let two frames pass, then wait for it to settle.
+ */
+async function lensSettled(page: Page) {
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await settled(page);
+}
 async function openAtlas(page: Page, fixture: ComparisonFixture) {
   await loginComparisonActor(page, fixture.actors[0]);
   await page.goto('/comunidad/entre-nosotros');
@@ -68,5 +76,36 @@ test('móvil: un toque abre la hoja y «Abrir ficha» navega', async ({ page }, 
     expect(scroll, 'sin scroll horizontal').toBe(true);
     await sheet.getByRole('link', { name: 'Abrir ficha', exact: true }).tap();
     await expect(page).toHaveURL(new RegExp(`/libro/${work.key.split(':')[1]}$`));
+  });
+});
+
+test('escritorio: Opinión resume, la mini-ficha pone las notas y sobrevive al cambio de formato', async ({ page }, info) => {
+  test.skip(info.project.name !== 'chromium');
+  await withComparisonFixture(async fixture => {
+    await openAtlas(page, fixture);
+    const lenses = page.getByRole('group', { name: 'Lente', exact: true });
+    await lenses.getByRole('button', { name: 'Opinión', exact: true }).click(); await lensSettled(page);
+    await expect(summary(page)).toHaveText('Coincidís en 30 y chocáis en 0 de 30 obras compartidas');
+    const box = (await page.locator('[data-atlas-moving] canvas').boundingBox())!;
+    const [work] = await probe(page);
+    await page.mouse.move(box.x + work.x, box.y + work.y);
+    // The hover tip is a mouse-only duplicate of the sheet, hence aria-hidden.
+    await expect(page.getByRole('img', { name: 'Notas: Tú 9, Beatriz QA 9, Carlos QA 9', includeHidden: true })).toBeAttached();
+    await page.getByRole('group', { name: 'Filtrar por tipo de obra', exact: true }).getByRole('button', { name: 'Libros', exact: true }).click(); await settled(page);
+    await expect(lenses.getByRole('button', { name: 'Opinión', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(summary(page)).toHaveText('Coincidís en 30 y chocáis en 0 de 30 obras compartidas');
+  });
+});
+
+test('móvil: Opinión desde el icono y la hoja con la escala de notas', async ({ page }, info) => {
+  test.skip(info.project.name !== 'mobile');
+  await withComparisonFixture(async fixture => {
+    await openAtlas(page, fixture);
+    await page.getByRole('group', { name: 'Lente', exact: true }).getByRole('button', { name: 'Opinión', exact: true }).tap(); await lensSettled(page);
+    const box = (await page.locator('[data-atlas-moving] canvas').boundingBox())!;
+    const [work] = await probe(page);
+    await page.touchscreen.tap(box.x + work.x, box.y + work.y);
+    const sheet = page.getByRole('dialog', { name: /^qa_comp_motion_\d{2}$/ });
+    await expect(sheet.getByRole('img', { name: 'Notas: Tú 9, Beatriz QA 9, Carlos QA 9' })).toBeVisible();
   });
 });
