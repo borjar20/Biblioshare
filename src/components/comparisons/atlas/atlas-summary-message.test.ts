@@ -42,6 +42,8 @@ describe('summaryMessage', () => {
     const undated = dated('book:3', { me: '2020-01-01', b: null });
     expect(message('tiempo', [first, later], ['me', 'b'])).toEqual({ key: 'atlas.tiempo.first', values: { first: 1, total: 2 } });
     expect(message('tiempo', [first, later, undated], ['me', 'b'])).toEqual({ key: 'atlas.tiempo.firstUndated', values: { first: 1, total: 2, undated: 1 } });
+    expect(message('tiempo', [undated], ['me', 'b'])).toEqual({ key: 'atlas.tiempo.none', values: { undated: 1 } });
+    expect(message('tiempo', [work('book:9', { me: 1 })], ['me', 'b'])).toEqual({ key: 'atlas.tiempo.empty', values: {} });
     expect(message('tiempo', [first, later], ['b', 'c'])).toEqual({ key: 'atlas.tiempo.lanes', values: { names: 'Bea y Carla' } });
   });
   it('Islas: la mejor isla con su título (tipo o género), ninguna en común y una sola cara', () => {

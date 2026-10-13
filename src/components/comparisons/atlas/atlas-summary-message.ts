@@ -23,6 +23,7 @@ export function summaryMessage(lens: Lens, people: AtlasPerson[], works: AtlasWo
   if (lens === 'tiempo') {
     const summary = summarizeTiempo(people, works, active);
     if (summary.kind === 'lanes') return { key: 'atlas.tiempo.lanes', values: { names: list.format(summary.names) } };
+    if (summary.total === 0) return summary.undated ? { key: 'atlas.tiempo.none', values: { undated: summary.undated } } : { key: 'atlas.tiempo.empty', values: {} };
     return summary.undated
       ? { key: 'atlas.tiempo.firstUndated', values: { first: summary.first, total: summary.total, undated: summary.undated } }
       : { key: 'atlas.tiempo.first', values: { first: summary.first, total: summary.total } };

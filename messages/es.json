@@ -28,6 +28,8 @@
       "tiempo": {
         "first": "Llegaste tú primero a <b>{first}</b> de <b>{total}</b> {total, plural, one {obra compartida} other {obras compartidas}}",
         "firstUndated": "Llegaste tú primero a <b>{first}</b> de <b>{total}</b> {total, plural, one {obra compartida} other {obras compartidas}} ({undated} sin fecha)",
+        "none": "Ninguna obra compartida tiene fecha para todas las personas ({undated} sin fecha)",
+        "empty": "Aún no compartís obras con fecha",
         "lanes": "Las vías de {names}"
       },
       "islas": {

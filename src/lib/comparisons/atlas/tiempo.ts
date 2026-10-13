@@ -48,7 +48,7 @@ export function summarizeTiempo(people: AtlasPerson[], works: AtlasWork[], activ
   for (const work of works) {
     const owners = work.owners.filter(owner => active.includes(owner.userId));
     if (owners.length < 2 || !owners.some(owner => owner.userId === me.id)) continue;
-    if (owners.some(owner => !owner.date)) { undated++; continue; }
+    if (owners.some(owner => !owner.date || !Number.isFinite(yearOf(owner.date)))) { undated++; continue; }
     total++;
     const mine = owners.find(owner => owner.userId === me.id)!.date!;
     if (owners.every(owner => mine <= owner.date!)) first++;

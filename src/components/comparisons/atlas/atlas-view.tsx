@@ -9,7 +9,7 @@ import type { AtlasPerson, AtlasWork } from '@/lib/comparisons/atlas/types';
 import { atlasModel } from '@/lib/comparisons/atlas/model';
 import { layoutQuien } from '@/lib/comparisons/atlas/layout';
 import { layoutOpinion } from '@/lib/comparisons/atlas/opinion';
-import { layoutTiempo } from '@/lib/comparisons/atlas/tiempo';
+import { layoutTiempo, yearOf } from '@/lib/comparisons/atlas/tiempo';
 import { layoutIslands, OTHER_ISLAND, type Island, type IslandMode } from '@/lib/comparisons/atlas/islands';
 import { buildScene, type Lens } from '@/lib/comparisons/atlas/scene';
 import { initials } from '../presentation';
@@ -36,7 +36,7 @@ function WorkCard({ work, people, title, lens }: { work: AtlasWork; people: Atla
   const t = useTranslations('comparisons.atlas');
   const names = new Map(people.map(person => [person.id, person]));
   const line = (name: string, date: string | null) => lens !== 'tiempo' ? name
-    : date ? t('years', { name, year: date.slice(0, 4) }) : t('noDate', { name });
+    : date && Number.isFinite(yearOf(date)) ? t('years', { name, year: date.slice(0, 4) }) : t('noDate', { name });
   return <>
     <span className={styles.cover} style={{ background: TYPE_VAR[work.itemType] }} aria-hidden="true"/>
     <span><span className={styles.workTitle}>{title}</span>

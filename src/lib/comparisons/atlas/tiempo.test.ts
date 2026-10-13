@@ -73,6 +73,9 @@ describe('summarizeTiempo', () => {
   it('cuenta primeras llegadas solo entre compartidas con fecha en todos sus dueños activos', () => {
     expect(summarizeTiempo(people, works, ['me', 'b'])).toEqual({ kind: 'first', first: 1, total: 2, undated: 1 });
   });
+  it('una fecha ilegible cuenta como sin fecha', () => {
+    expect(summarizeTiempo(people, [work('book:9', { me: 'nope', b: '2021-01-01' })], ['me', 'b'])).toEqual({ kind: 'first', first: 0, total: 0, undated: 1 });
+  });
   it('sin Tú activa, las vías', () => {
     expect(summarizeTiempo(people, works, ['b', 'c'])).toEqual({ kind: 'lanes', names: ['B', 'C'] });
   });

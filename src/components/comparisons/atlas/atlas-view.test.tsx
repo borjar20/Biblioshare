@@ -245,11 +245,18 @@ describe('AtlasView', () => {
     viewWith({ ...snapshot, works: snapshot.works.map(work => work.key === 'book:1' && work.userId === 'me' ? { ...work, date: '2021-03-04' } : work) });
     fireEvent.click(screen.getByRole('button', { name: 'Tiempo' }));
     expect(screen.getByText(messages.comparisons.atlas.caption.tiempo)).toBeTruthy();
-    expect(summary()).toBe('Llegaste tú primero a 0 de 0 obras compartidas (1 sin fecha)');
+    expect(summary()).toBe('Ninguna obra compartida tiene fecha para todas las personas (1 sin fecha)');
     act(() => canvas.onHover({ key: 'book:1', x: 10, y: 10 }));
     const tip = screen.getByText('Proyecto Salvación').closest('[aria-hidden="true"]')!;
     expect([...tip.querySelectorAll('li')].map(li => li.textContent)).toEqual(['Tú: 2021', 'Bea: sin fecha', 'Carla: sin fecha']);
     expect(screen.getByText('Tú: 2021')).toBeTruthy();
+  });
+  it('Tiempo: una fecha ilegible sale como sin fecha en la mini-ficha', () => {
+    viewWith({ ...snapshot, works: snapshot.works.map(work => work.key === 'book:1' && work.userId === 'me' ? { ...work, date: 'nope' } : work) });
+    fireEvent.click(screen.getByRole('button', { name: 'Tiempo' }));
+    act(() => canvas.onHover({ key: 'book:1', x: 10, y: 10 }));
+    const tip = screen.getByText('Proyecto Salvación').closest('[aria-hidden="true"]')!;
+    expect([...tip.querySelectorAll('li')].map(li => li.textContent)[0]).toBe('Tú: sin fecha');
   });
   it('el lienzo recibe los textos de las islas', () => {
     view();
