@@ -1,6 +1,8 @@
 import type { WorkKey } from '@/lib/comparisons/types';
 import type { AtlasPerson, AtlasWork, Camera, Point, Viewport } from '@/lib/comparisons/atlas/types';
 import type { QuienLayout } from '@/lib/comparisons/atlas/layout';
+import type { TiempoLayout } from '@/lib/comparisons/atlas/tiempo';
+import type { IslandsLayout } from '@/lib/comparisons/atlas/islands';
 import type { Scene } from '@/lib/comparisons/atlas/scene';
 import { approach, clamp, fit, panBy, stepCamera, toScreen, toWorld, zoomAt, zoomToward, MAX_ZOOM, MIN_ZOOM } from '@/lib/comparisons/atlas/camera';
 import { nearest } from '@/lib/comparisons/atlas/hit';
@@ -10,10 +12,14 @@ import { mixHex } from '@/lib/comparisons/atlas/color';
 import { paintOpinionBack, type OpinionLabels } from './paint-opinion';
 import { paintQuienBack, paintQuienFront } from './paint-quien';
 import { paintLinks } from './paint-links';
+import { paintTiempoBack } from './paint-tiempo';
+import { paintIslasBack, type IslandText } from './paint-islas';
 
 export { COVER_ZOOM, TITLE_ZOOM } from './atlas-palette';
 export type AtlasHit = { key: WorkKey; x: number; y: number };
-export type EngineProps = { people: AtlasPerson[]; works: AtlasWork[]; active: string[]; scene: Scene; quien: QuienLayout;
+export type EngineProps = { people: AtlasPerson[]; works: AtlasWork[]; active: string[]; scene: Scene; quien: QuienLayout; tiempo: TiempoLayout; islas: IslandsLayout;
+  /** Texts of the Islas titles; the painter skips them while absent. */
+  islandText?: IslandText;
   /** Texts of the Opinión background; the painter skips them while absent. */
   opinionLabels?: OpinionLabels;
   countLabel: (count: number) => string; onTogglePerson: (id: string) => void;
@@ -151,7 +157,8 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
     switch (scene.lens) {
       case 'quien': paintQuienBack(view, quienPaint); break;
       case 'opinion': paintOpinionBack(view, props().opinionLabels); break;
-      case 'tiempo': case 'islas': break; // painters arrive with their lenses
+      case 'tiempo': paintTiempoBack(view, { layout: props().tiempo, people }); break;
+      case 'islas': paintIslasBack(view, { layout: props().islas, people, text: props().islandText }); break;
     }
     paintLinks(view, scene.links, id => { const s = sprites.get(id); return s ? { x: s.x, y: s.y, a: s.a } : null; },
       id => (sprites.get(id)?.hl ?? 0) > 0.5);

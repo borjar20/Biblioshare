@@ -21,6 +21,7 @@ const sceneFor = (lens: Lens, list: AtlasPerson[], items: AtlasWork[], active: s
   quien: layoutQuien(list, items), opinion: layoutOpinion(list, items, active),
   tiempo: layoutTiempo(list, items, active), islas: layoutIslands(list, items, active, 'type') });
 const scene = sceneFor('quien', people, works, ['a', 'b']);
+const tiempoLayout = layoutTiempo(people, works, ['a', 'b']), islasLayout = layoutIslands(people, works, ['a', 'b'], 'type');
 let frames: FrameRequestCallback[] = [];
 beforeEach(() => {
   frames = [];
@@ -41,7 +42,7 @@ const flush = () => act(() => { for (let i = 0; i < 400 && frames.length; i++) f
 describe('AtlasCanvas', () => {
   it('se asienta, publica la sonda y tocar un polo alterna esa cara', () => {
     const toggle = vi.fn();
-    const { container } = render(<AtlasCanvas label="Mapa" people={people} works={works} active={['a', 'b']} scene={scene} quien={layout}
+    const { container } = render(<AtlasCanvas label="Mapa" people={people} works={works} active={['a', 'b']} scene={scene} quien={layout} tiempo={tiempoLayout} islas={islasLayout}
       countLabel={n => `${n} obras`} onTogglePerson={toggle} onHover={() => {}} onActivate={() => {}}/>);
     flush();
     const host = container.querySelector<HTMLElement>('[data-atlas-moving]')!;
@@ -60,7 +61,7 @@ describe('AtlasCanvas', () => {
 
   function setup() {
     const toggle = vi.fn();
-    const { container } = render(<AtlasCanvas label="Mapa" people={people} works={works} active={['a', 'b']} scene={scene} quien={layout}
+    const { container } = render(<AtlasCanvas label="Mapa" people={people} works={works} active={['a', 'b']} scene={scene} quien={layout} tiempo={tiempoLayout} islas={islasLayout}
       countLabel={n => `${n} obras`} onTogglePerson={toggle} onHover={() => {}} onActivate={() => {}}/>);
     flush();
     const host = container.querySelector<HTMLElement>('[data-atlas-moving]')!;
@@ -106,7 +107,7 @@ describe('AtlasCanvas', () => {
     expect(Number(host.dataset.atlasZoom)).toBe(k);
   });
 
-  const props = { label: 'Mapa', people, works, active: ['a', 'b'], scene, quien: layout, countLabel: (n: number) => `${n} obras`,
+  const props = { label: 'Mapa', people, works, active: ['a', 'b'], scene, quien: layout, tiempo: tiempoLayout, islas: islasLayout, countLabel: (n: number) => `${n} obras`,
     onTogglePerson: () => {}, onHover: () => {}, onActivate: () => {} };
   const fitZoom = (width: number, height: number, top: number, bottom: number) =>
     fit(layout.extent, { width, height }, { x: 32, y: top + bottom + 24 }).k.toFixed(3);
@@ -154,6 +155,7 @@ describe('AtlasCanvas', () => {
     const toggle = vi.fn();
     const labels = { axisRef: 'x', axisOthers: 'y', loved: 'l', meh: 'm', refYes: 'r', othersYes: 'o' };
     const { container } = render(<AtlasCanvas label="Mapa" people={model.people} works={model.works} active={['a', 'b']} scene={opinionScene} quien={quien}
+      tiempo={layoutTiempo(model.people, model.works, ['a', 'b'])} islas={layoutIslands(model.people, model.works, ['a', 'b'], 'type')}
       opinionLabels={labels} countLabel={n => `${n}`} onTogglePerson={toggle} onHover={() => {}} onActivate={() => {}}/>);
     flush();
     const host = container.querySelector<HTMLElement>('[data-atlas-moving]')!;
@@ -172,7 +174,7 @@ describe('AtlasCanvas', () => {
     const model = atlasModel(dated, 'a', 'Tú'); const quien = layoutQuien(model.people, model.works);
     const tiempo = sceneFor('tiempo', model.people, model.works, ['a', 'b']);
     expect([...tiempo.targets.keys()]).toEqual(['book:1', 'book:1@b']);
-    const base = { label: 'Mapa', people: model.people, works: model.works, active: ['a', 'b'], quien, countLabel: (n: number) => `${n}`,
+    const base = { label: 'Mapa', people: model.people, works: model.works, active: ['a', 'b'], quien, tiempo: layoutTiempo(model.people, model.works, ['a', 'b']), islas: layoutIslands(model.people, model.works, ['a', 'b'], 'type'), countLabel: (n: number) => `${n}`,
       onTogglePerson: () => {}, onHover: () => {}, onActivate: () => {} };
     const { container, rerender } = render(<AtlasCanvas {...base} scene={tiempo}/>);
     flush();
