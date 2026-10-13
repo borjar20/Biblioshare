@@ -7772,3 +7772,14 @@ de bloqueos de quien mira; el resultado depende de la sesión y por eso no lleva
 `use cache` (regla #437). La franja de hábitos pasa a hora de Madrid también en
 `/estadisticas` (#1512), para que ambas pantallas cuenten el mismo día. Detalle en la
 [spec](../superpowers/specs/2026-10-13-wrap-up-mensual-revision-visual-design.md).
+
+## 2026-10-13 — Crónica mensual: el Ritmo cuenta lo mismo que su calendario
+
+Los mapas de calor de la story Ritmo dejan de reutilizar `computeHabits` de `/estadisticas`, que cuenta
+sesiones: un usuario que registra películas marcándolas como vistas veía 14 días en el calendario y 4
+en los mapas. Ahora el mapa semanal cuenta días activos (suma = cifra de la story) y el horario cuenta
+pares (día, franja) de sesiones, episodios y terminados, estos con la hora en que se apuntaron
+(`created_at`/`updated_at` del pase solo si cae el día del fin; no hay instante de fin guardado).
+`/estadisticas` no cambia: allí «cuándo lees» sigue midiendo sesiones. En el mismo arreglo, «En
+marcha» toma `created_at` como inicio de los pases sin `started_on`. Detalle en la
+[spec](../superpowers/specs/2026-10-13-wrap-up-mensual-revision-visual-design.md).

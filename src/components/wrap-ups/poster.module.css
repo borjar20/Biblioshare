@@ -297,18 +297,22 @@
 .motionOnly { }
 
 /* ---- En marcha ---- */
-.progressList { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 12px 14px; list-style: none; }
-.progressRow { display: grid; grid-template-columns: 52px 1fr; align-items: center; gap: 12px; }
+/* Filas compactas: con 6 obras la story tiene que caber sin scroll (revisión 2026-10-13). */
+.progressList { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 10px 12px; list-style: none; }
+.progressRow { display: grid; grid-template-columns: 36px 1fr; align-items: center; gap: 10px; }
 .progressRow[data-touched="false"] { opacity: 0.6; }
 .progressList[data-big="true"] .progressRow { grid-template-columns: 1fr; justify-items: center; text-align: center; }
 .progressList[data-big="true"] .progressCover { width: 50%; }
 .progressCover { margin: 0; padding: 0; list-style: none; }
 .progressCover .coverCard { width: 100%; transform: none; }
-.progressText { display: flex; min-width: 0; width: 100%; flex-direction: column; gap: 6px; }
-.progressTitle { margin: 0; font-size: 1rem; font-weight: 700; line-height: 1.25; overflow-wrap: break-word; }
-.progressIdle { margin: 0; font-size: 0.8125rem; font-weight: 600; }
-.progressBar { height: 10px; border: 2px solid var(--ink); background: var(--paper); }
+.progressText { display: flex; min-width: 0; width: 100%; flex-direction: column; gap: 4px; }
+.progressTitle { margin: 0; overflow: hidden; font-size: 0.9375rem; font-weight: 700; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+.progressList[data-big="true"] .progressTitle { white-space: normal; overflow-wrap: break-word; }
+.progressIdle { margin: 0; font-size: 0.75rem; font-weight: 600; line-height: 1.2; }
+.progressBar { height: 8px; border: 2px solid var(--ink); background: var(--paper); }
 .progressBar > span { display: block; height: 100%; background: var(--ink); }
+/* «1 avanzó este mes · y 2 más»: frases cortas, en una fila para no robar alto a la lista. */
+.poster[data-layout="progress"] .lines { flex-flow: row wrap; column-gap: 14px; padding-block: 8px; }
 
 /* ---- Ritmo: calendario y mapas ---- */
 .calendar {
@@ -445,9 +449,9 @@
   .heatRow { gap: 3px; }
   .heatCell { gap: 2px; font-size: 0.625rem; }
   .heatMark { height: 14px; }
-  .progressList { gap: 8px; padding: 8px 12px; }
-  .progressRow { grid-template-columns: 40px 1fr; gap: 10px; }
-  .progressText { gap: 4px; }
+  .progressList { gap: 6px; padding: 8px 10px; }
+  .progressRow { grid-template-columns: 32px 1fr; }
+  .progressText { gap: 3px; }
 }
 /* Móviles pequeños (360×640): la cifra cede alto para que quepan las gráficas. */
 @media (max-height: 700px) {
@@ -460,6 +464,9 @@
   .calendar { gap: 2px; padding: 6px 8px; }
   .calendarDay { height: 1.125rem; border-width: 1px; }
   .heatmap { padding: 4px 8px; }
-  .progressRow { grid-template-columns: 34px 1fr; }
+  .progressRow { grid-template-columns: 26px 1fr; gap: 8px; }
   .progressTitle { font-size: 0.875rem; }
+  .progressBar { height: 6px; border-width: 1px; }
+  /* La fila atenuada ya dice «sin avances»; el texto queda solo para lector de pantalla. */
+  .progressIdle { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 }

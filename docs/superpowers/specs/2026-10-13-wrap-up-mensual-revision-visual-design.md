@@ -70,8 +70,11 @@ El resumen público (`ShareSummary`) **no cambia**: ni compañeros ni clubes sal
 
 «Abierto al cierre» (`endExclusive` de la ventana):
 
-- `status = 'in_progress'` y (`started_on` < `endExclusive` o `started_on` nulo), **o**
-- `status = 'completed'` y `finished_on` ≥ `endExclusive` y (`started_on` < `endExclusive` o nulo).
+- inicio < `endExclusive`, donde inicio = `started_on` o, si falta, el día (Madrid) de `created_at`; **y**
+- `status = 'in_progress'`, **o** `status = 'completed'` con `finished_on` ≥ `endExclusive`.
+
+(Corregido el 2026-10-13 tras salir en producción: la primera versión aceptaba cualquier pase sin
+`started_on`, y una película apuntada hoy como vista ayer aparecía «a medias» en el mes anterior.)
 
 Los pases `dropped` no entran: no guardan fecha de abandono, así que no se sabe si seguían abiertos
 al cierre. Límite asumido.
@@ -90,10 +93,20 @@ Porcentaje:
 
 ### Ritmo (`stats/get-habits.ts` + `load/core.ts`)
 
-`computeHabits` devuelve además `byWeekday` y `byBand`. La franja se calcula con la hora de
-`Europe/Madrid` (`Intl.DateTimeFormat` con `timeZone`), no con `getUTCHours`. Esto arregla #1512
-también en `/estadisticas`, que consume la misma función. `favoriteBand` y `favoriteWeekday` salen
-de esos mismos arrays.
+`computeHabits` calcula la franja con la hora de `Europe/Madrid`, no con `getUTCHours` (#1512, también
+en `/estadisticas`).
+
+Los mapas de la story **no** salen de `computeHabits` (corregido el 2026-10-13): aquel cuenta filas de
+sesión y deja fuera los días en que solo se marcó una obra como terminada, así que el mapa no cuadraba
+con el calendario (caso real: 14 días en el calendario, 4 en los mapas). `rhythmFacts` usa las mismas
+fuentes que el calendario:
+
+- `byWeekday`: días activos por día de la semana; su suma es la cifra de la story.
+- `byBand`: pares distintos (día, franja de 2 h en Madrid) de todo lo que tiene hora: sesiones
+  (`started_at`), episodios (`created_at`) y terminados apuntados ese día. Un terminado no guarda el
+  instante del fin, así que vale `created_at` o `updated_at` del pase solo si cae (Madrid) el mismo día
+  que `finished_on`; si no, ese día no aporta franja.
+- `favoriteWeekday` / `favoriteBandStartHour` son el máximo de cada array (empate: el primero).
 
 ### En compañía (`load/moments.ts`)
 
