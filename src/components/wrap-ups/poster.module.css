@@ -116,6 +116,16 @@
   /* `zoom` y no `transform`: el hueco que ocupa en el flujo también encoge. */
   .narratorSprite, .pet > * { zoom: 0.75; }
   .lines { padding-block: 8px; }
+  /* Ritmo y En marcha: con la narradora visible tienen que caber a 360×640. */
+  .calendar { gap: 3px; padding: 8px 10px; font-size: 0.6875rem; }
+  .calendarDay { height: 1.5rem; }
+  .heatmap { gap: 4px; padding: 6px 10px; }
+  .heatRow { gap: 3px; }
+  .heatCell { gap: 2px; font-size: 0.625rem; }
+  .heatMark { height: 14px; }
+  .progressList { gap: 8px; padding: 8px 12px; }
+  .progressRow { grid-template-columns: 40px 1fr; gap: 10px; }
+  .progressText { gap: 4px; }
 }
 /* El cierre comparte columna con las acciones del dueño (~150 px): con el umbral
    de arriba desbordaba ~40 px en 390×844 y 1440×900 (barra de scroll y bocadillo
@@ -284,6 +294,7 @@
   flex: 1 1 0;
   min-height: 240px;
   overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14%, #000 86%, transparent 100%);
   mask-image: linear-gradient(to bottom, transparent 0, #000 14%, #000 86%, transparent 100%);
 }
 .coverTrack { animation: coverLoop var(--scroll-ms) linear infinite; }
@@ -293,6 +304,7 @@
   to { transform: translateY(-50%); }
 }
 .reducedOnly { display: none; }
+.motionOnly { }
 
 /* ---- En marcha ---- */
 .progressList { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 12px 14px; list-style: none; }
@@ -312,7 +324,7 @@
 .calendar {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 6px;
+  gap: 4px;
   padding: 12px;
   font-size: 0.75rem;
   font-weight: 700;
@@ -321,7 +333,7 @@
 .calendarHead { font-family: var(--font-pixel), ui-monospace, monospace; font-weight: 400; font-synthesis: none; }
 .calendarDay {
   display: grid;
-  aspect-ratio: 1;
+  height: 1.75rem;
   place-items: center;
   border: 2px solid var(--ink);
 }
@@ -330,7 +342,7 @@
 .heatTitle { margin: 0; font-size: 0.8125rem; font-weight: 700; }
 .heatRow { display: grid; grid-template-columns: repeat(var(--cells), minmax(0, 1fr)); gap: 4px; }
 .heatCell { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 0.6875rem; font-weight: 700; }
-.heatMark { width: 100%; aspect-ratio: 1; border: 2px solid var(--ink); }
+.heatMark { width: 100%; height: 18px; border: 2px solid var(--ink); }
 .heatCell[data-level="1"] .heatMark { background: rgb(28 23 20 / 0.25); }
 .heatCell[data-level="2"] .heatMark { background: rgb(28 23 20 / 0.55); }
 .heatCell[data-level="3"] .heatMark { background: var(--ink); }
@@ -418,7 +430,16 @@
   .enter > * { animation: none; }
   .coverTrack { animation: none; }
   .coverTrack > [aria-hidden="true"] { display: none; }
-  .coverTrack .coverCard:nth-child(n + 10) { display: none; }
-  .coverScroller { mask-image: none; }
+  /* Visualmente ocultas, no display:none: sus títulos siguen en el árbol accesible. */
+  .coverTrack .coverCard:nth-child(n + 10) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .coverScroller { -webkit-mask-image: none; mask-image: none; }
   .reducedOnly { display: block; }
+  .motionOnly { display: none; }
 }
