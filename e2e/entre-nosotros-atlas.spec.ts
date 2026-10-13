@@ -109,3 +109,39 @@ test('móvil: Opinión desde el icono y la hoja con la escala de notas', async (
     await expect(sheet.getByRole('img', { name: 'Notas: Tú 9, Beatriz QA 9, Carlos QA 9' })).toBeVisible();
   });
 });
+
+test('escritorio: Tiempo e Islas resumen lo dibujado y el modo de Islas cambia las islas', async ({ page }, info) => {
+  test.skip(info.project.name !== 'chromium');
+  await withComparisonFixture(async fixture => {
+    await openAtlas(page, fixture);
+    const lenses = page.getByRole('group', { name: 'Lente', exact: true });
+    await lenses.getByRole('button', { name: 'Tiempo', exact: true }).click(); await lensSettled(page);
+    await expect(summary(page)).toHaveText('Llegaste tú primero a 30 de 30 obras compartidas');
+    const box = (await page.locator('[data-atlas-moving] canvas').boundingBox())!;
+    const [work] = await probe(page);
+    await page.mouse.move(box.x + work.x, box.y + work.y);
+    // The hover tip is a mouse-only duplicate of the sheet, hence aria-hidden.
+    await expect(page.getByText('Beatriz QA: 2026', { exact: true })).toBeAttached();
+    await lenses.getByRole('button', { name: 'Islas', exact: true }).click(); await lensSettled(page);
+    await expect(summary(page)).toHaveText('Donde más os parecéis: Libros, con 30 en común');
+    const modes = page.getByRole('group', { name: 'Agrupar islas por', exact: true });
+    await modes.getByRole('button', { name: 'Género', exact: true }).click(); await lensSettled(page);
+    await expect(summary(page)).toHaveText('Donde más os parecéis: Drama, con 30 en común');
+    await modes.getByRole('button', { name: 'Autor/Director', exact: true }).click(); await lensSettled(page);
+    await expect(summary(page)).toHaveText('Aún no tenéis obras en común en ninguna isla');
+    await page.getByRole('group', { name: 'Filtrar por tipo de obra', exact: true }).getByRole('button', { name: 'Libros', exact: true }).click(); await lensSettled(page);
+    await expect(modes.getByRole('button', { name: 'Tipo', exact: true })).toHaveCount(0);
+  });
+});
+
+test('móvil: Tiempo desde el icono y la hoja con los años', async ({ page }, info) => {
+  test.skip(info.project.name !== 'mobile');
+  await withComparisonFixture(async fixture => {
+    await openAtlas(page, fixture);
+    await page.getByRole('group', { name: 'Lente', exact: true }).getByRole('button', { name: 'Tiempo', exact: true }).tap(); await lensSettled(page);
+    const box = (await page.locator('[data-atlas-moving] canvas').boundingBox())!;
+    const [work] = await probe(page);
+    await page.touchscreen.tap(box.x + work.x, box.y + work.y);
+    await expect(page.getByRole('dialog', { name: /^qa_comp_motion_\d{2}$/ }).getByText('Tú: 2026', { exact: true })).toBeVisible();
+  });
+});
