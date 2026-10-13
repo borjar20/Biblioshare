@@ -129,7 +129,7 @@ describe('colores y resumen', () => {
     expect(summarizeOpinion(people, layoutOpinion(people, works, ['me', 'b', 'c'])))
       .toEqual({ kind: 'counts', agree: 1, clash: 1, total: 3, ref: 'Tú', isMe: true });
     expect(summarizeOpinion(people, layoutOpinion(people, works, ['b', 'c'])))
-      .toEqual({ kind: 'counts', agree: 0, clash: 1, total: 1, ref: 'B', isMe: false });
+      .toEqual({ kind: 'counts', agree: 3, clash: 1, total: 4, ref: 'B', isMe: false });
   });
   it('con menos de dos caras pide otra; sin obras comparables lo dice', () => {
     expect(summarizeOpinion(people, layoutOpinion(people, works, ['me']))).toEqual({ kind: 'needsTwo' });
