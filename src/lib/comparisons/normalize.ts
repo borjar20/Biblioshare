@@ -63,7 +63,7 @@ export function normalize(passes: PassRow[], watches: WatchRow[], aired: AiredCo
     if (!key.startsWith('series:')) {
       const completed = history.filter((row) => row.status === 'completed').toSorted(sortPasses);
       if (completed.length === 0) continue;
-      works.push({ userId, key, rating: completed[0].rating,
+      works.push({ userId, key, rating: completed[0].rating, date: completed[0].finished_on,
         orderUnknown: completed.length > 1 && completed.some((row) => row.finished_on === null),
         progress: null });
       continue;
@@ -85,7 +85,9 @@ export function normalize(passes: PassRow[], watches: WatchRow[], aired: AiredCo
       .toSorted((a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id))[0];
     const current = active ? numberedEpisodes(seen.filter((row) => row.pass_id === active.id)).length : null;
     const seriesId = key.slice('series:'.length);
-    works.push({ userId, key, rating: general?.rating ?? null,
+    const lastWatched = seen.reduce((latest, row) => row.watched_on > latest ? row.watched_on : latest, seen[0].watched_on);
+    const date = activeInProgress ? lastWatched : general?.finished_on ?? lastWatched;
+    works.push({ userId, key, rating: general?.rating ?? null, date,
       orderUnknown: !activeInProgress && closed.length > 1 &&
         closed.some((row) => row.finished_on === null),
       progress: { seenEver: notes.length, current, aired: airedBySeries.get(seriesId) ?? null,

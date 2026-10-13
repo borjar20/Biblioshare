@@ -12,7 +12,7 @@ export const data: Snapshot = {
   group: { id: 'g', name: 'Amigos', revision: 1, members: ['Ana', 'Bea'].map((name, i) => ({ slotId: name, userId: `${i}`, name, avatarUrl: null, available: true })) },
   format: 'all', excludedSeriesWithoutEpisodes: 2,
   catalog: Array.from({ length: 6 }, (_, i) => ({ key: `book:${i}` as WorkKey, title: `Libro ${i}`, coverUrl: '/cover.jpg', genres: ['Drama', 'Misterio'], creators: [{ id: 'author', name: 'Autora', role: 'author' as const }] })),
-  works: [8, 9, 10, 7, 9, null].map((rating, i) => ({ key: `book:${i}` as WorkKey, userId: i < 3 ? '0' : '1', rating, orderUnknown: false, progress: null })),
+  works: [8, 9, 10, 7, 9, null].map((rating, i) => ({ key: `book:${i}` as WorkKey, userId: i < 3 ? '0' : '1', rating, date: null, orderUnknown: false, progress: null })),
 };
 function Harness({ snapshot = data, people = ['0', '1'] }: { snapshot?: Snapshot; people?: string[] }) {
   const [view, onView] = useState<View>({ level: 'group' });

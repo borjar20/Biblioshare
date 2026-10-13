@@ -3,7 +3,7 @@ import type { Snapshot, WorkKey } from '@/lib/comparisons/types';
 import { groupMapLayout, personCenter, layoutScene, mapConnections, regionCenter, vennCircles, type Pose } from './geometry';
 
 const keys = Array.from({ length: 83 }, (_, index) => `book:${index}` as WorkKey);
-const snapshot: Snapshot = { group: { id: 'g', name: 'Grupo', revision: 1, members: Array.from({ length: 10 }, (_, i) => ({ slotId: `${i}`, userId: `${i}`, name: `Persona ${i}`, avatarUrl: null, available: true })) }, format: 'all', catalog: keys.map(key => ({ key, title: key, coverUrl: null, genres: [], creators: [] })), works: keys.flatMap(key => ['0', '1', '2'].map(userId => ({ key, userId, rating: null, orderUnknown: false, progress: null }))), excludedSeriesWithoutEpisodes: 0 };
+const snapshot: Snapshot = { group: { id: 'g', name: 'Grupo', revision: 1, members: Array.from({ length: 10 }, (_, i) => ({ slotId: `${i}`, userId: `${i}`, name: `Persona ${i}`, avatarUrl: null, available: true })) }, format: 'all', catalog: keys.map(key => ({ key, title: key, coverUrl: null, genres: [], creators: [] })), works: keys.flatMap(key => ['0', '1', '2'].map(userId => ({ key, userId, rating: null, date: null, orderUnknown: false, progress: null }))), excludedSeriesWithoutEpisodes: 0 };
 type Point = { x: number; y: number };
 const nodeEnvelope = (width: number) => ({ width: width <= 300 ? 68 : width <= 600 ? 84 : 100, height: 110 });
 function corners(pose: Pose): Point[] {
@@ -30,7 +30,7 @@ function exactZones(count: number, samples: number) {
   const entries = Array.from({ length: (1 << count) - 1 }, (_, index) => index + 1)
     .flatMap(mask => Array.from({ length: samples }, (_, sample) => ({ mask, key: `book:mask-${mask}-${sample}` as WorkKey })));
   const data: Snapshot = { ...snapshot, catalog: entries.map(({ key }) => ({ key, title: key, coverUrl: null, genres: [], creators: [] })),
-    works: entries.flatMap(({ key, mask }) => people.filter((_, index) => mask & (1 << index)).map(userId => ({ key, userId, rating: null, orderUnknown: false, progress: null }))) };
+    works: entries.flatMap(({ key, mask }) => people.filter((_, index) => mask & (1 << index)).map(userId => ({ key, userId, rating: null, date: null, orderUnknown: false, progress: null }))) };
   return { data, entries, people };
 }
 describe('comparison world geometry', () => {

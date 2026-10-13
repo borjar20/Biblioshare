@@ -3,7 +3,7 @@ import { acceptResponse, initialState, changeAccount, changeGroup, reconcileView
 import type { Snapshot } from '@/lib/comparisons/types';
 import type { ExplorerState } from './state';
 
-const snapshot: Snapshot = { group: { id: 'a', name: 'Amigos', revision: 1, members: ['a', 'b'].map(userId => ({ slotId: userId, userId, name: userId, avatarUrl: null, available: true })) }, format: 'all', catalog: [{ key: 'book:x', title: 'Libro', coverUrl: null, genres: ['Drama'], creators: [] }], works: [{ key: 'book:x', userId: 'a', rating: null, orderUnknown: false, progress: null }], excludedSeriesWithoutEpisodes: 0 };
+const snapshot: Snapshot = { group: { id: 'a', name: 'Amigos', revision: 1, members: ['a', 'b'].map(userId => ({ slotId: userId, userId, name: userId, avatarUrl: null, available: true })) }, format: 'all', catalog: [{ key: 'book:x', title: 'Libro', coverUrl: null, genres: ['Drama'], creators: [] }], works: [{ key: 'book:x', userId: 'a', rating: null, date: null, orderUnknown: false, progress: null }], excludedSeriesWithoutEpisodes: 0 };
 describe('comparison navigation state', () => {
   it('ignores an older response without clearing the current response', () => {
     const state = { seq: 2, value: snapshot, status: 'ready' as const };

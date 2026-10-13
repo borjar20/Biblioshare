@@ -3,7 +3,7 @@ import { facets, findings, regions } from './derive';
 import type { CatalogWork, PersonWork, Snapshot, WorkKey } from './types';
 
 function work(userId: string, key: WorkKey, rating: number | null = null): PersonWork {
-  return { userId, key, rating, orderUnknown: false, progress: null };
+  return { userId, key, rating, date: null, orderUnknown: false, progress: null };
 }
 
 function catalog(key: WorkKey, title: string, genres: string[] = [],

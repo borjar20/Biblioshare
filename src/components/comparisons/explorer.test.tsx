@@ -34,8 +34,8 @@ describe('independent format view retention', () => {
     expect(ready.tasteControls).toEqual({ facetKind: 'director', signal: 'rated' });
   });
   const availableGroup: Group = { ...first, members: [{ ...first.members[0] }, { slotId: 'two', userId: 'b', name: 'Bea', avatarUrl: null, available: true }] };
-  const book = { catalog: { key: 'book:x' as const, title: 'Libro', coverUrl: null, genres: ['Ensayo'], creators: [] }, work: { key: 'book:x' as const, userId: 'a', rating: null, orderUnknown: false, progress: null } };
-  const movie = { catalog: { key: 'movie:y' as const, title: 'Película', coverUrl: null, genres: ['Drama'], creators: [] }, work: { key: 'movie:y' as const, userId: 'a', rating: null, orderUnknown: false, progress: null } };
+  const book = { catalog: { key: 'book:x' as const, title: 'Libro', coverUrl: null, genres: ['Ensayo'], creators: [] }, work: { key: 'book:x' as const, userId: 'a', rating: null, date: null, orderUnknown: false, progress: null } };
+  const movie = { catalog: { key: 'movie:y' as const, title: 'Película', coverUrl: null, genres: ['Drama'], creators: [] }, work: { key: 'movie:y' as const, userId: 'a', rating: null, date: null, orderUnknown: false, progress: null } };
   const bookSnapshot: Snapshot = { ...snapshot(availableGroup), format: 'book', catalog: [book.catalog], works: [book.work] };
   // Every request is `all`; each section's format is derived from it (#1481).
   const allSnapshot: Snapshot = { ...snapshot(availableGroup), format: 'all', catalog: [book.catalog, movie.catalog], works: [book.work, movie.work], excludedSeriesWithoutEpisodes: 2 };
@@ -155,7 +155,7 @@ describe('Explorer request boundaries', () => {
   });
   it('restores facet participants in the checkboxes after another section adds Carlos', async () => {
     const available: Group = { ...first, members: ['Ana', 'Bea', 'Carlos'].map((name, i) => ({ slotId: `${i}`, userId: ['a', 'b', 'c'][i], name, avatarUrl: null, available: true })) };
-    const data: Snapshot = { ...snapshot(available), catalog: [{ key: 'book:x', title: 'Libro', coverUrl: null, genres: ['Drama'], creators: [] }], works: [{ userId: 'a', key: 'book:x', rating: 9, orderUnknown: false, progress: null }] };
+    const data: Snapshot = { ...snapshot(available), catalog: [{ key: 'book:x', title: 'Libro', coverUrl: null, genres: ['Drama'], creators: [] }], works: [{ userId: 'a', key: 'book:x', rating: 9, date: null, orderUnknown: false, progress: null }] };
     mocks.query = `group=${first.id}`; mocks.load.mockResolvedValue({ ok: true, data });
     vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
     render(ui([available])); fireEvent.click(await screen.findByRole('checkbox', { name: 'Tú' })); fireEvent.click(screen.getByRole('checkbox', { name: 'Bea' }));
@@ -171,7 +171,7 @@ describe('Explorer request boundaries', () => {
   });
   it('retains taste category, signal and participant context after section switches and its own format reload', async () => {
     const available: Group = { ...first, members: [{ ...first.members[0] }, { slotId: 'two', userId: 'b', name: 'Bea', avatarUrl: null, available: true }] };
-    const data: Snapshot = { ...snapshot(available), catalog: [{ key: 'book:x', title: 'Libro', coverUrl: null, genres: ['Drama'], creators: [{ id: 'author', name: 'Autora', role: 'author' }] }], works: [{ userId: 'a', key: 'book:x', rating: 9, orderUnknown: false, progress: null }] };
+    const data: Snapshot = { ...snapshot(available), catalog: [{ key: 'book:x', title: 'Libro', coverUrl: null, genres: ['Drama'], creators: [{ id: 'author', name: 'Autora', role: 'author' }] }], works: [{ userId: 'a', key: 'book:x', rating: 9, date: null, orderUnknown: false, progress: null }] };
     mocks.query = `group=${first.id}`; mocks.load.mockImplementation(async (_id, format) => ({ ok: true, data: { ...data, format } }));
     vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })); vi.stubGlobal('scrollTo', vi.fn());
     render(ui([available])); fireEvent.click(await screen.findByRole('checkbox', { name: 'Tú' })); fireEvent.click(screen.getByRole('checkbox', { name: 'Bea' }));

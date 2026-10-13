@@ -10,7 +10,7 @@ const load = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/comparisons/actions', () => ({ loadComparisonWork: load }));
 import { ComparisonCanvas } from './canvas';
 import { layoutScene, mapBackbone, mapConnections } from './geometry';
-const snapshot: Snapshot = { group: { id: 'g', name: 'Grupo', revision: 1, members: ['Ana', 'Bea', 'Carlos'].map((name, i) => ({ slotId: `${i}`, userId: `${i}`, name, avatarUrl: null, available: true })) }, format: 'all', catalog: Array.from({ length: 83 }, (_, i) => ({ key: `book:${i}` as WorkKey, title: `Libro ${String(i).padStart(2, '0')}`, coverUrl: '/cover.jpg', genres: [], creators: [] })), works: Array.from({ length: 83 }, (_, i) => ['0', '1'].map(userId => ({ key: `book:${i}` as WorkKey, userId, rating: null, orderUnknown: false, progress: null }))).flat(), excludedSeriesWithoutEpisodes: 0 };
+const snapshot: Snapshot = { group: { id: 'g', name: 'Grupo', revision: 1, members: ['Ana', 'Bea', 'Carlos'].map((name, i) => ({ slotId: `${i}`, userId: `${i}`, name, avatarUrl: null, available: true })) }, format: 'all', catalog: Array.from({ length: 83 }, (_, i) => ({ key: `book:${i}` as WorkKey, title: `Libro ${String(i).padStart(2, '0')}`, coverUrl: '/cover.jpg', genres: [], creators: [] })), works: Array.from({ length: 83 }, (_, i) => ['0', '1'].map(userId => ({ key: `book:${i}` as WorkKey, userId, rating: null, date: null, orderUnknown: false, progress: null }))).flat(), excludedSeriesWithoutEpisodes: 0 };
 function Harness({ initial = { level: 'venn', people: ['0', '1', '2'] }, data = snapshot, selection = false }: { initial?: View; data?: Snapshot; selection?: boolean }) {
   const [view, setView] = useState<View>(initial);
   const [selected, setSelected] = useState<string[]>([]);
@@ -148,7 +148,7 @@ describe('comparison canvas', () => {
   it('recenters the real group fan after returning from a restored Venn with 83 stories', () => {
     const data: Snapshot = { ...snapshot, group: { ...snapshot.group, members: Array.from({ length: 10 }, (_, i) => ({ slotId: String(i), userId: String(i), name: `Persona ${i}`, avatarUrl: null, available: true })) }, works: [
       ...snapshot.works,
-      ...snapshot.catalog.slice(50).flatMap(work => ['8', '9'].map(userId => ({ key: work.key, userId, rating: null, orderUnknown: false, progress: null }))),
+      ...snapshot.catalog.slice(50).flatMap(work => ['8', '9'].map(userId => ({ key: work.key, userId, rating: null, date: null, orderUnknown: false, progress: null }))),
     ] };
     const { container } = render(<Harness initial={{ level: 'venn', people: ['8', '9'] }} data={data}/>);
     fireEvent.click(screen.getByRole('button', { name: 'Volver al grupo' }));
@@ -231,7 +231,7 @@ describe('comparison canvas', () => {
     vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
     vi.stubGlobal('ResizeObserver', class { constructor(private callback: () => void) { observers.add(callback); } observe() {} disconnect() { observers.delete(this.callback); } });
     const tick = (time: number) => { now = time; const callbacks = [...frames.values()]; frames.clear(); act(() => callbacks.forEach(callback => callback(now))); };
-    const data: Snapshot = { ...snapshot, catalog: [{ key: 'series:x', title: 'Serie', coverUrl: '/cover.jpg', genres: ['Drama'], creators: [] }], works: ['0', '1'].map(userId => ({ userId, key: 'series:x', rating: null, orderUnknown: false, progress: null })) };
+    const data: Snapshot = { ...snapshot, catalog: [{ key: 'series:x', title: 'Serie', coverUrl: '/cover.jpg', genres: ['Drama'], creators: [] }], works: ['0', '1'].map(userId => ({ userId, key: 'series:x', rating: null, date: null, orderUnknown: false, progress: null })) };
     let finish!: (result: { ok: true; data: WorkDetail }) => void; load.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
     const { container } = render(<Harness initial={initial} data={data}/>);
     const host = container.querySelector('[data-camera-moving]')!; const stage = container.querySelector('[data-comparison-stage]')!;

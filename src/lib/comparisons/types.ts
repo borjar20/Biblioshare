@@ -21,6 +21,8 @@ export type EpisodeNote = { season: number; episode: number; rating: number | nu
 export type SeriesProgress = { seenEver: number; current: number | null;
   aired: number | null; status: string | null };
 export type PersonWork = { userId: string; key: WorkKey; rating: number | null;
+  /** ISO date of the record that gives `rating` (see atlas spec §2.2). */
+  date: string | null;
   orderUnknown: boolean; progress: SeriesProgress | null };
 export type Facts = { works: PersonWork[];
   episodes: Record<string, EpisodeNote[]>; excludedSeriesWithoutEpisodes: number };
