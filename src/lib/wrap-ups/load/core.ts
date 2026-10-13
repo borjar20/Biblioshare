@@ -5,24 +5,28 @@ import type { Database } from "@/lib/supabase/database.types";
 import type { ItemType } from "@/lib/catalog/types";
 import { parsePosition } from "@/lib/library/position";
 import { passPercent } from "@/lib/library/progress";
-import { computeHabits, habitRows, seriesDayHabitRows, type HabitSessionRow } from "@/lib/stats/get-habits";
+import { computeHabits, habitRows, madridHour, seriesDayHabitRows, type HabitSessionRow } from "@/lib/stats/get-habits";
 import { groupSeriesDays, type WatchRow } from "@/lib/stats/series-days";
 import { addDaysISO } from "@/lib/stats/dates";
 import { chunkIds } from "@/lib/supabase/in-chunks";
 import { readAllRows } from "@/lib/supabase/read-all-rows";
 import { computeTime } from "../compute-time";
 import type { ItemRef, SeriesProgress, WrapUpInputs } from "../types";
-import type { WrapUpWindow } from "../windows";
+import { madridToday, type WrapUpWindow } from "../windows";
 
 export type WrapUpClient = SupabaseClient<Database>;
 export type CoreFacts = Pick<WrapUpInputs, "time" | "activeDays" | "finished" | "inProgress" | "bestStreak"
   | "favoriteWeekday" | "favoriteBandStartHour" | "genres" | "seriesProgress" | "openTotal" | "byWeekday" | "byBand">;
-export type FinishedPassRow = { item_type: ItemType; item_id: string; finished_on: string };
+export type FinishedPassRow = {
+  item_type: ItemType; item_id: string; finished_on: string;
+  created_at?: string | null; updated_at?: string | null;
+};
 type Meta = { title: string; coverUrl: string | null; genres: string[] | null };
 type FullMeta = Meta & { runtime: number | null; duration: number | null; totalPages: number | null; totalEpisodes: number | null };
 export type OpenPassRow = {
   id: string; item_type: ItemType; item_id: string; position: unknown;
   status: string; started_on: string | null; finished_on: string | null;
+  created_at?: string | null;
 };
 
 const key = (type: ItemType, id: string) => `${type}:${id}`;
@@ -178,8 +182,49 @@ async function minutesIn(
 /** Abierto el último día de la ventana: sigue abierto, o se terminó después del cierre. Los abandonados no
  *  guardan fecha de abandono: no se puede saber si seguían abiertos, así que no entran. */
 export function openAtClose(rows: OpenPassRow[], endExclusive: string): OpenPassRow[] {
-  return rows.filter((r) => (r.started_on == null || r.started_on < endExclusive)
-    && (r.status === "in_progress" || (r.status === "completed" && r.finished_on != null && r.finished_on >= endExclusive)));
+  return rows.filter((r) => {
+    // Sin fecha de inicio, el pase empezó como pronto el día en que se creó (Madrid): una obra
+    // apuntada hoy como vista ayer no estaba abierta al cierre del mes pasado (caso K-PAX).
+    const start = r.started_on ?? (r.created_at ? madridToday(new Date(r.created_at)) : null);
+    return (start == null || start < endExclusive)
+      && (r.status === "in_progress" || (r.status === "completed" && r.finished_on != null && r.finished_on >= endExclusive));
+  });
+}
+
+/**
+ * Hora en que se apuntó un terminado: no se guarda el instante del fin, así que vale la creación
+ * del pase o su última edición, SOLO si cae el mismo día (Madrid) que `finished_on`. Si no, no hay hora.
+ */
+export function finishedLoggedAt(r: Pick<FinishedPassRow, "finished_on" | "created_at" | "updated_at">): string | null {
+  for (const ts of [r.created_at, r.updated_at]) {
+    if (ts && madridToday(new Date(ts)) === r.finished_on) return ts;
+  }
+  return null;
+}
+
+const peak = (xs: number[]): number | null => {
+  const max = Math.max(...xs);
+  return max > 0 ? xs.indexOf(max) : null;
+};
+
+/**
+ * Distribuciones de la story Ritmo con las MISMAS fuentes que su calendario (spec 2026-10-13 §2):
+ * por día de la semana, días activos; por franja de 2 h (Madrid), pares distintos (día, franja) de
+ * todo lo que tiene hora (sesiones, episodios, terminados apuntados ese día). No es `computeHabits`:
+ * aquel cuenta filas de sesión y deja fuera los días en que solo se marcó una obra como terminada.
+ */
+export function rhythmFacts(activeDays: string[], timed: { day: string; at: string | null }[]) {
+  const byWeekday = new Array(7).fill(0);
+  for (const d of new Set(activeDays)) byWeekday[(new Date(`${d}T00:00:00Z`).getUTCDay() + 6) % 7]++;
+  const pairs = new Set<string>();
+  for (const e of timed) {
+    const hour = e.at ? madridHour(e.at) : null;
+    if (hour !== null) pairs.add(`${e.day}|${Math.floor(hour / 2)}`);
+  }
+  const byBand = new Array(12).fill(0);
+  for (const p of pairs) byBand[Number(p.split("|")[1])]++;
+  const band = peak(byBand);
+  return { byWeekday, byBand, favoriteWeekday: peak(byWeekday), favoriteBandStartHour: band === null ? null : band * 2 };
 }
 
 /** % de una serie: episodios distintos vistos entre el total; abierto, tope 99 (como passPercent). */
@@ -197,14 +242,14 @@ export async function loadCore(client: WrapUpClient, userId: string, w: WrapUpWi
   const [cur, prevRows, finishedRows, openQ, laterQ] = await Promise.all([
     loadWindowRows(client, userId, b),
     w.previous ? loadWindowRows(client, userId, w.previous) : Promise.resolve(null),
-    readAllRows<FinishedPassRow>((from, to) => client.from("passes").select("item_type, item_id, finished_on")
+    readAllRows<FinishedPassRow>((from, to) => client.from("passes").select("item_type, item_id, finished_on, created_at, updated_at")
       .eq("user_id", userId).eq("status", "completed")
       .gte("finished_on", w.start).lt("finished_on", w.endExclusive).order("id").range(from, to) as unknown as PromiseLike<{ data: FinishedPassRow[] | null; error?: unknown }>),
     // Pases abiertos: pocos por usuario (no pasan del tope de filas).
-    client.from("passes").select("id, item_type, item_id, position, status, started_on, finished_on")
+    client.from("passes").select("id, item_type, item_id, position, status, started_on, finished_on, created_at")
       .eq("user_id", userId).eq("status", "in_progress"),
     // Terminados DESPUÉS del cierre: el último día de la ventana seguían abiertos.
-    client.from("passes").select("id, item_type, item_id, position, status, started_on, finished_on")
+    client.from("passes").select("id, item_type, item_id, position, status, started_on, finished_on, created_at")
       .eq("user_id", userId).eq("status", "completed").gte("finished_on", w.endExclusive),
   ]);
   if (openQ.error) throw openQ.error;
@@ -262,7 +307,12 @@ export async function loadCore(client: WrapUpClient, userId: string, w: WrapUpWi
   }).sort((a, b) => Number(b.item.touched) - Number(a.item.touched) || b.sortKey.localeCompare(a.sortKey));
   const inProgress = ordered.map((x) => x.item);
 
-  const { activeDays, habits } = activityFacts(cur.sessions, cur.watches, finishedRows.map((r) => r.finished_on));
+  const { activeDays } = activityFacts(cur.sessions, cur.watches, finishedRows.map((r) => r.finished_on));
+  const rhythm = rhythmFacts(activeDays, [
+    ...cur.sessions.map((r) => ({ day: r.session_date, at: r.started_at })),
+    ...cur.watches.map((r) => ({ day: r.watched_on, at: r.created_at })),
+    ...finishedRows.map((r) => ({ day: r.finished_on, at: finishedLoggedAt(r) })),
+  ]);
 
   const previousMinutes = prev ? (() => {
     const t = computeTime({ ...prev, previousMinutes: null });
@@ -272,11 +322,11 @@ export async function loadCore(client: WrapUpClient, userId: string, w: WrapUpWi
   return {
     time: computeTime({ ...now, previousMinutes }),
     activeDays, finished, inProgress,
-    openTotal: inProgress.length, byWeekday: habits.byWeekday, byBand: habits.byBand,
+    openTotal: inProgress.length, byWeekday: rhythm.byWeekday, byBand: rhythm.byBand,
     seriesProgress: w.kind === "week" ? seriesProgressFacts(cur.watches, meta) : [],
     bestStreak: streakWithin(activeDays),
-    favoriteWeekday: habits.favoriteWeekday,
-    favoriteBandStartHour: habits.favoriteBand?.startHour ?? null,
+    favoriteWeekday: rhythm.favoriteWeekday,
+    favoriteBandStartHour: rhythm.favoriteBandStartHour,
     genres: topGenres(finished, meta),
   };
 }

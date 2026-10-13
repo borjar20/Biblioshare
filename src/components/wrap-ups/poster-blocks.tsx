@@ -37,7 +37,7 @@ export function ProgressList({ rows }: { rows: NonNullable<PosterModel["progress
     <ul className={`${styles.plate} ${styles.progressList}`} data-big={rows.length <= 2}>
       {rows.map((r) => (
         <li key={`${r.item.type}-${r.item.id}`} className={styles.progressRow} data-touched={r.touched}>
-          <ul className={styles.progressCover} aria-hidden="true"><PosterCover item={r.item} /></ul>
+          <ul className={styles.progressCover} aria-hidden="true"><PosterCover item={r.item} eager /></ul>
           <div className={styles.progressText}>
             <p className={styles.progressTitle}>{r.label}</p>
             {r.percent != null && (
