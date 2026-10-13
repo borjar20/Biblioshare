@@ -4,6 +4,7 @@ import { NextIntlClientProvider } from "next-intl";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import messages from "../../../messages/es.json";
+import type { PosterModel } from "@/lib/wrap-ups/view-models";
 import { StoryPlayer } from "./story-player";
 
 vi.mock("@/lib/wrap-ups/actions", () => ({ markWrapUpSeen: vi.fn(async () => {}), publishWrapUp: vi.fn(), unpublishWrapUp: vi.fn(), refreshWrapUp: vi.fn() }));
@@ -57,6 +58,26 @@ describe("StoryPlayer", () => {
     act(() => { vi.advanceTimersByTime(2000); });
     expect(screen.getByText("B")).toBeTruthy();
     vi.useRealTimers();
+  });
+  it("Terminado con scroll dura más de 6 s (1 s por fila extra)", () => {
+    vi.useFakeTimers();
+    const covers = Array.from({ length: 15 }, (_, i) => ({ type: "book" as const, id: `c${i}`, title: `c${i}`, coverUrl: null, times: 1 }));
+    const long: PosterModel = { layout: "covers", eyebrow: "x", lines: [], narratorLine: "", covers, coverGrid: "scroll" };
+    const ms = [model("A"), long, model("C")];
+    const stories = [{ id: "cover" }, { id: "done" }, { id: "closing" }];
+    wrap(<StoryPlayer wrapUp={{ ...(wrapUp as object), payload: { ...(wrapUp as { payload: object }).payload, stories } } as never} models={ms} onClose={() => {}} />);
+    act(() => { vi.advanceTimersByTime(6000); });
+    act(() => { vi.advanceTimersByTime(6000); });
+    expect(screen.getByText("2/3")).toBeTruthy();
+    act(() => { vi.advanceTimersByTime(2000); });
+    expect(screen.getByText("3/3")).toBeTruthy();
+    vi.useRealTimers();
+  });
+  it("pausar pasa el estado al póster", () => {
+    wrap(<StoryPlayer wrapUp={wrapUp} models={[model("A"), model("B")]} onClose={() => {}} />);
+    expect(document.querySelector("article")?.getAttribute("data-paused")).toBeNull();
+    fireEvent.keyDown(window, { key: " " });
+    expect(document.querySelector("article")?.getAttribute("data-paused")).toBe("true");
   });
   it("con reduced motion no avanza solo", () => {
     window.matchMedia = vi.fn().mockReturnValue({ matches: true, addEventListener() {}, removeEventListener() {} }) as never;
