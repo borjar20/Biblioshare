@@ -26,6 +26,12 @@
 .owners { display: grid; grid-template-columns: auto 1fr; gap: 3px 6px; align-items: center; color: var(--atlas-muted); font-size: 12px; margin: 0; padding: 0; list-style: none; }
 .owners li { display: contents; }
 .ownerDot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.scale { display: grid; gap: 4px; min-width: 180px; margin-top: 6px; }
+.scaleTrack { position: relative; height: 40px; margin: 0 10px; border-bottom: 1px solid var(--atlas-line); }
+.scaleDot { position: absolute; transform: translateX(-50%); width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 9px; font-weight: 800; color: #fff; box-shadow: 0 0 0 2px var(--atlas-panel); }
+.scaleTicks { position: relative; height: 14px; margin: 0 10px; font-size: 11px; color: var(--atlas-faint); }
+.scaleTicks span { position: absolute; transform: translateX(-50%); }
+.scaleNone { margin: 0; font-size: 11px; color: var(--atlas-faint); }
 .sheet { position: absolute; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 4; display: flex; gap: 12px; align-items: flex-start; padding: 14px; border-radius: 18px; background: var(--atlas-panel); box-shadow: 0 -8px 30px rgba(0,0,0,.5); color: var(--atlas-fg); }
 .sheetBody { flex: 1; min-width: 0; display: grid; gap: 10px; }
 .sheetActions { display: flex; gap: 8px; }

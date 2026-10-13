@@ -4,8 +4,25 @@
       "canvasLabel": "Mapa de obras compartidas",
       "faces": "Personas del cruce",
       "lenses": "Lente",
-      "lens": { "quien": "Quién" },
-      "caption": { "quien": "Cada obra cae entre quienes la tienen. Acércate y los puntos se vuelven portadas." },
+      "lens": { "quien": "Quién", "opinion": "Opinión" },
+      "caption": {
+        "quien": "Cada obra cae entre quienes la tienen. Acércate y los puntos se vuelven portadas.",
+        "opinion": "Solo lo que compartís con nota. A la derecha, lo que le gustó a la referencia; arriba, lo que gustó al resto. En la diagonal coincidís; lejos de ella, chocáis."
+      },
+      "opinion": {
+        "needsTwo": "Elige al menos a dos personas para comparar notas.",
+        "empty": "{isMe, select, true {Aún no hay obras con tu nota y la de alguien más.} other {Aún no hay obras con nota de {ref} y de alguien más.}}",
+        "counts": "Coincidís en <b>{agree}</b> y chocáis en <b>{clash}</b> de <b>{total}</b> {total, plural, one {obra compartida} other {obras compartidas}}",
+        "countsWithRef": "Coincidís en <b>{agree}</b> y chocáis en <b>{clash}</b> de <b>{total}</b> {total, plural, one {obra compartida} other {obras compartidas}}, con {ref} como referencia",
+        "axisRef": "{isMe, select, true {Tu nota} other {Nota de {ref}}} →",
+        "axisOthers": "← Media del resto",
+        "loved": "Os encantó",
+        "meh": "Ni fu ni fa",
+        "refYes": "{isMe, select, true {Tú sí, ellos no} other {{ref} sí, el resto no}}",
+        "othersYes": "{isMe, select, true {Ellos sí, tú no} other {El resto sí, {ref} no}}",
+        "ratings": "Notas: {list}",
+        "noRating": "sin nota"
+      },
       "summary": {
         "solo": "<b>{count}</b> {count, plural, one {obra} other {obras}} de {name}. Suma a alguien para ver el cruce.",
         "common": "<b>{count}</b> {count, plural, one {obra} other {obras}} en común entre {names}",

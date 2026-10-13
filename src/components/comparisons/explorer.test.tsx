@@ -194,6 +194,19 @@ describe('Explorer request boundaries', () => {
     await waitFor(() => expect(mocks.load).toHaveBeenLastCalledWith(second.id, 'all'));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Carlos' }).getAttribute('aria-pressed')).toBe('true'));
   });
+  it('keeps the atlas lens across a format change', async () => {
+    const members = (g: Group): Group => ({ ...g, members: ['Ana', 'Bea'].map((name, i) => ({ slotId: `${i}`, userId: ['a', 'b'][i], name, avatarUrl: null, available: true })) });
+    const book = { key: 'book:x' as const, title: 'Libro', coverUrl: null, genres: [], creators: [] };
+    mocks.query = `group=${first.id}`;
+    mocks.load.mockImplementation(async () => ({ ok: true, data: { ...snapshot(members(first)), catalog: [book],
+      works: ['a', 'b'].map(userId => ({ userId, key: 'book:x', rating: 8, date: null, orderUnknown: false, progress: null })) } }));
+    render(ui([members(first)])); await screen.findByRole('button', { name: 'Tú' });
+    fireEvent.click(screen.getByRole('button', { name: 'Opinión' }));
+    expect(screen.getByRole('button', { name: 'Opinión' }).getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(within(screen.getByRole('group', { name: 'Filtrar por tipo de obra' })).getByRole('button', { name: 'Libros' }));
+    expect(within(screen.getByRole('group', { name: 'Filtrar por tipo de obra' })).getByRole('button', { name: 'Libros' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: 'Opinión' }).getAttribute('aria-pressed')).toBe('true');
+  });
   it('retains taste category, signal and participant context after section switches and its own format reload', async () => {
     const available: Group = { ...first, members: [{ ...first.members[0] }, { slotId: 'two', userId: 'b', name: 'Bea', avatarUrl: null, available: true }] };
     const data: Snapshot = { ...snapshot(available), catalog: [{ key: 'book:x', title: 'Libro', coverUrl: null, genres: ['Drama'], creators: [{ id: 'author', name: 'Autora', role: 'author' }] }], works: [{ userId: 'a', key: 'book:x', rating: 9, date: null, orderUnknown: false, progress: null }] };
