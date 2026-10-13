@@ -7746,6 +7746,19 @@ siendo el dato. El SVG del fondo deja de recortar sus círculos desenfocados, qu
 dibujaban un rectángulo, y en este nivel no se muestra. Evidencia en
 `docs/testing/2026-10-11-entre-nosotros-detalle-obra.md`.
 
+## 2026-10-12 — Crónicas: despacho del cron corregido y periodos recuperados a mano (#1511)
+
+`private.dispatch_wrap_ups()` fallaba con «malformed array literal» en cuanto tocaba
+despachar (`text[] || 'week'`), así que ningún barrido automático llegó a correr; el
+cálculo pasa a `private.wrap_up_kinds_due(timestamp)`, pura y probada. Con autorización
+explícita del usuario se relanzaron a mano en producción los dos periodos perdidos: la
+semanal del 5–11 oct (HTTP 200, `{candidates:4, written:3, deleted:1, pushed:1,
+failed:0}`) y la mensual de septiembre, que no existía porque el cron se activó el 6-oct,
+después del día 1 (HTTP 200, `{candidates:6, written:6, deleted:0, pushed:4,
+failed:0}`). Se acepta que la mensual llegue con 12 días de retraso y el mismo día que la
+semanal: el diseño prometía «Tu septiembre está listo» y la de octubre la sustituye el
+1-nov. Primer despacho automático: lunes 2026-10-19, 09:00 Madrid.
+
 ## 2026-10-13 — Crónica mensual: payload v2 y En marcha = abierto al cierre
 
 La revisión visual de las cuatro stories del mes (Terminado, En marcha, Ritmo y En
