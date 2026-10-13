@@ -4,7 +4,7 @@ import { paintOpinionBack, type OpinionLabels } from './paint-opinion';
 
 const palette: Palette = { fg: 'FG', muted: 'MUTED', line: 'LINE', glow: 'GLOW', cream: 'CREAM', faint: 'FAINT', clash: 'CLASH', font: 'sans',
   type: { book: 'BOOK', movie: 'MOVIE', series: 'SERIES' } };
-const labels: OpinionLabels = { axisRef: 'Tu nota →', axisOthers: '← Media del resto', loved: 'Os encantó', meh: 'Ni fu ni fa',
+const labels: OpinionLabels = { axisRef: 'Tu nota →', axisOthers: 'Media del resto →', loved: 'Os encantó', meh: 'Ni fu ni fa',
   refYes: 'Tú sí, ellos no', othersYes: 'Ellos sí, tú no' };
 
 function paint(withLabels?: OpinionLabels) {
@@ -30,7 +30,7 @@ describe('paintOpinionBack', () => {
     const [, ox, oy, , oc, oa] = call(text, 'Ellos sí, tú no')!;
     expect([ox < centre, oy < centre, oc, oa]).toEqual([true, true, 'CLASH', 'left']);
     expect(call(text, 'Tu nota →')).toBeTruthy();
-    expect(call(text, '← Media del resto')).toBeTruthy();
+    expect(call(text, 'Media del resto →')).toBeTruthy();
   });
   it('without labels draws only the ticks', () => {
     const text = paint();

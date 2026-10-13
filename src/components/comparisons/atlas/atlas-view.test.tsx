@@ -141,7 +141,8 @@ describe('AtlasView', () => {
   it('Opinión: el lienzo recibe los textos del fondo con la referencia', () => {
     viewRated({ me: 9, b: 9, c: 4 });
     fireEvent.click(screen.getByRole('button', { name: 'Opinión' }));
-    expect(canvas.opinionLabels).toEqual({ axisRef: 'Tu nota →', axisOthers: '← Media del resto', loved: 'Os encantó', meh: 'Ni fu ni fa',
+    // The Y title is drawn rotated -90°: its trailing arrow ends up on top, pointing up (higher = liked more).
+    expect(canvas.opinionLabels).toEqual({ axisRef: 'Tu nota →', axisOthers: 'Media del resto →', loved: 'Os encantó', meh: 'Ni fu ni fa',
       refYes: 'Tú sí, ellos no', othersYes: 'Ellos sí, tú no' });
     fireEvent.click(screen.getByRole('button', { name: 'Tú' }));
     expect(canvas.opinionLabels?.axisRef).toBe('Nota de Bea →');
