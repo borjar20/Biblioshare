@@ -159,6 +159,20 @@ describe("payload v2 del mes", () => {
     expect(s.touchedTotal).toBe(13);
   });
 
+  it("En marcha sin openTotal: cae a inProgress.length", () => {
+    const inProgress = [open("a", true), open("b", false)];
+    const s = selectStories(MONTH, emptyInputs({ inProgress, activeDays: days }))
+      .find((x) => x.id === "in_progress") as Extract<ReturnType<typeof selectStories>[number], { id: "in_progress" }>;
+    expect(s.openTotal).toBe(2);
+  });
+
+  it("En marcha: un item con touched sin definir cuenta como tocado", () => {
+    const inProgress = [{ ...book("a"), percent: null }, open("b", false)];
+    const s = selectStories(MONTH, emptyInputs({ inProgress, openTotal: 2, activeDays: days }))
+      .find((x) => x.id === "in_progress") as Extract<ReturnType<typeof selectStories>[number], { id: "in_progress" }>;
+    expect(s.touchedTotal).toBe(1);
+  });
+
   it("Ritmo lleva las distribuciones", () => {
     const byWeekday = [1, 0, 0, 0, 0, 2, 0];
     const byBand = [3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];

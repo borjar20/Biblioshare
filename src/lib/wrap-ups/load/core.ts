@@ -251,7 +251,8 @@ export async function loadCore(client: WrapUpClient, userId: string, w: WrapUpWi
       // passPercent: el 100 solo con la última página leída (668/669 redondeaba a 100 en un pase abierto).
       percent = page != null && m.totalPages ? passPercent(page, m.totalPages) : null;
     } else if (r.item_type === "series") {
-      percent = seriesPercent(seriesWatches.filter((x) => x.pass_id === r.id), m.totalEpisodes, stillOpen);
+      // Toda fila de openAtClose estaba abierta al cierre (aunque se terminara después): tope 99.
+      percent = seriesPercent(seriesWatches.filter((x) => x.pass_id === r.id), m.totalEpisodes, true);
     }
     const touch = touchOf(r);
     return [{

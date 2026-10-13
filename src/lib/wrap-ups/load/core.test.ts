@@ -35,15 +35,17 @@ describe("topGenres", () => {
   });
 });
 
-function recordingClient() {
-  const calls: { table: string; filters: string[] }[] = [];
+function recordingClient(tables: Record<string, Record<string, unknown>[]> = {}) {
+  const calls: { table: string; filters: string[]; inCols: string[]; gteCols: string[] }[] = [];
   const builder = (table: string) => {
-    const entry = { table, filters: [] as string[] };
+    const entry = { table, filters: [] as string[], inCols: [] as string[], gteCols: [] as string[] };
     calls.push(entry);
     const q: Record<string, unknown> = {};
-    for (const m of ["select", "gte", "lt", "lte", "in", "not", "order", "limit", "is", "range"]) q[m] = () => q;
+    for (const m of ["select", "lt", "lte", "not", "order", "limit", "is", "range"]) q[m] = () => q;
+    q.gte = (col: string) => { entry.gteCols.push(col); return q; };
+    q.in = (col: string) => { entry.inCols.push(col); return q; };
     q.eq = (col: string) => { entry.filters.push(col); return q; };
-    q.then = (res: (v: unknown) => unknown) => Promise.resolve({ data: [], error: null }).then(res);
+    q.then = (res: (v: unknown) => unknown) => Promise.resolve({ data: tables[table] ?? [], error: null }).then(res);
     return q;
   };
   return { client: { from: builder, rpc: () => Promise.resolve({ data: [], error: null }) }, calls };
@@ -118,6 +120,21 @@ describe("seriesPercent", () => {
   it("episodios distintos entre el total", () => expect(seriesPercent([ep(1, 1), ep(1, 1), ep(1, 2)], 8, true)).toBe(25));
   it("sin total, null", () => expect(seriesPercent([ep(1, 1)], null, true)).toBeNull());
   it("abierto no llega al 100", () => expect(seriesPercent([ep(1, 1), ep(1, 2)], 2, true)).toBe(99));
+});
+
+describe("loadCore · serie terminada después del cierre", () => {
+  it("estaba abierta al cierre: con todos los episodios vistos antes sale al 99, no al 100", async () => {
+    const tables: Record<string, Record<string, unknown>[]> = {
+      passes: [{ id: "ps", user_id: "u1", item_type: "series", item_id: "s1", position: null, status: "completed", started_on: "2026-08-25", finished_on: "2026-10-03" }],
+      episode_watches: [
+        { user_id: "u1", series_id: "s1", pass_id: "ps", season_number: 1, episode_number: 1, watched_on: "2026-09-05", created_at: "2026-09-05T21:00:00Z" },
+        { user_id: "u1", series_id: "s1", pass_id: "ps", season_number: 1, episode_number: 2, watched_on: "2026-09-06", created_at: "2026-09-06T21:00:00Z" },
+      ],
+      series: [{ id: "s1", title: "Corta", cover_url: null, genres: null, episode_runtime_minutes: 30, total_episodes: 2 }],
+    };
+    const facts = await loadCore(filteringClient(tables) as never, "u1", wrapUpWindow("month", new Date("2026-10-01T07:00:00Z")));
+    expect(facts.inProgress.map((i) => [i.title, i.percent])).toEqual([["Corta", 99]]);
+  });
 });
 
 describe("loadCore · En marcha al cierre (caso @maxteryo)", () => {
@@ -200,11 +217,21 @@ describe("loadCore", () => {
   });
 
   it("toda consulta por usuario filtra por user_id", async () => {
-    const { client, calls } = recordingClient();
+    // Un pase de serie abierto obliga a ejecutar también la consulta de episodios por pase.
+    const { client, calls } = recordingClient({
+      passes: [{ id: "ps", item_type: "series", item_id: "s1", position: null, status: "in_progress", started_on: "2026-08-25", finished_on: null }],
+    });
     await loadCore(client as never, "u1", wrapUpWindow("month", new Date("2026-10-01T07:00:00Z")));
     const perUser = calls.filter((c) => ["passes", "progress_sessions", "episode_watches"].includes(c.table));
     expect(perUser.length).toBeGreaterThan(0);
     for (const c of perUser) expect(c.filters).toContain("user_id");
+    // laterQ: pases terminados después del cierre.
+    const later = calls.filter((c) => c.table === "passes" && c.gteCols.includes("finished_on") && c.filters.includes("status"));
+    expect(later.length).toBeGreaterThan(0);
+    // Episodios de los pases abiertos de serie.
+    const byPass = calls.filter((c) => c.table === "episode_watches" && c.inCols.includes("pass_id"));
+    expect(byPass).toHaveLength(1);
+    expect(byPass[0].filters).toContain("user_id");
   });
 });
 

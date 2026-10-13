@@ -21,7 +21,7 @@ describe("buildWrapUp", () => {
   it("sin actividad devuelve null", async () => {
     expect(await buildWrapUp({} as never, "u", MONTH, loaders({}) as never)).toBeNull();
   });
-  it("arma payload v1 con share de máx. 4 portadas y sin texto privado", async () => {
+  it("arma payload v2 con share de máx. 4 portadas y sin texto privado", async () => {
     const p = await buildWrapUp({} as never, "u", MONTH, loaders({
       activeDays: ["2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04"],
       time: { minutes: { book: 300, movie: 0, series: 0 }, episodesWithoutRuntime: 2, previousMinutes: 100 },
