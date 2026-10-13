@@ -10,16 +10,31 @@ import { summaryForPayload } from "./share-summary";
 import { narratorLine } from "./narrator-copy";
 import type { ItemRef, Story, WrapUpPayload } from "./types";
 
+export type Companion = { userId: string; username: string; displayName: string | null; avatarUrl: string | null };
+export type People = Record<string, Companion>;
+export type HeatCell = { label: string; level: 0 | 1 | 2 | 3; peak: boolean };
 export type PosterModel = {
-  layout: "hero" | "figure" | "covers" | "strip" | "ranking" | "quote" | "closing";
+  layout: "hero" | "figure" | "covers" | "strip" | "ranking" | "quote" | "closing" | "progress" | "calendar" | "together";
   eyebrow: string;
   figure?: { value: string; unit: string };
   lines: string[];
   covers?: ItemRef[];
+  coverGrid?: "static" | "scroll";
+  reducedMoreLine?: string;
+  /** «y N más» de la rejilla con scroll: solo con movimiento (con movimiento reducido manda reducedMoreLine). */
+  moreLine?: string;
   strip?: { label: string; value: string; active: boolean }[];
   stripValues?: boolean;
   ranking?: { label: string; value: string }[];
   quote?: { body: string; attribution: string | null };
+  progress?: { item: ItemRef; percent: number | null; touched: boolean; label: string; idleLabel?: string }[];
+  calendar?: { offset: number; days: { day: number; active: boolean }[]; summary: string };
+  heatmaps?: { title: string; cells: HeatCell[]; summary: string }[];
+  together?: {
+    viewingsTitle: string; clubsTitle: string;
+    viewings: { item: ItemRef; watchedOn: string; companions: Companion[]; extra: number; peopleLine?: string }[];
+    clubs: { clubId: string; name: string; value: string }[];
+  };
   narratorLine: string;
 };
 
@@ -75,6 +90,35 @@ const dur = (minutes: number) => {
 const longDate = (iso: string) => `${day(iso)} de ${monthLong(iso, LOCALE)} de ${iso.slice(0, 4)}`;
 const sum = (m: Record<ItemType, number>) => m.book + m.movie + m.series;
 
+export const STEP_MS = 6000;
+const COLS = 3, STATIC_MAX = 9, PROGRESS_MAX = 6;
+
+/** Duración de una story en el reproductor: la rejilla con scroll necesita tiempo para pasar entera. */
+export function storyDurationMs(m: PosterModel): number {
+  if (m.coverGrid !== "scroll" || !m.covers) return STEP_MS;
+  const rows = Math.ceil(m.covers.length / COLS);
+  return Math.min(15000, STEP_MS + Math.max(0, rows - 3) * 1000);
+}
+
+export function heatLevel(value: number, max: number): 0 | 1 | 2 | 3 {
+  if (value <= 0 || max <= 0) return 0;
+  const r = value / max;
+  return r <= 1 / 3 ? 1 : r <= 2 / 3 ? 2 : 3;
+}
+
+const pad2 = (h: number) => String(h % 24).padStart(2, "0");
+
+function heatmap(values: number[] | undefined, labels: string[], title: string, summaryOf: (peak: number) => string) {
+  if (!values || values.every((v) => v === 0)) return null;
+  const max = Math.max(...values);
+  const peak = values.indexOf(max);
+  return {
+    title,
+    cells: values.map((v, i) => ({ label: labels[i], level: heatLevel(v, max), peak: i === peak })),
+    summary: summaryOf(peak),
+  };
+}
+
 function noRuntimeLine(n: number, t: T): string[] {
   return n > 0 ? [t(`${K}.time.episodesWithoutRuntime`, { count: n })] : [];
 }
@@ -126,7 +170,7 @@ export function closingCopy(
   };
 }
 
-export function posterFor(story: Story, payload: WrapUpPayload, t: T): PosterModel {
+export function posterFor(story: Story, payload: WrapUpPayload, t: T, people: People = {}): PosterModel {
   const period = periodLabel(payload);
   const nl = narratorLine(story, payload, t);
   const make = (
@@ -162,14 +206,21 @@ export function posterFor(story: Story, payload: WrapUpPayload, t: T): PosterMod
       });
     }
 
-    case "finished":
+    case "finished": {
+      const covers = story.items;
+      const scroll = covers.length > STATIC_MAX;
+      const more = (n: number) => t(`${K}.finished.more`, { count: n });
       return make("finished", {
         layout: "covers",
         figure: { value: String(story.total), unit: t(`${K}.finished.unit`, { count: story.total }) },
-        covers: story.items.slice(0, 4),
-        lines: story.total > Math.min(4, story.items.length)
-          ? [t(`${K}.finished.more`, { count: story.total - Math.min(4, story.items.length) })] : [],
+        covers,
+        coverGrid: scroll ? "scroll" : "static",
+        lines: !scroll && story.total > covers.length ? [more(story.total - covers.length)] : [],
+        moreLine: scroll && story.total > covers.length ? more(story.total - covers.length) : undefined,
+        // Con movimiento reducido la rejilla se queda en las 9 primeras: el resto se cuenta.
+        reducedMoreLine: scroll ? more(story.total - STATIC_MAX) : undefined,
       });
+    }
 
     case "series_progress":
       return make("series_progress", {
@@ -181,34 +232,52 @@ export function posterFor(story: Story, payload: WrapUpPayload, t: T): PosterMod
         ],
       });
 
-    case "in_progress":
+    case "in_progress": {
+      const open = story.openTotal ?? story.items.length;
+      const shown = story.items.slice(0, PROGRESS_MAX);
       return make("in_progress", {
-        layout: "covers",
-        covers: story.items,
-        lines: story.items.map((i) => i.percent == null
-          ? t(`${K}.in_progress.item`, { title: i.title })
-          : t(`${K}.in_progress.itemPercent`, { title: i.title, percent: Math.round(i.percent) })),
+        layout: "progress",
+        figure: { value: String(open), unit: t(`${K}.in_progress.unit`, { count: open }) },
+        progress: shown.map((i) => ({
+          item: i,
+          percent: i.percent == null ? null : Math.round(i.percent),
+          touched: i.touched !== false,
+          idleLabel: i.touched === false ? t(`${K}.in_progress.idle`) : undefined,
+          label: i.percent == null
+            ? t(`${K}.in_progress.item`, { title: i.title })
+            : t(`${K}.in_progress.itemPercent`, { title: i.title, percent: Math.round(i.percent) }),
+        })),
+        lines: [
+          ...(story.touchedTotal != null ? [t(`${K}.in_progress.touched`, { count: story.touchedTotal })] : []),
+          ...(open > shown.length ? [t(`${K}.in_progress.more`, { count: open - shown.length })] : []),
+        ],
       });
+    }
 
     case "rhythm": {
+      const weekdayName = (i: number) => t(`${K}.rhythm.weekday.${i}`);
+      const week = heatmap(story.byWeekday, [..."LMXJVSD"], t(`${K}.rhythm.weekTitle`),
+        (p) => t(`${K}.rhythm.weekPeak`, { day: weekdayName(p) }));
+      const hours = heatmap(story.byBand, Array.from({ length: 12 }, (_, i) => pad2(i * 2)), t(`${K}.rhythm.hoursTitle`),
+        (p) => t(`${K}.rhythm.hoursPeak`, { from: pad2(p * 2), to: pad2(p * 2 + 2) }));
       const lines: string[] = [];
       if (story.bestStreak >= 2) lines.push(t(`${K}.rhythm.streak`, { count: story.bestStreak }));
-      if (story.favoriteWeekday != null) {
-        lines.push(t(`${K}.rhythm.favoriteDay`, { day: t(`${K}.rhythm.weekday.${story.favoriteWeekday}`) }));
+      // Sin mapa (payload v1 o sin datos), el favorito vuelve como línea.
+      if (!week && story.favoriteWeekday != null) lines.push(t(`${K}.rhythm.favoriteDay`, { day: weekdayName(story.favoriteWeekday) }));
+      if (!hours && story.favoriteBandStartHour != null) {
+        lines.push(t(`${K}.rhythm.favoriteBand`, { from: pad2(story.favoriteBandStartHour), to: pad2(story.favoriteBandStartHour + 2) }));
       }
-      if (story.favoriteBandStartHour != null) {
-        const pad = (h: number) => String(h % 24).padStart(2, "0");
-        lines.push(t(`${K}.rhythm.favoriteBand`, { from: pad(story.favoriteBandStartHour), to: pad(story.favoriteBandStartHour + 2) }));
-      }
+      const active = story.days.filter((d) => d.active).map((d) => day(d.date));
       return make("rhythm", {
-        layout: "strip",
+        layout: "calendar",
         figure: { value: String(story.activeDays), unit: t(`${K}.rhythm.unit`, { count: story.activeDays }) },
-        // El anual no trae tira diaria: sin días, sin tira (solo cifras y líneas).
-        strip: story.days.length === 0 ? undefined : story.days.map((d) => ({
-          label: "LMXJVSD"[(utc(d.date).getUTCDay() + 6) % 7],
-          value: shortDate(d.date, LOCALE),
-          active: d.active,
-        })),
+        // El anual no trae días: sin calendario, solo los mapas.
+        calendar: story.days.length === 0 ? undefined : {
+          offset: (utc(story.days[0].date).getUTCDay() + 6) % 7,
+          days: story.days.map((d) => ({ day: day(d.date), active: d.active })),
+          summary: t(`${K}.rhythm.calendarLabel`, { days: active.join(", ") }),
+        },
+        heatmaps: [week, hours].filter((h): h is NonNullable<typeof h> => h !== null),
         lines,
       });
     }
@@ -243,12 +312,35 @@ export function posterFor(story: Story, payload: WrapUpPayload, t: T): PosterMod
 
     case "together": {
       const lines: string[] = [];
-      if (story.jointViewings > 0) lines.push(t(`${K}.together.jointViewings`, { count: story.jointViewings }));
-      if (story.clubDays > 0) lines.push(t(`${K}.together.clubDays`, { count: story.clubDays }));
-      const total = story.jointViewings + story.clubDays;
+      if (!story.viewings?.length && !story.clubs?.length) {
+        // Payload v1: solo las líneas, sin la cifra sumada (mezclaba unidades).
+        if (story.jointViewings > 0) lines.push(t(`${K}.together.jointViewings`, { count: story.jointViewings }));
+        if (story.clubDays > 0) lines.push(t(`${K}.together.clubDays`, { count: story.clubDays }));
+        return make("together", { layout: "figure", lines });
+      }
+      const viewings = story.viewings ?? [];
+      if (viewings.length > 4) lines.push(t(`${K}.together.more`, { count: viewings.length - 4 }));
       return make("together", {
-        layout: "figure",
-        figure: { value: String(total), unit: t(`${K}.together.unit`, { count: total }) },
+        layout: "together",
+        together: {
+          viewingsTitle: t(`${K}.together.viewingsTitle`),
+          clubsTitle: t(`${K}.together.clubsTitle`),
+          viewings: viewings.slice(0, 4).map((v) => {
+            // Los ids sin resolver (bloqueados, cuentas borradas) no se pintan.
+            const resolved = v.companionIds.map((id) => people[id]).filter((c): c is Companion => !!c);
+            const shown = resolved.slice(0, 3);
+            return {
+              item: v.item,
+              watchedOn: v.watchedOn,
+              companions: shown,
+              extra: Math.max(0, resolved.length - 3),
+              peopleLine: shown.length > 0
+                ? t(`${K}.together.withPeople`, { names: shown.map((c) => c.displayName ?? c.username).join(", ") })
+                : undefined,
+            };
+          }),
+          clubs: (story.clubs ?? []).slice(0, 3).map((c) => ({ clubId: c.clubId, name: c.name, value: t(`${K}.together.clubDaysValue`, { count: c.days }) })),
+        },
         lines,
       });
     }

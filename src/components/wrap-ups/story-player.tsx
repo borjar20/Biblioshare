@@ -7,13 +7,12 @@ import { useTranslations } from "next-intl";
 import type { OwnWrapUp } from "@/lib/wrap-ups/get-own-wrap-ups";
 import { markWrapUpSeen } from "@/lib/wrap-ups/actions";
 import { useReducedMotion } from "@/lib/ui/use-reduced-motion";
-import type { PosterModel } from "@/lib/wrap-ups/view-models";
+import { STEP_MS, storyDurationMs, type PosterModel } from "@/lib/wrap-ups/view-models";
 import { Poster, POSTER_FIELD } from "./poster";
 import { ClosingActions } from "./share-actions";
 import { pixelFont } from "./pixel-font";
 import styles from "./story-player.module.css";
 
-const STEP_MS = 6000;
 const HOLD_MS = 250;
 
 export function StoryPlayer({ wrapUp, models, onClose, originRect }: { wrapUp: OwnWrapUp; models: PosterModel[]; onClose: () => void; originRect?: PanelRect | null }) {
@@ -27,11 +26,12 @@ export function StoryPlayer({ wrapUp, models, onClose, originRect }: { wrapUp: O
   const reduced = useReducedMotion();
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const held = useRef(false);
-  // Lo que le queda a la story actual: pausar y reanudar no reinicia los 6 s
+  // Lo que le queda a la story actual: pausar y reanudar no reinicia la duración
   // (la barra CSS se congela con animation-play-state y el temporizador igual).
   const remaining = useRef(STEP_MS);
   const story = wrapUp.payload.stories[index];
   const model = models[index];
+  const stepMs = model ? storyDurationMs(model) : STEP_MS;
   const last = models.length - 1;
 
   useEffect(() => {
@@ -48,8 +48,8 @@ export function StoryPlayer({ wrapUp, models, onClose, originRect }: { wrapUp: O
     setIndex((i) => Math.min(last, Math.max(0, i + delta)));
   }, [last]);
 
-  // Story nueva → 6 s completos. Va ANTES del efecto del temporizador.
-  useEffect(() => { remaining.current = STEP_MS; }, [index]);
+  // Story nueva → su duración completa. Va ANTES del efecto del temporizador.
+  useEffect(() => { remaining.current = stepMs; }, [index, stepMs]);
 
   useEffect(() => {
     if (reduced || paused || index >= last) return;
@@ -118,7 +118,7 @@ export function StoryPlayer({ wrapUp, models, onClose, originRect }: { wrapUp: O
               return (
                 <li key={i} className={styles.segment}>
                   <span className={styles.segmentFill} data-state={state}
-                    style={state === "running" ? { animationDuration: `${STEP_MS}ms`, animationPlayState: paused ? "paused" : "running" } : undefined} />
+                    style={state === "running" ? { animationDuration: `${stepMs}ms`, animationPlayState: paused ? "paused" : "running" } : undefined} />
                 </li>
               );
             })}
@@ -137,7 +137,7 @@ export function StoryPlayer({ wrapUp, models, onClose, originRect }: { wrapUp: O
           onPointerDown={onPointerDown} onPointerUp={onPointerUp} onPointerCancel={onPointerCancel} onPointerLeave={onPointerCancel}>
           {model && (
             <Poster key={index} model={model} palette={wrapUp.payload.palette} narrator={wrapUp.payload.narrator}
-              pet={wrapUp.payload.pet} showPet={story?.id === "cover" || story?.id === "closing" || story?.id === "pet"} />
+              pet={wrapUp.payload.pet} paused={paused} showPet={story?.id === "cover" || story?.id === "closing" || story?.id === "pet"} />
           )}
         </div>
 

@@ -1654,3 +1654,8 @@ commit;
 begin;
 \ir migrations/20261012181500_wrap_ups_dispatch_kinds_fix.sql
 commit;
+
+-- 20261013100000_wrap_ups_payload_v2
+begin;
+\ir migrations/20261013100000_wrap_ups_payload_v2.sql
+commit;

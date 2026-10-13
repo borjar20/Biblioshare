@@ -64,9 +64,11 @@ export function selectStories(w: WrapUpWindow, i: WrapUpInputs): Story[] {
     days: daysOf(w).map((date) => ({ date, active: i.activeDays.includes(date) })),
     activeDays: i.activeDays.length, bestStreak: i.bestStreak,
     favoriteWeekday: i.favoriteWeekday, favoriteBandStartHour: i.favoriteBandStartHour,
+    ...(i.byWeekday ? { byWeekday: i.byWeekday } : {}),
+    ...(i.byBand ? { byBand: i.byBand } : {}),
   } : null;
   const finished: Story | null = i.finished.length > 0
-    ? { id: "finished", items: i.finished.slice(0, 8), total: i.finished.length } : null;
+    ? { id: "finished", items: i.finished.slice(0, 30), total: i.finished.length } : null;
   const genres: Story | null = i.genres.length >= 2 ? { id: "genres", top: i.genres.slice(0, 5) } : null;
 
   if (hasTime) out.push({ id: "time", ...i.time });
@@ -79,7 +81,11 @@ export function selectStories(w: WrapUpWindow, i: WrapUpInputs): Story[] {
     if (first) out.push(first);
   } else if (w.kind === "month") {
     if (finished) out.push(finished);
-    if (i.inProgress.length > 0) out.push({ id: "in_progress", items: i.inProgress.slice(0, 6) });
+    if (i.inProgress.length > 0) out.push({
+      id: "in_progress", items: i.inProgress.slice(0, 12),
+      openTotal: i.openTotal ?? i.inProgress.length,
+      touchedTotal: i.inProgress.filter((x) => x.touched !== false).length,
+    });
     if (rhythm) out.push(rhythm);
     if (genres) out.push(genres);
     out.push(...momentStories(i));

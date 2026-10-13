@@ -4572,8 +4572,12 @@
       },
       "in_progress": {
         "title": "En marcha",
+        "unit": "{count, plural, one {obra a medias} other {obras a medias}}",
         "item": "{title}",
-        "itemPercent": "{title} · {percent} %"
+        "itemPercent": "{title} · {percent} %",
+        "touched": "{count, plural, =0 {Ninguna avanzó este mes} one {# avanzó este mes} other {# avanzaron este mes}}",
+        "idle": "Sin avances este mes",
+        "more": "y {count} más"
       },
       "rhythm": {
         "title": "Ritmo",
@@ -4581,6 +4585,11 @@
         "streak": "Tu mejor racha: {count} días seguidos",
         "favoriteDay": "Tu día más activo: {day}",
         "favoriteBand": "Tu franja más activa: de {from}:00 a {to}:00",
+        "calendarLabel": "Días con actividad: {days}",
+        "weekTitle": "Por día de la semana",
+        "weekPeak": "Más activo el {day}",
+        "hoursTitle": "Por hora",
+        "hoursPeak": "Más activo de {from}:00 a {to}:00",
         "weekday": {
           "0": "lunes",
           "1": "martes",
@@ -4611,9 +4620,13 @@
       },
       "together": {
         "title": "En compañía",
-        "unit": "{count, plural, one {plan compartido} other {planes compartidos}}",
         "jointViewings": "{count, plural, one {# visionado conjunto} other {# visionados conjuntos}}",
-        "clubDays": "{count, plural, one {# día de club} other {# días de club}}"
+        "clubDays": "{count, plural, one {# día de club} other {# días de club}}",
+        "viewingsTitle": "Visto en compañía",
+        "clubsTitle": "En tus clubes",
+        "clubDaysValue": "{count, plural, one {# día} other {# días}}",
+        "withPeople": "con {names}",
+        "more": "y {count} más"
       },
       "months": {
         "title": "Mes a mes",

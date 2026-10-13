@@ -15,7 +15,7 @@ function valuesFor(story: Story, payload: WrapUpPayload): Record<string, string 
     case "time": return formatHours(timeTotal(story));
     case "finished": return { count: story.total };
     case "series_progress": return { count: story.total };
-    case "in_progress": return { count: story.items.length };
+    case "in_progress": return { count: story.openTotal ?? story.items.length };
     case "rhythm": return { count: story.activeDays };
     case "best_rated": return { title: story.item.title };
     case "experience": return { title: story.title };

@@ -7758,3 +7758,17 @@ después del día 1 (HTTP 200, `{candidates:6, written:6, deleted:0, pushed:4,
 failed:0}`). Se acepta que la mensual llegue con 12 días de retraso y el mismo día que la
 semanal: el diseño prometía «Tu septiembre está listo» y la de octubre la sustituye el
 1-nov. Primer despacho automático: lunes 2026-10-19, 09:00 Madrid.
+
+## 2026-10-13 — Crónica mensual: payload v2 y En marcha = abierto al cierre
+
+La revisión visual de las cuatro stories del mes (Terminado, En marcha, Ritmo y En
+compañía) amplía el payload de las crónicas a `v: 2`, compatible con v1 (los guardados
+siguen pintándose). El CHECK de `wrap_ups` pasa a admitir `'1'` y `'2'`, y esa migración
+va a producción **antes** que el código que escribe v2; si no, el cron falla al guardar.
+«En marcha» deja de ser «tocado en la ventana» y pasa a ser «abierto al cierre»: el caso
+real fue un usuario con tres obras a medias al que la crónica enseñaba una. Los
+compañeros de «En compañía» se guardan como ids y se resuelven al pintar, con el filtro
+de bloqueos de quien mira; el resultado depende de la sesión y por eso no lleva
+`use cache` (regla #437). La franja de hábitos pasa a hora de Madrid también en
+`/estadisticas` (#1512), para que ambas pantallas cuenten el mismo día. Detalle en la
+[spec](../superpowers/specs/2026-10-13-wrap-up-mensual-revision-visual-design.md).

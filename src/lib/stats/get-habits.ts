@@ -20,6 +20,10 @@ export type Habits = {
   // Días distintos con al menos una sesión. Sirve de divisor honesto para
   // «sesiones por día activo» sin contar los días en blanco.
   activeDays: number;
+  // Distribuciones completas (gráficas del wrap-up). byWeekday: lunes = 0.
+  // byBand: franja i = [2i, 2i+2) en hora de Madrid.
+  byWeekday: number[];
+  byBand: number[];
 };
 
 export type HabitRow = {
@@ -46,17 +50,26 @@ export function seriesDayHabitRows(days: SeriesDay[]): HabitRow[] {
   return days.map((d) => ({ session_date: d.day, duration_minutes: null, started_at: d.firstAt }));
 }
 
+const MADRID_HOUR = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone: "Europe/Madrid" });
+
+/** Hora (0-23) de un instante en Madrid; null si no es una fecha válida. */
+export function madridHour(iso: string): number | null {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return Number(MADRID_HOUR.format(d));
+}
+
 // Cálculo puro (testable) de "Cuándo lees" a partir de las sesiones. La franja
-// se saca de started_at (la hora real de inicio, P8); las filas sin ella no
-// cuentan para la franja, pero sí para día y sesión media.
+// se saca de started_at (la hora real de inicio, P8) en hora de Madrid; las
+// filas sin ella no cuentan para la franja, pero sí para día y sesión media.
 export function computeHabits(rows: HabitRow[]): Habits {
   // Franja: 12 bandas de 2 h (0-2, 2-4, … 22-24).
   const bands = new Array(12).fill(0);
   for (const row of rows) {
     if (!row.started_at) continue;
-    const d = new Date(row.started_at);
-    if (Number.isNaN(d.getTime())) continue;
-    bands[Math.floor(d.getUTCHours() / 2)]++;
+    const hour = madridHour(row.started_at);
+    if (hour === null) continue;
+    bands[Math.floor(hour / 2)]++;
   }
   const favoriteBand = peakIndex(bands);
 
@@ -84,6 +97,8 @@ export function computeHabits(rows: HabitRow[]): Habits {
     averageMinutes,
     sessions: rows.length,
     activeDays: new Set(rows.map((r) => r.session_date)).size,
+    byWeekday: weekdays,
+    byBand: bands,
   };
 }
 

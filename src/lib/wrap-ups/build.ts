@@ -23,7 +23,7 @@ export async function buildWrapUp(client: WrapUpClient, userId: string, w: WrapU
 
   const intensity = intensityFor(w.kind, inputs);
   const base = {
-    v: 1 as const, kind: w.kind, periodStart: w.start, periodEnd: w.end,
+    v: 2 as const, kind: w.kind, periodStart: w.start, periodEnd: w.end,
     intensity, narrator: narratorFor(w.kind, intensity, inputs), palette: paletteFor(inputs.time),
     pet, stories: selectStories(w, inputs),
   };

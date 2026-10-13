@@ -14,10 +14,10 @@ const payload = samplePayload();
 const t = createTranslator({ locale: "es", messages }) as never;
 const modelOf = (id: Story["id"]): PosterModel => posterFor(payload.stories.find((s) => s.id === id)!, payload, t);
 
-function renderPoster(model: PosterModel, showPet = false) {
+function renderPoster(model: PosterModel, showPet = false, paused = false) {
   return render(
     <NextIntlClientProvider locale="es" messages={messages}>
-      <Poster model={model} palette="book" narrator="reader" pet={payload.pet} showPet={showPet} />
+      <Poster model={model} palette="book" narrator="reader" pet={payload.pet} showPet={showPet} paused={paused} />
     </NextIntlClientProvider>,
   );
 }
@@ -54,12 +54,12 @@ describe("Poster", () => {
     expect(within(list).getByText("Piranesi")).toBeTruthy();
   });
 
-  it("strip: una celda por día con su estado legible", () => {
-    renderPoster(modelOf("rhythm"));
-    const cells = within(screen.getByRole("list")).getAllByRole("listitem");
-    expect(cells).toHaveLength(7);
-    expect(cells[0].textContent).toContain("con actividad");
-    expect(cells[2].textContent).toContain("sin actividad");
+  it("ritmo: el calendario se lee por su resumen y no por cada casilla", () => {
+    const { container } = renderPoster(modelOf("rhythm"));
+    const cal = screen.getByRole("img", { name: modelOf("rhythm").calendar!.summary });
+    expect(cal).toBeTruthy();
+    expect(cal.querySelectorAll("[data-active='true']")).toHaveLength(5);
+    expect(container.querySelectorAll("[data-active] [aria-hidden]").length).toBe(0);
   });
 
   it("months: las cifras de cada mes son visibles, no sólo para lectores de pantalla", () => {
@@ -74,11 +74,12 @@ describe("Poster", () => {
     }
   });
 
-  it("finished: el contador adicional incluye las obras que no caben en las cuatro cartas", () => {
+  it("finished: el contador adicional incluye las obras que no caben en la rejilla", () => {
     const items = Array.from({ length: 6 }, (_, i) => ({ type: "book" as const, id: String(i), title: "Libro " + i, coverUrl: null, times: 1 }));
-    const m = posterFor({ id: "finished", items, total: 6 }, payload, t);
-    renderPoster(m);
-    expect(screen.getAllByRole("listitem")).toHaveLength(4);
+    const m = posterFor({ id: "finished", items, total: 8 }, payload, t);
+    const { container } = renderPoster(m);
+    expect(container.querySelector("ul[data-grid='static']")).not.toBeNull();
+    expect(screen.getAllByRole("listitem")).toHaveLength(6);
     expect(m.lines.join(" ")).toContain("2");
   });
 
@@ -112,5 +113,73 @@ describe("Poster", () => {
       expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(1);
       cleanup();
     }
+  });
+});
+
+const ref = (id: string) => ({ type: "book" as const, id, title: `Libro ${id}`, coverUrl: null, times: 1 });
+const month = { ...payload, kind: "month" as const, periodStart: "2026-09-01", periodEnd: "2026-09-30" };
+
+describe("bloques v2", () => {
+  it("Terminado con scroll: todos los títulos en la lista, copia decorativa oculta y pausa", () => {
+    const items = Array.from({ length: 12 }, (_, i) => ref(String(i)));
+    const m = posterFor({ id: "finished", items, total: 12 }, month, t);
+    const { container } = renderPoster(m, false, true);
+    const lists = container.querySelectorAll("ul[data-grid]");
+    expect(lists[0].getAttribute("data-grid")).toBe("scroll");
+    expect(within(lists[0] as HTMLElement).getAllByRole("listitem")).toHaveLength(12);
+    // La segunda copia (bucle) no se lee.
+    expect(lists[1].getAttribute("aria-hidden")).toBe("true");
+    expect(container.querySelector("article")!.getAttribute("data-paused")).toBe("true");
+  });
+
+  it("En marcha: una fila por obra con barra y etiqueta de sin avances", () => {
+    const m = posterFor({ id: "in_progress", openTotal: 2, touchedTotal: 1, items: [
+      { ...ref("a"), percent: 40, touched: true }, { ...ref("b"), percent: null, touched: false },
+    ] }, month, t);
+    renderPoster(m);
+    expect(screen.getByRole("progressbar", { name: /Libro a/ }).getAttribute("aria-valuenow")).toBe("40");
+    expect(screen.getByText("Sin avances este mes")).toBeTruthy();
+  });
+
+  it("Ritmo: calendario y mapas con resumen accesible", () => {
+    const days = Array.from({ length: 30 }, (_, i) => ({ date: `2026-09-${String(i + 1).padStart(2, "0")}`, active: i < 3 }));
+    const m = posterFor({ id: "rhythm", days, activeDays: 3, bestStreak: 3, favoriteWeekday: 5, favoriteBandStartHour: 0,
+      byWeekday: [0, 1, 0, 0, 0, 3, 0], byBand: [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1] }, month, t);
+    renderPoster(m);
+    expect(screen.getByRole("img", { name: "Días con actividad: 1, 2, 3" })).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Más activo el sábado" })).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Más activo de 00:00 a 02:00" })).toBeTruthy();
+  });
+
+  it("En compañía: título de la obra, compañeros y clubes", () => {
+    const m = posterFor({ id: "together", jointViewings: 1, clubDays: 2,
+      viewings: [{ item: ref("L"), watchedOn: "2026-09-10", companionIds: ["u2"] }],
+      clubs: [{ clubId: "c", name: "Club de los jueves", days: 2 }] }, month, t,
+      { u2: { userId: "u2", username: "ana", displayName: "Ana", avatarUrl: null } });
+    renderPoster(m);
+    // La carta decorativa repite el título (aria-hidden): el legible es el párrafo.
+    expect(screen.getByText("Libro L", { selector: "p" })).toBeTruthy();
+    expect(screen.getByText("con Ana")).toBeTruthy();
+    expect(screen.getByText("Club de los jueves")).toBeTruthy();
+    expect(screen.getByText("2 días")).toBeTruthy();
+  });
+
+  it("sin los espacios de nombres de las stories (home): las etiquetas llegan escritas en el modelo", () => {
+    const wr = messages.wrapUps as unknown as { ui: unknown; stories: { cover: unknown } };
+    const scoped = { wrapUps: { ui: wr.ui, stories: { cover: wr.stories.cover } } };
+    const renderScoped = (m: PosterModel) => render(
+      <NextIntlClientProvider locale="es" messages={scoped}>
+        <Poster model={m} palette="book" narrator="reader" pet={payload.pet} showPet={false} />
+      </NextIntlClientProvider>,
+    );
+    const inProgress = posterFor({ id: "in_progress", openTotal: 1, items: [{ ...ref("b"), percent: null, touched: false }] }, month, t);
+    renderScoped(inProgress);
+    expect(screen.getByText("Sin avances este mes")).toBeTruthy();
+    cleanup();
+    const together = posterFor({ id: "together", jointViewings: 1, clubDays: 0,
+      viewings: [{ item: ref("L"), watchedOn: "2026-09-10", companionIds: ["u2"] }], clubs: [] }, month, t,
+      { u2: { userId: "u2", username: "ana", displayName: "Ana", avatarUrl: null } });
+    renderScoped(together);
+    expect(screen.getByText("con Ana")).toBeTruthy();
   });
 });

@@ -335,6 +335,9 @@ tenerlo, porque da confianza falsa. Los comentarios de los dos tests de
   su canal alfa, así que `/icon-192` (terracota opaco de borde a borde) sale como un
   cuadrado macizo en la barra de estado. Por eso existe `/badge-96`, transparente. Y `icon`
   y `badge` son dos imágenes distintas: sin `badge`, Chrome pone su propio logo.
+- **`wrap_ups` tiene un CHECK sobre `payload->>'v'`.** Cada versión nueva de payload necesita
+  su migración, y esta va a producción antes que el código que la escribe; si no, el cron falla
+  al guardar.
 
 ## 22. Un `node_modules` enlazado por junction se VACÍA al del checkout principal
 
