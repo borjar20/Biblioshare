@@ -1,4 +1,4 @@
-import type { WorkKey } from '@/lib/comparisons/types';
+﻿import type { WorkKey } from '@/lib/comparisons/types';
 import type { AtlasPerson, AtlasWork, Camera, Point, Viewport } from '@/lib/comparisons/atlas/types';
 import { clusterState, workState, type QuienLayout } from '@/lib/comparisons/atlas/layout';
 import { approach, clamp, fit, panBy, stepCamera, toScreen, toWorld, zoomAt, zoomToward, MAX_ZOOM, MIN_ZOOM } from '@/lib/comparisons/atlas/camera';
@@ -30,11 +30,11 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
   let palette = readPalette(host);
   let vp: Viewport = { width: 0, height: 0 }; let dpr = 1;
   let cam: Camera = { x: 0, y: 0, k: 0.3 }; let target: Camera | null = null; let fitted = false;
-  let extentKey = ''; let raf = 0; let disposed = false;
+  let extentKey = ''; let raf = 0; let disposed = false; let dirtyProbe = true;
   const sprites = new Map<WorkKey, Sprite>();
 
   const fitCamera = () => fit(props().layout.extent, vp, { x: 32, y: 150 });
-  function kick() { if (!raf && !disposed && typeof requestAnimationFrame === 'function') raf = requestAnimationFrame(frame); }
+  function kick() { dirtyProbe = true; if (!raf && !disposed && typeof requestAnimationFrame === 'function') raf = requestAnimationFrame(frame); }
   function resize() {
     dpr = Math.min(2, globalThis.devicePixelRatio || 1);
     vp = { width: host.clientWidth, height: host.clientHeight };
@@ -67,9 +67,9 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
       s.x = x.value; s.y = y.value; s.a = a.value; s.hl = h.value;
       if (!(x.settled && y.settled && a.settled && h.settled)) moving = true;
     }
-    draw();
+    draw(); if (pointers.size > 0) moving = true;
     host.dataset.atlasMoving = String(moving); host.dataset.atlasZoom = cam.k.toFixed(3);
-    if (moving) kick(); else publishProbe();
+    if (moving) { if (!pointers.size) kick(); } else if (dirtyProbe) { dirtyProbe = false; publishProbe(); }
   }
   function visible(p: Point) { return p.x >= -60 && p.y >= -80 && p.x <= vp.width + 60 && p.y <= vp.height + 80; }
   function publishProbe() {
@@ -184,8 +184,9 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
     lastTap = { ...p, t: time }; onActivate(null, pointerType);
   }
   function onDown(e: PointerEvent) {
-    canvas.setPointerCapture?.(e.pointerId); const p = local(e); pointers.set(e.pointerId, p); target = null; down = p;
-    if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch = { d: dist(a, b), k: cam.k }; down = null; }
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    canvas.style.cursor = ''; canvas.setPointerCapture?.(e.pointerId); const p = local(e); pointers.set(e.pointerId, p); target = null; down = p;
+    if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch = { d: Math.max(dist(a, b), 1), k: cam.k }; down = null; }
     canvas.dataset.dragging = 'true';
   }
   function onMove(e: PointerEvent) {
@@ -205,9 +206,9 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
     const p = local(e); pointers.delete(e.pointerId); if (pointers.size < 2) pinch = null;
     if (!pointers.size) delete canvas.dataset.dragging;
     if (down && dist(p, down) < 5) tap(p, e.pointerType, e.timeStamp);
-    down = null;
+    down = null; kick();
   }
-  function onCancel(e: PointerEvent) { pointers.delete(e.pointerId); pinch = null; down = null; delete canvas.dataset.dragging; }
+  function onCancel(e: PointerEvent) { pointers.delete(e.pointerId); pinch = null; down = null; delete canvas.dataset.dragging; kick(); }
   function onLeave(e: PointerEvent) { if (e.pointerType === 'mouse') props().onHover(null); }
   function onWheel(e: WheelEvent) { e.preventDefault(); target = null; cam = zoomAt(cam, vp, local(e), Math.exp(-e.deltaY * 0.0018)); props().onHover(null); kick(); }
   function onDoubleClick(e: MouseEvent) { const p = local(e); if (!hitWork(p)) { target = zoomToward(cam, vp, p, 2.6); kick(); } }
