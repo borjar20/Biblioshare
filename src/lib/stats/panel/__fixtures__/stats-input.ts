@@ -115,6 +115,8 @@ export function statsInput(over: Partial<StatsInput> = {}): StatsInput {
       averageMinutes: 42,
       sessions: 96,
       activeDays: 61,
+      byWeekday: [0, 0, 0, 0, 0, 0, 0],
+      byBand: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     },
     records: {
       mostActiveMonth: { month: "2026-02", count: 6 },

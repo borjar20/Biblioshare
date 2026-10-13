@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeHabits, type HabitRow } from "./get-habits";
+import { computeHabits, type HabitRow, madridHour } from "./get-habits";
 import { computePagesPerDay, computeReadingSpeed, type PaceRow, type SpeedRow } from "./get-pace";
 
 describe("computeHabits", () => {
@@ -10,7 +10,39 @@ describe("computeHabits", () => {
       averageMinutes: null,
       sessions: 0,
       activeDays: 0,
+      byWeekday: [0, 0, 0, 0, 0, 0, 0],
+      byBand: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     });
+  });
+
+  it("la franja usa la hora de Madrid, no la UTC (#1512): verano +2", () => {
+    // 23:30Z del 5 sep = 01:30 en Madrid → franja 00-02, no 22-24.
+    const h = computeHabits([{ session_date: "2026-09-06", duration_minutes: null, started_at: "2026-09-05T23:30:00Z" }]);
+    expect(h.favoriteBand).toEqual({ startHour: 0 });
+    expect(h.byBand[0]).toBe(1);
+    expect(h.byBand[11]).toBe(0);
+  });
+
+  it("la franja usa la hora de Madrid: invierno +1", () => {
+    // 01:30Z del 5 dic = 02:30 en Madrid → franja 02-04.
+    const h = computeHabits([{ session_date: "2026-12-05", duration_minutes: null, started_at: "2026-12-05T01:30:00Z" }]);
+    expect(h.favoriteBand).toEqual({ startHour: 2 });
+  });
+
+  it("byWeekday cuenta filas por día de la semana (lunes = 0)", () => {
+    const h = computeHabits([
+      { session_date: "2026-09-05", duration_minutes: null, started_at: null }, // sábado
+      { session_date: "2026-09-05", duration_minutes: null, started_at: null },
+      { session_date: "2026-09-07", duration_minutes: null, started_at: null }, // lunes
+    ]);
+    expect(h.byWeekday).toEqual([1, 0, 0, 0, 0, 2, 0]);
+    expect(h.favoriteWeekday).toBe(5);
+  });
+
+  it("madridHour: hora local de Madrid y null si la fecha no es válida", () => {
+    expect(madridHour("2026-07-11T22:15:00Z")).toBe(0);
+    expect(madridHour("2026-01-11T22:15:00Z")).toBe(23);
+    expect(madridHour("no es fecha")).toBeNull();
   });
 
   it("cuenta las sesiones TODAS y los días DISTINTOS", () => {
@@ -34,8 +66,8 @@ describe("computeHabits", () => {
       { session_date: "2026-07-13", duration_minutes: 20, started_at: null },
     ];
     const h = computeHabits(rows);
-    // 22:15 y 23:00 caen en la banda 22-24 (índice 11 → startHour 22).
-    expect(h.favoriteBand).toEqual({ startHour: 22 });
+    // 22:15Z y 23:00Z son 00:15 y 01:00 en Madrid (verano +2): banda 0-2.
+    expect(h.favoriteBand).toEqual({ startHour: 0 });
     // Media de 30/40/20 = 30.
     expect(h.averageMinutes).toBe(30);
   });
