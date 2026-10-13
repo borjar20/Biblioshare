@@ -116,16 +116,6 @@
   /* `zoom` y no `transform`: el hueco que ocupa en el flujo también encoge. */
   .narratorSprite, .pet > * { zoom: 0.75; }
   .lines { padding-block: 8px; }
-  /* Ritmo y En marcha: con la narradora visible tienen que caber a 360×640. */
-  .calendar { gap: 3px; padding: 8px 10px; font-size: 0.6875rem; }
-  .calendarDay { height: 1.5rem; }
-  .heatmap { gap: 4px; padding: 6px 10px; }
-  .heatRow { gap: 3px; }
-  .heatCell { gap: 2px; font-size: 0.625rem; }
-  .heatMark { height: 14px; }
-  .progressList { gap: 8px; padding: 8px 12px; }
-  .progressRow { grid-template-columns: 40px 1fr; gap: 10px; }
-  .progressText { gap: 4px; }
 }
 /* El cierre comparte columna con las acciones del dueño (~150 px): con el umbral
    de arriba desbordaba ~40 px en 390×844 y 1440×900 (barra de scroll y bocadillo
@@ -442,4 +432,34 @@
   .coverScroller { -webkit-mask-image: none; mask-image: none; }
   .reducedOnly { display: block; }
   .motionOnly { display: none; }
+}
+
+/* Ritmo y En marcha en pantallas bajas. Va AL FINAL a propósito: con la misma
+   especificidad gana la regla que aparece después, y las reglas base de estos
+   bloques están más arriba (dentro del @media de la línea ~110 no se aplicaban). */
+@media (max-height: 820px) {
+  .calendar { gap: 3px; padding: 8px 10px; font-size: 0.6875rem; }
+  .calendarDay { height: 1.5rem; }
+  .heatmap { gap: 4px; padding: 6px 10px; }
+  .heatTitle { font-size: 0.75rem; }
+  .heatRow { gap: 3px; }
+  .heatCell { gap: 2px; font-size: 0.625rem; }
+  .heatMark { height: 14px; }
+  .progressList { gap: 8px; padding: 8px 12px; }
+  .progressRow { grid-template-columns: 40px 1fr; gap: 10px; }
+  .progressText { gap: 4px; }
+}
+/* Móviles pequeños (360×640): la cifra cede alto para que quepan las gráficas. */
+@media (max-height: 700px) {
+  .poster[data-layout="calendar"] .figureValue,
+  .poster[data-layout="progress"] .figureValue { font-size: 3rem; }
+  .poster[data-layout="calendar"] .figure,
+  .poster[data-layout="progress"] .figure { padding: 6px 12px 8px; }
+  .poster[data-layout="calendar"] .body,
+  .poster[data-layout="progress"] .body { gap: 10px; }
+  .calendar { gap: 2px; padding: 6px 8px; }
+  .calendarDay { height: 1.125rem; border-width: 1px; }
+  .heatmap { padding: 4px 8px; }
+  .progressRow { grid-template-columns: 34px 1fr; }
+  .progressTitle { font-size: 0.875rem; }
 }
