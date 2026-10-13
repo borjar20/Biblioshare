@@ -1,6 +1,6 @@
 import { expect, test as base, type Page, type TestInfo, type Request } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
-import { chooseComparisonParticipants, comparisonRest, deleteComparisonActor, shownName, loginComparisonActor, withComparisonFixture, type ComparisonActor, type ComparisonFixture } from './support/comparison-fixtures';
+import { chooseComparisonParticipants, comparisonRest, deleteComparisonActor, loginComparisonActor, withComparisonFixture, type ComparisonActor, type ComparisonFixture } from './support/comparison-fixtures';
 
 function coverOwnership(request: Request) {
   const url = new URL(request.url());
@@ -82,12 +82,6 @@ async function open(page: Page, fixture: ComparisonFixture, actors = fixture.act
   await loginComparisonActor(page, fixture.actors[0]);
   await page.goto('/comunidad/entre-nosotros');
   return createGroup(page, actors, name);
-}
-async function selectPeople(page: Page, fixture: ComparisonFixture, selected: number[]) {
-  for (const [index, actor] of fixture.actors.entries()) {
-    const checkbox = page.getByRole('checkbox', { name: shownName(fixture, actor), exact: true });
-    if (await checkbox.count()) await checkbox.setChecked(selected.includes(index));
-  }
 }
 async function comparisonResponse(page: Page, action: () => Promise<unknown>, predicate: (request: string) => boolean = () => true) {
   // Inspect genuine upstream bytes before browser delivery: Chromium can lose
@@ -176,11 +170,11 @@ test('two real tabs conflict, same-account focus preserves context, cookie logou
     const reloadAfterRefresh = page.waitForRequest(request => groupsRefreshed && request.method() === 'POST' && !!request.headers()['next-action']);
     await page.getByRole('button', { name: 'Recargar grupo', exact: true }).click();
     await refreshedGroups; await (await reloadAfterRefresh).response(); await settled(page);
-    await page.getByRole('button', { name: 'Gustos', exact: true }).click(); await selectPeople(page, fixture, [0, 1]);
-    await page.getByRole('button', { name: 'Explorar Drama', exact: true }).click(); await settled(page);
+    await page.getByRole('button', { name: 'Opinión', exact: true }).click();
+    await faces(page).filter({ hasText: 'Carlos QA' }).click(); await settled(page);
     await other.bringToFront(); await page.bringToFront();
-    await expect(page.getByRole('checkbox', { name: 'Beatriz QA', exact: true })).toBeChecked();
-    await expect(page.locator('[data-comparison-slot="tastes"]')).toHaveAttribute('data-view', 'facet');
+    await expect(page.getByRole('button', { name: 'Opinión', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(faces(page).filter({ hasText: 'Carlos QA' })).toHaveAttribute('aria-pressed', 'false');
     await other.goto('/ajustes');
     const timeline: { phase: string; t: number }[] = [];
     const mark = (phase: string) => timeline.push({ phase, t: Date.now() });
@@ -218,7 +212,7 @@ test('two real tabs conflict, same-account focus preserves context, cookie logou
       await page.bringToFront(); await page.evaluate(() => window.dispatchEvent(new Event('focus'))); await haveA;
       // Unchanged session cookies: the same account keeps its evidence while auth answers.
       await expect(page.getByText('Verificando tu sesi\u00f3n\u2026', { exact: true })).toHaveCount(0);
-      await expect(page.locator('[data-comparison-slot="tastes"]')).toBeVisible();
+      await expect(page.locator('[data-comparison-slot="works"]')).toBeVisible();
       await other.bringToFront();
       await other.getByRole('button', { name: 'Cerrar sesi\u00f3n', exact: true }).click();
       await expect(other).toHaveURL(new URL('/', info.project.use.baseURL).href); mark('real logout completed');

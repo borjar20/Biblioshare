@@ -155,27 +155,7 @@ describe('Explorer request boundaries', () => {
     render(ui());
     const notice = await screen.findByText(/2 historiales de persona y serie del grupo cargado/);
     expect(notice.textContent).toContain('sin episodios registrados');
-    fireEvent.click(screen.getByRole('button', { name: 'Gustos' }));
-    expect(screen.getByText(/2 historiales de persona y serie del grupo cargado/)).toBeTruthy();
-    expect(screen.getByText(/Selecciona entre 2 y 10/)).toBeTruthy();
-  });
-  it('restores facet participants in the checkboxes: Obras face toggles do not change Gustos participants', async () => {
-    const available: Group = { ...first, members: ['Ana', 'Bea', 'Carlos'].map((name, i) => ({ slotId: `${i}`, userId: ['a', 'b', 'c'][i], name, avatarUrl: null, available: true })) };
-    const data: Snapshot = { ...snapshot(available), catalog: [{ key: 'book:x', title: 'Libro', coverUrl: null, genres: ['Drama'], creators: [] }], works: [{ userId: 'a', key: 'book:x', rating: 9, date: null, orderUnknown: false, progress: null }] };
-    mocks.query = `group=${first.id}`; mocks.load.mockResolvedValue({ ok: true, data });
-    vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
-    render(ui([available])); await screen.findByRole('button', { name: 'Tú' });
-    fireEvent.click(screen.getByRole('button', { name: 'Gustos' })); fireEvent.click(screen.getByRole('checkbox', { name: 'Tú' })); fireEvent.click(screen.getByRole('checkbox', { name: 'Bea' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Lo que valoráis' })); fireEvent.click(screen.getByRole('button', { name: 'Explorar Drama' }));
-    // The atlas keeps its own face selection; toggling a face must not leak into Gustos.
-    fireEvent.click(screen.getByRole('button', { name: 'Obras' })); fireEvent.click(screen.getByRole('button', { name: 'Carlos' }));
-    expect(screen.getByRole('button', { name: 'Carlos' }).getAttribute('aria-pressed')).toBe('false');
-    fireEvent.click(screen.getByRole('button', { name: 'Gustos' }));
-    expect(screen.getByText('Tú, Bea')).toBeTruthy(); expect(screen.getByRole('button', { name: 'Lo que valoráis' }).getAttribute('aria-pressed')).toBe('true');
-    expect((screen.getByRole('checkbox', { name: 'Tú' }) as HTMLInputElement).checked).toBe(true); expect((screen.getByRole('checkbox', { name: 'Bea' }) as HTMLInputElement).checked).toBe(true);
-    expect((screen.getByRole('checkbox', { name: 'Carlos' }) as HTMLInputElement).checked).toBe(false);
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Carlos' })); expect(screen.getByText('Tú, Bea, Carlos')).toBeTruthy();
-    vi.unstubAllGlobals();
+    expect(screen.getByText('Persona no disponible')).toBeTruthy();
   });
   it('keeps atlas faces across a format change and starts a new group with everyone', async () => {
     const members = (g: Group): Group => ({ ...g, members: ['Ana', 'Bea', 'Carlos'].map((name, i) => ({ slotId: `${i}`, userId: ['a', 'b', 'c'][i], name, avatarUrl: null, available: true })) });
@@ -220,24 +200,6 @@ describe('Explorer request boundaries', () => {
     expect(within(screen.getByRole('group', { name: 'Filtrar por tipo de obra' })).getByRole('button', { name: 'Libros' }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByRole('button', { name: 'Islas' }).getAttribute('aria-pressed')).toBe('true');
     expect(within(screen.getByRole('group', { name: 'Agrupar islas por' })).getByRole('button', { name: 'Autor/Director' }).getAttribute('aria-pressed')).toBe('true');
-  });
-  it('retains taste category, signal and participant context after section switches and its own format reload', async () => {
-    const available: Group = { ...first, members: [{ ...first.members[0] }, { slotId: 'two', userId: 'b', name: 'Bea', avatarUrl: null, available: true }] };
-    const data: Snapshot = { ...snapshot(available), catalog: [{ key: 'book:x', title: 'Libro', coverUrl: null, genres: ['Drama'], creators: [{ id: 'author', name: 'Autora', role: 'author' }] }], works: [{ userId: 'a', key: 'book:x', rating: 9, date: null, orderUnknown: false, progress: null }] };
-    mocks.query = `group=${first.id}`; mocks.load.mockImplementation(async (_id, format) => ({ ok: true, data: { ...data, format } }));
-    vi.stubGlobal('matchMedia', () => ({ matches: true, addEventListener: vi.fn(), removeEventListener: vi.fn() })); vi.stubGlobal('scrollTo', vi.fn());
-    render(ui([available])); await screen.findByRole('button', { name: 'Tú' });
-    fireEvent.click(screen.getByRole('button', { name: 'Gustos' })); fireEvent.click(screen.getByRole('checkbox', { name: 'Tú' })); fireEvent.click(screen.getByRole('checkbox', { name: 'Bea' }));
-    fireEvent.click(within(screen.getByRole('group', { name: 'Filtrar por tipo de obra' })).getByRole('button', { name: 'Libros' }));
-    await screen.findByLabelText('Agrupar por'); fireEvent.change(screen.getByLabelText('Agrupar por'), { target: { value: 'author' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Lo que valoráis' })); fireEvent.click(screen.getByRole('button', { name: 'Explorar Autora' })); fireEvent.click(screen.getByRole('button', { name: 'Abrir obra: Libro' })); await screen.findByRole('alert');
-    fireEvent.click(screen.getByRole('button', { name: 'Obras' })); await screen.findByRole('button', { name: 'Tú' });
-    expect(document.querySelector('[data-comparison-stage]')).not.toBeNull(); expect(screen.getByRole('status').textContent).toContain('en común');
-    fireEvent.click(screen.getByRole('button', { name: 'Gustos' })); await screen.findByRole('button', { name: 'Volver a la categoría' });
-    fireEvent.click(screen.getByRole('button', { name: 'Volver a la categoría' }));
-    expect((screen.getByLabelText('Agrupar por') as HTMLSelectElement).value).toBe('author'); expect(within(screen.getByRole('group', { name: 'Filtrar por tipo de obra' })).getByRole('button', { name: 'Libros' }).getAttribute('aria-pressed')).toBe('true');
-    expect(screen.getByRole('button', { name: 'Lo que valoráis' }).getAttribute('aria-pressed')).toBe('true'); expect(screen.getByText('Tú, Bea')).toBeTruthy();
-    vi.unstubAllGlobals();
   });
   it('starts with no arbitrary selected group and lets keyboard users create one', () => {
     render(ui([])); expect(screen.getByText('Compara con quien sigues')).toBeTruthy();
@@ -308,15 +270,15 @@ describe('Explorer request boundaries', () => {
   it('starts a fresh subtree after the same account authenticates again on the server', async () => {
     mocks.query = `group=${first.id}`;
     const mounted = render(ui()); await screen.findByRole('button', { name: 'Tú' });
-    // Reducer-held selection survives reloads; only a fresh subtree resets it.
-    fireEvent.click(screen.getByRole('button', { name: 'Gustos' })); fireEvent.click(screen.getByRole('checkbox', { name: 'Tú' }));
-    expect((screen.getByRole('checkbox', { name: 'Tú' }) as HTMLInputElement).checked).toBe(true);
+    // The session-held atlas lens survives reloads; only a fresh subtree resets it.
+    fireEvent.click(screen.getByRole('button', { name: 'Opinión' }));
+    expect(screen.getByRole('button', { name: 'Opinión' }).getAttribute('aria-pressed')).toBe('true');
     openGroupSheet(); fireEvent.click(screen.getByRole('button', { name: 'Editar grupo' }));
     fireEvent.change(screen.getByLabelText('Nombre del grupo'), { target: { value: 'Borrador antiguo' } });
     act(() => mocks.auth!('SIGNED_OUT', null)); expect(screen.queryByLabelText('Grupo')).toBeNull();
     mounted.rerender(ui()); await screen.findByRole('button', { name: 'Tú' });
-    fireEvent.click(screen.getByRole('button', { name: 'Gustos' }));
-    expect((screen.getByRole('checkbox', { name: 'Tú' }) as HTMLInputElement).checked).toBe(false);
+    expect(screen.getByRole('button', { name: 'Quién' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: 'Opinión' }).getAttribute('aria-pressed')).toBe('false');
     expect(screen.queryByLabelText('Nombre del grupo')).toBeNull();
   });
   it('updates saved group data and uses its new revision on the next edit', async () => {
@@ -457,17 +419,6 @@ describe('Explorer request boundaries', () => {
   it('ignores a forged group query and selects an owned valid UUID', async () => {
     mocks.query = 'group=cccccccc-cccc-cccc-cccc-cccccccccccc'; const mounted = render(ui()); expect(mocks.load).not.toHaveBeenCalled();
     mounted.unmount(); mocks.query = `group=${first.id}`; render(ui()); await screen.findByText('Persona no disponible'); expect(mocks.load).toHaveBeenCalledWith(first.id, 'all');
-  });
-  it('starts each section with all formats and restores the previous section filter', async () => {
-    mocks.query = `group=${first.id}`; render(ui()); await screen.findByRole('button', { name: 'Tú' });
-    const pills = () => within(screen.getByRole('group', { name: 'Filtrar por tipo de obra' }));
-    fireEvent.click(pills().getByRole('button', { name: 'Libros' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Gustos' }));
-    expect(pills().getByRole('button', { name: 'Todos' }).getAttribute('aria-pressed')).toBe('true');
-    fireEvent.click(screen.getByRole('button', { name: 'Obras' }));
-    expect(pills().getByRole('button', { name: 'Libros' }).getAttribute('aria-pressed')).toBe('true');
-    // Formats and sections derive from the one `all` load (#1481).
-    expect(mocks.load.mock.calls).toEqual([[first.id, 'all']]);
   });
   it('retries the load on a format change after a failed load', async () => {
     mocks.query = `group=${first.id}`; mocks.load.mockResolvedValueOnce({ ok: false, code: 'load-failed' }); render(ui());

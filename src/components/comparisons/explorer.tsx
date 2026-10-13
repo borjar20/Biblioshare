@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useReducer, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -15,16 +15,15 @@ import { AtlasView } from './atlas/atlas-view';
 import type { Lens } from '@/lib/comparisons/atlas/scene';
 import type { IslandMode } from '@/lib/comparisons/atlas/islands';
 import { GroupSheet } from './group-sheet';
-import { Tastes } from './tastes';
 import { ComparisonLoading } from './loading';
 import { forFormat } from '@/lib/comparisons/derive';
 import { acceptResponse, changeGroup, changeSelection, clearEvidence, deriveFormat, initialState, reconcileParticipants, reconcileView, selectOwnedGroup, setView } from './state';
 import type { ExplorerState, Section, TasteControls, View } from './state';
-import { personColor, presentViewer } from './presentation';
+import { presentViewer } from './presentation';
 import styles from './explorer.module.css';
 
-function Icon({ kind }: { kind: 'works' | 'tastes' | 'lock' | 'edit' | 'plus' }) {
-  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{kind === 'works' ? <><circle cx="9" cy="10" r="6"/><circle cx="15" cy="14" r="6"/></> : kind === 'tastes' ? <><path d="m12 3 2.6 6.4L21 12l-6.4 2.6L12 21l-2.6-6.4L3 12l6.4-2.6Z"/><path d="M20 2v4m-2-2h4"/></> : kind === 'lock' ? <><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></> : kind === 'edit' ? <><path d="M4 20h4L19 9l-4-4L4 16Z"/><path d="m13.5 6.5 4 4"/></> : <path d="M12 5v14M5 12h14"/>}</svg>;
+function Icon({ kind }: { kind: 'works' | 'lock' | 'edit' | 'plus' }) {
+  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{kind === 'works' ? <><circle cx="9" cy="10" r="6"/><circle cx="15" cy="14" r="6"/></> : kind === 'lock' ? <><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></> : kind === 'edit' ? <><path d="M4 20h4L19 9l-4-4L4 16Z"/><path d="m13.5 6.5 4 4"/></> : <path d="M12 5v14M5 12h14"/>}</svg>;
 }
 
 type Props = { initialGroups: Group[]; candidates: Candidate[]; viewerId: string };
@@ -213,22 +212,9 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
     // Even a same-group save invalidates the old revision and permissions.
     forceReload();
   }
-  function togglePerson(userId: string) {
-    dispatch({ type: 'selection', people: state.selection.includes(userId) ? state.selection.filter(id => id !== userId) : [...state.selection, userId] });
-  }
-  // Without a loaded source (after an error) a format or section change retries the load, as before.
+  // Without a loaded source (after an error) a format change retries the load, as before.
   const retryWithoutSource = () => { if (state.groupId && !state.source && state.snapshot.status !== 'loading') forceReload(); };
   function setFormat(next: Format) { dispatch({ type: 'format', format: next }); if (next !== format) retryWithoutSource(); }
-  function selectSection(section: Section) {
-    dispatch({ type: 'section', section });
-    if (state.formats[section] !== format) retryWithoutSource();
-  }
-  const workspaceControls = snapshot && <>
-    <div className={styles.workspaceControls}>
-      {state.section === 'tastes' && <fieldset className={styles.people}><legend className={styles.srOnly}>{t('selectTastes')}</legend>{snapshot.group.members.map(member => member.available && member.userId ? <label key={member.slotId} className={styles.personChip} data-selected={state.selection.includes(member.userId)} style={{ '--person': personColor(snapshot, member.userId) } as CSSProperties}><input type="checkbox" checked={state.selection.includes(member.userId)} onChange={() => togglePerson(member.userId!)}/><span className={styles.personDot} aria-hidden="true"/>{member.name}</label> : <span key={member.slotId} className={styles.unavailable}>{t('unavailablePerson')}</span>)}</fieldset>}
-    </div>
-    {snapshot.excludedSeriesWithoutEpisodes > 0 && <p className="py-3 text-sm text-muted-foreground" data-comparison-coverage>{t('excludedHistoricalSeries', { count: snapshot.excludedSeriesWithoutEpisodes })}</p>}
-  </>;
   return <div className={`dark ${styles.immersive}`}>
     <header className={styles.bar}>
       <Link href="/comunidad" className={styles.back} aria-label={t('backToCommunity')}><span aria-hidden="true">←</span><span className={styles.backLabel} aria-hidden="true">{t('backToCommunity')}</span></Link>
@@ -241,7 +227,6 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
         onRefresh={refresh}/>
       <span className={styles.barSpacer}/>
       {active && <div className={styles.barNav}>
-        <nav aria-label={t('sections')} className={styles.tabs}>{(['works', 'tastes'] as const).map(section => <button key={section} type="button" aria-pressed={state.section === section} onClick={() => selectSection(section)} className={styles.tab}>{t(section)}</button>)}</nav>
         <div className={styles.formats} role="group" aria-label={t('formatPills')}>{(['all', 'book', 'movie', 'series'] as const).map(next => <button key={next} type="button" aria-pressed={format === next} onClick={() => setFormat(next)}>{t(next === 'all' ? 'allFormatsShort' : `formats.${next}`)}</button>)}</div>
       </div>}
     </header>
@@ -254,9 +239,7 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
       {state.snapshot.status === 'loading' && <div className={styles.workspaceLoading}><ComparisonLoading label={t('loading')}/></div>}
       {state.snapshot.status === 'error' && <div role="alert"><p>{t(state.loadError === 'conflict' ? 'loadConflict' : `errors.${state.loadError ?? 'load-failed'}`)}</p><Button variant="secondary" onClick={() => { refresh(); if (state.loadError === 'unavailable' || state.loadError === 'unauthenticated') router.refresh(); }}>{t('reloadComparison')}</Button></div>}
       {snapshot && <div key={state.snapshot.seq} className={styles.canvasWrap} data-comparison-reveal data-comparison-slot={state.section} data-view={state.views[state.section].level}>
-        {state.section === 'works' && <AtlasView snapshot={snapshot} viewerId={viewerId} chosen={chosenFaces} lens={atlasLens} onLensChange={setAtlasLens} islandMode={atlasIslandMode} onIslandModeChange={setAtlasIslandMode} onChosenChange={ids => state.groupId && setAtlasFaces({ groupId: state.groupId, ids })} notice={snapshot.excludedSeriesWithoutEpisodes > 0 ? <p className={styles.coverageNote} data-comparison-coverage>{t('excludedHistoricalSeries', { count: snapshot.excludedSeriesWithoutEpisodes })}</p> : null}/>}
-        {state.section === 'tastes' && <div className={styles.tastePanel}>{workspaceControls}
-          <Tastes snapshot={snapshot} people={state.views.tastes.level === 'group' ? state.selection : state.views.tastes.people} view={state.views.tastes} onView={view => dispatch({ type: 'view', view })} controls={state.tasteControls} onControlsChange={controls => dispatch({ type: 'tasteControls', controls })} onOpenWork={(key, origin) => dispatch({ type: 'view', view: { level: 'work', people: state.views.tastes.level === 'group' ? state.selection : state.views.tastes.people, key, origin } })}/></div>}
+        <AtlasView snapshot={snapshot} viewerId={viewerId} chosen={chosenFaces} lens={atlasLens} onLensChange={setAtlasLens} islandMode={atlasIslandMode} onIslandModeChange={setAtlasIslandMode} onChosenChange={ids => state.groupId && setAtlasFaces({ groupId: state.groupId, ids })} notice={snapshot.excludedSeriesWithoutEpisodes > 0 ? <p className={styles.coverageNote} data-comparison-coverage>{t('excludedHistoricalSeries', { count: snapshot.excludedSeriesWithoutEpisodes })}</p> : null}/>
       </div>}
       {snapshot && state.revealSeq === state.snapshot.seq && completedHandoff !== state.snapshot.seq && <div key={`handoff-${state.snapshot.seq}`} aria-hidden="true" inert className={`${styles.workspaceLoading} ${styles.loadingExit}`} data-comparison-handoff onAnimationEnd={event => {
         if (event.target === event.currentTarget) setCompletedHandoff(state.snapshot.seq);
