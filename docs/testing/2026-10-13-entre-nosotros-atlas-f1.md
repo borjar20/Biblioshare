@@ -25,6 +25,28 @@ Verificación de la fase F1 del rediseño del atlas (`/comunidad/entre-nosotros`
 
 Los e2e son los de la Task 9 (informe en `.superpowers/sdd/task-9-report.md`), con las dos rondas de arreglos posteriores: las caras del atlas sobreviven al cambio de formato (`8b8b60ea`) y, si nadie de la selección sigue en el cruce, vuelven todas (`cb0cfcf7`). Tras la segunda ronda no se repitieron los e2e; los últimos fueron tras la primera. Los commits posteriores (`babf2391`, extensión finita del atlas sin personas) solo están cubiertos por los unitarios de esta pasada. Las capturas sí salen del build de `babf2391`.
 
+### Re-ejecución sobre `d1224d47` (tras la revisión final de la rama)
+
+Build de producción de `d1224d47` (`npm run build` + `npm run start`, puerto 3000, Supabase dev), `-c playwright.comparisons.config.ts`, por lotes (TRAMPAS §5):
+
+| Lote | Resultado |
+|---|---|
+| `e2e/entre-nosotros-atlas.spec.ts` (chromium + mobile) | 2 passed, 2 skipped (skips por proyecto) |
+| `e2e/entre-nosotros.spec.ts -g "CRUD\|profile"` | 2 passed |
+| `e2e/entre-nosotros.spec.ts -g "transport\|conflict"` | 2 passed |
+| `e2e/entre-nosotros.spec.ts -g "isolation"` | 1 passed |
+| `LOCAL ONLY` | excluido a propósito: falla contra dev (#1520) |
+
+Ningún selector roto por la cabecera móvil compacta (`5da7dd95`); no hizo falta tocar specs. Unitarios `src/components/comparisons`, `src/lib/comparisons` y `src/components/nav`: 25 ficheros, 546 pruebas, todas pasan; `tsc` exit 0; `lint` 0 errores.
+
+## Corregido tras la revisión final
+
+- `active` memoizado en `AtlasView`: el hover ya no rehace el array ni dispara `engine.sync()` + repintado.
+- `fit`: un eje con menos del 40 % de hueco libre no manda el zoom (encaja por el otro); antes colapsaba a `MIN_ZOOM` con capas altas en pantallas bajas.
+- Motor: si los márgenes medidos llegan antes de cualquier interacción, la cámara salta al encaje (sin planeo); al redimensionar, reencaja (salto) si la cámara seguía en el encaje.
+- Doble clic de ratón sobre un polo o, a zoom de mapa, sobre un grupo ya no hace zoom encima del clic (mismo orden de impacto que el toque).
+- `aria-label` del lienzo: «Mapa de obras compartidas. Quién. <resumen en texto plano>» (spec §7), con los mismos mensajes del resumen vía `t.markup`.
+
 ## Capturas
 
 Carpeta `docs/testing/assets/2026-10-13-entre-nosotros-atlas-f1/`. Generadas con un script Playwright desechable (no commiteado).
