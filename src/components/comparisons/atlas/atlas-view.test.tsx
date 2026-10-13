@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, act } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
+import { useState, type ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import messages from '../../../../messages/es.json';
 import type { Snapshot, WorkKey } from '@/lib/comparisons/types';
@@ -18,7 +19,12 @@ const snapshot: Snapshot = { group: { id: 'g', name: 'G', revision: 1, members: 
   catalog: [{ key: 'book:1', title: 'Proyecto Salvación', coverUrl: null, genres: [], creators: [] }],
   works: ['me', 'b', 'c'].map(userId => ({ userId, key: 'book:1' as WorkKey, rating: null, date: null, orderUnknown: false, progress: null }))
     .concat([{ userId: 'b', key: 'book:2' as WorkKey, rating: null, date: null, orderUnknown: false, progress: null }]) };
-const view = () => render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={snapshot} viewerId="me"/></NextIntlClientProvider>);
+// The face selection is controlled by the explorer; this wrapper holds it like the explorer does.
+function Harness({ notice }: { notice?: ReactNode }) {
+  const [chosen, setChosen] = useState<string[] | null>(null);
+  return <AtlasView snapshot={snapshot} viewerId="me" notice={notice} chosen={chosen} onChosenChange={setChosen}/>;
+}
+const view = (notice?: ReactNode) => render(<NextIntlClientProvider locale="es" messages={messages}><Harness notice={notice}/></NextIntlClientProvider>);
 afterEach(() => { cleanup(); push.mockReset(); });
 const summary = () => screen.getByRole('status').textContent;
 
@@ -31,7 +37,7 @@ describe('AtlasView', () => {
     expect(summary()).toBe('1 obra en común entre Tú, Bea y Carla');
   });
   it('pinta el aviso de cobertura bajo el resumen cuando se le pasa', () => {
-    render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={snapshot} viewerId="me" notice={<p data-testid="notice">Aviso</p>}/></NextIntlClientProvider>);
+    view(<p data-testid="notice">Aviso</p>);
     const notice = screen.getByTestId('notice');
     expect(notice.textContent).toBe('Aviso');
     expect(notice.previousElementSibling).toBe(screen.getByRole('status'));
@@ -44,6 +50,15 @@ describe('AtlasView', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Bea' }));
     expect(screen.getByRole('button', { name: 'Bea' }).getAttribute('aria-pressed')).toBe('true');
     expect(canvas.active).toEqual(['b']);
+  });
+  it('con una selección dada solo activa esas caras y avisa del cambio sin tocarla', () => {
+    const onChosenChange = vi.fn();
+    render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={snapshot} viewerId="me" chosen={['b', 'me']} onChosenChange={onChosenChange}/></NextIntlClientProvider>);
+    expect(screen.getByRole('button', { name: 'Carla' }).getAttribute('aria-pressed')).toBe('false');
+    expect(canvas.active).toEqual(['me', 'b']);
+    fireEvent.click(screen.getByRole('button', { name: 'Tú' }));
+    expect(onChosenChange).toHaveBeenCalledWith(['b']);
+    expect(screen.getByRole('button', { name: 'Tú' }).getAttribute('aria-pressed')).toBe('true');
   });
   it('ratón: hover muestra la mini-ficha y clic navega', () => {
     view();

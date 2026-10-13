@@ -154,6 +154,9 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
   const [editor, setEditor] = useState<{ group: Group | null; people?: string[] } | null>(null);
   const [reload, forceReload] = useReducer((value: number) => value + 1, 0);
   const [completedHandoff, setCompletedHandoff] = useState<number | null>(null);
+  // Atlas faces live here, not in AtlasView: a format change remounts the view. Another group starts with everyone.
+  const [atlasFaces, setAtlasFaces] = useState<{ groupId: string; ids: string[] } | null>(null);
+  const chosenFaces = atlasFaces && atlasFaces.groupId === state.groupId ? atlasFaces.ids : null;
   const sequence = useRef(0); const initialSignature = useRef(JSON.stringify(initialGroups));
   const groupChip = useRef<HTMLButtonElement>(null);
   const groupQuery = withGroup?.id ?? search.get('group');
@@ -246,7 +249,7 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
       {state.snapshot.status === 'loading' && <div className={styles.workspaceLoading}><ComparisonLoading label={t('loading')}/></div>}
       {state.snapshot.status === 'error' && <div role="alert"><p>{t(state.loadError === 'conflict' ? 'loadConflict' : `errors.${state.loadError ?? 'load-failed'}`)}</p><Button variant="secondary" onClick={() => { refresh(); if (state.loadError === 'unavailable' || state.loadError === 'unauthenticated') router.refresh(); }}>{t('reloadComparison')}</Button></div>}
       {snapshot && <div key={state.snapshot.seq} className={styles.canvasWrap} data-comparison-reveal data-comparison-slot={state.section} data-view={state.views[state.section].level}>
-        {state.section === 'works' && <AtlasView snapshot={snapshot} viewerId={viewerId} notice={snapshot.excludedSeriesWithoutEpisodes > 0 ? <p className={styles.coverageNote} data-comparison-coverage>{t('excludedHistoricalSeries', { count: snapshot.excludedSeriesWithoutEpisodes })}</p> : null}/>}
+        {state.section === 'works' && <AtlasView snapshot={snapshot} viewerId={viewerId} chosen={chosenFaces} onChosenChange={ids => state.groupId && setAtlasFaces({ groupId: state.groupId, ids })} notice={snapshot.excludedSeriesWithoutEpisodes > 0 ? <p className={styles.coverageNote} data-comparison-coverage>{t('excludedHistoricalSeries', { count: snapshot.excludedSeriesWithoutEpisodes })}</p> : null}/>}
         {state.section === 'tastes' && <div className={styles.tastePanel}>{workspaceControls}
           <Tastes snapshot={snapshot} people={state.views.tastes.level === 'group' ? state.selection : state.views.tastes.people} view={state.views.tastes} onView={view => dispatch({ type: 'view', view })} controls={state.tasteControls} onControlsChange={controls => dispatch({ type: 'tasteControls', controls })} onOpenWork={(key, origin) => dispatch({ type: 'view', view: { level: 'work', people: state.views.tastes.level === 'group' ? state.selection : state.views.tastes.people, key, origin } })}/></div>}
       </div>}

@@ -27,16 +27,21 @@ function WorkCard({ work, people, title }: { work: AtlasWork; people: AtlasPerso
   </>;
 }
 
-/** `notice` is a coverage note shown right under the summary (e.g. series without episodes). */
-export function AtlasView({ snapshot, viewerId, notice }: { snapshot: Snapshot; viewerId: string; notice?: ReactNode }) {
+/**
+ * `notice` is a coverage note shown right under the summary (e.g. series without episodes).
+ * The face selection is controlled by the explorer (`chosen`, null = everyone) so it survives
+ * format changes, which remount this view.
+ */
+export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange }: {
+  snapshot: Snapshot; viewerId: string; notice?: ReactNode; chosen: string[] | null; onChosenChange: (ids: string[]) => void;
+}) {
   const t = useTranslations('comparisons'); const locale = useLocale(); const router = useRouter();
   const you = t('you');
   const { people, works } = useMemo(() => atlasModel(snapshot, viewerId, you), [snapshot, viewerId, you]);
   const layout = useMemo(() => layoutQuien(people, works), [people, works]);
   const byKey = useMemo(() => new Map(works.map(work => [work.key, work])), [works]);
-  const [chosen, setChosen] = useState<string[]>(() => people.map(person => person.id));
   // People order, and only people that are still in the snapshot.
-  const active = people.map(person => person.id).filter(id => chosen.includes(id));
+  const active = people.map(person => person.id).filter(id => !chosen || chosen.includes(id));
   const [hover, setHover] = useState<AtlasHit | null>(null);
   const [picked, setPicked] = useState<WorkKey | null>(null);
   const camera = useRef<AtlasCanvasHandle>(null);
@@ -46,7 +51,8 @@ export function AtlasView({ snapshot, viewerId, notice }: { snapshot: Snapshot; 
   const titleOf = (work: AtlasWork) => work.metadataMissing || !work.title ? t('missingMetadata') : work.title;
 
   function toggle(id: string) {
-    setChosen(current => current.includes(id) ? (active.length > 1 ? current.filter(item => item !== id) : current) : [...current, id]);
+    if (active.includes(id)) { if (active.length > 1) onChosenChange(active.filter(item => item !== id)); }
+    else onChosenChange([...active, id]);
   }
   function open(work: AtlasWork) { if (!work.metadataMissing) router.push(itemHref(work.itemType, work.itemId)); }
   function activate(hit: AtlasHit | null, pointerType: string) {

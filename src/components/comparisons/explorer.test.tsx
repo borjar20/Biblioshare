@@ -177,6 +177,23 @@ describe('Explorer request boundaries', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'Carlos' })); expect(screen.getByText('Tú, Bea, Carlos')).toBeTruthy();
     vi.unstubAllGlobals();
   });
+  it('keeps atlas faces across a format change and starts a new group with everyone', async () => {
+    const members = (g: Group): Group => ({ ...g, members: ['Ana', 'Bea', 'Carlos'].map((name, i) => ({ slotId: `${i}`, userId: ['a', 'b', 'c'][i], name, avatarUrl: null, available: true })) });
+    const groups = [members(first), members(second)];
+    const book = { key: 'book:x' as const, title: 'Libro', coverUrl: null, genres: [], creators: [] };
+    mocks.query = `group=${first.id}`;
+    mocks.load.mockImplementation(async (id: string) => ({ ok: true, data: { ...snapshot(groups.find(g => g.id === id)!), catalog: [book],
+      works: ['a', 'b', 'c'].map(userId => ({ userId, key: 'book:x', rating: null, date: null, orderUnknown: false, progress: null })) } }));
+    render(ui(groups)); await screen.findByRole('button', { name: 'Tú' });
+    fireEvent.click(screen.getByRole('button', { name: 'Carlos' }));
+    expect(screen.getByRole('button', { name: 'Carlos' }).getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(within(screen.getByRole('group', { name: 'Filtrar por tipo de obra' })).getByRole('button', { name: 'Libros' }));
+    expect(screen.getByRole('button', { name: 'Carlos' }).getAttribute('aria-pressed')).toBe('false');
+    expect(screen.getByRole('button', { name: 'Tú' }).getAttribute('aria-pressed')).toBe('true');
+    openGroupSheet(); fireEvent.change(screen.getByLabelText('Grupo'), { target: { value: second.id } });
+    await waitFor(() => expect(mocks.load).toHaveBeenLastCalledWith(second.id, 'all'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Carlos' }).getAttribute('aria-pressed')).toBe('true'));
+  });
   it('retains taste category, signal and participant context after section switches and its own format reload', async () => {
     const available: Group = { ...first, members: [{ ...first.members[0] }, { slotId: 'two', userId: 'b', name: 'Bea', avatarUrl: null, available: true }] };
     const data: Snapshot = { ...snapshot(available), catalog: [{ key: 'book:x', title: 'Libro', coverUrl: null, genres: ['Drama'], creators: [{ id: 'author', name: 'Autora', role: 'author' }] }], works: [{ userId: 'a', key: 'book:x', rating: 9, date: null, orderUnknown: false, progress: null }] };
