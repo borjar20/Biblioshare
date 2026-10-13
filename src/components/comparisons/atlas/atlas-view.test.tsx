@@ -60,6 +60,11 @@ describe('AtlasView', () => {
     expect(onChosenChange).toHaveBeenCalledWith(['b']);
     expect(screen.getByRole('button', { name: 'Tú' }).getAttribute('aria-pressed')).toBe('true');
   });
+  it('si nadie de la selección sigue en el cruce, vuelven a estar todas las caras', () => {
+    render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={snapshot} viewerId="me" chosen={['gone']} onChosenChange={vi.fn()}/></NextIntlClientProvider>);
+    for (const name of ['Tú', 'Bea', 'Carla']) expect(screen.getByRole('button', { name }).getAttribute('aria-pressed')).toBe('true');
+    expect(summary()).toBe('1 obra en común entre Tú, Bea y Carla');
+  });
   it('ratón: hover muestra la mini-ficha y clic navega', () => {
     view();
     act(() => canvas.onHover({ key: 'book:1', x: 10, y: 10 }));

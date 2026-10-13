@@ -40,8 +40,9 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange }
   const { people, works } = useMemo(() => atlasModel(snapshot, viewerId, you), [snapshot, viewerId, you]);
   const layout = useMemo(() => layoutQuien(people, works), [people, works]);
   const byKey = useMemo(() => new Map(works.map(work => [work.key, work])), [works]);
-  // People order, and only people that are still in the snapshot.
-  const active = people.map(person => person.id).filter(id => !chosen || chosen.includes(id));
+  // People order, and only people that are still in the snapshot; if none of them remains, everyone.
+  const ids = people.map(person => person.id), kept = ids.filter(id => !chosen || chosen.includes(id));
+  const active = kept.length ? kept : ids;
   const [hover, setHover] = useState<AtlasHit | null>(null);
   const [picked, setPicked] = useState<WorkKey | null>(null);
   const camera = useRef<AtlasCanvasHandle>(null);
