@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createTranslator } from "next-intl";
 import messages from "../../../messages/es.json";
 import { narratorLine } from "./narrator-copy";
-import { closingCopy, formatHours, periodLabel, posterFor, sharedPeriodLabel } from "./view-models";
+import { closingCopy, formatHours, heatLevel, periodLabel, posterFor, sharedPeriodLabel, storyDurationMs, type People } from "./view-models";
 import type { ItemRef, NarratorVariant, Story, WrapUpPayload } from "./types";
 
 const t = (k: string, v?: Record<string, string | number>) => (v ? `${k}|${JSON.stringify(v)}` : k);
@@ -56,16 +56,107 @@ describe("posterFor time", () => {
   });
 });
 
-describe("posterFor rhythm", () => {
-  const r = { id: "rhythm", activeDays: 3, bestStreak: 1, favoriteWeekday: null, favoriteBandStartHour: null } as const;
-  it("anual (days vacío) no lleva tira", () => {
-    const m = posterFor({ ...r, days: [] }, { ...base, kind: "year" }, t);
-    expect(m.strip).toBeUndefined();
+const month = { ...base, v: 2, kind: "month", periodStart: "2026-09-01", periodEnd: "2026-09-30" } as WrapUpPayload;
+const ref = (id: string): ItemRef => ({ type: "book", id, title: id, coverUrl: null, times: 1 });
+
+describe("posterFor finished (rejilla)", () => {
+  it("≤ 9 portadas: rejilla quieta con todas", () => {
+    const m = posterFor({ id: "finished", items: [ref("a"), ref("b")], total: 2 }, month, t);
+    expect(m.coverGrid).toBe("static");
+    expect(m.covers).toHaveLength(2);
+    expect(m.lines).toEqual([]);
   });
-  it("sin racha de 2+ no la menciona", () => {
-    const m = posterFor({ ...r, days: [{ date: "2026-09-29", active: true }] }, base, t);
-    expect(m.lines.join("\n")).not.toContain("streak");
-    expect(m.strip).toEqual([{ label: "M", value: "29 sep", active: true }]);
+  it("> 9: scroll, línea de movimiento reducido y «más» si el payload no trae todas", () => {
+    const items = Array.from({ length: 30 }, (_, i) => ref(`b${i}`));
+    const m = posterFor({ id: "finished", items, total: 34 }, month, t);
+    expect(m.coverGrid).toBe("scroll");
+    expect(m.lines).toEqual(['wrapUps.stories.finished.more|{"count":4}']);
+    expect(m.reducedMoreLine).toBe('wrapUps.stories.finished.more|{"count":25}');
+  });
+});
+
+describe("storyDurationMs", () => {
+  it("6 s por defecto; scroll suma 1 s por fila extra con tope 15 s", () => {
+    expect(storyDurationMs({ layout: "figure", eyebrow: "", lines: [], narratorLine: "" })).toBe(6000);
+    const covers = (n: number) => Array.from({ length: n }, (_, i) => ref(`c${i}`));
+    expect(storyDurationMs({ layout: "covers", eyebrow: "", lines: [], narratorLine: "", coverGrid: "scroll", covers: covers(15) })).toBe(8000);
+    expect(storyDurationMs({ layout: "covers", eyebrow: "", lines: [], narratorLine: "", coverGrid: "scroll", covers: covers(60) })).toBe(15000);
+  });
+});
+
+describe("posterFor in_progress", () => {
+  it("v2: cifra openTotal, línea de tocadas, filas con touched", () => {
+    const m = posterFor({ id: "in_progress", openTotal: 3, touchedTotal: 1, items: [
+      { ...ref("Reacher"), percent: 13, touched: true },
+      { ...ref("Elantris"), percent: null, touched: false },
+    ] }, month, t);
+    expect(m.layout).toBe("progress");
+    expect(m.figure).toEqual({ value: "3", unit: 'wrapUps.stories.in_progress.unit|{"count":3}' });
+    expect(m.lines).toEqual(['wrapUps.stories.in_progress.touched|{"count":1}']);
+    expect(m.progress!.map((p) => [p.item.title, p.percent, p.touched])).toEqual([["Reacher", 13, true], ["Elantris", null, false]]);
+  });
+  it("v1 (sin openTotal): cifra = items, sin línea de tocadas", () => {
+    const m = posterFor({ id: "in_progress", items: [{ ...ref("A"), percent: null }] }, month, t);
+    expect(m.figure!.value).toBe("1");
+    expect(m.lines).toEqual([]);
+    expect(m.progress![0].touched).toBe(true);
+  });
+  it("más de 6: muestra 6 y «y N más» sobre openTotal", () => {
+    const items = Array.from({ length: 12 }, (_, i) => ({ ...ref(`x${i}`), percent: null, touched: true }));
+    const m = posterFor({ id: "in_progress", openTotal: 15, touchedTotal: 15, items }, month, t);
+    expect(m.progress).toHaveLength(6);
+    expect(m.lines).toContain('wrapUps.stories.in_progress.more|{"count":9}');
+  });
+});
+
+describe("heatLevel", () => {
+  it("4 niveles relativos al máximo", () => {
+    expect([0, 1, 2, 3, 6].map((v) => heatLevel(v, 6))).toEqual([0, 1, 1, 2, 3]);
+    expect(heatLevel(0, 0)).toBe(0);
+  });
+});
+
+describe("posterFor rhythm (calendario)", () => {
+  const days = Array.from({ length: 30 }, (_, i) => ({ date: `2026-09-${String(i + 1).padStart(2, "0")}`, active: i === 0 || i === 4 }));
+  const r = { id: "rhythm", days, activeDays: 2, bestStreak: 1, favoriteWeekday: 5, favoriteBandStartHour: 0 } as const;
+  it("v2: calendario con desfase del 1 (martes = 1), dos mapas y solo la racha como línea", () => {
+    const m = posterFor({ ...r, bestStreak: 3, byWeekday: [0, 1, 0, 0, 0, 3, 0], byBand: [2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1] }, month, t);
+    expect(m.layout).toBe("calendar");
+    expect(m.calendar!.offset).toBe(1);
+    expect(m.calendar!.days.filter((d) => d.active).map((d) => d.day)).toEqual([1, 5]);
+    expect(m.heatmaps).toHaveLength(2);
+    expect(m.heatmaps![0].cells.map((c) => c.label).join("")).toBe("LMXJVSD");
+    expect(m.heatmaps![0].cells[5]).toEqual({ label: "S", level: 3, peak: true });
+    expect(m.heatmaps![1].cells[0].label).toBe("00");
+    expect(m.lines).toEqual(['wrapUps.stories.rhythm.streak|{"count":3}']);
+  });
+  it("v1: calendario sin mapas y las líneas de día y franja de siempre", () => {
+    const m = posterFor(r, month, t);
+    expect(m.heatmaps).toEqual([]);
+    expect(m.lines.some((l) => l.startsWith("wrapUps.stories.rhythm.favoriteDay"))).toBe(true);
+    expect(m.lines.some((l) => l.startsWith("wrapUps.stories.rhythm.favoriteBand"))).toBe(true);
+  });
+  it("anual (days vacío) no lleva calendario", () => {
+    const m = posterFor({ id: "rhythm", days: [], activeDays: 3, bestStreak: 1, favoriteWeekday: null, favoriteBandStartHour: null }, { ...base, kind: "year" }, t);
+    expect(m.calendar).toBeUndefined();
+  });
+});
+
+describe("posterFor together", () => {
+  const people: People = { u2: { userId: "u2", username: "ana", displayName: null, avatarUrl: null } };
+  it("v2: sin cifra sumada; visionados con compañeros resueltos y clubes", () => {
+    const m = posterFor({ id: "together", jointViewings: 1, clubDays: 2,
+      viewings: [{ item: ref("Logan"), watchedOn: "2026-09-10", companionIds: ["u2", "u-bloqueado"] }],
+      clubs: [{ clubId: "c", name: "Jueves", days: 2 }] }, month, t, people);
+    expect(m.layout).toBe("together");
+    expect(m.figure).toBeUndefined();
+    expect(m.together!.viewings[0].companions.map((c) => c.username)).toEqual(["ana"]);
+    expect(m.together!.clubs).toEqual([{ name: "Jueves", value: 'wrapUps.stories.together.clubDaysValue|{"count":2}' }]);
+  });
+  it("v1: sin cifra sumada, solo las líneas", () => {
+    const m = posterFor({ id: "together", jointViewings: 2, clubDays: 2 }, month, t);
+    expect(m.figure).toBeUndefined();
+    expect(m.lines).toHaveLength(2);
   });
 });
 
