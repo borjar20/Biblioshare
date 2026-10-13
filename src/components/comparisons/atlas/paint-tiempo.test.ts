@@ -10,14 +10,15 @@ const people = [{ id: 'a', name: 'Ana Ruiz', color: '#111111' }, { id: 'b', name
 const layout: TiempoLayout = { lanes: [{ userId: 'a', y: -115 }, { userId: 'b', y: 115 }, { userId: 'ghost', y: 400 }], instances: [],
   startYear: 2020, endYear: 2023, extent: { minX: -500, maxX: 500, minY: -265, maxY: 265 } };
 
-function paint() {
+function paint(vp = { width: 1200, height: 800 }, cam = { x: 0, y: 0, k: 1 }) {
   const moves: [number, number][] = [], lines: [number, number][] = [], arcs: { x: number; r: number; fill: string }[] = [], fills: string[] = [];
   const strokes: string[] = [];
   const ctx: Record<string, unknown> & { fillStyle: string; strokeStyle: string } = { fillStyle: '', strokeStyle: '', lineWidth: 1, globalAlpha: 1, beginPath: () => {}, moveTo: (x: number, y: number) => moves.push([x, y]),
     lineTo: (x: number, y: number) => lines.push([x, y]), stroke() { strokes.push(ctx.strokeStyle); }, fillRect() { fills.push(ctx.fillStyle); },
-    arc(x: number, _y: number, r: number) { arcs.push({ x, r, fill: ctx.fillStyle }); }, fill: () => {} };
+    arc(x: number, _y: number, r: number) { arcs.push({ x, r, fill: ctx.fillStyle }); }, fill: () => {},
+    font: '', measureText: (value: string) => ({ width: value.length * 7 }) };
   const text = vi.fn<PaintView['text']>();
-  paintTiempoBack({ ctx: ctx as unknown as CanvasRenderingContext2D, cam: { x: 0, y: 0, k: 1 }, vp: { width: 1200, height: 800 }, palette, text }, { layout, people });
+  paintTiempoBack({ ctx: ctx as unknown as CanvasRenderingContext2D, cam, vp, palette, text }, { layout, people });
   return { moves, lines, arcs, fills, strokes, text };
 }
 
@@ -44,5 +45,17 @@ describe('paintTiempoBack', () => {
     expect(text.mock.calls.find(([v]) => v === 'B')).toBeTruthy();
     expect(text.mock.calls.find(([v]) => v === 'Beto')).toBeTruthy();
     expect(text.mock.calls.some(([v]) => v === 'ghost')).toBe(false);
+  });
+  it('keeps the last year and a long name inside a narrow screen', () => {
+    // 3 years at k = 0.2 span 162 px; a 200 px screen leaves the 2023 label (28 px) no room on the right.
+    const { moves, text } = paint({ width: 200, height: 800 }, { x: 0, y: 0, k: 0.2 });
+    const last = text.mock.calls.find(([v]) => v === '2023')!;
+    expect(last[1]).toBeLessThan(moves[3][0]);
+    expect(last[5]).toBe('right');
+    const first = text.mock.calls.find(([v]) => v === '2020')!;
+    expect(first[1]).toBeGreaterThan(moves[0][0]);
+    // «Ana Ruiz» is 56 px wide: its centre must be at least 28 + 4 px from the left edge.
+    const name = text.mock.calls.find(([v]) => v === 'Ana Ruiz')!;
+    expect(name[1] - 28).toBeGreaterThanOrEqual(4);
   });
 });
