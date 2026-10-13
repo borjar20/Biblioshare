@@ -10,37 +10,50 @@ import { atlasModel } from '@/lib/comparisons/atlas/model';
 import { layoutQuien } from '@/lib/comparisons/atlas/layout';
 import { layoutOpinion } from '@/lib/comparisons/atlas/opinion';
 import { layoutTiempo } from '@/lib/comparisons/atlas/tiempo';
-import { layoutIslands } from '@/lib/comparisons/atlas/islands';
+import { layoutIslands, OTHER_ISLAND, type Island, type IslandMode } from '@/lib/comparisons/atlas/islands';
 import { buildScene, type Lens } from '@/lib/comparisons/atlas/scene';
 import { initials } from '../presentation';
 import { AtlasCanvas, type AtlasCanvasHandle } from './atlas-canvas';
 import type { AtlasHit } from './atlas-engine';
+import type { IslandText } from './paint-islas';
 import { summaryMessage } from './atlas-summary-message';
 import { RatingScale } from './rating-scale';
 import styles from './atlas.module.css';
 
 const TYPE_VAR = { book: 'var(--type-book)', movie: 'var(--type-movie)', series: 'var(--type-series)' } as const;
+const LENS_ICONS: Record<Lens, ReactNode> = {
+  quien: <><circle cx="8" cy="3" r="2"/><circle cx="3" cy="12" r="2"/><circle cx="13" cy="12" r="2"/><path d="M7 5 4 10M9 5l3 5M5 12h6"/></>,
+  opinion: <><path d="M2 14 14 2"/><path d="M2 2v12h12"/><circle cx="10" cy="5" r="1.2" fill="currentColor"/><circle cx="5" cy="10" r="1.2" fill="currentColor"/></>,
+  tiempo: <><path d="M1 4h14M1 12h14"/><path d="M5 4c0 4 3 4 3 8M11 4c0 3-2 5-2 8"/></>,
+  islas: <><circle cx="4" cy="9" r="3"/><circle cx="11" cy="6" r="4"/><circle cx="12.5" cy="13" r="1.8"/></>,
+};
+const LENSES = Object.keys(LENS_ICONS) as Lens[];
+const MODES: IslandMode[] = ['type', 'genre', 'creator'];
+const isType = (id: string): id is keyof typeof TYPE_VAR => Object.hasOwn(TYPE_VAR, id);
 
-/** Quién lists who has the work; Opinión puts each owner on the 1–10 scale instead. */
+/** Quién and Islas list who has the work; Tiempo adds each owner's year; Opinión puts each owner on the 1–10 scale. */
 function WorkCard({ work, people, title, lens }: { work: AtlasWork; people: AtlasPerson[]; title: string; lens: Lens }) {
+  const t = useTranslations('comparisons.atlas');
   const names = new Map(people.map(person => [person.id, person]));
+  const line = (name: string, date: string | null) => lens !== 'tiempo' ? name
+    : date ? t('years', { name, year: date.slice(0, 4) }) : t('noDate', { name });
   return <>
     <span className={styles.cover} style={{ background: TYPE_VAR[work.itemType] }} aria-hidden="true"/>
     <span><span className={styles.workTitle}>{title}</span>
       {lens === 'opinion' ? <RatingScale owners={work.owners} people={people}/> : <ul className={styles.owners}>{work.owners.map(owner => names.get(owner.userId) && <li key={owner.userId}>
         <span className={styles.ownerDot} style={{ background: names.get(owner.userId)!.color }} aria-hidden="true"/>
-        <span>{names.get(owner.userId)!.name}</span></li>)}</ul>}</span>
+        <span>{line(names.get(owner.userId)!.name, owner.date)}</span></li>)}</ul>}</span>
   </>;
 }
 
 /**
  * `notice` is a coverage note shown right under the summary (e.g. series without episodes).
  * The face selection is controlled by the explorer (`chosen`, null = everyone) so it survives
- * format changes, which remount this view. The lens is controlled the same way.
+ * format changes, which remount this view. The lens and the Islas mode are controlled the same way.
  */
-export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange, lens, onLensChange }: {
+export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange, lens, onLensChange, islandMode, onIslandModeChange }: {
   snapshot: Snapshot; viewerId: string; notice?: ReactNode; chosen: string[] | null; onChosenChange: (ids: string[]) => void;
-  lens: Lens; onLensChange: (lens: Lens) => void;
+  lens: Lens; onLensChange: (lens: Lens) => void; islandMode: IslandMode; onIslandModeChange: (mode: IslandMode) => void;
 }) {
   const t = useTranslations('comparisons'); const locale = useLocale(); const router = useRouter();
   const you = t('you');
@@ -55,7 +68,15 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange, 
   }, [people, chosen]);
   const opinion = useMemo(() => layoutOpinion(people, works, active), [people, works, active]);
   const tiempo = useMemo(() => layoutTiempo(people, works, active), [people, works, active]);
-  const islas = useMemo(() => layoutIslands(people, works, active, 'type'), [people, works, active]);
+  // Type islands only make sense across formats: with a single format, Islas groups by genre.
+  const typeless = snapshot.format !== 'all';
+  const effectiveMode: IslandMode = typeless && islandMode === 'type' ? 'genre' : islandMode;
+  const islas = useMemo(() => layoutIslands(people, works, active, effectiveMode), [people, works, active, effectiveMode]);
+  // Shared by the painter (titles over each island) and the summary (best island).
+  const islandText = useMemo<IslandText>(() => ({
+    title: (island: Island) => island.id === OTHER_ISLAND ? t('atlas.islas.other') : isType(island.id) ? t(`formats.${island.id}`) : island.label ?? '',
+    common: count => t('atlas.islas.common', { count }),
+  }), [t]);
   const scene = useMemo(() => buildScene(lens, works, active, { quien: layout, opinion, tiempo, islas }),
     [lens, works, active, layout, opinion, tiempo, islas]);
   // Corner and axis names follow the Opinión reference («Tú» unless she is out).
@@ -88,7 +109,8 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange, 
   }, []);
   const bold = (chunks: ReactNode) => <b>{chunks}</b>;
   // Same message for the visible summary (rich) and the canvas label (plain text, spec §7).
-  const { key: summaryKey, values: summaryValues } = summaryMessage(lens, people, works, active, opinion, new Intl.ListFormat(locale, { type: 'conjunction' }));
+  const { key: summaryKey, values: summaryValues } = summaryMessage(lens, people, works, active, { opinion, islas },
+    new Intl.ListFormat(locale, { type: 'conjunction' }), islandText.title);
   const canvasLabel = `${t('atlas.canvasLabel')}. ${t(`atlas.lens.${lens}`)}. ${t.markup(summaryKey, { ...summaryValues, b: chunks => chunks })}`;
   const titleOf = (work: AtlasWork) => work.metadataMissing || !work.title ? t('missingMetadata') : work.title;
 
@@ -98,6 +120,7 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange, 
   }
   // A lens change can drop the hovered or picked work from the scene: start clean.
   function changeLens(next: Lens) { setHover(null); setPicked(null); onLensChange(next); }
+  function changeMode(next: IslandMode) { setHover(null); setPicked(null); onIslandModeChange(next); }
   function open(work: AtlasWork) { if (!work.metadataMissing) router.push(itemHref(work.itemType, work.itemId)); }
   function activate(hit: AtlasHit | null, pointerType: string) {
     if (!hit) { setPicked(null); return; }
@@ -110,7 +133,7 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange, 
   const unavailable = snapshot.group.members.filter(member => !member.available);
 
   return <div ref={stage} className={styles.canvasWrap} data-comparison-stage>
-    <AtlasCanvas ref={camera} label={canvasLabel} people={people} works={works} active={active} scene={scene} quien={layout} tiempo={tiempo} islas={islas} opinionLabels={opinionLabels} insets={insets}
+    <AtlasCanvas ref={camera} label={canvasLabel} people={people} works={works} active={active} scene={scene} quien={layout} tiempo={tiempo} islas={islas} islandText={islandText} opinionLabels={opinionLabels} insets={insets}
       countLabel={count => t('atlas.poleCount', { count })} onTogglePerson={toggle} onHover={setHover} onActivate={activate}/>
     <div ref={overlay} className={styles.overlayTop}>
       <div><p className={styles.summary} role="status" aria-live="polite">{t.rich(summaryKey, { ...summaryValues, b: bold })}</p>
@@ -130,13 +153,14 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange, 
       <button type="button" aria-label={t('atlas.zoomFit')} onClick={() => camera.current?.fit()}>⤢</button>
     </div>
     <div ref={dock} className={styles.dock}>
+      {lens === 'islas' && <div className={`${styles.lens} ${styles.modes}`} role="group" aria-label={t('atlas.islas.modes')}>
+        {MODES.filter(mode => !typeless || mode !== 'type').map(mode => <button key={mode} type="button" aria-pressed={effectiveMode === mode}
+          onClick={() => changeMode(mode)}>{t(`atlas.islas.mode.${mode}`)}</button>)}
+      </div>}
       <div className={styles.lens} role="group" aria-label={t('atlas.lenses')}>
-        <button type="button" aria-pressed={lens === 'quien'} aria-label={t('atlas.lens.quien')} onClick={() => changeLens('quien')}>
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><circle cx="8" cy="3" r="2"/><circle cx="3" cy="12" r="2"/><circle cx="13" cy="12" r="2"/><path d="M7 5 4 10M9 5l3 5M5 12h6"/></svg>
-          <span>{t('atlas.lens.quien')}</span></button>
-        <button type="button" aria-pressed={lens === 'opinion'} aria-label={t('atlas.lens.opinion')} onClick={() => changeLens('opinion')}>
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M2 14 14 2"/><path d="M2 2v12h12"/><circle cx="10" cy="5" r="1.2" fill="currentColor"/><circle cx="5" cy="10" r="1.2" fill="currentColor"/></svg>
-          <span>{t('atlas.lens.opinion')}</span></button>
+        {LENSES.map(item => <button key={item} type="button" aria-pressed={lens === item} aria-label={t(`atlas.lens.${item}`)} onClick={() => changeLens(item)}>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">{LENS_ICONS[item]}</svg>
+          <span>{t(`atlas.lens.${item}`)}</span></button>)}
       </div>
       <p className={styles.caption}>{t(`atlas.caption.${lens}`)}</p>
     </div>

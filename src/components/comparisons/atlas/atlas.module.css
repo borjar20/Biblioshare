@@ -17,6 +17,9 @@
 .lens button { display: flex; align-items: center; gap: 7px; padding: 9px 16px; min-height: 40px; border-radius: 999px; font-size: 14px; font-weight: 600; color: var(--atlas-muted); background: transparent; }
 .lens button[aria-pressed='true'] { background: var(--atlas-fg); color: var(--atlas-ground); }
 .lens svg { width: 16px; height: 16px; flex: none; }
+/* Islas grouping: same pill as the lenses, one size down. */
+.modes { gap: 2px; padding: 4px; }
+.modes button { padding: 6px 12px; min-height: 32px; font-size: 12.5px; }
 .caption { font-size: 12.5px; color: var(--atlas-faint); text-align: center; max-width: 56ch; line-height: 1.4; text-wrap: balance; margin: 0; }
 .zoom { position: absolute; right: 16px; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 6px; z-index: 2; }
 .zoom button { width: 40px; height: 40px; border-radius: 12px; background: var(--atlas-panel); display: grid; place-items: center; color: var(--atlas-fg); font-size: 18px; font-weight: 600; }
@@ -41,6 +44,7 @@
 @media (max-width: 640px) {
   .lens button span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .lens button { padding: 10px 14px; }
+  .modes button { padding: 6px 12px; }
   .zoom { display: none; }
   /* Inner padding so the 2px active ring is not clipped by the scroller; the negative margin keeps the alignment. */
   .faces { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; width: calc(100% + 8px); margin: -4px; padding: 4px; scrollbar-width: none; }

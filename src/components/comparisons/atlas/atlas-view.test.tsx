@@ -1,15 +1,16 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, act } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, act, within } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import { useState, type ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import messages from '../../../../messages/es.json';
 import type { Snapshot, WorkKey } from '@/lib/comparisons/types';
 import type { Lens } from '@/lib/comparisons/atlas/scene';
+import type { Island, IslandMode } from '@/lib/comparisons/atlas/islands';
 
 const push = vi.fn();
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
-type CanvasProps = { opinionLabels?: Record<string, string>; onActivate: (hit: { key: WorkKey; x: number; y: number } | null, type: string) => void; onHover: (hit: { key: WorkKey; x: number; y: number } | null) => void; active: string[]; label: string };
+type CanvasProps = { islandText?: { title: (island: Island) => string; common: (count: number) => string }; opinionLabels?: Record<string, string>; onActivate: (hit: { key: WorkKey; x: number; y: number } | null, type: string) => void; onHover: (hit: { key: WorkKey; x: number; y: number } | null) => void; active: string[]; label: string };
 let canvas: CanvasProps;
 vi.mock('./atlas-canvas', () => ({ AtlasCanvas: (props: CanvasProps) => { canvas = props; return <div data-testid="canvas"/>; } }));
 import { AtlasView } from './atlas-view';
@@ -21,11 +22,17 @@ const snapshot: Snapshot = { group: { id: 'g', name: 'G', revision: 1, members: 
   works: ['me', 'b', 'c'].map(userId => ({ userId, key: 'book:1' as WorkKey, rating: null, date: null, orderUnknown: false, progress: null }))
     .concat([{ userId: 'b', key: 'book:2' as WorkKey, rating: null, date: null, orderUnknown: false, progress: null }]) };
 // The face selection is controlled by the explorer; this wrapper holds it like the explorer does.
-function Harness({ notice, data = snapshot }: { notice?: ReactNode; data?: Snapshot }) {
+function Harness({ notice, data = snapshot, initialLens = 'quien', initialMode = 'type' }: { notice?: ReactNode; data?: Snapshot; initialLens?: Lens; initialMode?: IslandMode }) {
   const [chosen, setChosen] = useState<string[] | null>(null);
-  const [lens, setLens] = useState<Lens>('quien');
-  return <AtlasView snapshot={data} viewerId="me" notice={notice} chosen={chosen} onChosenChange={setChosen} lens={lens} onLensChange={setLens}/>;
+  const [lens, setLens] = useState<Lens>(initialLens);
+  const [islandMode, setIslandMode] = useState<IslandMode>(initialMode);
+  return <AtlasView snapshot={data} viewerId="me" notice={notice} chosen={chosen} onChosenChange={setChosen} lens={lens} onLensChange={setLens}
+    islandMode={islandMode} onIslandModeChange={setIslandMode}/>;
 }
+const viewWith = (data: Snapshot, initialLens?: Lens, initialMode?: IslandMode) =>
+  render(<NextIntlClientProvider locale="es" messages={messages}><Harness data={data} initialLens={initialLens} initialMode={initialMode}/></NextIntlClientProvider>);
+/** Same snapshot, with `book:1` filed under a genre. */
+const withGenre: Snapshot = { ...snapshot, catalog: snapshot.catalog.map(item => ({ ...item, genres: ['Ciencia ficción'] })) };
 const view = (notice?: ReactNode) => render(<NextIntlClientProvider locale="es" messages={messages}><Harness notice={notice}/></NextIntlClientProvider>);
 /** Same snapshot, with `book:1` rated by each person as given. */
 const viewRated = (ratings: Record<string, number>) => render(<NextIntlClientProvider locale="es" messages={messages}>
@@ -47,10 +54,10 @@ describe('AtlasView', () => {
     const names: Record<string, string> = { me: 'Tú', b: 'Bea', c: 'Carla', d: 'Dani' };
     const big: Snapshot = { ...snapshot, group: { ...snapshot.group, members: four.map(id => member(id, names[id])) },
       works: four.map(userId => ({ userId, key: 'book:1' as WorkKey, rating: null, date: null, orderUnknown: false, progress: null })) };
-    render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={big} viewerId="me" chosen={null} onChosenChange={vi.fn()} lens="quien" onLensChange={vi.fn()}/></NextIntlClientProvider>);
+    render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={big} viewerId="me" chosen={null} onChosenChange={vi.fn()} lens="quien" onLensChange={vi.fn()} islandMode="type" onIslandModeChange={vi.fn()}/></NextIntlClientProvider>);
     expect(summary()).toBe('1 obra en común entre las 4 personas');
     cleanup();
-    render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={big} viewerId="me" chosen={['me', 'b', 'c']} onChosenChange={vi.fn()} lens="quien" onLensChange={vi.fn()}/></NextIntlClientProvider>);
+    render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={big} viewerId="me" chosen={['me', 'b', 'c']} onChosenChange={vi.fn()} lens="quien" onLensChange={vi.fn()} islandMode="type" onIslandModeChange={vi.fn()}/></NextIntlClientProvider>);
     expect(summary()).toBe('1 obra en común entre Tú, Bea y Carla');
   });
   it('pinta el aviso de cobertura bajo el resumen cuando se le pasa', () => {
@@ -70,7 +77,7 @@ describe('AtlasView', () => {
   });
   it('con una selección dada solo activa esas caras y avisa del cambio sin tocarla', () => {
     const onChosenChange = vi.fn();
-    render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={snapshot} viewerId="me" chosen={['b', 'me']} onChosenChange={onChosenChange} lens="quien" onLensChange={vi.fn()}/></NextIntlClientProvider>);
+    render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={snapshot} viewerId="me" chosen={['b', 'me']} onChosenChange={onChosenChange} lens="quien" onLensChange={vi.fn()} islandMode="type" onIslandModeChange={vi.fn()}/></NextIntlClientProvider>);
     expect(screen.getByRole('button', { name: 'Carla' }).getAttribute('aria-pressed')).toBe('false');
     expect(canvas.active).toEqual(['me', 'b']);
     fireEvent.click(screen.getByRole('button', { name: 'Tú' }));
@@ -78,7 +85,7 @@ describe('AtlasView', () => {
     expect(screen.getByRole('button', { name: 'Tú' }).getAttribute('aria-pressed')).toBe('true');
   });
   it('si nadie de la selección sigue en el cruce, vuelven a estar todas las caras', () => {
-    render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={snapshot} viewerId="me" chosen={['gone']} onChosenChange={vi.fn()} lens="quien" onLensChange={vi.fn()}/></NextIntlClientProvider>);
+    render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={snapshot} viewerId="me" chosen={['gone']} onChosenChange={vi.fn()} lens="quien" onLensChange={vi.fn()} islandMode="type" onIslandModeChange={vi.fn()}/></NextIntlClientProvider>);
     for (const name of ['Tú', 'Bea', 'Carla']) expect(screen.getByRole('button', { name }).getAttribute('aria-pressed')).toBe('true');
     expect(summary()).toBe('1 obra en común entre Tú, Bea y Carla');
   });
@@ -199,5 +206,57 @@ describe('AtlasView', () => {
     expect(screen.queryByRole('img', { hidden: true })).toBeNull();
     const tip = screen.getByText('Proyecto Salvación').closest('[aria-hidden="true"]')!;
     expect([...tip.querySelectorAll('li')].map(li => li.textContent)).toEqual(['Tú', 'Bea', 'Carla']);
+  });
+  it('el dock ofrece las cuatro lentes', () => {
+    view();
+    const lenses = screen.getByRole('group', { name: 'Lente' });
+    expect([...lenses.querySelectorAll('button')].map(b => b.getAttribute('aria-label'))).toEqual(['Quién', 'Opinión', 'Tiempo', 'Islas']);
+    expect(screen.queryByRole('group', { name: 'Agrupar islas por' })).toBeNull();
+  });
+  it('Islas: aparece el grupo de modos y cambiar de modo cambia el resumen', () => {
+    viewWith(withGenre);
+    fireEvent.click(screen.getByRole('button', { name: 'Islas' }));
+    const modes = screen.getByRole('group', { name: 'Agrupar islas por' });
+    expect([...modes.querySelectorAll('button')].map(b => [b.textContent, b.getAttribute('aria-pressed')])).toEqual([
+      ['Tipo', 'true'], ['Género', 'false'], ['Autor/Director', 'false']]);
+    expect(summary()).toBe('Donde más os parecéis: Libros, con 1 en común');
+    expect(screen.getByText(messages.comparisons.atlas.caption.islas)).toBeTruthy();
+    fireEvent.click(within(modes).getByRole('button', { name: 'Género' }));
+    expect(within(modes).getByRole('button', { name: 'Género' }).getAttribute('aria-pressed')).toBe('true');
+    expect(summary()).toBe('Donde más os parecéis: Ciencia ficción, con 1 en común');
+    fireEvent.click(within(modes).getByRole('button', { name: 'Autor/Director' }));
+    expect(summary()).toBe('Aún no tenéis obras en común en ninguna isla');
+  });
+  it('Islas: cambiar de modo cierra la hoja táctil abierta', () => {
+    viewWith(withGenre, 'islas');
+    act(() => canvas.onActivate({ key: 'book:1', x: 10, y: 10 }, 'touch'));
+    expect(screen.getByRole('dialog', { name: 'Proyecto Salvación' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Género' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+  it('Islas con un formato concreto no ofrece Tipo y agrupa por Género', () => {
+    viewWith({ ...withGenre, format: 'book' }, 'islas', 'type');
+    const modes = screen.getByRole('group', { name: 'Agrupar islas por' });
+    expect([...modes.querySelectorAll('button')].map(b => [b.textContent, b.getAttribute('aria-pressed')])).toEqual([
+      ['Género', 'true'], ['Autor/Director', 'false']]);
+    expect(summary()).toBe('Donde más os parecéis: Ciencia ficción, con 1 en común');
+  });
+  it('Tiempo: la mini-ficha pone el año de cada dueño o dice que no tiene fecha', () => {
+    viewWith({ ...snapshot, works: snapshot.works.map(work => work.key === 'book:1' && work.userId === 'me' ? { ...work, date: '2021-03-04' } : work) });
+    fireEvent.click(screen.getByRole('button', { name: 'Tiempo' }));
+    expect(screen.getByText(messages.comparisons.atlas.caption.tiempo)).toBeTruthy();
+    expect(summary()).toBe('Llegaste tú primero a 0 de 0 obras compartidas (1 sin fecha)');
+    act(() => canvas.onHover({ key: 'book:1', x: 10, y: 10 }));
+    const tip = screen.getByText('Proyecto Salvación').closest('[aria-hidden="true"]')!;
+    expect([...tip.querySelectorAll('li')].map(li => li.textContent)).toEqual(['Tú: 2021', 'Bea: sin fecha', 'Carla: sin fecha']);
+    expect(screen.getByText('Tú: 2021')).toBeTruthy();
+  });
+  it('el lienzo recibe los textos de las islas', () => {
+    view();
+    const island = (id: string, label: string | null = null) => ({ id, label, x: 0, y: 0, r: 10, core: 0, keys: [], common: 0, shared: 0, means: [] }) as Island;
+    expect(canvas.islandText?.title(island('other'))).toBe('Otros');
+    expect(canvas.islandText?.title(island('book'))).toBe('Libros');
+    expect(canvas.islandText?.title(island('g:Drama', 'Drama'))).toBe('Drama');
+    expect(canvas.islandText?.common(3)).toBe('3 en común');
   });
 });

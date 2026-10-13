@@ -16,7 +16,7 @@ export function paintIslasBack({ ctx, cam, vp, palette, text }: PaintView, { lay
     ctx.globalAlpha = 0.1; ctx.fillStyle = tint; ctx.beginPath(); ctx.arc(c.x, c.y, r, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
     if (island.core > 0) {
       ctx.globalAlpha = 0.9; ctx.strokeStyle = palette.glow; ctx.lineWidth = 1.5; ctx.setLineDash([3, 5]);
-      ctx.beginPath(); ctx.arc(c.x, c.y, island.core * k, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+      ctx.beginPath(); ctx.arc(c.x, c.y, island.core * k, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); ctx.lineWidth = 1; ctx.globalAlpha = 1;
     }
     if (!words) continue;
     text(words.title(island), c.x, c.y - r - 52, `800 ${Math.min(30, Math.max(14, 22 * k * 2.6))}px ${palette.font}`, palette.fg, 'center');

@@ -13,6 +13,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { GroupEditor } from './group-editor';
 import { AtlasView } from './atlas/atlas-view';
 import type { Lens } from '@/lib/comparisons/atlas/scene';
+import type { IslandMode } from '@/lib/comparisons/atlas/islands';
 import { GroupSheet } from './group-sheet';
 import { Tastes } from './tastes';
 import { ComparisonLoading } from './loading';
@@ -158,8 +159,9 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
   // Atlas faces live here, not in AtlasView: a format change remounts the view. Another group starts with everyone.
   const [atlasFaces, setAtlasFaces] = useState<{ groupId: string; ids: string[] } | null>(null);
   const chosenFaces = atlasFaces && atlasFaces.groupId === state.groupId ? atlasFaces.ids : null;
-  // The lens survives the format change, which remounts the view.
+  // The lens and the Islas mode survive the format change, which remounts the view.
   const [atlasLens, setAtlasLens] = useState<Lens>('quien');
+  const [atlasIslandMode, setAtlasIslandMode] = useState<IslandMode>('type');
   const sequence = useRef(0); const initialSignature = useRef(JSON.stringify(initialGroups));
   const groupChip = useRef<HTMLButtonElement>(null);
   const groupQuery = withGroup?.id ?? search.get('group');
@@ -252,7 +254,7 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
       {state.snapshot.status === 'loading' && <div className={styles.workspaceLoading}><ComparisonLoading label={t('loading')}/></div>}
       {state.snapshot.status === 'error' && <div role="alert"><p>{t(state.loadError === 'conflict' ? 'loadConflict' : `errors.${state.loadError ?? 'load-failed'}`)}</p><Button variant="secondary" onClick={() => { refresh(); if (state.loadError === 'unavailable' || state.loadError === 'unauthenticated') router.refresh(); }}>{t('reloadComparison')}</Button></div>}
       {snapshot && <div key={state.snapshot.seq} className={styles.canvasWrap} data-comparison-reveal data-comparison-slot={state.section} data-view={state.views[state.section].level}>
-        {state.section === 'works' && <AtlasView snapshot={snapshot} viewerId={viewerId} chosen={chosenFaces} lens={atlasLens} onLensChange={setAtlasLens} onChosenChange={ids => state.groupId && setAtlasFaces({ groupId: state.groupId, ids })} notice={snapshot.excludedSeriesWithoutEpisodes > 0 ? <p className={styles.coverageNote} data-comparison-coverage>{t('excludedHistoricalSeries', { count: snapshot.excludedSeriesWithoutEpisodes })}</p> : null}/>}
+        {state.section === 'works' && <AtlasView snapshot={snapshot} viewerId={viewerId} chosen={chosenFaces} lens={atlasLens} onLensChange={setAtlasLens} islandMode={atlasIslandMode} onIslandModeChange={setAtlasIslandMode} onChosenChange={ids => state.groupId && setAtlasFaces({ groupId: state.groupId, ids })} notice={snapshot.excludedSeriesWithoutEpisodes > 0 ? <p className={styles.coverageNote} data-comparison-coverage>{t('excludedHistoricalSeries', { count: snapshot.excludedSeriesWithoutEpisodes })}</p> : null}/>}
         {state.section === 'tastes' && <div className={styles.tastePanel}>{workspaceControls}
           <Tastes snapshot={snapshot} people={state.views.tastes.level === 'group' ? state.selection : state.views.tastes.people} view={state.views.tastes} onView={view => dispatch({ type: 'view', view })} controls={state.tasteControls} onControlsChange={controls => dispatch({ type: 'tasteControls', controls })} onOpenWork={(key, origin) => dispatch({ type: 'view', view: { level: 'work', people: state.views.tastes.level === 'group' ? state.selection : state.views.tastes.people, key, origin } })}/></div>}
       </div>}
