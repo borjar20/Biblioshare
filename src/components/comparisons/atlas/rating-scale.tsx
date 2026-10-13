@@ -5,7 +5,8 @@ import type { AtlasOwner, AtlasPerson } from '@/lib/comparisons/atlas/types';
 import { initials } from '../presentation';
 import styles from './atlas.module.css';
 
-const at = (rating: number) => `${(rating - 1) / 9 * 100}%`;
+/** Inset by the dot radius so ratings 1 and 10 stay inside the track. */
+const at = (rating: number) => `calc(10px + (100% - 20px) * ${(rating - 1) / 9})`;
 
 /** Each person's avatar on one 1–10 scale (Cinema Circle), not an average. */
 export function RatingScale({ owners, people }: { owners: AtlasOwner[]; people: AtlasPerson[] }) {

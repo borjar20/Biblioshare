@@ -6,7 +6,11 @@ export const RATING_STEP = 170;
 export const AGREE_MAX = 1;
 export const CLASH_MIN = 3;
 const JITTER = 26;
-export const OPINION_EXTENT: Extent = { minX: -900, minY: -900, maxX: 900, maxY: 900 };
+/** Frame spans ratings 0.5–10.5 (±850); the rest is room for the y-axis title (left) and the x-axis title and ticks (below). */
+export const OPINION_EXTENT: Extent = { minX: -1080, minY: -920, maxX: 920, maxY: 1020 };
+/** Half a point of padding so ratings 1 and 10 sit inside the frame, not on its edge. */
+export const FRAME_MIN = 0.5;
+export const FRAME_MAX = 10.5;
 
 export type OpinionPoint = Point & { ref: number; others: number; diff: number };
 export type OpinionLayout = { reference: string | null; positions: Map<WorkKey, OpinionPoint>; extent: Extent };

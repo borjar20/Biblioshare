@@ -75,3 +75,13 @@ Sin scroll horizontal en ninguna de las dos (`scrollWidth ≤ innerWidth`).
 - Portadas reales: son de F4; aquí solo se ven placeholders.
 - Android (Capacitor) y lectores de pantalla en la lente Opinión.
 - Test LOCAL ONLY contra Supabase local.
+
+## Arreglos visuales tras las capturas (2026-10-14)
+
+Tres defectos vistos en las capturas, arreglados y recapturadas las cuatro imágenes (build de producción, mismo método; Tú varía su nota `(i·3) mod 10 + 1`, Beatriz `(i·7) mod 10 + 1`, Carlos `(i·3+4) mod 10 + 1`).
+
+- **Notas 1 y 10 en el borde del marco**: el marco, la banda de coincidencia y la diagonal abarcan ahora las notas 0,5–10,5 (`FRAME_MIN`/`FRAME_MAX` en `opinion.ts`); las cifras siguen en 1, 5 y 10. Prueba nueva en `paint-opinion.test.ts`: las notas 1 y 10 caen estrictamente dentro del rectángulo.
+- **Títulos y cifras de los ejes recortados en móvil**: `OPINION_EXTENT` pasa a `{ minX: −1080, maxX: 920, minY: −920, maxY: 1020 }`, con hueco para el título del eje Y (izquierda) y el del eje X y las cifras (abajo). En `mobile-opinion.png` y en escritorio se ven enteros.
+- **Escala de la mini-ficha desbordada**: puntos y cifras se colocan en `calc(10px + (100% - 20px) * p)`, sin márgenes laterales en la pista. La nota 10 ya no se sale por la derecha (`mobile-opinion-sheet.png`). Prueba nueva en `rating-scale.test.tsx` (jsdom normaliza el estilo a `calc(10px + 1 * (100% - 20px))`).
+
+Verificación: vitest 27 ficheros, 542 pruebas; `tsc` y lint sin errores; e2e del atlas 4 passed, 4 skipped (por proyecto).

@@ -29,4 +29,14 @@ describe('RatingScale', () => {
     </NextIntlClientProvider>);
     expect((screen.getByRole('img').firstElementChild as HTMLElement).style.height).toBe('40px');
   });
+  it('los puntos y las cifras quedan dentro de la pista: la nota 10 no se sale por la derecha', () => {
+    render(<NextIntlClientProvider locale="es" messages={messages}>
+      <RatingScale people={people} owners={[owner('me', 10), owner('b', 1)]}/>
+    </NextIntlClientProvider>);
+    const scale = screen.getByRole('img');
+    const dots = [...(scale.firstElementChild as HTMLElement).querySelectorAll('span')] as HTMLElement[];
+    expect(dots.map(dot => dot.style.left)).toEqual(['calc(10px + 1 * (100% - 20px))', 'calc(10px + 0 * (100% - 20px))']);
+    const ticks = [...(scale.children[1] as HTMLElement).querySelectorAll('span')] as HTMLElement[];
+    expect(ticks[2].style.left).toBe('calc(10px + 1 * (100% - 20px))');
+  });
 });

@@ -1,13 +1,13 @@
 import { toScreen } from '@/lib/comparisons/atlas/camera';
-import { AGREE_MAX, RATING_STEP, ratingX } from '@/lib/comparisons/atlas/opinion';
+import { AGREE_MAX, FRAME_MAX, FRAME_MIN, RATING_STEP, ratingX } from '@/lib/comparisons/atlas/opinion';
 import type { PaintView } from './atlas-palette';
 
 export type OpinionLabels = { axisRef: string; axisOthers: string; loved: string; meh: string; refYes: string; othersYes: string };
 
-/** Frame, agreement band (±1 point) around the diagonal, ticks 1/5/10, axis titles and named corners (prototype `drawOpinionBg`). Text is skipped without labels. */
+/** Frame (ratings 0.5–10.5), agreement band (±1 point) around the diagonal, ticks 1/5/10, axis titles and named corners (prototype `drawOpinionBg`). Text is skipped without labels. */
 export function paintOpinionBack({ ctx, cam, vp, palette, text }: PaintView, labels?: OpinionLabels) {
   const k = cam.k;
-  const lo = toScreen(cam, vp, { x: ratingX(1), y: -ratingX(1) }), hi = toScreen(cam, vp, { x: ratingX(10), y: -ratingX(10) });
+  const lo = toScreen(cam, vp, { x: ratingX(FRAME_MIN), y: -ratingX(FRAME_MIN) }), hi = toScreen(cam, vp, { x: ratingX(FRAME_MAX), y: -ratingX(FRAME_MAX) });
   const band = RATING_STEP * AGREE_MAX * k;
   ctx.fillStyle = 'rgba(242,194,123,.07)'; ctx.beginPath();
   ctx.moveTo(lo.x, lo.y - band); ctx.lineTo(lo.x, lo.y); ctx.lineTo(lo.x + band, lo.y);
