@@ -45,6 +45,12 @@ describe('layoutQuien', () => {
     const { extent, poles } = layoutQuien(people, works);
     for (const p of poles) { expect(p.x).toBeGreaterThan(extent.minX); expect(p.x).toBeLessThan(extent.maxX); expect(p.y).toBeLessThan(extent.maxY - 100); }
   });
+  it('sin personas ni obras la extensión sigue siendo finita', () => {
+    const { poles, clusters, extent } = layoutQuien([], []);
+    expect(poles).toEqual([]); expect(clusters).toEqual([]);
+    for (const value of [extent.minX, extent.maxX, extent.minY, extent.maxY]) expect(Number.isFinite(value)).toBe(true);
+    expect(extent.minX).toBeLessThan(extent.maxX); expect(extent.minY).toBeLessThan(extent.maxY);
+  });
 });
 
 describe('estado por caras', () => {

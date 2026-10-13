@@ -42,8 +42,10 @@ export function layoutQuien(people: AtlasPerson[], works: AtlasWork[]): QuienLay
     keys.forEach((key, i) => { const offset = spiral(i, SPIRAL_STEP); positions.set(key, { x: x + offset.x, y: y + offset.y }); });
     return { id, owners, keys, x, y, r: SPIRAL_STEP * Math.sqrt(keys.length) + 8 };
   });
-  const xs = [...poles.map(p => p.x), ...clusters.flatMap(c => [c.x - c.r, c.x + c.r])];
-  const ys = [...poles.map(p => p.y), ...clusters.flatMap(c => [c.y - c.r, c.y + c.r])];
+  // Empty group (no available members): keep the extent finite so the camera fit does not become NaN.
+  const empty = poles.length === 0 && clusters.length === 0;
+  const xs = empty ? [0] : [...poles.map(p => p.x), ...clusters.flatMap(c => [c.x - c.r, c.x + c.r])];
+  const ys = empty ? [0] : [...poles.map(p => p.y), ...clusters.flatMap(c => [c.y - c.r, c.y + c.r])];
   // Room for pole avatars and their name/count labels below.
   const extent = { minX: Math.min(...xs) - 180, maxX: Math.max(...xs) + 180, minY: Math.min(...ys) - 150, maxY: Math.max(...ys) + 170 };
   return { poles, clusters, positions, extent };
