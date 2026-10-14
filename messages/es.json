@@ -8,8 +8,8 @@
       "caption": {
         "quien": "Cada obra cae entre quienes la tienen. Acércate y los puntos se vuelven portadas.",
         "opinion": "Solo lo que compartís con nota. A la derecha, lo que le gustó a la referencia; arriba, lo que gustó al resto. En la diagonal coincidís; lejos de ella, chocáis.",
-        "tiempo": "Una vía por persona a lo largo de los años. Los hilos unen la misma obra: verás quién llegó primero.",
-        "islas": "Una isla por tipo, género o autor. En el centro de cada isla, lo que tenéis en común; arriba, la nota media de cada cual."
+        "tiempo": "Una vía por persona a lo largo de los años, con lo que compartís. Los hilos unen la misma obra: verás quién llegó primero.",
+        "islas": "Lo que compartís, en una isla por tipo, género o autor. En el centro de cada isla, lo común a todas las caras; arriba, la nota media de cada cual."
       },
       "opinion": {
         "needsTwo": "Elige al menos a dos personas para comparar notas.",

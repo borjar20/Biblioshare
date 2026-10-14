@@ -41,9 +41,10 @@ describe('listSections', () => {
     const result = sections('opinion', works, ['me', 'b']);
     expect(result).toEqual([{ id: 'opinion', heading: { kind: 'plain' }, keys: ['book:1', 'book:6', 'book:2'] }]);
   });
-  it('Tiempo: por primera fecha activa; lo que no tiene fecha no entra', () => {
+  it('Tiempo: por primera fecha activa; lo que no tiene fecha o no se comparte no entra', () => {
     const dated = [work('book:1', { me: 8, b: 7 }, { dates: { me: '2024-03-01', b: '2020-06-10' } }),
-      work('book:2', { me: 5 }, { dates: { me: '2022-01-01' } }), work('book:3', { b: 5 }), work('book:4', { c: 5 }, { dates: { c: '2010-01-01' } })];
+      work('book:2', { me: 5, b: 5 }, { dates: { me: '2022-01-01' } }), work('book:3', { b: 5 }), work('book:4', { c: 5 }, { dates: { c: '2010-01-01' } }),
+      work('book:5', { me: 5 }, { dates: { me: '2019-01-01' } })];
     const result = sections('tiempo', dated, ['me', 'b']);
     expect(result).toEqual([{ id: 'tiempo', heading: { kind: 'plain' }, keys: ['book:1', 'book:2'] }]);
   });

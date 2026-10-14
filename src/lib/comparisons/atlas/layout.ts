@@ -136,6 +136,15 @@ function separate(clusters: Cluster[], poles: Point[], at: Map<string, Point>) {
   }
 }
 
+/**
+ * Tiempo and Islas compare: with two or more active faces they draw only what at least two of them share; with one
+ * face, everything of hers. (Quién keeps everything: it is where each person's own works live.)
+ */
+export function comparable(work: AtlasWork, active: string[]): boolean {
+  const owners = work.owners.filter(owner => active.includes(owner.userId)).length;
+  return active.length < 2 ? owners > 0 : owners > 1;
+}
+
 export function workState(work: AtlasWork, active: string[]): { alpha: number; glow: boolean; shared: boolean } {
   const touches = work.owners.some(owner => active.includes(owner.userId));
   const glow = active.length > 1 && active.every(id => work.owners.some(owner => owner.userId === id));

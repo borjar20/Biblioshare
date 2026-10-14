@@ -50,6 +50,12 @@ describe('layoutTiempo', () => {
       expect(Math.abs(instance.y - lane)).toBeLessThanOrEqual(75);
     }
   });
+  it('con dos o más caras solo pinta lo compartido entre activas; con una, todo lo suyo', () => {
+    const plus = [...works, work('book:6', { me: '2020-01-01', c: '2020-02-02' })];
+    // book:1 is me + b (b off) and book:4 is only c: neither is shared between me and c.
+    expect(layoutTiempo(people, plus, ['me', 'c']).instances.map(i => `${i.key}@${i.userId}`).toSorted()).toEqual(['book:6@c', 'book:6@me']);
+    expect(layoutTiempo(people, plus, ['c']).instances.map(i => `${i.key}@${i.userId}`).toSorted()).toEqual(['book:4@c', 'book:6@c']);
+  });
   it('rango redondeado a años completos y X lineal en el año', () => {
     const layout = layoutTiempo(people, works, ['me', 'b']);
     expect([layout.startYear, layout.endYear]).toEqual([2021, 2025]);

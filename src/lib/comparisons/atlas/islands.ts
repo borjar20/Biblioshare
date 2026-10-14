@@ -1,5 +1,5 @@
 import type { WorkKey } from '../types';
-import { spiral, workState } from './layout';
+import { comparable, spiral, workState } from './layout';
 import type { AtlasPerson, AtlasWork, Extent, Point } from './types';
 
 export type IslandMode = 'type' | 'genre' | 'creator';
@@ -24,7 +24,8 @@ export function categoriesOf(work: AtlasWork, mode: IslandMode): { id: string; l
 }
 
 export function layoutIslands(people: AtlasPerson[], works: AtlasWork[], active: string[], mode: IslandMode): IslandsLayout {
-  const touching = works.filter(work => work.owners.some(owner => active.includes(owner.userId)));
+  // With two or more faces, only what at least two of them share; with one, everything of hers.
+  const touching = works.filter(work => comparable(work, active));
   const ranks = new Map<WorkKey, number>(touching.map(work => [work.key,
     workState(work, active).glow ? 0 : work.owners.filter(owner => active.includes(owner.userId)).length > 1 ? 1 : 2]));
   const rank = (work: AtlasWork) => ranks.get(work.key)!;

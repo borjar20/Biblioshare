@@ -1,4 +1,5 @@
 import type { WorkKey } from '../types';
+import { comparable } from './layout';
 import { jitter } from './opinion';
 import type { AtlasPerson, AtlasWork, Extent, Point } from './types';
 
@@ -41,7 +42,8 @@ export function layoutTiempo(people: AtlasPerson[], works: AtlasWork[], active: 
   const lanes = activePeople.map((person, index) => ({ userId: person.id, y: laneY(index, activePeople.length, compress) }));
   const gap = laneGap(activePeople.length, compress);
   const laneOf = new Map(lanes.map(lane => [lane.userId, lane.y]));
-  const dated = works.flatMap(work => work.owners.flatMap(owner => {
+  // With two or more faces, only what they share (`comparable`): the threads between lanes are the point of the lens.
+  const dated = works.filter(work => comparable(work, active)).flatMap(work => work.owners.flatMap(owner => {
     const year = laneOf.has(owner.userId) ? datedYear(owner.date) : null;
     return year === null ? [] : [{ key: work.key, userId: owner.userId, year }];
   }));
