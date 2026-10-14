@@ -110,3 +110,31 @@ Código probado en `3746e3f8` (fixes en `904ba0d4` y `3746e3f8`).
 | `entre-nosotros.spec.ts -g "isolation"` | 1 passed |
 
 El fallo intermitente de `conflict` es en la línea 162: el guardado de la primera pestaña devuelve `ok: true` en vez de `conflict`. `settled(other)` solo espera al atlas, no a la respuesta del guardado de la otra pestaña, así que a veces la primera guarda antes. Es temporización del test, anterior a estos cambios (no tocan grupos ni revisiones). Medido con trazas: `settled(other)` volvía a los ~60 ms, el guardado de la primera pestaña salía a los ~90 ms y la respuesta de la otra llegaba entre 330 y 750 ms (2 de 5 fallos con `--repeat-each 5`). Corregido en el test: espera la respuesta de la Server Action de la otra pestaña y su chip «Grupo: Otra pestaña QA» antes de que guarde la primera; la aserción de `conflict` se mantiene. Contra `next start`: `conflict --repeat-each 6` 6 passed, `-g "transport|conflict"` 2 passed.
+
+## Ajustes tras prueba con datos reales
+
+Al probarlo con datos reales (4 personas, hasta 830 obras) salieron cinco problemas; el porqué está en `decisiones.md` (entrada del 2026-10-14, «Entre nosotros: ajustes del atlas tras probarlo con datos reales»). Cada arreglo lleva su test unitario, escrito antes y visto fallar:
+
+- **Quién sin solapes** (`layout.test.ts`): 4 personas en cuadrado con {T,M}, {L,F}, {T,L,M,F}, {T,L}, {T,F}, {L,M} y grupos de una persona de 830/400/300/120 → ningún par de grupos a menos de `ra + rb`, ninguno a menos de `r + 80` de un polo, lo de una persona más allá de su polo, determinista. Con una persona el grupo va debajo; con dos, hacia fuera a izquierda y derecha. El nombre del polo de abajo se pinta encima del avatar.
+- **Mini-ficha** (`atlas-view.test.tsx`): portada por `cdnLoader` a 96 px con bloque de color si no hay o falla (`onError`); solo dueños que son caras activas, en hover y en la hoja.
+- **Notas en cifras** (`rating-scale.test.tsx`): fila «Tú 6 · Bea 4 · Carla sin nota» bajo la pista; `aria-label` igual que antes.
+- **Textos de Opinión** (`atlas-view.test.tsx`): una cara más («Nota de Bea →», «Tú sí, Bea no»), dos («Media de Bea y Carla →», «el resto»), más de tres («Media de 4 personas →»), con y sin Tú como referencia.
+- **Tiempo e Islas solo con lo compartido** (`tiempo.test.ts`, `islands.test.ts`, `list.test.ts`): con dos o más caras solo entran obras con al menos dos dueños activos; con una, todo lo suyo. Se adaptaron los fixtures que contaban con obras de una sola persona.
+
+| Comprobación (commit `7a880295`, `next start`) | Resultado |
+|---|---|
+| `vitest run src/components/comparisons src/lib/comparisons` | 32 ficheros, 342 tests |
+| `tsc --noEmit` · `npm run lint` | limpio · 0 errores, 31 warnings preexistentes |
+| `entre-nosotros-atlas.spec.ts` (ambos proyectos) | 11 passed, 11 skipped |
+| `entre-nosotros.spec.ts -g "CRUD\|profile"` | 2 passed |
+| `entre-nosotros.spec.ts -g "transport\|conflict"` | 2 passed |
+| `entre-nosotros.spec.ts -g "isolation"` | 1 passed |
+
+Los resúmenes del e2e de 3 personas no cambian («Llegaste tú primero a 30 de 30 obras compartidas», «Donde más os parecéis: Libros, con 30 en común»): en ese fixture todo es compartido.
+
+Capturas en `docs/testing/assets/2026-10-14-entre-nosotros-atlas-ajustes/`, escritorio 1280×800, con un spec temporal (no commiteado) sobre el fixture integrado y un grupo de 4 (Tú, Beatriz QA, Carlos QA, Diana Ana QA). Para reproducir el cuadrado se añadieron libros desechables: 40 de Tú+Carlos y 25 de Beatriz+Diana (parejas opuestas), 20 de Tú+Beatriz, 150 solo de Tú y 60 solo de Diana, con notas y fechas variadas.
+
+- [quien-4-personas.png](assets/2026-10-14-entre-nosotros-atlas-ajustes/quien-4-personas.png): los grupos 3, 40, 25, 29 y 20 separados y sin tapar polos; los 150 de Tú encima de su polo, los 60 de Diana a su izquierda; «Carlos QA · 72 obras» encima de su avatar. Con la primera holgura (40 unidades) las cifras de los grupos del centro se pisaban; se subió a 120.
+- [opinion-tooltip.png](assets/2026-10-14-entre-nosotros-atlas-ajustes/opinion-tooltip.png): 3 caras; ejes «Tu nota →» y «Media de Beatriz QA y Carlos QA →», esquinas «Tú sí, el resto no» y «El resto sí, tú no»; la mini-ficha con portada, la escala y «Tú 9 · Beatriz QA 3» (Carlos no tiene esa obra). Un título largo sin espacios se salía de la tarjeta: ahora parte (`overflow-wrap: anywhere`).
+- [tiempo-compartidas.png](assets/2026-10-14-entre-nosotros-atlas-ajustes/tiempo-compartidas.png): Tú y Beatriz QA; solo las obras compartidas por las dos, sin los 150 libros de Tú solo. «Llegaste tú primero a 46 de 52 obras compartidas».
+

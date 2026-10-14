@@ -7824,3 +7824,27 @@ Islas, otro tamaño de pantalla) encaje la suya. El borrado al cambiar de sesió
 cualquier salida: el botón de Ajustes vacía la memoria del atlas antes del logout, el
 explorador poda al montar la de otras cuentas que quede en la pestaña y, tras invalidar la
 sesión, ninguna escritura tardía la recupera.
+
+## 2026-10-14 — Entre nosotros: ajustes del atlas tras probarlo con datos reales
+
+Al probar el atlas con datos reales (4 personas, hasta 830 obras por persona) salieron
+cinco problemas que la fixture de QA no enseñaba, porque en ella casi todo es compartido:
+
+- **Quién solapaba grupos.** Con 4 personas en cuadrado, las parejas opuestas y las cuatro
+  tienen el mismo centroide. Los grupos de una sola persona se centraban en su polo y, con
+  cientos de obras, tapaban su nombre. Ahora lo de una sola persona va hacia fuera, más
+  allá de su polo, y los compartidos pasan por una separación determinista que los aparta
+  entre sí y de los polos. Se mantienen la pertenencia y el orden de cada grupo (siguen
+  siendo las regiones exactas del Venn); solo cambia dónde se dibujan.
+- **La mini-ficha no enseñaba portadas y listaba caras apagadas.** Ahora usa la portada
+  real (loader del CDN, sin el optimizador de Next) y solo las caras activas: quien está
+  fuera del cruce tampoco aparece en la ficha.
+- **Las notas de la escala de Opinión no se leían** (puntos apilados con iniciales). Bajo
+  la pista va la nota de cada cara activa en cifras; la etiqueta accesible no cambia.
+- **«Ellos» confundía** cuando era una persona o una media. Los textos de los ejes y las
+  esquinas se construyen con el conjunto real de caras con las que se compara.
+- **Tiempo e Islas pintaban todo lo de cada persona**, aunque su sentido es comparar. Con
+  dos o más caras activas solo entra lo que comparten al menos dos de ellas; con una cara,
+  todo lo suyo. Resúmenes, lista y escena leen el mismo layout, así que siguen de acuerdo.
+
+Evidencia en [F4, «Ajustes tras prueba con datos reales»](../testing/2026-10-14-entre-nosotros-atlas-f4.md).

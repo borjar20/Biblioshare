@@ -139,6 +139,13 @@ reencaja con `fit`. Con `prefers-reduced-motion` saltan directamente.
   zoom hacia él.
 - Resumen: «{n} obras en común entre {nombres}». Con una sola cara: «{n} obras de
   {nombre}. Suma a alguien para ver el cruce.»
+- Ajuste 2026-10-14 tras prueba con datos reales: con 4 personas en cuadrado, los
+  centroides de las parejas opuestas y el de las cuatro caían en el mismo punto, y un grupo
+  de una sola persona (830 obras) tapaba su polo. Ahora el grupo de una persona va hacia
+  fuera, más allá de su polo (debajo si es la única persona), y su nombre y cifra se pintan
+  del lado contrario. Los compartidos pasan, tras el centroide, por una separación
+  determinista (80 pasadas, el grande se mueve menos) que también los mantiene lejos de
+  todos los polos.
 
 ### 4.2 Opinión
 
@@ -155,6 +162,11 @@ reencaja con `fit`. Con `prefers-reduced-motion` saltan directamente.
 - Resumen: «Coincidís en {a} y chocáis en {c} de las {n} que compartís», con coincidir
   = |dif| ≤ 1 y chocar = |dif| ≥ 3. Son los mismos umbrales que «Notas parecidas» y
   «Diferencia de opinión» de la spec anterior.
+- Ajuste 2026-10-14 tras prueba con datos reales: los textos nombran con quién se compara.
+  Con una sola cara más: «Nota de {nombre}» y «Tú sí, {nombre} no»; con dos o tres: «Media
+  de {nombres}» y «el resto» en las esquinas; con más de tres, «Media de {n} personas».
+  «Ellos» se leía mal cuando era una persona o una media. La escala de la mini-ficha solo
+  pone a las caras activas y escribe la nota de cada cual en cifras bajo la pista.
 
 ### 4.3 Tiempo
 
@@ -165,6 +177,9 @@ reencaja con `fit`. Con `prefers-reduced-motion` saltan directamente.
 - Resumen: «Llegaste tú primero a {x} de las {n} que compartís», contando solo las obras
   compartidas con fecha en todos sus dueños activos. Si Tú no está activa: «Las vías de
   {nombres}». Si hay obras compartidas sin fecha, se añade «({k} sin fecha)».
+- Ajuste 2026-10-14 tras prueba con datos reales: con dos o más caras activas solo se
+  dibujan las obras que comparten al menos dos de ellas; con una cara, todo lo suyo. Las
+  obras de una sola persona llenaban su vía sin nada que comparar.
 
 ### 4.4 Islas
 
@@ -188,6 +203,8 @@ La lente lleva un mini-selector encima del dock: **Tipo · Género · Autor/Dire
   aparece si esa persona tiene 3 o más obras con nota allí, la regla de Gustos. Esto
   sustituye a Gustos.
 - Resumen: «Donde más os parecéis: {categoría}, con {n} en común».
+- Ajuste 2026-10-14 tras prueba con datos reales: igual que en Tiempo, con dos o más caras
+  activas solo entran las obras que comparten al menos dos de ellas.
 
 ## 5. Nivel de detalle, cámara e interacción
 
@@ -255,6 +272,9 @@ La lente lleva un mini-selector encima del dock: **Tipo · Género · Autor/Dire
   botones de zoom.
 - Tipografía: la del sistema de diseño de la app, no las fuentes del prototipo, salvo que
   la revisión visual de F1 diga lo contrario.
+- Ajuste 2026-10-14 tras prueba con datos reales: la mini-ficha (hover y hoja táctil)
+  enseña la portada real por el loader del CDN, con el bloque de color del tipo si no hay
+  portada o falla, y solo lista a los dueños que son caras activas.
 
 ## 7. Accesibilidad
 
