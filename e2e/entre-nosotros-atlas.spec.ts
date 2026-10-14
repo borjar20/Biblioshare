@@ -3,17 +3,21 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import sharp from 'sharp';
 import { chooseComparisonParticipants, comparisonRest, loginComparisonActor, withComparisonFixture, type ComparisonFixture } from './support/comparison-fixtures';
 
-async function settled(page: Page) {
-  await expect(page.locator('[data-atlas-moving]')).toHaveAttribute('data-atlas-moving', 'false');
-}
 /**
- * After a lens change: the transition starts on the engine's next frame, so until then the host still
- * reads as settled with the previous lens's probe. Let two frames pass, then wait for it to settle.
+ * A scene change starts on the next frame; a data reload can also replace the canvas. Only accept rest
+ * after the same loaded host has crossed two frames, so its probe belongs to the scene being clicked.
  */
-async function lensSettled(page: Page) {
-  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-  await settled(page);
+async function settled(page: Page) {
+  await expect.poll(() => page.evaluate(async () => {
+    const host = document.querySelector('[data-atlas-moving]');
+    const region = host?.closest('section[aria-busy]');
+    if (!host || region?.getAttribute('aria-busy') !== 'false') return false;
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    return host.isConnected && host === document.querySelector('[data-atlas-moving]')
+      && region.getAttribute('aria-busy') === 'false' && host.getAttribute('data-atlas-moving') === 'false';
+  }), { message: 'la misma escena cargada termina de animarse y publica su sonda' }).toBe(true);
 }
+const lensSettled = settled;
 async function openAtlas(page: Page, fixture: ComparisonFixture, participants = fixture.actors) {
   await loginComparisonActor(page, fixture.actors[0]);
   await page.goto('/comunidad/entre-nosotros');
@@ -23,6 +27,8 @@ async function openAtlas(page: Page, fixture: ComparisonFixture, participants = 
   await chooseComparisonParticipants(form, fixture.actors[0], participants);
   await form.getByRole('button', { name: 'Guardar grupo', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Grupo: Atlas QA', exact: true })).toBeVisible();
+  // Saving shows the group before router.replace finishes. Its final RSC can reload the snapshot and remount the canvas.
+  await expect(page).toHaveURL(url => /^[0-9a-f-]{36}$/.test(url.searchParams.get('group') ?? ''));
   await settled(page);
 }
 const summary = (page: Page) => page.locator('[data-comparison-stage]').getByRole('status');
@@ -37,6 +43,7 @@ async function zoomToWork(page: Page, tap: (x: number, y: number) => Promise<voi
   // The flight starts on the next frame: until then the host still reads as settled at map zoom.
   await expect.poll(async () => Number(await page.locator('[data-atlas-moving]').getAttribute('data-atlas-zoom'))).toBeGreaterThan(1.1);
   await settled(page);
+  expect(await zoom(page), 'el acercamiento sigue aplicado cuando termina la carga y la animación').toBeGreaterThan(1.1);
   const [work] = await probe(page);
   return { box, work };
 }

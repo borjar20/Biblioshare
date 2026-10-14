@@ -585,6 +585,10 @@ verificación no afirma su ejecución. El resto sigue rastreable por `area:catal
   [evidencia de notas](../testing/2026-10-14-entre-nosotros-atlas-notas-hover.md), 62 unitarios
   de fichas, TypeScript, lint, build y dos E2E de escritorio/móvil a 1280/360 px PASS.
   Integración y verificación del despliegue en producción pendientes.
+- [x] [#1531](https://github.com/borjar20/Biblioshare/issues/1531) — Entre nosotros: helpers de `e2e/entre-nosotros-atlas.spec.ts`
+  sincronizados con el grupo, los datos y el final de la animación del mapa.
+  [Evidencia local](../testing/2026-10-14-entre-nosotros-atlas-espera-1531.md): retorno, cámara y selección, 3/3 PASS.
+  Resultado remoto e integración: [PR #1530](https://github.com/borjar20/Biblioshare/pull/1530).
 - [ ] Pendientes y «Lo que esperamos juntos»: alcance futuro separado de Entre nosotros, registrado en [#1462](https://github.com/borjar20/Biblioshare/issues/1462).
 
 **Social y clubes**

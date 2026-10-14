@@ -8,7 +8,7 @@ Las pruebas locales y capturas de la corrección visual se registran por build e
 La transición de carga, el marco de altura estable y la rueda sin zoom tienen
 [evidencia local propia](testing/2026-10-10-entre-nosotros-stable-canvas.md): el harness
 Chromium comprueba geometría, scroll y foco, sin sustituir el gate con login,
-RLS y Server Actions reales. El runner dedicado descubre 17 casos; el descubrimiento
+RLS y Server Actions reales. El runner dedicado descubre 46 casos en dos archivos; el descubrimiento
 no acredita su ejecución ni CI, integración o publicación del ajuste.
 
 Receta y evidencia en [verificación integrada](testing/2026-10-10-entre-nosotros.md).
@@ -17,6 +17,11 @@ de `npm run build`, `npm run start` y Playwright; `.env.local` remoto se preserv
 La configuración `playwright.comparisons.config.ts` no lanza servidor ni globalSetup/sweep.
 El runner general excluye ambos specs; el dedicado sobrescribe `testIgnore: []`.
 El caso de 1.205 pases exige el backend local exacto y nunca usa producción.
+
+El harness del atlas espera la URL del grupo guardado antes de interactuar. Su espera
+de reposo cruza dos frames del mismo canvas cargado y comprueba tanto `aria-busy=false`
+como el fin de la animación: el indicador puede conservar el reposo de la escena anterior
+hasta su siguiente frame. Regresión y evidencia: [#1531](testing/2026-10-14-entre-nosotros-atlas-espera-1531.md).
 
 ```powershell
 npm run test:e2e -- e2e/entre-nosotros.spec.ts e2e/entre-nosotros-motion.spec.ts --config playwright.comparisons.config.ts --workers=1 --retries=0
