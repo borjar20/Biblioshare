@@ -32,8 +32,12 @@ export type EngineProps = { people: AtlasPerson[]; works: AtlasWork[]; active: s
   insets?: { top: number; bottom: number };
   /** Camera to start from instead of the initial fit (read once, at the first valid size). */
   initialCamera?: Camera;
-  /** Called whenever the scene settles (when the probe is published) with the camera at rest. */
-  onSettled?: (camera: LensCamera) => void };
+  /**
+   * Called whenever the scene settles (when the probe is published) with the camera at rest. `own` says whether it is
+   * the user's framing (moved by wheel, pinch, drag, zoom, keys or a fly-to, or restored from one) rather than a fit:
+   * only an own camera is worth restoring, a fit is redone for whatever scene comes next.
+   */
+  onSettled?: (camera: LensCamera, own: boolean) => void };
 const dist = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
 
 export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, props: () => EngineProps) {
@@ -65,9 +69,11 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
     return { ...c, k, y: c.y - (top + room - bottom) / 2 / k };
   };
   let lastFit: Camera | null = null; let insetsKey = ''; let touched = false; let restored = false;
-  const refit = () => { lastFit = fitCamera(); target = lastFit; };
+  /** The camera is the user's framing (see `onSettled`); any fit hands it back to the engine. */
+  let own = false;
+  const refit = () => { lastFit = fitCamera(); target = lastFit; own = false; };
   /** Jump straight to the fit, no glide (the user has not seen the previous framing as theirs). */
-  const snapFit = () => { cam = lastFit = fitCamera(); target = null; };
+  const snapFit = () => { cam = lastFit = fitCamera(); target = null; own = false; };
   /** The camera still rests on (or heads to) the last fit: nobody has moved it since. */
   const atFit = () => !!lastFit && ((target ?? cam) === lastFit
     || (!target && Math.abs(cam.k / lastFit.k - 1) < 0.002 && Math.hypot(cam.x - lastFit.x, cam.y - lastFit.y) < 0.5));
@@ -86,7 +92,7 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
     if (vp.width > 0 && vp.height > 0 && !fitted) {
       // A remembered camera is the user's own framing: no fit under it, and resizes or overlays do not reframe it.
       const initial = props().initialCamera;
-      if (initial) { cam = { x: initial.x, y: initial.y, k: clamp(initial.k, MIN_ZOOM, MAX_ZOOM) }; target = null; touched = restored = true; } else snapFit();
+      if (initial) { cam = { x: initial.x, y: initial.y, k: clamp(initial.k, MIN_ZOOM, MAX_ZOOM) }; target = null; touched = restored = own = true; } else snapFit();
       fitted = true;
     } else if (vp.width > 0 && vp.height > 0 && wasAtFit) snapFit();
     kick();
@@ -122,7 +128,7 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
     if (animating || (starved && covers.size() < COVER_CAPACITY)) kick();
     else if (!moving && dirtyProbe) {
       dirtyProbe = false; host.dataset.atlasProbe = JSON.stringify(probeOf(sprites, cam, vp));
-      props().onSettled?.(camera());
+      props().onSettled?.(camera(), own);
     }
   }
   function text(value: string, x: number, y: number, font: string, color: string, align: CanvasTextAlign = 'left') {
@@ -242,10 +248,10 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
     if (pole) { onTogglePerson(pole.userId); return; }
     const cluster = hitCluster(p);
     if (cluster) { const band = Math.max(1, vp.height - insets().top - insets().bottom);
-      target = framed({ x: cluster.x, y: cluster.y, k: clamp(Math.min(vp.width, band) * 0.38 / cluster.r, 1.6, 2.8) }); kick(); return; }
+      target = framed({ x: cluster.x, y: cluster.y, k: clamp(Math.min(vp.width, band) * 0.38 / cluster.r, 1.6, 2.8) }); own = true; kick(); return; }
     const hit = hitWork(p);
     if (hit) { lastTap = null; onActivate(hit, pointerType); return; }
-    if (pointerType !== 'mouse' && lastTap && time - lastTap.t < 300 && dist(p, lastTap) < 24) { target = zoomToward(cam, vp, p, 2.6); lastTap = null; kick(); return; }
+    if (pointerType !== 'mouse' && lastTap && time - lastTap.t < 300 && dist(p, lastTap) < 24) { target = zoomToward(cam, vp, p, 2.6); own = true; lastTap = null; kick(); return; }
     lastTap = { ...p, t: time }; onActivate(null, pointerType);
   }
   function onDown(e: PointerEvent) {
@@ -267,7 +273,7 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
       const [a, b] = [...pointers.values()]; const m = mid(a, b); const k = clamp(pinch.k * dist(a, b) / pinch.d, MIN_ZOOM, MAX_ZOOM);
       cam = { k, x: pinch.anchor.x - (m.x - vp.width / 2) / k, y: pinch.anchor.y - (m.y - vp.height / 2) / k };
     } else cam = panBy(cam, p.x - prev.x, p.y - prev.y);
-    props().onHover(null); kick();
+    own = true; props().onHover(null); kick();
   }
   function onUp(e: PointerEvent) {
     const p = local(e); pointers.delete(e.pointerId); if (pointers.size < 2) pinch = null;
@@ -278,7 +284,7 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
   function onCancel(e: PointerEvent) { pointers.delete(e.pointerId); pinch = null; down = null; delete canvas.dataset.dragging; kick(); }
   function onLeave(e: PointerEvent) { if (e.pointerType === 'mouse') props().onHover(null); }
   function onWheel(e: WheelEvent) {
-    e.preventDefault(); touched = true; target = null;
+    e.preventDefault(); touched = own = true; target = null;
     const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? vp.height : 1;   // lines / pages to pixels
     cam = zoomAt(cam, vp, local(e), Math.exp(-e.deltaY * unit * 0.0018)); props().onHover(null); kick();
   }
@@ -286,7 +292,7 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
   function onDoubleClick(e: MouseEvent) {
     const p = local(e); touched = true;
     if (hitPole(p) || hitCluster(p) || hitWork(p)) return;
-    target = zoomToward(cam, vp, p, 2.6); kick();
+    target = zoomToward(cam, vp, p, 2.6); own = true; kick();
   }
 
   function camera(): LensCamera { return { lens: props().scene.lens, x: cam.x, y: cam.y, k: cam.k }; }
@@ -301,10 +307,10 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
 
   return {
     sync,
-    zoomBy(factor: number) { touched = true; target = { ...(target ?? cam), k: clamp((target ?? cam).k * factor, MIN_ZOOM, MAX_ZOOM) }; kick(); },
+    zoomBy(factor: number) { touched = own = true; target = { ...(target ?? cam), k: clamp((target ?? cam).k * factor, MIN_ZOOM, MAX_ZOOM) }; kick(); },
     fitAll() { touched = true; refit(); kick(); },
     /** Moves the view by (dx, dy) screen px toward where they point (keyboard arrows), gliding like the zoom buttons. */
-    panBy(dx: number, dy: number) { touched = true; const base = target ?? cam; target = { k: base.k, x: base.x + dx / base.k, y: base.y + dy / base.k }; kick(); },
+    panBy(dx: number, dy: number) { touched = own = true; const base = target ?? cam; target = { k: base.k, x: base.x + dx / base.k, y: base.y + dy / base.k }; kick(); },
     camera,
     dispose() {
       disposed = true; if (raf) cancelAnimationFrame(raf); observer?.disconnect();

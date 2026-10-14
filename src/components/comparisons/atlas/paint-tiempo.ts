@@ -1,4 +1,4 @@
-import { toScreen } from '@/lib/comparisons/atlas/camera';
+import { toScreen, toWorld } from '@/lib/comparisons/atlas/camera';
 import type { TiempoLayout } from '@/lib/comparisons/atlas/tiempo';
 import { YEAR_STEP } from '@/lib/comparisons/atlas/tiempo';
 import type { AtlasPerson } from '@/lib/comparisons/atlas/types';
@@ -9,7 +9,10 @@ import type { PaintView } from './atlas-palette';
 export function paintTiempoBack({ ctx, cam, vp, palette, text }: PaintView, { layout, people }: { layout: TiempoLayout; people: AtlasPerson[] }) {
   const k = cam.k, mid = (layout.startYear + layout.endYear) / 2;
   const top = toScreen(cam, vp, { x: 0, y: layout.extent.minY }).y, bottom = toScreen(cam, vp, { x: 0, y: layout.extent.maxY }).y;
-  for (let year = layout.startYear; year <= layout.endYear; year++) {
+  // Only the years on screen: the range comes from the data and may be wide.
+  const yearAt = (sx: number) => toWorld(cam, vp, { x: sx, y: 0 }).x / YEAR_STEP + mid;
+  const firstYear = Math.max(layout.startYear, Math.floor(yearAt(0))), lastYear = Math.min(layout.endYear, Math.ceil(yearAt(vp.width)));
+  for (let year = firstYear; year <= lastYear; year++) {
     const x = toScreen(cam, vp, { x: (year - mid) * YEAR_STEP, y: 0 }).x;
     ctx.strokeStyle = palette.line; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke();
     // Labels are in screen pixels and the fit is in world units: on a narrow screen the closing year's label

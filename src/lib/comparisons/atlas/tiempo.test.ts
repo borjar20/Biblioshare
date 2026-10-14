@@ -90,6 +90,14 @@ describe('robustez', () => {
     expect([layout.startYear, layout.endYear]).toEqual([2021, 2024]);
     expect(Number.isFinite(layout.extent.minX)).toBe(true);
   });
+  it('un año inverosímil (antes de 1900 o más allá del año que viene) cuenta como sin fecha', () => {
+    const next = new Date().getUTCFullYear() + 1;
+    const odd = [works[0], work('book:7', { me: '0001-01-01', b: '1899-12-31' }), work('book:8', { me: `${next + 1}-01-01`, b: `${next}-06-01` })];
+    const layout = layoutTiempo(people, odd, ['me', 'b']);
+    expect(layout.instances.map(i => `${i.key}@${i.userId}`).toSorted()).toEqual(['book:1@b', 'book:1@me', 'book:8@b']);
+    expect([layout.startYear, layout.endYear]).toEqual([2021, next + 1]);
+    expect(summarizeTiempo(people, odd, ['me', 'b'])).toEqual({ kind: 'first', first: 1, total: 1, undated: 2 });
+  });
   it('es determinista', () => {
     expect(layoutTiempo(people, works, ['me', 'b'])).toEqual(layoutTiempo(people, works, ['me', 'b']));
   });

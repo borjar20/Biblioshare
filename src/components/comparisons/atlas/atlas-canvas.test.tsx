@@ -352,11 +352,12 @@ describe('AtlasCanvas', () => {
     it('al asentarse avisa con la cámara; un pan es del usuario y un cambio de márgenes no lo deshace', () => {
       const onSettled = vi.fn();
       const { handle, rerender } = withHandle({ onSettled, insets: { top: 40, bottom: 40 } });
-      expect(onSettled).toHaveBeenLastCalledWith({ lens: 'quien', ...pick(handle.current!.camera()!) });
+      // The automatic fit is not the user's framing.
+      expect(onSettled).toHaveBeenLastCalledWith({ lens: 'quien', ...pick(handle.current!.camera()!) }, false);
       act(() => handle.current!.panBy(0, 80));
       flush();
       const moved = handle.current!.camera();
-      expect(onSettled).toHaveBeenLastCalledWith(moved);
+      expect(onSettled).toHaveBeenLastCalledWith(moved, true);
       rerender(<AtlasCanvas {...props} ref={handle} onSettled={onSettled} insets={{ top: 200, bottom: 120 }}/>);
       flush();
       expect(handle.current!.camera()).toEqual(moved);
@@ -373,6 +374,45 @@ describe('AtlasCanvas', () => {
       act(() => handle.current!.fit());
       flush();
       expect(host.dataset.atlasZoom).toBe(fitZoom(800, 600, 200, 120));
+    });
+  });
+
+  describe('cámara del usuario', () => {
+    const withHandle = (extra: Partial<Parameters<typeof AtlasCanvas>[0]> = {}) => {
+      const handle = createRef<AtlasCanvasHandle>();
+      const utils = render(<AtlasCanvas {...props} ref={handle} {...extra}/>);
+      flush();
+      return { handle, ...utils };
+    };
+    const own = (onSettled: ReturnType<typeof vi.fn>) => onSettled.mock.lastCall![1];
+    it('una cámara restaurada sigue siendo del usuario; «Encajar» la devuelve al encaje y deja de serlo', () => {
+      const onSettled = vi.fn();
+      const { handle } = withHandle({ onSettled, initialCamera: { x: 12, y: -7, k: 2.5 } });
+      expect(own(onSettled)).toBe(true);
+      act(() => handle.current!.fit()); flush();
+      expect(own(onSettled)).toBe(false);
+    });
+    it('rueda, zoom y desplazamiento la hacen del usuario; una escena nueva reencaja y deja de serlo', () => {
+      const onSettled = vi.fn();
+      const { handle, container, rerender } = withHandle({ onSettled });
+      expect(own(onSettled)).toBe(false);
+      const canvas = container.querySelector('canvas')!;
+      vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue({ left: 0, top: 0 } as DOMRect);
+      fireEvent.wheel(canvas, { deltaY: -100, clientX: 400, clientY: 300 }); flush();
+      expect(own(onSettled)).toBe(true);
+      const tiempoScene = sceneFor('tiempo', people, works, ['a', 'b']);
+      rerender(<AtlasCanvas {...props} ref={handle} onSettled={onSettled} scene={tiempoScene}/>); flush();
+      expect(own(onSettled)).toBe(false);
+      act(() => handle.current!.zoomBy(1.4)); flush();
+      expect(own(onSettled)).toBe(true);
+    });
+    it('al desmontarse no vuelve a avisar aunque quede un frame pendiente', () => {
+      const onSettled = vi.fn();
+      const { handle, unmount } = withHandle({ onSettled });
+      act(() => handle.current!.panBy(40, 0));
+      const calls = onSettled.mock.calls.length;
+      unmount(); flush();
+      expect(onSettled.mock.calls.length).toBe(calls);
     });
   });
 

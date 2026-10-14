@@ -39,6 +39,15 @@ describe('paintTiempoBack', () => {
     expect(years.map(([v]) => v)).toEqual(['2020', '2021', '2022', '2023']);
     years.forEach(([, x], i) => expect(x).toBeGreaterThan(xs[i]));
   });
+  it('only walks the years on screen, however wide the range', () => {
+    const wide: TiempoLayout = { ...layout, startYear: 1, endYear: 1_000_001 };
+    const { moves, text } = paint({ width: 1200, height: 800 }, { x: 0, y: 0, k: 1 }, { layout: wide, people });
+    // 1200 px at 270 px a year: about five lines, not a million.
+    expect(moves.length).toBeGreaterThanOrEqual(4);
+    expect(moves.length).toBeLessThanOrEqual(7);
+    moves.forEach(([x]) => { expect(x).toBeGreaterThanOrEqual(-270); expect(x).toBeLessThanOrEqual(1200 + 270); });
+    expect(text.mock.calls.filter(([v]) => /^\d+$/.test(v)).map(([v]) => Number(v)).every(year => Math.abs(year - 500_001) < 4)).toBe(true);
+  });
   it('gives each known lane an avatar with initials and the name, and skips unknown people', () => {
     const { arcs, fills, text } = paint();
     expect(arcs.map(a => a.fill)).toEqual(['#111111', '#222222']);

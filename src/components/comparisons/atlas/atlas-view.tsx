@@ -9,7 +9,7 @@ import type { AtlasPerson, AtlasWork } from '@/lib/comparisons/atlas/types';
 import { atlasModel } from '@/lib/comparisons/atlas/model';
 import { layoutQuien } from '@/lib/comparisons/atlas/layout';
 import { layoutOpinion } from '@/lib/comparisons/atlas/opinion';
-import { layoutTiempo, yearOf } from '@/lib/comparisons/atlas/tiempo';
+import { datedYear, layoutTiempo } from '@/lib/comparisons/atlas/tiempo';
 import { layoutIslands, OTHER_ISLAND, type Island, type IslandMode } from '@/lib/comparisons/atlas/islands';
 import { buildScene, type Lens } from '@/lib/comparisons/atlas/scene';
 import { initials } from '../presentation';
@@ -39,7 +39,7 @@ function WorkCard({ work, people, title, lens }: { work: AtlasWork; people: Atla
   const t = useTranslations('comparisons.atlas');
   const names = new Map(people.map(person => [person.id, person]));
   const line = (name: string, date: string | null) => lens !== 'tiempo' ? name
-    : date && Number.isFinite(yearOf(date)) ? t('years', { name, year: date.slice(0, 4) }) : t('noDate', { name });
+    : date && datedYear(date) !== null ? t('years', { name, year: date.slice(0, 4) }) : t('noDate', { name });
   return <>
     <span className={styles.cover} style={{ background: TYPE_VAR[work.itemType] }} aria-hidden="true"/>
     <span><span className={styles.workTitle}>{title}</span>
@@ -54,7 +54,8 @@ function WorkCard({ work, people, title, lens }: { work: AtlasWork; people: Atla
  * The face selection is controlled by the explorer (`chosen`, null = everyone) so it survives
  * format changes, which remount this view. The lens, the Islas mode and «Ver como lista» are controlled the same way.
  * The camera is remembered per account and group (`groupId`, the explorer's, like the faces) in sessionStorage when the scene settles, and restored when the canvas mounts
- * again in the same lens (list → map, format change); without storage the canvas fits.
+ * again in the same lens (list → map, format change, back from a ficha) — only a camera the user moved: an automatic fit is forgotten, so
+ * the next scene fits its own extent. Without storage the canvas fits.
  */
 export function AtlasView({ snapshot, viewerId, groupId, notice, chosen, onChosenChange, lens, onLensChange, islandMode, onIslandModeChange, list, onListChange }: {
   snapshot: Snapshot; viewerId: string; groupId: string; notice?: ReactNode; chosen: string[] | null; onChosenChange: (ids: string[]) => void;
@@ -97,7 +98,7 @@ export function AtlasView({ snapshot, viewerId, groupId, notice, chosen, onChose
   }, [t, refIsMe, refName]);
   const [hover, setHover] = useState<AtlasHit | null>(null);
   const [picked, setPicked] = useState<WorkKey | null>(null);
-  const camera = useRef<AtlasCanvasHandle>(null);
+  const camera = useRef<AtlasCanvasHandle>(null); const sheetRef = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null); const overlay = useRef<HTMLDivElement>(null); const dock = useRef<HTMLDivElement>(null);
   const [insets, setInsets] = useState<{ top: number; bottom: number } | undefined>(undefined);
   const [stageHeight, setStageHeight] = useState(0);
@@ -126,8 +127,12 @@ export function AtlasView({ snapshot, viewerId, groupId, notice, chosen, onChose
     if (active.includes(id)) { if (active.length > 1) onChosenChange(active.filter(item => item !== id)); }
     else onChosenChange([...active, id]);
   }
-  // A lens change can drop the hovered or picked work from the scene: start clean.
-  function changeLens(next: Lens) { setHover(null); setPicked(null); onLensChange(next); }
+  // A lens change can drop the hovered or picked work from the scene: start clean. Focus inside the closing sheet
+  // would fall to the page, so it goes to the canvas; focus elsewhere (the dock button pressed) stays.
+  function changeLens(next: Lens) {
+    if (sheetRef.current?.contains(document.activeElement)) camera.current?.focus();
+    setHover(null); setPicked(null); onLensChange(next);
+  }
   function changeMode(next: IslandMode) { setHover(null); setPicked(null); onIslandModeChange(next); }
   function toggleList() { setHover(null); setPicked(null); onListChange(!list); }
   // Opening hands focus to the list (the keyboard path); closing leaves it on the toggle that was pressed.
@@ -140,14 +145,17 @@ export function AtlasView({ snapshot, viewerId, groupId, notice, chosen, onChose
     const saved = readGroupMemory(sessionStore(), viewerId, groupId).camera;
     return saved && saved.lens === lens ? { x: saved.x, y: saved.y, k: saved.k } : undefined;
   }, [list, viewerId, groupId, lens]);
-  // The probe is republished after hovers too: write only a camera that changed.
+  // The probe is republished after hovers too: write only a camera that changed. A fit is not remembered (and
+  // forgets the one moved before): restored, it would keep the next scene (another format, Islas mode) off its fit.
   const savedCamera = useRef('');
-  function rememberCamera(next: LensCamera) {
-    const value = JSON.stringify(next); if (value === savedCamera.current) return;
-    savedCamera.current = value; writeGroupMemory(sessionStore(), viewerId, groupId, { camera: next });
+  function rememberCamera(next: LensCamera, own: boolean) {
+    const kept = own ? next : null, value = JSON.stringify(kept); if (value === savedCamera.current) return;
+    savedCamera.current = value; writeGroupMemory(sessionStore(), viewerId, groupId, { camera: kept });
   }
   /** Shortcuts while focus is inside the atlas (spec §5.3); lenses work over the list too, the camera only over the map. */
   function onKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    // Escape closes the sheet only from inside the stage: a modal elsewhere (the group sheet) handles its own.
+    if (event.key === 'Escape' && picked) { event.preventDefault(); closeSheet(); return; }
     const target = event.target as HTMLElement;
     if (target.isContentEditable) return;
     const action = atlasKeyAction(event.key, { ctrl: event.ctrlKey, meta: event.metaKey, alt: event.altKey }, target.tagName);
@@ -168,17 +176,10 @@ export function AtlasView({ snapshot, viewerId, groupId, notice, chosen, onChose
   }
   const hovered = hover && byKey.get(hover.key);
   const sheet = picked && byKey.get(picked);
-  const sheetRef = useRef<HTMLDivElement>(null);
-  // Closing on purpose (Escape or «Cerrar») hands focus back to the canvas; a lens change or a tap elsewhere does not.
+  // Closing on purpose (Escape within the stage, or «Cerrar») hands focus back to the canvas; a tap elsewhere does not.
   function closeSheet() { setPicked(null); camera.current?.focus(); }
-  // On open, focus goes to «Abrir ficha» (or «Cerrar» without a link); Escape closes it.
-  useEffect(() => {
-    if (!picked) return;
-    sheetRef.current?.querySelector<HTMLElement>('a, button')?.focus();
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') { setPicked(null); camera.current?.focus(); } };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [picked]);
+  // On open, focus goes to «Abrir ficha» (or «Cerrar» without a link); Escape closes it (see `onKeyDown`).
+  useEffect(() => { if (picked) sheetRef.current?.querySelector<HTMLElement>('a, button')?.focus(); }, [picked]);
   const unavailable = snapshot.group.members.filter(member => !member.available);
 
   return <div ref={stage} className={styles.canvasWrap} data-comparison-stage onKeyDown={onKeyDown}>

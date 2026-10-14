@@ -12,7 +12,7 @@ const push = vi.fn();
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
 type SavedCamera = { lens: Lens; x: number; y: number; k: number };
 type CanvasProps = { islandText?: { title: (island: Island) => string; common: (count: number) => string }; opinionLabels?: Record<string, string>; onActivate: (hit: { key: WorkKey; x: number; y: number } | null, type: string) => void; onHover: (hit: { key: WorkKey; x: number; y: number } | null) => void; active: string[]; label: string;
-  initialCamera?: { x: number; y: number; k: number }; onSettled?: (camera: SavedCamera) => void };
+  initialCamera?: { x: number; y: number; k: number }; onSettled?: (camera: SavedCamera, own: boolean) => void };
 let canvas: CanvasProps;
 const canvasFocus = vi.fn();
 const handle = { zoomBy: vi.fn(), fit: vi.fn(), panBy: vi.fn() };
@@ -52,6 +52,7 @@ const viewRated = (ratings: Record<string, number>) => render(<NextIntlClientPro
 </NextIntlClientProvider>);
 afterEach(() => { cleanup(); push.mockReset(); canvasFocus.mockReset(); Object.values(handle).forEach(fn => fn.mockReset()); sessionStorage.clear(); });
 const summary = () => screen.getByRole('status').textContent;
+const readCamera = () => JSON.parse(sessionStorage.getItem('biblioshare:atlas:me:g') ?? '{}').camera ?? null;
 
 describe('AtlasView', () => {
   it('empieza con todas las caras activas y resume lo común', () => {
@@ -155,6 +156,26 @@ describe('AtlasView', () => {
     expect(canvasFocus).not.toHaveBeenCalled();
     fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
     expect(screen.queryByRole('dialog')).toBeNull();
+    expect(canvasFocus).toHaveBeenCalledTimes(1);
+  });
+  it('Escape en otro diálogo fuera del escenario no cierra la hoja', () => {
+    view();
+    const other = document.createElement('dialog'); const inside = document.createElement('button');
+    other.appendChild(inside); document.body.appendChild(other);
+    try {
+      act(() => canvas.onActivate({ key: 'book:1', x: 10, y: 10 }, 'touch'));
+      inside.focus();
+      fireEvent.keyDown(inside, { key: 'Escape' });
+      expect(screen.getByRole('dialog', { name: 'Proyecto Salvación' })).toBeTruthy();
+      expect(canvasFocus).not.toHaveBeenCalled();
+    } finally { other.remove(); }
+  });
+  it('cambiar de lente con el foco en la hoja lo lleva al lienzo', () => {
+    view();
+    act(() => canvas.onActivate({ key: 'book:1', x: 10, y: 10 }, 'touch'));
+    fireEvent.keyDown(document.activeElement!, { key: '2' });
+    expect(screen.queryByRole('dialog', { name: 'Proyecto Salvación' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Opinión' }).getAttribute('aria-pressed')).toBe('true');
     expect(canvasFocus).toHaveBeenCalledTimes(1);
   });
   it('«Cerrar» también devuelve el foco al lienzo', () => {
@@ -360,14 +381,31 @@ describe('AtlasView', () => {
   it('ida y vuelta mapa → lista → mapa conserva la cámara asentada', () => {
     view();
     expect(canvas.initialCamera).toBeUndefined();
-    act(() => canvas.onSettled!({ lens: 'quien', x: 5, y: 6, k: 2 }));
+    act(() => canvas.onSettled!({ lens: 'quien', x: 5, y: 6, k: 2 }, true));
     fireEvent.click(screen.getByRole('button', { name: 'Ver como lista' }));
     fireEvent.click(screen.getByRole('button', { name: 'Ver como lista' }));
     expect(canvas.initialCamera).toEqual({ x: 5, y: 6, k: 2 });
   });
+  it('una cámara que nadie movió no se recuerda: al volver a montar (cambio de formato) el lienzo encaja', () => {
+    const first = view();
+    act(() => canvas.onSettled!({ lens: 'quien', x: 5, y: 6, k: 2 }, false));
+    expect(readCamera()).toBeNull();
+    first.unmount(); view();
+    expect(canvas.initialCamera).toBeUndefined();
+  });
+  it('la cámara movida se restaura al volver a montar (vuelta desde la ficha); «Encajar» la olvida', () => {
+    const first = view();
+    act(() => canvas.onSettled!({ lens: 'quien', x: 5, y: 6, k: 2 }, true));
+    first.unmount(); const second = view();
+    expect(canvas.initialCamera).toEqual({ x: 5, y: 6, k: 2 });
+    act(() => canvas.onSettled!({ lens: 'quien', x: 0, y: 0, k: 1 }, false));
+    expect(readCamera()).toBeNull();
+    second.unmount(); view();
+    expect(canvas.initialCamera).toBeUndefined();
+  });
   it('la cámara guardada solo se usa con la misma lente', () => {
     view();
-    act(() => canvas.onSettled!({ lens: 'quien', x: 5, y: 6, k: 2 }));
+    act(() => canvas.onSettled!({ lens: 'quien', x: 5, y: 6, k: 2 }, true));
     fireEvent.click(screen.getByRole('button', { name: 'Opinión' }));
     fireEvent.click(screen.getByRole('button', { name: 'Ver como lista' }));
     fireEvent.click(screen.getByRole('button', { name: 'Ver como lista' }));
@@ -378,14 +416,14 @@ describe('AtlasView', () => {
     const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('QuotaExceededError'); });
     try {
       view();
-      expect(() => act(() => canvas.onSettled!({ lens: 'quien', x: 5, y: 6, k: 2 }))).not.toThrow();
+      expect(() => act(() => canvas.onSettled!({ lens: 'quien', x: 5, y: 6, k: 2 }, true))).not.toThrow();
       expect(canvas.initialCamera).toBeUndefined();
     } finally { getItem.mockRestore(); setItem.mockRestore(); }
   });
   it('guarda la cámara bajo la cuenta y el grupo que le da el explorer, no el del snapshot', () => {
     render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={snapshot} viewerId="me" groupId="from-explorer" chosen={null} onChosenChange={vi.fn()}
       lens="quien" onLensChange={vi.fn()} islandMode="type" onIslandModeChange={vi.fn()} list={false} onListChange={vi.fn()}/></NextIntlClientProvider>);
-    act(() => canvas.onSettled!({ lens: 'quien', x: 5, y: 6, k: 2 }));
+    act(() => canvas.onSettled!({ lens: 'quien', x: 5, y: 6, k: 2 }, true));
     expect(JSON.parse(sessionStorage.getItem('biblioshare:atlas:me:from-explorer')!).camera).toEqual({ lens: 'quien', x: 5, y: 6, k: 2 });
     expect(sessionStorage.getItem('biblioshare:atlas:me:g')).toBeNull();
   });

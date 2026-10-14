@@ -19,6 +19,16 @@ export function yearOf(date: string): number {
 }
 
 /**
+ * The fractional year of a date the timeline can place, or null: unreadable, or implausible for something read or
+ * watched (before 1900 or past next year — a typo like `0202` or `2302`) would stretch the axis over centuries.
+ */
+export function datedYear(date: string | null): number | null {
+  if (!date) return null;
+  const year = yearOf(date);
+  return Number.isFinite(year) && year >= 1900 && year < new Date().getUTCFullYear() + 2 ? year : null;
+}
+
+/**
  * Up to 4 lanes keep the full gap; beyond that they get closer (never under 110). With many people on a wide
  * screen the fit is limited by height, and a full gap left the chart a narrow strip. A tall screen is limited by
  * width instead, so there (`compress` false) closer lanes would only shrink them: they keep the full gap.
@@ -32,9 +42,8 @@ export function layoutTiempo(people: AtlasPerson[], works: AtlasWork[], active: 
   const gap = laneGap(activePeople.length, compress);
   const laneOf = new Map(lanes.map(lane => [lane.userId, lane.y]));
   const dated = works.flatMap(work => work.owners.flatMap(owner => {
-    if (!laneOf.has(owner.userId) || !owner.date) return [];
-    const year = yearOf(owner.date);
-    return Number.isFinite(year) ? [{ key: work.key, userId: owner.userId, year }] : [];
+    const year = laneOf.has(owner.userId) ? datedYear(owner.date) : null;
+    return year === null ? [] : [{ key: work.key, userId: owner.userId, year }];
   }));
   let low = Infinity, high = -Infinity;
   for (const item of dated) { low = Math.min(low, item.year); high = Math.max(high, item.year); }
@@ -56,7 +65,7 @@ export function summarizeTiempo(people: AtlasPerson[], works: AtlasWork[], activ
   for (const work of works) {
     const owners = work.owners.filter(owner => active.includes(owner.userId));
     if (owners.length < 2 || !owners.some(owner => owner.userId === me.id)) continue;
-    if (owners.some(owner => !owner.date || !Number.isFinite(yearOf(owner.date)))) { undated++; continue; }
+    if (owners.some(owner => datedYear(owner.date) === null)) { undated++; continue; }
     total++;
     const mine = owners.find(owner => owner.userId === me.id)!.date!;
     if (owners.every(owner => mine <= owner.date!)) first++;
