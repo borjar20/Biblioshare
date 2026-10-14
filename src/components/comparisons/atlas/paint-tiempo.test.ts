@@ -49,9 +49,8 @@ describe('paintTiempoBack', () => {
   it('keeps the last year and a long name inside a narrow screen', () => {
     // 3 years at k = 0.2 span 162 px; a 200 px screen leaves the 2023 label (28 px) no room on the right.
     const { moves, text } = paint({ width: 200, height: 800 }, { x: 0, y: 0, k: 0.2 });
-    const last = text.mock.calls.find(([v]) => v === '2023')!;
-    expect(last[1]).toBeLessThan(moves[3][0]);
-    expect(last[5]).toBe('right');
+    expect(moves).toHaveLength(4);
+    expect(text.mock.calls.filter(([v]) => /^\d{4}$/.test(v)).map(([v]) => v)).toEqual(['2020', '2021', '2022']);
     const first = text.mock.calls.find(([v]) => v === '2020')!;
     expect(first[1]).toBeGreaterThan(moves[0][0]);
     // «Ana Ruiz» is 56 px wide: its centre must be at least 28 + 4 px from the left edge.

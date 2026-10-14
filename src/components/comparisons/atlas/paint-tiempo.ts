@@ -12,10 +12,12 @@ export function paintTiempoBack({ ctx, cam, vp, palette, text }: PaintView, { la
   for (let year = layout.startYear; year <= layout.endYear; year++) {
     const x = toScreen(cam, vp, { x: (year - mid) * YEAR_STEP, y: 0 }).x;
     ctx.strokeStyle = palette.line; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom); ctx.stroke();
-    // Labels are in screen pixels and the fit is in world units: on a narrow screen the last year's label
-    // would run past the right edge, so it flips to the left of its line.
-    const font = `600 12px ${palette.font}`, flip = x + 6 + measure(ctx, String(year), font) > vp.width - 4;
-    text(String(year), flip ? x - 6 : x + 6, top + 14, font, palette.faint, flip ? 'right' : 'left');
+    // Labels are in screen pixels and the fit is in world units: on a narrow screen the closing year's label
+    // would run past the right edge (and flipped, it would sit on the previous one). It closes the range and
+    // has no column of its own, so it is left out.
+    const font = `600 12px ${palette.font}`;
+    if (x + 6 + measure(ctx, String(year), font) > vp.width - 4) continue;
+    text(String(year), x + 6, top + 14, font, palette.faint, 'left');
   }
   const left = toScreen(cam, vp, { x: (layout.startYear - mid) * YEAR_STEP - 150, y: 0 }).x;
   const right = toScreen(cam, vp, { x: (layout.endYear - mid) * YEAR_STEP, y: 0 }).x;
