@@ -7783,3 +7783,34 @@ pares (día, franja) de sesiones, episodios y terminados, estos con la hora en q
 `/estadisticas` no cambia: allí «cuándo lees» sigue midiendo sesiones. En el mismo arreglo, «En
 marcha» toma `created_at` como inicio de los pases sin `started_on`. Detalle en la
 [spec](../superpowers/specs/2026-10-13-wrap-up-mensual-revision-visual-design.md).
+
+## 2026-10-14 — Entre nosotros: el atlas sustituye a Obras y Gustos
+
+`/comunidad/entre-nosotros` pasa a ser un atlas en `<canvas>` a sangre y siempre oscuro,
+sea cual sea el tema de la app. Entra en `isFullscreenRoute` (sin topbar ni barra inferior)
+y usa tokens propios: es una vista inmersiva, y la paleta fija de diez colores de persona
+está pensada para leerse sobre ese fondo. Sustituye a Obras (Venn general ›
+cruce › obra) y a Gustos. Tiene cuatro lentes sobre las mismas obras: Quién, Opinión,
+Tiempo e Islas. Islas, en sus modos Tipo, Género y Autor/Director, cubre las agrupaciones
+que daba Gustos, así que Gustos desaparece en vez de convivir. «En común» significa
+siempre que la obra la tienen **todas** las caras activas, no una pareja cualquiera.
+
+El estado se reparte por privacidad. La lente y el modo de Islas van en la URL
+(`?lente=…&islas=…`, con `router.replace` y conservando `group`/`con`), porque se pueden
+compartir y no dicen nada de nadie. Las caras activas y la cámara van a `sessionStorage`
+con clave por cuenta y grupo: así los ids de persona nunca llegan a la URL ni al historial.
+Ese almacenamiento se borra al cambiar de sesión y, si falla, el atlas encaja la vista.
+
+Se retira la server action del detalle de obra (`loadComparisonWork`) junto con el
+detalle de Gustos y el lienzo DOM antiguo: el atlas trabaja solo con el snapshot de
+`loadComparison`, de modo que hay una respuesta menos que proteger (#1519 se cierra por
+eso). La vía de teclado y de lector de pantalla es «Ver como lista»: enlaces a la ficha
+con el mismo filtro de caras, formato y lente, ordenados según la lente. Se decidió no
+mezclar el atlas en `main` hasta que esa lista existiera, porque un canvas sin
+alternativa dejaba fuera a quien no usa puntero; con la F4 la condición se cumple.
+Diseño en la [spec del atlas](../superpowers/specs/2026-10-13-entre-nosotros-atlas-design.md)
+y evidencia en [F1](../testing/2026-10-13-entre-nosotros-atlas-f1.md),
+[F2](../testing/2026-10-13-entre-nosotros-atlas-f2.md),
+[F3](../testing/2026-10-14-entre-nosotros-atlas-f3.md) y
+[F4](../testing/2026-10-14-entre-nosotros-atlas-f4.md); lo que quedó pendiente está en
+#1520–#1527.

@@ -1,9 +1,14 @@
 # Entre nosotros como atlas visual
 
-> [Histórico · corte de diseño 2026-10-13] Diseño aprobado en conversación, pendiente de
-> implementar. Sustituye la vista Obras (Venn general › cruce › obra) y la vista Gustos
-> de [la spec del 2026-10-10](2026-10-10-entre-nosotros-design.md). No acredita
-> implementación.
+> [Histórico · implementado 2026-10-14] Diseño aprobado en conversación el 2026-10-13 e
+> implementado en cuatro fases. Sustituye la vista Obras (Venn general › cruce › obra) y la
+> vista Gustos de [la spec del 2026-10-10](2026-10-10-entre-nosotros-design.md). Evidencia:
+> [F1](../../testing/2026-10-13-entre-nosotros-atlas-f1.md),
+> [F2 · Opinión](../../testing/2026-10-13-entre-nosotros-atlas-f2.md),
+> [F3 · Tiempo e Islas](../../testing/2026-10-14-entre-nosotros-atlas-f3.md) y
+> [F4 · portadas, lista, teclado y estado](../../testing/2026-10-14-entre-nosotros-atlas-f4.md).
+> El estado vivo está en el código y en `docs/architecture/graph.json`; lo que quedó
+> pendiente está en las issues #1520–#1527.
 > Prototipo de referencia (fuente de verdad del comportamiento):
 > [`assets/entre-nosotros-atlas-prototipo.html`](assets/entre-nosotros-atlas-prototipo.html).
 > Inspiración: Endless Atlas (mapa con zoom y lentes) y Cinema Circle (avatares sobre la
