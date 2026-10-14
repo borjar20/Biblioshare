@@ -101,6 +101,12 @@ describe('AtlasView', () => {
     for (const name of ['Tú', 'Bea', 'Carla']) expect(screen.getByRole('button', { name }).getAttribute('aria-pressed')).toBe('true');
     expect(summary()).toBe('1 obra en común entre Tú, Bea y Carla');
   });
+  it('una cara de la selección que ya no está disponible se ignora: solo quedan las demás', () => {
+    render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={snapshot} viewerId="me" groupId="g" chosen={['b', 'x']} onChosenChange={vi.fn()} lens="quien" onLensChange={vi.fn()} islandMode="type" onIslandModeChange={vi.fn()} list={false} onListChange={vi.fn()}/></NextIntlClientProvider>);
+    expect(canvas.active).toEqual(['b']);
+    expect(screen.getByRole('button', { name: 'Bea' }).getAttribute('aria-pressed')).toBe('true');
+    for (const name of ['Tú', 'Carla']) expect(screen.getByRole('button', { name }).getAttribute('aria-pressed')).toBe('false');
+  });
   it('el hover no rehace la lista de caras activas que recibe el lienzo', () => {
     view();
     const before = canvas.active;

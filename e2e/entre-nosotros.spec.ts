@@ -53,8 +53,8 @@ const test = base.extend<{ journal: Record[] }>({
   }, { auto: true }],
 });
 async function settled(page: Page) {
-  await expect(page.locator('[data-atlas-moving], [data-camera-moving]').first()).toBeAttached();
-  await expect(page.locator('[data-atlas-moving="true"], [data-camera-moving="true"]')).toHaveCount(0);
+  await expect(page.locator('[data-atlas-moving]').first()).toBeAttached();
+  await expect(page.locator('[data-atlas-moving="true"]')).toHaveCount(0);
 }
 async function groups(page: Page) {
   const sheet = page.getByRole('dialog', { name: 'Grupos', exact: true });

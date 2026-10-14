@@ -241,7 +241,7 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
       <h2 className={styles.srOnly}>{active.name}</h2>
       {state.snapshot.status === 'loading' && <div className={styles.workspaceLoading}><ComparisonLoading label={t('loading')}/></div>}
       {state.snapshot.status === 'error' && <div role="alert"><p>{t(state.loadError === 'conflict' ? 'loadConflict' : `errors.${state.loadError ?? 'load-failed'}`)}</p><Button variant="secondary" onClick={() => { refresh(); if (state.loadError === 'unavailable' || state.loadError === 'unauthenticated') router.refresh(); }}>{t('reloadComparison')}</Button></div>}
-      {snapshot && <div key={state.snapshot.seq} className={styles.canvasWrap} data-comparison-reveal data-comparison-slot="works">
+      {snapshot && <div key={state.snapshot.seq} className={styles.canvasWrap} data-comparison-slot="works">
         <AtlasView snapshot={snapshot} viewerId={viewerId} groupId={state.groupId!} chosen={chosenFaces} lens={atlasUi.lens} onLensChange={setAtlasLens} islandMode={atlasUi.islandMode} onIslandModeChange={setAtlasIslandMode} list={atlasUi.list} onListChange={list => setAtlasUi(current => ({ ...current, list }))} onChosenChange={setAtlasFaces} notice={snapshot.excludedSeriesWithoutEpisodes > 0 ? <p className={styles.coverageNote} data-comparison-coverage>{t('excludedHistoricalSeries', { count: snapshot.excludedSeriesWithoutEpisodes })}</p> : null}/>
       </div>}
       {snapshot && state.revealSeq === state.snapshot.seq && completedHandoff !== state.snapshot.seq && <div key={`handoff-${state.snapshot.seq}`} aria-hidden="true" inert className={`${styles.workspaceLoading} ${styles.loadingExit}`} data-comparison-handoff onAnimationEnd={event => {
