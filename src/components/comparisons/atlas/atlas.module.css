@@ -28,7 +28,7 @@
 .zoom { display: flex; flex-direction: column; gap: 6px; }
 .zoom button { width: 40px; height: 40px; border-radius: 12px; background: var(--atlas-panel); display: grid; place-items: center; color: var(--atlas-fg); font-size: 18px; font-weight: 600; }
 .tip { position: absolute; z-index: 3; pointer-events: none; display: flex; gap: 10px; align-items: center; padding: 8px 12px 8px 8px; border-radius: 12px; background: var(--atlas-panel); box-shadow: 0 12px 30px rgba(0,0,0,.5); font-size: 13px; max-width: 280px; color: var(--atlas-fg); }
-.cover { width: 38px; height: 56px; border-radius: 4px; flex: none; }
+.cover { width: 38px; height: 56px; border-radius: 4px; flex: none; object-fit: cover; display: block; align-self: flex-start; }
 .workTitle { display: block; font-size: 14px; font-weight: 700; line-height: 1.15; margin-bottom: 5px; }
 .owners { display: grid; grid-template-columns: auto 1fr; gap: 3px 6px; align-items: center; color: var(--atlas-muted); font-size: 12px; margin: 0; padding: 0; list-style: none; }
 .owners li { display: contents; }
@@ -38,7 +38,9 @@
 .scaleDot { position: absolute; transform: translateX(-50%); width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 9px; font-weight: 800; color: #fff; box-shadow: 0 0 0 2px var(--atlas-panel); }
 .scaleTicks { position: relative; height: 14px; font-size: 11px; color: var(--atlas-faint); }
 .scaleTicks span { position: absolute; transform: translateX(-50%); }
-.scaleNone { margin: 0; font-size: 11px; color: var(--atlas-faint); }
+.scaleValues { display: flex; flex-wrap: wrap; gap: 2px 10px; margin: 2px 0 0; padding: 0; list-style: none; font-size: 12px; color: var(--atlas-muted); }
+.scaleValues li { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.scaleValues b { color: var(--atlas-fg); font-weight: 800; }
 .sheet { position: absolute; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 4; display: flex; gap: 12px; align-items: flex-start; padding: 14px; border-radius: 18px; background: var(--atlas-panel); box-shadow: 0 -8px 30px rgba(0,0,0,.5); color: var(--atlas-fg); }
 .sheetBody { flex: 1; min-width: 0; display: grid; gap: 10px; }
 .sheetActions { display: flex; gap: 8px; }

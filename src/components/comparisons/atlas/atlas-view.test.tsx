@@ -207,11 +207,65 @@ describe('AtlasView', () => {
     viewRated({ me: 9, b: 9, c: 4 });
     fireEvent.click(screen.getByRole('button', { name: 'Opinión' }));
     // The Y title is drawn rotated -90°: its trailing arrow ends up on top, pointing up (higher = liked more).
-    expect(canvas.opinionLabels).toEqual({ axisRef: 'Tu nota →', axisOthers: 'Media del resto →', loved: 'Os encantó', meh: 'Ni fu ni fa',
-      refYes: 'Tú sí, ellos no', othersYes: 'Ellos sí, tú no' });
+    expect(canvas.opinionLabels).toEqual({ axisRef: 'Tu nota →', axisOthers: 'Media de Bea y Carla →', loved: 'Os encantó', meh: 'Ni fu ni fa',
+      refYes: 'Tú sí, el resto no', othersYes: 'El resto sí, tú no' });
     fireEvent.click(screen.getByRole('button', { name: 'Tú' }));
-    expect(canvas.opinionLabels?.axisRef).toBe('Nota de Bea →');
-    expect(canvas.opinionLabels?.refYes).toBe('Bea sí, el resto no');
+    // Bea is now the reference and Carla the only other face: the corners name her, no «el resto».
+    expect(canvas.opinionLabels).toEqual({ axisRef: 'Nota de Bea →', axisOthers: 'Nota de Carla →', loved: 'Os encantó', meh: 'Ni fu ni fa',
+      refYes: 'Bea sí, Carla no', othersYes: 'Carla sí, Bea no' });
+  });
+  it('Opinión: con Tú y una sola cara más, los textos nombran a esa persona', () => {
+    viewRated({ me: 9, b: 9, c: 4 });
+    fireEvent.click(screen.getByRole('button', { name: 'Opinión' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Carla' }));
+    expect(canvas.opinionLabels).toEqual({ axisRef: 'Tu nota →', axisOthers: 'Nota de Bea →', loved: 'Os encantó', meh: 'Ni fu ni fa',
+      refYes: 'Tú sí, Bea no', othersYes: 'Bea sí, tú no' });
+  });
+  it('Opinión: sin Tú y con dos caras más, la media las nombra y las esquinas hablan del resto', () => {
+    const four = ['me', 'b', 'c', 'd'];
+    const names: Record<string, string> = { me: 'Tú', b: 'Bea', c: 'Carla', d: 'Dani' };
+    const big: Snapshot = { ...snapshot, group: { ...snapshot.group, members: four.map(id => member(id, names[id])) },
+      works: four.map(userId => ({ userId, key: 'book:1' as WorkKey, rating: 7, date: null, orderUnknown: false, progress: null })) };
+    render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={big} viewerId="me" groupId="g" chosen={['b', 'c', 'd']} onChosenChange={vi.fn()} lens="opinion" onLensChange={vi.fn()} islandMode="type" onIslandModeChange={vi.fn()} list={false} onListChange={vi.fn()}/></NextIntlClientProvider>);
+    expect(canvas.opinionLabels).toEqual({ axisRef: 'Nota de Bea →', axisOthers: 'Media de Carla y Dani →', loved: 'Os encantó', meh: 'Ni fu ni fa',
+      refYes: 'Bea sí, el resto no', othersYes: 'El resto sí, Bea no' });
+  });
+  it('Opinión: con más de tres caras además de la referencia, la media cuenta personas', () => {
+    const ids = ['me', 'b', 'c', 'd', 'e'];
+    const big: Snapshot = { ...snapshot, group: { ...snapshot.group, members: ids.map(id => member(id, id === 'me' ? 'Tú' : id.toUpperCase())) },
+      works: ids.map(userId => ({ userId, key: 'book:1' as WorkKey, rating: 7, date: null, orderUnknown: false, progress: null })) };
+    render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={big} viewerId="me" groupId="g" chosen={null} onChosenChange={vi.fn()} lens="opinion" onLensChange={vi.fn()} islandMode="type" onIslandModeChange={vi.fn()} list={false} onListChange={vi.fn()}/></NextIntlClientProvider>);
+    expect(canvas.opinionLabels?.axisOthers).toBe('Media de 4 personas →');
+    expect(canvas.opinionLabels?.refYes).toBe('Tú sí, el resto no');
+  });
+  it('la mini-ficha solo lista a las caras activas, en cualquier lente', () => {
+    viewRated({ me: 9, b: 9, c: 4 });
+    fireEvent.click(screen.getByRole('button', { name: 'Carla' }));
+    act(() => canvas.onHover({ key: 'book:1', x: 10, y: 10 }));
+    const tip = screen.getByText('Proyecto Salvación').closest('[aria-hidden="true"]')!;
+    expect([...tip.querySelectorAll('li')].map(li => li.textContent)).toEqual(['Tú', 'Bea']);
+    fireEvent.click(screen.getByRole('button', { name: 'Opinión' }));
+    act(() => canvas.onActivate({ key: 'book:1', x: 10, y: 10 }, 'touch'));
+    expect(screen.getByRole('img', { name: 'Notas: Tú 9, Bea 9' })).toBeTruthy();
+    expect(screen.getByRole('dialog').textContent).not.toContain('Carla');
+  });
+  it('la mini-ficha y la hoja enseñan la portada; sin portada o si falla, el bloque de color del tipo', () => {
+    const withCover: Snapshot = { ...snapshot, catalog: [{ ...snapshot.catalog[0], coverUrl: 'https://covers.openlibrary.org/b/id/42-M.jpg' }] };
+    viewWith(withCover);
+    act(() => canvas.onHover({ key: 'book:1', x: 10, y: 10 }));
+    const tip = screen.getByText('Proyecto Salvación').closest('[aria-hidden="true"]')!;
+    const img = tip.querySelector('img')!;
+    expect(img.getAttribute('src')).toBe('https://covers.openlibrary.org/b/id/42-S.jpg');
+    expect(img.getAttribute('alt')).toBe('');
+    fireEvent.error(img);
+    expect(screen.getByText('Proyecto Salvación').closest('[aria-hidden="true"]')!.querySelector('img')).toBeNull();
+    act(() => canvas.onHover(null));
+    act(() => canvas.onActivate({ key: 'book:1', x: 10, y: 10 }, 'touch'));
+    expect(screen.getByRole('dialog').querySelector('img')).toBeTruthy();
+    cleanup();
+    view();
+    act(() => canvas.onHover({ key: 'book:1', x: 10, y: 10 }));
+    expect(screen.getByText('Proyecto Salvación').closest('[aria-hidden="true"]')!.querySelector('img')).toBeNull();
   });
   it('Opinión con una sola cara pide otra', () => {
     viewRated({ me: 9, b: 9, c: 4 });

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { itemHref } from '@/lib/catalog/item-href';
+import cdnLoader from '@/lib/images/cdn-loader';
 import type { Snapshot, WorkKey } from '@/lib/comparisons/types';
 import type { AtlasPerson, AtlasWork } from '@/lib/comparisons/atlas/types';
 import { atlasModel } from '@/lib/comparisons/atlas/model';
@@ -34,16 +35,30 @@ const LENSES = Object.keys(LENS_ICONS) as Lens[];
 const MODES: IslandMode[] = ['type', 'genre', 'creator'];
 const isType = (id: string): id is keyof typeof TYPE_VAR => Object.hasOwn(TYPE_VAR, id);
 
-/** Quién and Islas list who has the work; Tiempo adds each owner's year; Opinión puts each owner on the 1–10 scale. */
-function WorkCard({ work, people, title, lens }: { work: AtlasWork; people: AtlasPerson[]; title: string; lens: Lens }) {
+/** The work's cover through the CDN loader; without one, or if it fails to load, the type's colour block. */
+function WorkCover({ work }: { work: AtlasWork }) {
+  const [failed, setFailed] = useState<string | null>(null);
+  const src = work.coverUrl && failed !== work.coverUrl ? work.coverUrl : null;
+  return src
+    // eslint-disable-next-line @next/next/no-img-element -- loader URL straight to the CDN: one small request, no /_next/image
+    ? <img className={styles.cover} src={cdnLoader({ src, width: 96 })} alt="" width={38} height={56} onError={() => setFailed(src)}/>
+    : <span className={styles.cover} style={{ background: TYPE_VAR[work.itemType] }} aria-hidden="true"/>;
+}
+
+/**
+ * Quién and Islas list who has the work; Tiempo adds each owner's year; Opinión puts each owner on the 1–10 scale.
+ * Only the active faces: a face turned off is out of the comparison, also in the card.
+ */
+function WorkCard({ work, people, active, title, lens }: { work: AtlasWork; people: AtlasPerson[]; active: string[]; title: string; lens: Lens }) {
   const t = useTranslations('comparisons.atlas');
   const names = new Map(people.map(person => [person.id, person]));
+  const owners = work.owners.filter(owner => active.includes(owner.userId));
   const line = (name: string, date: string | null) => lens !== 'tiempo' ? name
     : date && datedYear(date) !== null ? t('years', { name, year: date.slice(0, 4) }) : t('noDate', { name });
   return <>
-    <span className={styles.cover} style={{ background: TYPE_VAR[work.itemType] }} aria-hidden="true"/>
+    <WorkCover key={work.key} work={work}/>
     <span><span className={styles.workTitle}>{title}</span>
-      {lens === 'opinion' ? <RatingScale owners={work.owners} people={people}/> : <ul className={styles.owners}>{work.owners.map(owner => names.get(owner.userId) && <li key={owner.userId}>
+      {lens === 'opinion' ? <RatingScale owners={owners} people={people}/> : <ul className={styles.owners}>{owners.map(owner => names.get(owner.userId) && <li key={owner.userId}>
         <span className={styles.ownerDot} style={{ background: names.get(owner.userId)!.color }} aria-hidden="true"/>
         <span>{line(names.get(owner.userId)!.name, owner.date)}</span></li>)}</ul>}</span>
   </>;
@@ -88,14 +103,17 @@ export function AtlasView({ snapshot, viewerId, groupId, notice, chosen, onChose
   }), [t]);
   const layouts = useMemo(() => ({ quien: layout, opinion, tiempo, islas }), [layout, opinion, tiempo, islas]);
   const scene = useMemo(() => buildScene(lens, works, active, layouts), [lens, works, active, layouts]);
-  // Corner and axis names follow the Opinión reference («Tú» unless she is out).
+  // Corner and axis names follow the Opinión reference («Tú» unless she is out) and who it is compared with: one other
+  // face is named, two or three are listed as a mean, more are counted («el resto» in the corners).
   const reference = people.find(person => person.id === opinion.reference);
   const refIsMe = String(reference?.isMe ?? true), refName = reference?.name ?? '';
+  const otherNames = people.filter(person => active.includes(person.id) && person.id !== opinion.reference).map(person => person.name);
+  const others = new Intl.ListFormat(locale, { type: 'conjunction' }).format(otherNames), otherCount = otherNames.length;
   const opinionLabels = useMemo(() => {
-    const who = { isMe: refIsMe, ref: refName };
-    return { axisRef: t('atlas.opinion.axisRef', who), axisOthers: t('atlas.opinion.axisOthers'), loved: t('atlas.opinion.loved'),
+    const who = { isMe: refIsMe, ref: refName, count: otherCount, names: others, many: String(otherCount > 3) };
+    return { axisRef: t('atlas.opinion.axisRef', who), axisOthers: t('atlas.opinion.axisOthers', who), loved: t('atlas.opinion.loved'),
       meh: t('atlas.opinion.meh'), refYes: t('atlas.opinion.refYes', who), othersYes: t('atlas.opinion.othersYes', who) };
-  }, [t, refIsMe, refName]);
+  }, [t, refIsMe, refName, others, otherCount]);
   const [hover, setHover] = useState<AtlasHit | null>(null);
   const [picked, setPicked] = useState<WorkKey | null>(null);
   const camera = useRef<AtlasCanvasHandle>(null); const sheetRef = useRef<HTMLDivElement>(null);
@@ -226,9 +244,9 @@ export function AtlasView({ snapshot, viewerId, groupId, notice, chosen, onChose
       style={{ left: `min(${hover.x + 16}px, calc(100% - 290px))`, ...(stageHeight && hover.y > stageHeight / 2
         // Lower half: open upwards so the taller Opinión card is never cut by the bottom edge.
         ? { bottom: `calc(100% - ${hover.y - 16}px)` } : { top: `min(${hover.y + 16}px, calc(100% - 110px))` }) }}>
-      <WorkCard work={hovered} people={people} title={titleOf(hovered)} lens={lens}/></div>}
+      <WorkCard work={hovered} people={people} active={active} title={titleOf(hovered)} lens={lens}/></div>}
     {sheet && <div ref={sheetRef} className={styles.sheet} role="dialog" aria-label={titleOf(sheet)}>
-      <WorkCard work={sheet} people={people} title={titleOf(sheet)} lens={lens}/>
+      <WorkCard work={sheet} people={people} active={active} title={titleOf(sheet)} lens={lens}/>
       <div className={styles.sheetBody}><div className={styles.sheetActions}>
         {!sheet.metadataMissing && <Link className={styles.open} href={itemHref(sheet.itemType, sheet.itemId)}>{t('atlas.openWork')}</Link>}
         <button type="button" className={styles.close} onClick={closeSheet}>{t('atlas.closeWork')}</button>

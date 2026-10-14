@@ -7,7 +7,7 @@ import type { AtlasOwner, AtlasPerson } from '@/lib/comparisons/atlas/types';
 import { RatingScale } from './rating-scale';
 
 const person = (id: string, name: string): AtlasPerson => ({ id, name, avatarUrl: null, color: '#123456', isMe: id === 'me' });
-const owner = (userId: string, rating: number): AtlasOwner => ({ userId, rating, date: null });
+const owner = (userId: string, rating: number | null): AtlasOwner => ({ userId, rating, date: null });
 const people = [person('me', 'Tú'), person('b', 'Bea'), person('c', 'Carla')];
 afterEach(cleanup);
 
@@ -38,5 +38,12 @@ describe('RatingScale', () => {
     expect(dots.map(dot => dot.style.left)).toEqual(['calc(10px + 1 * (100% - 20px))', 'calc(10px + 0 * (100% - 20px))']);
     const ticks = [...(scale.children[1] as HTMLElement).querySelectorAll('span')] as HTMLElement[];
     expect(ticks[2].style.left).toBe('calc(10px + 1 * (100% - 20px))');
+  });
+  it('enseña la nota de cada cual con cifras, no solo las iniciales', () => {
+    render(<NextIntlClientProvider locale="es" messages={messages}>
+      <RatingScale people={people} owners={[owner('me', 6), owner('b', 4), owner('c', null)]}/>
+    </NextIntlClientProvider>);
+    const scale = screen.getByRole('img', { name: 'Notas: Tú 6, Bea 4, Carla sin nota' });
+    expect([...scale.querySelectorAll('li')].map(li => li.textContent)).toEqual(['Tú 6', 'Bea 4', 'Carla sin nota']);
   });
 });

@@ -14,7 +14,6 @@ export function RatingScale({ owners, people }: { owners: AtlasOwner[]; people: 
   const byId = new Map(people.map(person => [person.id, person]));
   const known = owners.filter(owner => byId.has(owner.userId));
   const rated = known.filter((owner): owner is AtlasOwner & { rating: number } => owner.rating !== null);
-  const unrated = known.filter(owner => owner.rating === null);
   const list = known.map(owner => `${byId.get(owner.userId)!.name} ${owner.rating ?? t('atlas.opinion.noRating')}`).join(', ');
   const level = new Map<number, number>();
   // The track grows with the tallest stack of equal ratings (20px dot + 14px per extra + 8px air).
@@ -31,7 +30,8 @@ export function RatingScale({ owners, people }: { owners: AtlasOwner[]; people: 
       })}
     </div>
     <div className={styles.scaleTicks} aria-hidden="true">{[1, 5, 10].map(value => <span key={value} style={{ left: at(value) }}>{value}</span>)}</div>
-    {unrated.length > 0 && <p className={styles.scaleNone} aria-hidden="true">
-      {unrated.map(owner => byId.get(owner.userId)!.name).join(', ')}: {t('atlas.opinion.noRating')}</p>}
+    {/* The numbers in words: equal or close ratings stack or touch on the track, and initials alone do not say the note. */}
+    <ul className={styles.scaleValues} aria-hidden="true">{known.map(owner => { const person = byId.get(owner.userId)!;
+      return <li key={owner.userId}><span className={styles.ownerDot} style={{ background: person.color }}/>{person.name} <b>{owner.rating ?? t('atlas.opinion.noRating')}</b></li>; })}</ul>
   </div>;
 }
