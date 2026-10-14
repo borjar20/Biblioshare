@@ -1,0 +1,47 @@
+[
+  {
+    "caseFolder": "entre-nosotros-atlas-Quién-76290-ién-con-movimiento-reducido-chromium",
+    "journal": {
+      "errors": [],
+      "failures": [
+        "GET /comunidad: net::ERR_ABORTED",
+        "GET /buscar: net::ERR_ABORTED",
+        "GET /: net::ERR_ABORTED",
+        "POST /login: net::ERR_ABORTED",
+        "POST /: net::ERR_ABORTED",
+        "POST /comunidad/entre-nosotros: net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+        "POST /comunidad/entre-nosotros: net::ERR_ABORTED",
+        "GET /comunidad: net::ERR_ABORTED",
+        "GET /comunidad: net::ERR_ABORTED",
+        "GET /libro/0e2fe096-e745-438d-9d97-d3c94399fa74: net::ERR_ABORTED"
+      ]
+    }
+  },
+  {
+    "caseFolder": "entre-nosotros-atlas-Quién-76290-ién-con-movimiento-reducido-mobile",
+    "journal": {
+      "errors": [],
+      "failures": [
+        "GET /comunidad: net::ERR_ABORTED",
+        "GET /buscar: net::ERR_ABORTED",
+        "GET /: net::ERR_ABORTED",
+        "POST /login: net::ERR_ABORTED",
+        "GET /: net::ERR_ABORTED",
+        "GET /_next/static/chunks/2pzbgrn16lsdz.js: net::ERR_ABORTED",
+        "POST /: net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a: net::ERR_ABORTED",
+        "GET /_next/static/chunks/1vo28qmcrbou0.js: net::ERR_ABORTED",
+        "GET /: net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a: net::ERR_ABORTED",
+        "GET /comunidad: net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+        "POST /comunidad/entre-nosotros: net::ERR_ABORTED",
+        "GET /comunidad: net::ERR_ABORTED",
+        "GET /libro/090d6054-ccfd-4522-a4df-b5bed30853a2: net::ERR_ABORTED",
+        "GET /comunidad: net::ERR_ABORTED",
+        "GET /libro/090d6054-ccfd-4522-a4df-b5bed30853a2: net::ERR_ABORTED"
+      ]
+    }
+  }
+]

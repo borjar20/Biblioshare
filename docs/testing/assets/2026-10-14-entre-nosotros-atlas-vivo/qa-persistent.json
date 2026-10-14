@@ -1,0 +1,57 @@
+{
+  "errors": [],
+  "failures": [
+    {
+      "path": "/comunidad",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/buscar",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/buscar",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/comunidad",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/login",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/coleccion",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/mascota",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/coleccion",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/experiencias",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/storage/v1/object/public/avatars/6a44bc7c-4bec-42d8-87be-5bf20fc754f1/avatar.webp",
+      "error": "net::ERR_ABORTED"
+    }
+  ],
+  "account": "persistent devtest",
+  "writes": "none",
+  "loginAndRoute": "pass",
+  "existingSelection": 1
+}

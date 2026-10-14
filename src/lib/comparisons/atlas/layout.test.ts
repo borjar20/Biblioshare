@@ -112,6 +112,69 @@ describe('layoutQuien', () => {
     expect([...first.positions]).toEqual([...second.positions]);
     expect(first.positions.size).toBe(works.length);
   });
+  it('al seleccionar A y B reúne AB y ABC en un solo grupo y conserva todos los polos', () => {
+    const original = layoutQuien(people, works);
+    const selected = layoutQuien(people, works, ['a', 'b']);
+    const ab = selected.clusters.find(cluster => cluster.id === 'a,b')!;
+    expect(ab.owners).toEqual(['a', 'b']);
+    expect(ab.keys.toSorted()).toEqual(['book:1', 'book:2', 'book:3', 'movie:1']);
+    expect(selected.clusters.find(cluster => cluster.id === 'a,b,c')).toBeUndefined();
+    expect(selected.poles).toEqual(original.poles);
+    expect(selected.positions.size).toBe(works.length);
+    // The shared works travel to the selected cluster; Carla's own work keeps its original faint place.
+    for (const key of ab.keys) {
+      const point = selected.positions.get(key)!;
+      expect(Math.hypot(point.x - ab.x, point.y - ab.y)).toBeLessThan(ab.r);
+    }
+    expect(selected.clusters.find(cluster => cluster.id === 'c')).toEqual(original.clusters.find(cluster => cluster.id === 'c'));
+    expect(selected.positions.get('book:6')).toEqual(original.positions.get('book:6'));
+    expect(workState(works.find(work => work.key === 'book:6')!, ['a', 'b']).alpha).toBe(0.06);
+    expect(selected.positions.get('book:1')).not.toEqual(original.positions.get('book:1'));
+  });
+  it('con una persona activa reúne todo lo suyo y deja lo ajeno en su grupo original', () => {
+    const original = layoutQuien(people, works);
+    const selected = layoutQuien(people, works, ['a']);
+    expect(selected.clusters.find(cluster => cluster.id === 'a')?.keys.toSorted()).toEqual([
+      'book:1', 'book:2', 'book:3', 'book:4', 'movie:1', 'series:1',
+    ]);
+    expect(selected.clusters.map(cluster => cluster.id).toSorted()).toEqual(['a', 'b', 'c']);
+    for (const key of ['book:5', 'book:6'] as WorkKey[]) expect(selected.positions.get(key)).toEqual(original.positions.get(key));
+  });
+  it('un grupo compartido apagado conserva su posición y no se mezcla con el grupo visible', () => {
+    const ownership: [string, string[]][] = [['book:1', ['a', 'c']], ['book:2', ['a', 'b', 'c', 'd']],
+      ['book:3', ['b', 'd']], ['book:4', ['b', 'd']], ['book:5', ['b', 'd']]];
+    const four = atlasModel({ ...snapshot, group: { ...snapshot.group, members: ['a', 'b', 'c', 'd'].map(member) },
+      works: ownership.flatMap(([key, ids]) => ids.map(userId => ({ userId, key: key as WorkKey,
+        rating: null, date: null, orderUnknown: false, progress: null }))),
+    }, 'a', 'Tú');
+    const original = layoutQuien(four.people, four.works), selected = layoutQuien(four.people, four.works, ['a', 'c']);
+    const off = selected.clusters.find(cluster => cluster.id === 'b,d')!, on = selected.clusters.find(cluster => cluster.id === 'a,c')!;
+    expect(on.keys).toEqual(['book:1', 'book:2']);
+    expect(off).toEqual(original.clusters.find(cluster => cluster.id === 'b,d'));
+    for (const key of off.keys) expect(selected.positions.get(key)).toEqual(original.positions.get(key));
+    expect(Math.hypot(on.x - off.x, on.y - off.y)).toBeGreaterThan(on.r + off.r);
+  });
+  it('el orden de personas define los dueños del grupo aunque lleguen desordenados o repetidos', () => {
+    const shuffled = works.map(work => ({ ...work, owners: [...work.owners].reverse().concat(work.owners[0]) }));
+    const selected = layoutQuien(people, shuffled, ['b', 'a']);
+    expect(selected.clusters.find(cluster => cluster.id === 'a,b')?.keys.toSorted()).toEqual(['book:1', 'book:2', 'book:3', 'movie:1']);
+    expect(selected.clusters.some(cluster => cluster.id === 'b,a')).toBe(false);
+    expect(selected.poles.map(pole => pole.count)).toEqual([6, 5, 4]);
+  });
+  it('sin selección conserva todos los grupos originales tenues y restaurar todas las caras restaura el mapa', () => {
+    const original = layoutQuien(people, works);
+    const off = layoutQuien(people, works, []);
+    expect(off.clusters).toEqual(original.clusters);
+    expect([...off.positions]).toEqual([...original.positions]);
+    for (const work of works) expect(workState(work, []).alpha).toBe(0.06);
+    layoutQuien(people, works, ['a', 'b']);
+    const restored = layoutQuien(people, works, ['c', 'b', 'a']);
+    expect(restored.clusters).toEqual(original.clusters);
+    expect([...restored.positions]).toEqual([...original.positions]);
+    const empty = layoutQuien([], [], []);
+    expect(empty.positions.size).toBe(0);
+    expect(Object.values(empty.extent).every(Number.isFinite)).toBe(true);
+  });
   it('la extensión contiene polos y grupos con margen', () => {
     const { extent, poles } = layoutQuien(people, works);
     for (const p of poles) { expect(p.x).toBeGreaterThan(extent.minX); expect(p.x).toBeLessThan(extent.maxX); expect(p.y).toBeLessThan(extent.maxY - 100); }

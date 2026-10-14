@@ -63,7 +63,12 @@ describe('layoutIslands', () => {
   it('medias solo con 3 o más obras con nota de esa persona en la isla', () => {
     const rated = [1, 2, 3].map(i => work(`r${i}`, ['me', 'b'], { genres: ['Drama'], ratings: { me: 6 + i, b: i === 1 ? 5 : null } }));
     const drama = layoutIslands(people, rated, ['me', 'b'], 'genre').islands.find(i => i.id === 'g:Drama')!;
-    expect(drama.means).toEqual([{ userId: 'me', mean: 8 }]);
+    expect(drama.means).toEqual([{ userId: 'me', mean: 8, count: 3 }]);
+  });
+  it('el tamaño de muestra cuenta solo notas presentes sin tratar ausentes como cero', () => {
+    const rated = [9, null, 8, 10].map((rating, i) => work(`r${i}`, ['me', 'b'], { ratings: { me: rating, b: null } }));
+    const book = layoutIslands(people, rated, ['me', 'b'], 'type').islands[0];
+    expect(book.means).toEqual([{ userId: 'me', mean: 9, count: 3 }]);
   });
   it('el top 10 prioriza las obras comunes a todas: la categoria sin ninguna comun va a Otros', () => {
     const lots = Array.from({ length: 10 }, (_, k) => work(`c${k}`, ['me', 'b', 'c'], { genres: [`Z${String(k).padStart(2, '0')}`] }));
@@ -81,6 +86,56 @@ describe('layoutIslands', () => {
     const { islands } = layoutIslands(people, works, ['me', 'b', 'c'], 'genre');
     for (const a of islands) for (const b of islands) if (a !== b)
       expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThan(a.r + b.r);
+  });
+  it.each([
+    { width: 360, height: 740, top: 176, bottom: 175 },
+    { width: 1280, height: 800, top: 100, bottom: 175 },
+  ])('encaja cuatro cabeceras de diez medias sin pisar columnas ni discos en $width px', ({ width, height, top, bottom }) => {
+    const faces = Array.from({ length: 10 }, (_, i) => person(`p${i}`));
+    const ids = faces.map(face => face.id);
+    const rated = Array.from({ length: 3 }, (_, i) => work(`r${i}`, ids, {
+      genres: ['Aventura', 'Ciencia ficción', 'Drama', 'Fantasía'], ratings: Object.fromEntries(ids.map(id => [id, 9])),
+    }));
+    const framed = layoutIslands(faces, rated, ids, 'genre', { viewport: { width, height }, insets: { top, bottom } });
+    expect(framed.framing).toBeDefined();
+    const cam = framed.framing!.camera;
+    expect(cam.k).toBeGreaterThanOrEqual(framed.framing!.ratingZoom);
+    const bounds = framed.islands.map(island => ({
+      x: (island.x - cam.x) * cam.k + width / 2,
+      y: (island.y - cam.y) * cam.k + height / 2,
+      r: island.r * cam.k,
+    }));
+    for (const a of bounds) {
+      expect(a.x - 74).toBeGreaterThanOrEqual(16);
+      expect(a.x + 74).toBeLessThanOrEqual(width - 16);
+      expect(a.y - a.r - 149).toBeGreaterThanOrEqual(top);
+      expect(a.y + a.r).toBeLessThanOrEqual(height - bottom);
+      for (const b of bounds) if (a !== b) {
+        if (Math.abs(a.y - b.y) < 1) expect(Math.abs(a.x - b.x)).toBeGreaterThanOrEqual(160);
+        if (a.y < b.y) expect(b.y - b.r - 149).toBeGreaterThan(a.y + a.r);
+      }
+    }
+    // Repacking only changes geometry: every face and every appearance stays present.
+    expect(framed.islands.every(island => island.means.length === 10)).toBe(true);
+    expect(framed.instances).toHaveLength(12);
+  });
+  it('con once islas en móvil reserva títulos legibles y muestra las medias al acercar sin perder datos', () => {
+    const faces = Array.from({ length: 10 }, (_, i) => person(`p${i}`)), ids = faces.map(face => face.id);
+    const rated = Array.from({ length: 12 }, (_, genre) => Array.from({ length: 3 }, (_, i) => work(`${genre}-${i}`, ids, {
+      genres: [`G${genre}`], ratings: Object.fromEntries(ids.map(id => [id, 9])),
+    }))).flat();
+    const framed = layoutIslands(faces, rated, ids, 'genre', { viewport: { width: 360, height: 740 }, insets: { top: 176, bottom: 175 } });
+    expect(framed.islands).toHaveLength(11);
+    expect(framed.framing).toBeDefined();
+    expect(framed.framing!.ratingZoom).toBeGreaterThan(framed.framing!.camera.k);
+    expect(framed.islands.every(island => island.means.length === 10)).toBe(true);
+    expect(framed.instances).toHaveLength(36);
+    const cam = framed.framing!.camera;
+    for (const island of framed.islands) {
+      const y = (island.y - cam.y) * cam.k + 740 / 2;
+      expect(y - island.r * cam.k - 32).toBeGreaterThanOrEqual(176);
+      expect(y + island.r * cam.k).toBeLessThanOrEqual(740 - 175);
+    }
   });
 });
 

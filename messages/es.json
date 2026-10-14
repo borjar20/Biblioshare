@@ -6,10 +6,10 @@
       "lenses": "Lente",
       "lens": { "quien": "Quién", "opinion": "Opinión", "tiempo": "Tiempo", "islas": "Islas" },
       "caption": {
-        "quien": "Cada obra cae entre quienes la tienen. Acércate y los puntos se vuelven portadas.",
+        "quien": "Las obras se agrupan entre las personas seleccionadas y se recolocan al cambiar tu selección. Acércate y los puntos se vuelven portadas.",
         "opinion": "Solo lo que compartís con nota. A la derecha, lo que le gustó a la referencia; arriba, lo que gustó al resto. En la diagonal coincidís; lejos de ella, chocáis.",
         "tiempo": "Una vía por persona a lo largo de los años, con lo que compartís. Los hilos unen la misma obra: verás quién llegó primero.",
-        "islas": "Lo que compartís, en una isla por tipo, género o autor. En el centro de cada isla, lo común a todas las caras; arriba, la nota media de cada cual."
+        "islas": "Lo que compartís, por tipo, género o autor. Medias con al menos tres notas: acércate para leerlas o abre la lista. Señala o toca una obra para seguir sus conexiones."
       },
       "opinion": {
         "needsTwo": "Elige al menos a dos personas para comparar notas.",
@@ -40,7 +40,9 @@
         "onlyOther": "Lo que tenéis en común (<b>{count}</b>) está en Otros: {mode, select, creator {no tiene autor ni director} other {no tiene género}} en el catálogo",
         "solo": "Las islas de {name}. Suma a alguien para ver el cruce.",
         "other": "Otros",
-        "common": "{count} en común"
+        "common": "{count} en común",
+        "ratingLabel": "{name}: media {mean} de {count, plural, one {# nota} other {# notas}}",
+        "ratingWithoutCount": "{name}: media {mean}"
       },
       "list": {
         "show": "Ver como lista",

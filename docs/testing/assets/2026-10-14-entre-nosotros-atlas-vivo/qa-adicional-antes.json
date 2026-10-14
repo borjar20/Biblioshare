@@ -1,0 +1,122 @@
+{
+  "errors": [],
+  "failures": [
+    {
+      "path": "/",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/comunidad",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/buscar",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/u/qa_comp_motion_a",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/buscar",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/comunidad",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/login",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/comunidad/entre-nosotros",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/comunidad/entre-nosotros",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/libro/3acf9da4-f319-41e7-afb8-bb10ed5107d9",
+      "error": "net::ERR_ABORTED"
+    }
+  ],
+  "httpErrors": [],
+  "measurements": [
+    {
+      "stage": "10caras-4islas",
+      "width": 1280,
+      "zoom": "0.516",
+      "font": "bold 11px Geist, \"Geist Fallback\", sans-serif",
+      "rating10Width": 22.604949951171875,
+      "horizontalOverflow": false,
+      "sprites": "120",
+      "viewportProbe": 30
+    },
+    {
+      "stage": "10caras-4islas",
+      "width": 390,
+      "zoom": "0.506",
+      "font": "bold 11px Geist, \"Geist Fallback\", sans-serif",
+      "rating10Width": 22.604949951171875,
+      "horizontalOverflow": false,
+      "sprites": "120",
+      "viewportProbe": 30
+    },
+    {
+      "stage": "10caras-4islas",
+      "width": 360,
+      "zoom": "0.431",
+      "font": "bold 11px Geist, \"Geist Fallback\", sans-serif",
+      "rating10Width": 22.604949951171875,
+      "horizontalOverflow": false,
+      "sprites": "120",
+      "viewportProbe": 30
+    },
+    {
+      "stage": "nombre-80-caracteres-lista360",
+      "clientWidth": 360,
+      "scrollWidth": 783,
+      "nameLength": 80,
+      "regionBox": {
+        "x": 0,
+        "right": 360
+      }
+    }
+  ],
+  "cleaned": true,
+  "visualFindings": [
+    {
+      "screenshots": [
+        "qa-10caras-4islas-1280-antes.png",
+        "qa-10caras-4islas-360-antes.png"
+      ],
+      "scenario": "Diez personas, cuatro islas, 1280/390/360 px",
+      "actual": "Aventura y Ciencia ficción se solapan; Drama y Fantasía de la segunda fila pisan puntos de la primera",
+      "expected": "Títulos separados entre columnas y por encima de su propia fila de obras",
+      "result": "FAIL"
+    },
+    {
+      "result": "FAIL",
+      "screenshots": [
+        "qa-lista-nombre80-360-antes.png"
+      ],
+      "clientWidth": 360,
+      "scenario": "Lista a 360 px con display_name de 80 caracteres",
+      "expected": "Nombre y media 10,0 visibles dentro de la lista sin desplazamiento horizontal",
+      "scrollWidth": 783,
+      "actual": "clientWidth 360; scrollWidth 783; la media queda fuera del borde derecho"
+    },
+    {
+      "scenario": "Badge 10,0",
+      "actual": "Geist bold 11 px: 22,605 px de ancho frente a 27 px libres antes del siguiente círculo",
+      "expected": "Valor sin tocar el siguiente avatar",
+      "result": "PASS"
+    }
+  ]
+}

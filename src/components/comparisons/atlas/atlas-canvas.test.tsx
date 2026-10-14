@@ -43,6 +43,49 @@ afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 const flush = () => act(() => { for (let i = 0; i < 400 && frames.length; i++) frames.shift()!(performance.now()); });
 
 describe('AtlasCanvas', () => {
+  it('recupera una cámara de Quién tras cambiar la selección en la lista sin perder zoom', () => {
+    const handle = createRef<AtlasCanvasHandle>();
+    const selected = ['a'], quien = layoutQuien(people, works, selected);
+    const next = buildScene('quien', works, selected, { quien, opinion: layoutOpinion(people, works, selected),
+      tiempo: layoutTiempo(people, works, selected), islas: layoutIslands(people, works, selected, 'type') });
+    const { container } = render(<AtlasCanvas ref={handle} label="Mapa" people={people} works={works} active={selected} scene={next} quien={quien}
+      tiempo={tiempoLayout} islas={islasLayout} initialCamera={{ x: 0, y: 0, k: 2.8 }} countLabel={String}
+      onTogglePerson={() => {}} onHover={() => {}} onActivate={() => {}}/>);
+    flush();
+    const host = container.querySelector<HTMLElement>('[data-atlas-moving]')!;
+    expect(handle.current!.camera()!.k).toBeCloseTo(2.8);
+    expect(JSON.parse(host.dataset.atlasProbe!)).toEqual([expect.objectContaining({ key: 'book:1' })]);
+  });
+  it('sigue el grupo al cambiar selección cuando sale de la cámara propia, conservando el zoom', () => {
+    const handle = createRef<AtlasCanvasHandle>();
+    const props = { label: 'Mapa', people, works, active: ['a', 'b'], scene, quien: layout, tiempo: tiempoLayout, islas: islasLayout,
+      countLabel: (n: number) => `${n} obras`, onTogglePerson: () => {}, onHover: () => {}, onActivate: () => {}, initialCamera: { x: 0, y: 0, k: 2.8 } };
+    const { container, rerender } = render(<AtlasCanvas {...props} ref={handle}/>);
+    flush();
+    const selected = ['a'], quien = layoutQuien(people, works, selected);
+    const next = buildScene('quien', works, selected, { quien, opinion: layoutOpinion(people, works, selected),
+      tiempo: layoutTiempo(people, works, selected), islas: layoutIslands(people, works, selected, 'type') });
+    rerender(<AtlasCanvas {...props} ref={handle} active={selected} quien={quien} scene={next}/>);
+    flush();
+    const host = container.querySelector<HTMLElement>('[data-atlas-moving]')!;
+    expect(handle.current!.camera()!.k).toBeCloseTo(2.8);
+    expect(JSON.parse(host.dataset.atlasProbe!)).toEqual([expect.objectContaining({ key: 'book:1' })]);
+  });
+  it('redibuja al señalar una obra sin cambiar escena ni cámara', () => {
+    const props = { label: 'Mapa', people, works, active: ['a', 'b'], scene, quien: layout, tiempo: tiempoLayout, islas: islasLayout,
+      countLabel: (n: number) => `${n} obras`, onTogglePerson: () => {}, onHover: () => {}, onActivate: () => {} };
+    const { container, rerender } = render(<AtlasCanvas {...props}/>);
+    flush();
+    const host = container.querySelector<HTMLElement>('[data-atlas-moving]')!;
+    const before = host.dataset.atlasZoom;
+    expect(frames).toHaveLength(0);
+    rerender(<AtlasCanvas {...props} focusedKey="book:1"/>);
+    expect(frames.length).toBeGreaterThan(0);
+    flush();
+    expect(host.dataset.atlasZoom).toBe(before);
+    rerender(<AtlasCanvas {...props} focusedKey={null}/>);
+    expect(frames.length).toBeGreaterThan(0);
+  });
   it('se asienta, publica la sonda y tocar un polo alterna esa cara', () => {
     const toggle = vi.fn();
     const { container } = render(<AtlasCanvas label="Mapa" people={people} works={works} active={['a', 'b']} scene={scene} quien={layout} tiempo={tiempoLayout} islas={islasLayout}
@@ -437,7 +480,7 @@ describe('AtlasCanvas', () => {
     const cam = pick(onSettled.mock.lastCall![0]);
     // Paint with the settled camera and read where the titles land (y is the baseline; the font size is in the font).
     const text = vi.fn<PaintView['text']>();
-    const ctx = new Proxy({}, { get: () => () => {}, set: () => true }) as unknown as CanvasRenderingContext2D;
+    const ctx = new Proxy({}, { get: (_, prop) => prop === 'measureText' ? () => ({ width: 1 }) : () => {}, set: () => true }) as unknown as CanvasRenderingContext2D;
     paintIslasBack({ ctx, cam, vp: { width, height }, palette: { font: 'sans', type: {} } as Palette, text }, { layout: islas, people: model.people, text: islandText });
     const titles = text.mock.calls.filter(([value]) => value === 'Libros');
     expect(titles).toHaveLength(islas.islands.length);
@@ -446,6 +489,29 @@ describe('AtlasCanvas', () => {
     // And the discs still fit above the dock.
     const bottom = Math.max(...islas.islands.map(island => (island.y + island.r - cam.y) * cam.k + height / 2));
     expect(bottom).toBeLessThanOrEqual(height - insets.bottom);
+  });
+  it('usa el encaje responsive de Islas sin reservar la cabecera dos veces y conserva una cámara propia al repack', () => {
+    const faces = Array.from({ length: 10 }, (_, i) => ({ ...people[0], id: `p${i}`, name: `Persona ${i}` })), ids = faces.map(face => face.id);
+    const rated = Array.from({ length: 3 }, (_, i) => ({ ...works[0], key: `book:${i}` as WorkKey,
+      genres: ['Aventura', 'Ciencia ficción', 'Drama', 'Fantasía'], owners: ids.map(userId => ({ userId, rating: 9, date: null })) }));
+    const insets = { top: 176, bottom: 175 };
+    const make = (width: number) => {
+      const islas = layoutIslands(faces, rated, ids, 'genre', { viewport: { width, height: 740 }, insets });
+      const quien = layoutQuien(faces, rated, ids), tiempo = layoutTiempo(faces, rated, ids);
+      return { islas, quien, tiempo, scene: buildScene('islas', rated, ids, { quien, tiempo, islas, opinion: layoutOpinion(faces, rated, ids) }) };
+    };
+    vi.spyOn(Element.prototype, 'clientWidth', 'get').mockReturnValue(360);
+    vi.spyOn(Element.prototype, 'clientHeight', 'get').mockReturnValue(740);
+    const initial = make(360), handle = createRef<AtlasCanvasHandle>();
+    const base = { ...props, people: faces, works: rated, active: ids, insets, islandText: { title: () => 'Isla', common: (n: number) => `${n} en común` } };
+    const { rerender } = render(<AtlasCanvas {...base} {...initial} ref={handle}/>);
+    flush();
+    expect(pick(handle.current!.camera()!)).toEqual(initial.islas.framing!.camera);
+    act(() => handle.current!.panBy(80, 20)); flush();
+    const ownCamera = handle.current!.camera();
+    vi.spyOn(Element.prototype, 'clientWidth', 'get').mockReturnValue(1280);
+    rerender(<AtlasCanvas {...base} {...make(1280)} ref={handle}/>); flush();
+    expect(handle.current!.camera()).toEqual(ownCamera);
   });
 });
 const pick = ({ x, y, k }: { x: number; y: number; k: number }) => ({ x, y, k });

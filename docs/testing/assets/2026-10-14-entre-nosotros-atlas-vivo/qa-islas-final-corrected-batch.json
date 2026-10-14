@@ -1,0 +1,49 @@
+[
+  {
+    "journal": {
+      "errors": [],
+      "failures": [
+        "GET /comunidad: net::ERR_ABORTED",
+        "GET /buscar: net::ERR_ABORTED",
+        "GET /: net::ERR_ABORTED",
+        "GET /comunidad: net::ERR_ABORTED",
+        "GET /buscar: net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a: net::ERR_ABORTED",
+        "POST /login: net::ERR_ABORTED",
+        "POST /: net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+        "POST /comunidad/entre-nosotros: net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+        "GET /libro/4006762b-5f44-4d60-bcbd-d9c65cecdb26: net::ERR_ABORTED"
+      ]
+    },
+    "caseFolder": "entre-nosotros-atlas-Islas-3919f-esaltadas-con-ratón-o-toque-chromium"
+  },
+  {
+    "journal": {
+      "errors": [],
+      "failures": [
+        "GET /comunidad: net::ERR_ABORTED",
+        "GET /buscar: net::ERR_ABORTED",
+        "GET /: net::ERR_ABORTED",
+        "POST /login: net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a: net::ERR_ABORTED",
+        "POST /: net::ERR_ABORTED",
+        "GET /_next/static/chunks/203f8ywxvb7aa.js: net::ERR_ABORTED",
+        "GET /signup: net::ERR_ABORTED",
+        "GET /_next/static/chunks/289tdhhagej62.js: net::ERR_ABORTED",
+        "GET /buscar: net::ERR_ABORTED",
+        "GET /_next/static/chunks/3x261o93uy504.js: net::ERR_ABORTED",
+        "GET /comunidad: net::ERR_ABORTED",
+        "GET /comunidad: net::ERR_ABORTED",
+        "POST /comunidad/entre-nosotros: net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+        "GET /libro/e4a03f3e-17c3-4cee-a791-483af044f8d1: net::ERR_ABORTED"
+      ]
+    },
+    "caseFolder": "entre-nosotros-atlas-Islas-3919f-esaltadas-con-ratón-o-toque-mobile"
+  }
+]

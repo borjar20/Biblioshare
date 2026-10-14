@@ -1,0 +1,333 @@
+{
+  "errors": [],
+  "failures": [
+    {
+      "path": "/comunidad",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/buscar",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/comunidad",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/u/qa_comp_motion_a",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/login",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/comunidad/entre-nosotros",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/comunidad/entre-nosotros",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/libro/0427c21f-2f80-4bce-990e-6f495e5f5278",
+      "error": "net::ERR_ABORTED"
+    },
+    {
+      "path": "/comunidad",
+      "error": "net::ERR_ABORTED"
+    }
+  ],
+  "httpErrors": [],
+  "measurements": [
+    {
+      "stage": "10caras-4islas",
+      "width": 1280,
+      "zoom": "1.936",
+      "font": "bold 11px Geist, \"Geist Fallback\", sans-serif",
+      "rating10Width": 22.604949951171875,
+      "horizontalOverflow": false,
+      "sprites": "120",
+      "viewportProbe": 30,
+      "titles": [
+        {
+          "label": "Aventura",
+          "x": 121.69403839148015,
+          "y": 101.00000000012224,
+          "width": 91.61192321777344,
+          "height": 16
+        },
+        {
+          "label": "Ciencia ficción",
+          "x": 413.3220443726809,
+          "y": 101.00000000012224,
+          "width": 138.3559112548828,
+          "height": 16
+        },
+        {
+          "label": "Drama",
+          "x": 765.0720214842527,
+          "y": 101.00000000012224,
+          "width": 64.85595703125,
+          "height": 16
+        },
+        {
+          "label": "Fantasía",
+          "x": 1069.4940338131096,
+          "y": 101.00000000012224,
+          "width": 86.01193237304688,
+          "height": 16
+        }
+      ],
+      "titleCollisions": [],
+      "ratingCounts": {
+        "9,0": 36,
+        "10,0": 4
+      }
+    },
+    {
+      "stage": "10caras-4islas",
+      "width": 390,
+      "zoom": "0.518",
+      "font": "bold 11px Geist, \"Geist Fallback\", sans-serif",
+      "rating10Width": 22.604949951171875,
+      "horizontalOverflow": false,
+      "sprites": "120",
+      "viewportProbe": 30,
+      "titles": [
+        {
+          "label": "Aventura",
+          "x": 69.19403839111328,
+          "y": 97,
+          "width": 91.61192321777344,
+          "height": 16
+        },
+        {
+          "label": "Ciencia ficción",
+          "x": 205.8220443725586,
+          "y": 97,
+          "width": 138.3559112548828,
+          "height": 16
+        },
+        {
+          "label": "Drama",
+          "x": 82.572021484375,
+          "y": 339,
+          "width": 64.85595703125,
+          "height": 16
+        },
+        {
+          "label": "Fantasía",
+          "x": 231.99403381347656,
+          "y": 339,
+          "width": 86.01193237304688,
+          "height": 16
+        }
+      ],
+      "titleCollisions": [],
+      "ratingCounts": {
+        "9,0": 36,
+        "10,0": 4
+      }
+    },
+    {
+      "stage": "10caras-4islas",
+      "width": 360,
+      "zoom": "0.377",
+      "font": "bold 11px Geist, \"Geist Fallback\", sans-serif",
+      "rating10Width": 22.604949951171875,
+      "horizontalOverflow": false,
+      "sprites": "120",
+      "viewportProbe": 30,
+      "titles": [
+        {
+          "label": "Aventura",
+          "x": 54.19403839111328,
+          "y": 97,
+          "width": 91.61192321777344,
+          "height": 16
+        },
+        {
+          "label": "Ciencia ficción",
+          "x": 190.8220443725586,
+          "y": 97,
+          "width": 138.3559112548828,
+          "height": 16
+        },
+        {
+          "label": "Drama",
+          "x": 67.572021484375,
+          "y": 317,
+          "width": 64.85595703125,
+          "height": 16
+        },
+        {
+          "label": "Fantasía",
+          "x": 216.99403381347656,
+          "y": 317,
+          "width": 86.01193237304688,
+          "height": 16
+        }
+      ],
+      "titleCollisions": [],
+      "ratingCounts": {
+        "9,0": 36,
+        "10,0": 4
+      }
+    },
+    {
+      "stage": "10caras-4islas-alejar-1-360",
+      "width": 360,
+      "zoom": "0.269",
+      "font": "bold 11px Geist, \"Geist Fallback\", sans-serif",
+      "rating10Width": 22.604949951171875,
+      "horizontalOverflow": false,
+      "sprites": "120",
+      "viewportProbe": 30,
+      "titles": [
+        {
+          "label": "Aventura",
+          "x": 87.58657400948661,
+          "y": 250,
+          "width": 70.5411376953125,
+          "height": 12
+        },
+        {
+          "label": "Ciencia ficción",
+          "x": 186.0626722063337,
+          "y": 249,
+          "width": 102.16036987304688,
+          "height": 13
+        },
+        {
+          "label": "Drama",
+          "x": 97.8876222882952,
+          "y": 407.14285714285717,
+          "width": 49.93904113769531,
+          "height": 12
+        },
+        {
+          "label": "Fantasía",
+          "x": 204.0282941545759,
+          "y": 406.14285714285717,
+          "width": 66.2291259765625,
+          "height": 13
+        }
+      ],
+      "titleCollisions": [],
+      "ratingCounts": {}
+    },
+    {
+      "stage": "10caras-4islas-alejar-2-360",
+      "width": 360,
+      "zoom": "0.192",
+      "font": "bold 11px Geist, \"Geist Fallback\", sans-serif",
+      "rating10Width": 22.604949951171875,
+      "horizontalOverflow": false,
+      "sprites": "120",
+      "viewportProbe": 30,
+      "titles": [
+        {
+          "label": "Aventura",
+          "x": 107.1194950025909,
+          "y": 273.8571428571429,
+          "width": 64.12835693359375,
+          "height": 11
+        },
+        {
+          "label": "Ciencia ficción",
+          "x": 185.18075981918645,
+          "y": 272.8571428571429,
+          "width": 71.27113342285156,
+          "height": 12
+        },
+        {
+          "label": "Drama",
+          "x": 116.4840961378448,
+          "y": 386.10204081632656,
+          "width": 45.39915466308594,
+          "height": 11
+        },
+        {
+          "label": "Fantasía",
+          "x": 190.71216240707707,
+          "y": 385.10204081632656,
+          "width": 60.20832824707031,
+          "height": 12
+        }
+      ],
+      "titleCollisions": [],
+      "ratingCounts": {}
+    },
+    {
+      "stage": "10caras-4islas-volver-fit360",
+      "width": 360,
+      "zoom": "0.377",
+      "font": "bold 11px Geist, \"Geist Fallback\", sans-serif",
+      "rating10Width": 22.604949951171875,
+      "horizontalOverflow": false,
+      "sprites": "120",
+      "viewportProbe": 30,
+      "titles": [
+        {
+          "label": "Aventura",
+          "x": 54.19403839111328,
+          "y": 97,
+          "width": 91.61192321777344,
+          "height": 16
+        },
+        {
+          "label": "Ciencia ficción",
+          "x": 190.8220443725586,
+          "y": 97,
+          "width": 138.3559112548828,
+          "height": 16
+        },
+        {
+          "label": "Drama",
+          "x": 67.572021484375,
+          "y": 317,
+          "width": 64.85595703125,
+          "height": 16
+        },
+        {
+          "label": "Fantasía",
+          "x": 216.99403381347656,
+          "y": 317,
+          "width": 86.01193237304688,
+          "height": 16
+        }
+      ],
+      "titleCollisions": [],
+      "ratingCounts": {
+        "9,0": 36,
+        "10,0": 4
+      }
+    },
+    {
+      "stage": "nombre-80-caracteres-lista360",
+      "clientWidth": 360,
+      "scrollWidth": 360,
+      "nameWidth": 328,
+      "nameLength": 80,
+      "regionBox": {
+        "x": 0,
+        "right": 360
+      },
+      "rowBox": {
+        "x": 16,
+        "right": 344
+      },
+      "whiteSpace": "normal"
+    }
+  ],
+  "cleaned": true
+}

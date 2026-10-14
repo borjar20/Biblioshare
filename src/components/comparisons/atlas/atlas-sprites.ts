@@ -1,11 +1,24 @@
 import type { WorkKey } from '@/lib/comparisons/types';
 import type { Camera, Viewport } from '@/lib/comparisons/atlas/types';
 import type { Scene } from '@/lib/comparisons/atlas/scene';
+import type { Cluster } from '@/lib/comparisons/atlas/layout';
 
 /** One appearance of a work; `key` is the work, the map id may carry an `@person` / `#island` suffix. `dying` extras fly home and fade. */
 export type Sprite = { key: WorkKey; x: number; y: number; tx: number; ty: number; a: number; ta: number; hl: number; thl: number; diff: number | null; dying: boolean };
 export type Sprites = Map<string, Sprite>;
 export type ProbeHit = { key: WorkKey; x: number; y: number };
+
+/** Counts, halos and threads follow the group's works during selection changes, then land on the exact layout centre. */
+export function movingClusters(clusters: Cluster[], sprites: Sprites): Cluster[] {
+  return clusters.map(cluster => {
+    let dx = 0, dy = 0, count = 0;
+    for (const key of cluster.keys) {
+      const sprite = sprites.get(key); if (!sprite) continue;
+      dx += sprite.x - sprite.tx; dy += sprite.y - sprite.ty; count++;
+    }
+    return count && (dx !== 0 || dy !== 0) ? { ...cluster, x: cluster.x + dx / count, y: cluster.y + dy / count } : cluster;
+  });
+}
 
 /** Points the sprites at the scene's targets; extras of a work still on stage fold back into it before going. */
 export function syncSprites(sprites: Sprites, scene: Scene, reduce: boolean) {

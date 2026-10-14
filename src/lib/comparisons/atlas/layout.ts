@@ -40,17 +40,26 @@ export function poleLabelAbove(pole: Point): boolean {
   return d === 0 || pole.y / d > 0.5;
 }
 
-export function layoutQuien(people: AtlasPerson[], works: AtlasWork[]): QuienLayout {
+/** Selected owners define each visible group; works with none keep their original, faint group and position. */
+export function layoutQuien(people: AtlasPerson[], works: AtlasWork[], active = people.map(person => person.id)): QuienLayout {
   const base = polePositions(people.map(person => person.id));
   const at = new Map(base.map(pole => [pole.userId, pole]));
   const poles: Pole[] = base.map(pole => ({ ...pole, count: works.filter(work => work.owners.some(owner => owner.userId === pole.userId)).length }));
+  const selected = new Set(active);
+  // Only a partial selection needs the original layout: its inactive groups are fixed obstacles for the new groups.
+  const original = people.some(person => !selected.has(person.id)) ? layoutQuien(people, works) : null;
+  const fixed = new Map(original?.clusters.filter(cluster => !cluster.owners.some(owner => selected.has(owner))).map(cluster => [cluster.id, cluster]));
   const groups = new Map<string, { owners: string[]; keys: WorkKey[] }>();
   for (const work of works) {
-    const owners = work.owners.map(owner => owner.userId); const id = owners.join(',');
+    // The people order defines group identity, regardless of selection or incoming owners order (and duplicates).
+    const allOwners = people.filter(person => work.owners.some(owner => owner.userId === person.id)).map(person => person.id);
+    const activeOwners = allOwners.filter(owner => selected.has(owner));
+    const owners = activeOwners.length ? activeOwners : allOwners; const id = owners.join(',');
     const group = groups.get(id) ?? { owners, keys: [] };
     group.keys.push(work.key); groups.set(id, group);
   }
   const clusters: Cluster[] = [...groups].map(([id, { owners, keys }]) => {
+    const inactive = fixed.get(id); if (inactive) return inactive;
     const r = SPIRAL_STEP * Math.sqrt(keys.length) + 8;
     if (owners.length === 1) {
       // Outward, beyond its own pole, so the pole and its name/count stay visible (below it with one person).
@@ -65,7 +74,7 @@ export function layoutQuien(people: AtlasPerson[], works: AtlasWork[]): QuienLay
     const f = d > 0 ? Math.max(0, Math.min(0.92, (POLE_RADIUS - POLE_CLEARANCE - r) / d)) : 1;
     return { id, owners, keys, x: cx * f, y: cy * f, r };
   });
-  separate(clusters, base, at);
+  separate(clusters, base, at, new Set(fixed.keys()));
   const positions = new Map<WorkKey, Point>();
   for (const cluster of clusters) cluster.keys.forEach((key, i) => {
     const offset = spiral(i, SPIRAL_STEP); positions.set(key, { x: cluster.x + offset.x, y: cluster.y + offset.y });
@@ -101,9 +110,9 @@ function driftOf(cluster: Cluster, at: Map<string, Point>): Point {
  * each shared group clear of every pole. Single-owner groups (outward, past their pole) stay put and only push.
  * Deterministic: fixed order and passes, no randomness.
  */
-function separate(clusters: Cluster[], poles: Point[], at: Map<string, Point>) {
+function separate(clusters: Cluster[], poles: Point[], at: Map<string, Point>, fixed: Set<string>) {
   const drift = new Map(clusters.map(cluster => [cluster.id, driftOf(cluster, at)]));
-  const movable = (cluster: Cluster) => cluster.owners.length > 1;
+  const movable = (cluster: Cluster) => cluster.owners.length > 1 && !fixed.has(cluster.id);
   for (let pass = 0; pass < SEPARATION_PASSES; pass++) {
     for (let i = 0; i < clusters.length; i++) for (let j = i + 1; j < clusters.length; j++) {
       const a = clusters[i], b = clusters[j];

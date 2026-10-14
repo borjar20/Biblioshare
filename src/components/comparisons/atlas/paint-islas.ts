@@ -1,45 +1,53 @@
 import { toScreen } from '@/lib/comparisons/atlas/camera';
-import type { Island, IslandsLayout } from '@/lib/comparisons/atlas/islands';
+import { islandHeaderGeometry, ISLAND_HEADER_WIDTH, ISLAND_TITLE_MAX_PX, type Island, type IslandsLayout } from '@/lib/comparisons/atlas/islands';
 import type { AtlasPerson } from '@/lib/comparisons/atlas/types';
 import { initials } from '../presentation';
 import type { PaintView } from './atlas-palette';
 
-export type IslandText = { title: (island: Island) => string; common: (count: number) => string };
+export type IslandText = { title: (island: Island) => string; common: (count: number) => string;
+  ratingValue?: (mean: number) => string;
+  ratingLabel?: (name: string, mean: number, count?: number) => string };
 const TYPE_TINT = { book: 'book', movie: 'movie', series: 'series' } as const;
-const STACK_MAX = 4;
-/** Screen px from a disc's top edge up to the title baseline and «n en común» baseline, before the stack lifts them. */
-const TITLE_GAP = 52, COMMON_GAP = 32;
-/** Largest title font (px); the fit reserves it whole, since the font size follows the zoom the fit is choosing. */
-const TITLE_MAX_PX = 30;
-const STRIP_WIDTH = 120;
+const STRIP_WIDTH = 132, BADGE_WIDTH = 44, BADGE_COLUMNS = 3, BADGE_STEP = 16;
+const RAIL_GAP = 18, BADGE_GAP = 29, BADGE_RADIUS = 7;
+const FALLBACK_VALUE = new Intl.NumberFormat('es', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
 /**
- * Faces with the same mean (to 0.1) stack upwards, 14 px per level as in the RatingScale. Dots are 14 px wide,
- * so close but different means (8.9 and 9.0) would still cover each other: each dot takes the lowest level
- * free of any dot less than 14 px away. Positions are screen px along the strip (0…STRIP_WIDTH), so they do
- * not depend on the camera. `lift` is how far the texts rise with the (at most STACK_MAX high) stack.
+ * Values use a compact three-column legend rather than hiding faces behind «+n». The precise positions stay
+ * on the rail: near means get separate 2px marker lanes, while every face keeps a readable decimal in the
+ * legend. Ten coinciding faces therefore use four badge rows, never ten full-height rows.
  */
-function placeFaces(island: Island, people: AtlasPerson[]) {
-  const placed: { person: AtlasPerson; x: number; level: number }[] = [];
+function ratingGeometry(island: Island, people: AtlasPerson[]) {
+  const placed: { person: AtlasPerson; mean: number; x: number; level: number }[] = [];
   for (const { userId, mean } of island.means) {
     const person = people.find(item => item.id === userId); if (!person) continue;
-    const x = (Math.round(mean * 10) / 10 - 1) / 9 * STRIP_WIDTH;
+    const x = (Math.min(10, Math.max(1, mean)) - 1) / 9 * STRIP_WIDTH;
     let level = 0;
-    while (placed.some(dot => dot.level === level && Math.abs(dot.x - x) < 14)) level++;
-    placed.push({ person, x, level });
+    while (placed.some(dot => dot.level === level && Math.abs(dot.x - x) < 4)) level++;
+    placed.push({ person, mean, x, level });
   }
-  const lift = Math.max(0, ...placed.map(dot => Math.min(dot.level, STACK_MAX - 1))) * 14;
-  return { placed, lift };
+  const { rows, commonGap, titleGap } = islandHeaderGeometry(placed.length);
+  return { placed, rows, commonGap, titleGap };
 }
 
 /**
- * Screen px the painter draws above the highest disc (title + «n en común» + means strip, risen with the stack).
+ * Screen px the painter draws above the highest disc (title + «n en común» + mean badges + rail).
  * These texts keep their pixel size at any zoom, so a world margin in the extent cannot hold them: on a narrow
  * phone the fit zooms out and a world margin shrinks below them. The engine adds this to the top inset instead.
  */
 export function islandLabelRoom(layout: IslandsLayout, people: AtlasPerson[]): number {
   if (!layout.islands.length) return 0;
-  return TITLE_GAP + TITLE_MAX_PX + Math.max(...layout.islands.map(island => placeFaces(island, people).lift));
+  return Math.max(...layout.islands.map(island => ratingGeometry(island, people).titleGap)) + ISLAND_TITLE_MAX_PX;
+}
+
+/** A title owns one fixed-width column; its full name remains in the list. */
+function boundedTitle(ctx: CanvasRenderingContext2D, value: string, font: string, width: number): string {
+  ctx.font = font;
+  if (width < ctx.measureText('…').width) return '';
+  if (ctx.measureText(value).width <= width) return value;
+  let cut = value;
+  while (cut.length > 0 && ctx.measureText(`${cut}…`).width > width) cut = cut.slice(0, -1);
+  return `${cut.trimEnd()}…`;
 }
 
 /** Island discs, gold dashed ring around the common core, title + «n en común», and a 1–10 strip with each active face's mean. */
@@ -53,32 +61,34 @@ export function paintIslasBack({ ctx, cam, vp, palette, text }: PaintView, { lay
       ctx.globalAlpha = 0.9; ctx.strokeStyle = palette.glow; ctx.lineWidth = 1.5; ctx.setLineDash([3, 5]);
       ctx.beginPath(); ctx.arc(c.x, c.y, island.core * k, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); ctx.lineWidth = 1; ctx.globalAlpha = 1;
     }
-    if (!words) continue;
-    // A stack is at most 4 high (10 equal faces would push the title off screen): from the 4th up, a column's
-    // extra faces fold into one «+n» dot. The texts rise with the stack.
-    const width = STRIP_WIDTH, x0 = c.x - width / 2, y = c.y - r - 14;
-    const { placed: local, lift } = placeFaces(island, people);
-    const placed = local.map(dot => ({ ...dot, x: x0 + dot.x }));
-    const dots = placed.filter(dot => dot.level < STACK_MAX - 1);
-    const folds: { x: number; people: AtlasPerson[] }[] = [];
-    for (const dot of placed.filter(item => item.level >= STACK_MAX - 1)) {
-      const fold = folds.find(item => Math.abs(item.x - dot.x) < 14);
-      if (fold) fold.people.push(dot.person); else folds.push({ x: dot.x, people: [dot.person] });
-    }
-    text(words.title(island), c.x, c.y - r - TITLE_GAP - lift, `800 ${Math.min(TITLE_MAX_PX, Math.max(14, 22 * k * 2.6))}px ${palette.font}`, palette.fg, 'center');
-    text(words.common(island.common), c.x, c.y - r - COMMON_GAP - lift, `600 13px ${palette.font}`, palette.glow, 'center');
-    if (island.means.length) {
+    if (!words || (layout.framing && k < layout.framing.titleZoom)) continue;
+    const width = STRIP_WIDTH, x0 = c.x - width / 2, y = c.y - r - RAIL_GAP;
+    const summary = !layout.framing || k >= layout.framing.summaryZoom;
+    const ratings = !layout.framing || k >= layout.framing.ratingZoom;
+    const { placed, rows } = ratings ? ratingGeometry(island, people) : { placed: [], rows: 0 };
+    const { commonGap, titleGap } = islandHeaderGeometry(placed.length, summary);
+    const titleFont = `800 ${Math.min(ISLAND_TITLE_MAX_PX, Math.max(14, 22 * k * 2.6))}px ${palette.font}`;
+    const titleWidth = ISLAND_HEADER_WIDTH * (layout.framing ? Math.min(1, k / layout.framing.camera.k) : 1);
+    const title = boundedTitle(ctx, words.title(island), titleFont, titleWidth);
+    if (title) text(title, c.x, c.y - r - titleGap, titleFont, palette.fg, 'center');
+    if (summary) text(words.common(island.common), c.x, c.y - r - commonGap, `600 13px ${palette.font}`, palette.glow, 'center');
+    if (placed.length) {
       ctx.strokeStyle = palette.line; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x0 + width, y); ctx.stroke();
-      const face = (x: number, level: number, color: string, label: string) => {
-        const dy = y - level * 14;
-        ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, dy, 7, 0, Math.PI * 2); ctx.fill();
-        text(label, x, dy + 3, `800 7px ${palette.font}`, '#fff', 'center');
-      };
-      for (const dot of dots) face(dot.x, dot.level, dot.person.color, initials(dot.person.name));
-      for (const fold of folds) {
-        if (fold.people.length === 1) face(fold.x, STACK_MAX - 1, fold.people[0].color, initials(fold.people[0].name));
-        else face(fold.x, STACK_MAX - 1, palette.muted, `+${fold.people.length}`);
+      for (let tick = 1; tick <= 10; tick++) {
+        const tx = x0 + (tick - 1) / 9 * width;
+        ctx.beginPath(); ctx.moveTo(tx, y); ctx.lineTo(tx, y + (tick === 1 || tick === 5 || tick === 10 ? 4 : 2)); ctx.stroke();
+        if (tick === 1 || tick === 5 || tick === 10) text(String(tick), tx, y + 14, `600 11px ${palette.font}`, palette.muted, 'center');
       }
+      placed.forEach((dot, index) => {
+        ctx.fillStyle = dot.person.color; ctx.beginPath(); ctx.arc(x0 + dot.x, y - dot.level * 2, 1.5, 0, Math.PI * 2); ctx.fill();
+        const row = Math.floor(index / BADGE_COLUMNS), column = index % BADGE_COLUMNS;
+        const columns = Math.min(BADGE_COLUMNS, placed.length - row * BADGE_COLUMNS);
+        const bx = c.x - columns * BADGE_WIDTH / 2 + column * BADGE_WIDTH + BADGE_RADIUS;
+        const by = y - BADGE_GAP - (rows - row - 1) * BADGE_STEP;
+        ctx.beginPath(); ctx.arc(bx, by, BADGE_RADIUS, 0, Math.PI * 2); ctx.fill();
+        text(initials(dot.person.name), bx, by + 2.5, `800 7px ${palette.font}`, '#fff', 'center');
+        text(words.ratingValue?.(dot.mean) ?? FALLBACK_VALUE.format(dot.mean), bx + BADGE_RADIUS + 3, by + 4, `700 11px ${palette.font}`, palette.fg, 'left');
+      });
     }
   }
 }

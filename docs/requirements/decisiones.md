@@ -7848,3 +7848,33 @@ cinco problemas que la fixture de QA no enseñaba, porque en ella casi todo es c
   todo lo suyo. Resúmenes, lista y escena leen el mismo layout, así que siguen de acuerdo.
 
 Evidencia en [F4, «Ajustes tras prueba con datos reales»](../testing/2026-10-14-entre-nosotros-atlas-f4.md).
+
+## 2026-10-14 — Entre nosotros: Quién se reagrupa con la selección e Islas explica sus medias
+
+En Quién, la pertenencia visual de cada obra se proyecta sobre las caras activas:
+si A y B siguen activas y C se apaga, lo de A+B y lo de A+B+C ocupa un único grupo
+A+B. Así el mapa describe el mismo cruce que la lista. Los polos conservan su sitio
+y las obras sin ninguna cara activa mantienen su posición tenue, para preservar la
+orientación al cambiar la selección. Las portadas, los recuentos, los halos y los
+hilos acompañan el desplazamiento con el motor de transición existente; el atlas
+se mueve al responder a la selección, sin animación continua.
+
+Islas conserva el cálculo de las medias por persona y el mínimo de tres notas para
+mostrarlas. Cambia su lectura: cifras decimales, iniciales, escala explícita 1–10 y
+tamaño de muestra; «Ver como lista» expone todas las cifras y muestras de forma
+accesible. La identidad de la obra se mantiene entre islas: señalar o tocar una
+copia resalta todas sus copias y sus hilos, y atenúa el resto, también cuando la obra
+solo aparece una vez. Las conexiones curvan respecto de la dirección del par y la
+red de fondo queda tenue para que se pueda seguir el vínculo elegido.
+
+Las cabeceras de Islas reservan píxeles por fila y columna dentro de la banda libre,
+en vez de confiar en márgenes de mundo que encogen al encajar. En mapas densos el
+detalle aparece al acercar; al alejar los títulos también se acotan y desaparecen
+si no caben. La lista conserva todos los nombres, cifras y muestras. Una cámara
+propia de Quién sigue el grupo sin perder zoom cuando los nuevos destinos quedan
+fuera del encuadre, incluido el retorno desde la lista con otra selección.
+
+Mejora implementada localmente sobre [PR #1529](https://github.com/borjar20/Biblioshare/pull/1529),
+sin cambios de esquema ni de autenticación. La [evidencia local](../testing/2026-10-14-entre-nosotros-atlas-vivo.md)
+recoge 368 unitarios, TypeScript, lint focal, build de producción y ocho recorridos
+de navegador verificados. Integración y despliegue en producción pendientes.

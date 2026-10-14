@@ -19,7 +19,7 @@ export function AtlasCanvas({ ref, label, ...props }: Props) {
     return () => { created.dispose(); engine.current = null; };
   }, []);
   // `people` too: the engine keeps their colours from the last sync, and sync redraws.
-  useEffect(() => { engine.current?.sync(); }, [props.scene, props.active, props.works, props.people, props.insets?.top, props.insets?.bottom]);
+  useEffect(() => { engine.current?.sync(); }, [props.scene, props.active, props.works, props.people, props.focusedKey, props.insets?.top, props.insets?.bottom]);
   useImperativeHandle(ref, () => ({ zoomBy: factor => engine.current?.zoomBy(factor), fit: () => engine.current?.fitAll(),
     panBy: (dx, dy) => engine.current?.panBy(dx, dy), camera: () => engine.current?.camera() ?? null,
     focus: () => canvas.current?.focus({ preventScroll: true }) }), []);

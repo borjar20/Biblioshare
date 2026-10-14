@@ -80,7 +80,6 @@ export function AtlasView({ snapshot, viewerId, groupId, notice, chosen, onChose
   const t = useTranslations('comparisons'); const locale = useLocale(); const router = useRouter();
   const you = t('you');
   const { people, works } = useMemo(() => atlasModel(snapshot, viewerId, you), [snapshot, viewerId, you]);
-  const layout = useMemo(() => layoutQuien(people, works), [people, works]);
   const byKey = useMemo(() => new Map(works.map(work => [work.key, work])), [works]);
   // People order, and only people that are still in the snapshot; if none of them remains, everyone.
   // Memoized: a new array each render would re-sync (and redraw) the engine on every hover.
@@ -88,19 +87,28 @@ export function AtlasView({ snapshot, viewerId, groupId, notice, chosen, onChose
     const ids = people.map(person => person.id), kept = ids.filter(id => !chosen || chosen.includes(id));
     return kept.length ? kept : ids;
   }, [people, chosen]);
+  const layout = useMemo(() => layoutQuien(people, works, active), [people, works, active]);
   const opinion = useMemo(() => layoutOpinion(people, works, active), [people, works, active]);
   // Tiempo brings many lanes closer only on a wide stage, where the fit is limited by height (see `laneGap`).
   const [wide, setWide] = useState(false);
+  const [viewport, setViewport] = useState({ width: 0, height: 0 });
+  const [insets, setInsets] = useState<{ top: number; bottom: number } | undefined>(undefined);
   const tiempo = useMemo(() => layoutTiempo(people, works, active, wide), [people, works, active, wide]);
   // Type islands only make sense across formats: with a single format, Islas groups by genre.
   const typeless = snapshot.format !== 'all';
   const effectiveMode: IslandMode = typeless && islandMode === 'type' ? 'genre' : islandMode;
-  const islas = useMemo(() => layoutIslands(people, works, active, effectiveMode), [people, works, active, effectiveMode]);
+  const islas = useMemo(() => layoutIslands(people, works, active, effectiveMode, viewport.width && insets ? { viewport, insets } : undefined),
+    [people, works, active, effectiveMode, viewport, insets]);
+  const meanFormat = useMemo(() => new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }), [locale]);
   // Shared by the painter (titles over each island) and the summary (best island).
   const islandText = useMemo<IslandText>(() => ({
     title: (island: Island) => island.id === OTHER_ISLAND ? t('atlas.islas.other') : isType(island.id) ? t(`formats.${island.id}`) : island.label ?? '',
     common: count => t('atlas.islas.common', { count }),
-  }), [t]);
+    ratingValue: mean => meanFormat.format(mean),
+    ratingLabel: (name, mean, count) => count === undefined
+      ? t('atlas.islas.ratingWithoutCount', { name, mean: meanFormat.format(mean) })
+      : t('atlas.islas.ratingLabel', { name, mean: meanFormat.format(mean), count }),
+  }), [t, meanFormat]);
   const layouts = useMemo(() => ({ quien: layout, opinion, tiempo, islas }), [layout, opinion, tiempo, islas]);
   const scene = useMemo(() => buildScene(lens, works, active, layouts), [lens, works, active, layouts]);
   // Corner and axis names follow the Opinión reference («Tú» unless she is out) and who it is compared with: one other
@@ -118,15 +126,15 @@ export function AtlasView({ snapshot, viewerId, groupId, notice, chosen, onChose
   const [picked, setPicked] = useState<WorkKey | null>(null);
   const camera = useRef<AtlasCanvasHandle>(null); const sheetRef = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null); const overlay = useRef<HTMLDivElement>(null); const dock = useRef<HTMLDivElement>(null);
-  const [insets, setInsets] = useState<{ top: number; bottom: number } | undefined>(undefined);
-  const [stageHeight, setStageHeight] = useState(0);
+  const stageHeight = viewport.height;
   // The camera frames the band left free by the overlays (summary + faces, lens dock), whatever their height.
   useLayoutEffect(() => {
     const measure = () => {
       const host = stage.current, top = overlay.current, bottom = dock.current; if (!host || !top || !bottom) return;
       const next = { top: Math.round(top.offsetHeight - parseFloat(getComputedStyle(top).paddingBottom || '0')), bottom: Math.round(host.clientHeight - bottom.offsetTop) };
       setInsets(current => current && current.top === next.top && current.bottom === next.bottom ? current : next);
-      setStageHeight(host.clientHeight); setWide(host.clientWidth > host.clientHeight);
+      setViewport(current => current.width === host.clientWidth && current.height === host.clientHeight ? current : { width: host.clientWidth, height: host.clientHeight });
+      setWide(host.clientWidth > host.clientHeight);
     };
     measure();
     if (typeof ResizeObserver !== 'function') return;
@@ -202,7 +210,7 @@ export function AtlasView({ snapshot, viewerId, groupId, notice, chosen, onChose
 
   return <div ref={stage} className={styles.canvasWrap} data-comparison-stage onKeyDown={onKeyDown}>
     {list ? <AtlasList ref={listRef} lens={lens} people={people} works={works} active={active} layouts={layouts} islandText={islandText} insets={insets}/>
-      : <AtlasCanvas ref={camera} label={canvasLabel} people={people} works={works} active={active} scene={scene} quien={layout} tiempo={tiempo} islas={islas} islandText={islandText} opinionLabels={opinionLabels} insets={insets} initialCamera={initialCamera} onSettled={rememberCamera}
+      : <AtlasCanvas ref={camera} label={canvasLabel} people={people} works={works} active={active} scene={scene} quien={layout} tiempo={tiempo} islas={islas} islandText={islandText} opinionLabels={opinionLabels} focusedKey={picked ?? hover?.key ?? null} insets={insets} initialCamera={initialCamera} onSettled={rememberCamera}
       countLabel={count => t('atlas.poleCount', { count })} onTogglePerson={toggle} onHover={setHover} onActivate={activate}/>}
     <div ref={overlay} className={styles.overlayTop}>
       <div><p className={styles.summary} role="status" aria-live="polite">{t.rich(summaryKey, { ...summaryValues, b: bold })}</p>

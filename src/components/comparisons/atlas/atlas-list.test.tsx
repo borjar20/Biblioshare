@@ -11,6 +11,7 @@ import { layoutTiempo } from '@/lib/comparisons/atlas/tiempo';
 import { layoutIslands, type Island } from '@/lib/comparisons/atlas/islands';
 import type { Lens } from '@/lib/comparisons/atlas/scene';
 import { AtlasList } from './atlas-list';
+import type { IslandText } from './paint-islas';
 
 const person = (id: string, name: string, isMe = false): AtlasPerson => ({ id, name, avatarUrl: null, color: '#123456', isMe });
 const people = [person('me', 'Tú', true), person('b', 'Bea')];
@@ -23,11 +24,11 @@ const works = [
   work('book:3', '', { b: 5 }, { metadataMissing: true }),
 ];
 const islandText = { title: (island: Island) => island.id === 'other' ? 'Otros' : island.label ?? island.id, common: (count: number) => `${count} en común` };
-function show(lens: Lens, active = ['me', 'b']) {
-  const layouts = { quien: layoutQuien(people, works), opinion: layoutOpinion(people, works, active),
-    tiempo: layoutTiempo(people, works, active), islas: layoutIslands(people, works, active, 'type') };
+function show(lens: Lens, active = ['me', 'b'], listWorks = works, listPeople = people, words: IslandText = islandText) {
+  const layouts = { quien: layoutQuien(listPeople, listWorks), opinion: layoutOpinion(listPeople, listWorks, active),
+    tiempo: layoutTiempo(listPeople, listWorks, active), islas: layoutIslands(listPeople, listWorks, active, 'type') };
   return render(<NextIntlClientProvider locale="es" messages={messages}>
-    <AtlasList lens={lens} people={people} works={works} active={active} layouts={layouts} islandText={islandText}/>
+    <AtlasList lens={lens} people={listPeople} works={listWorks} active={active} layouts={layouts} islandText={words}/>
   </NextIntlClientProvider>);
 }
 afterEach(cleanup);
@@ -73,6 +74,23 @@ describe('AtlasList', () => {
   it('Islas: el título de cada isla como encabezado', () => {
     show('islas');
     expect(within(region()).getAllByRole('heading', { level: 3 }).map(h => h.textContent)).toEqual(['book']);
+  });
+  it('Islas: todas las medias incluyen persona y muestra bajo el encabezado, también con diez caras', () => {
+    const ten = Array.from({ length: 10 }, (_, i) => person(`p${i}`, `Persona ${i}`));
+    const ratings = Object.fromEntries(ten.map((p, i) => [p.id, i === 0 ? 8.9 : 9]));
+    const rated = [1, 2, 3].map(i => work(`book:${i}`, `Libro ${i}`, ratings));
+    const words: IslandText = { ...islandText,
+      ratingLabel: (name, mean, count) => `${name}: media ${mean.toFixed(1).replace('.', ',')} · ${count} notas` };
+    show('islas', ten.map(p => p.id), rated, ten, words);
+    const heading = within(region()).getByRole('heading', { name: 'book' });
+    for (let i = 0; i < 10; i++) expect(within(heading.parentElement!).getByText(`Persona ${i}: media ${i === 0 ? '8,9' : '9,0'} · 3 notas`)).toBeTruthy();
+    expect(within(region()).getAllByRole('link')).toHaveLength(3);
+  });
+  it('Islas: una persona con menos de tres notas no recibe una media inventada', () => {
+    show('islas', ['me', 'b'], [work('book:1', 'Uno', { me: 9, b: 8 }), work('book:2', 'Dos', { me: 9, b: null }), work('book:3', 'Tres', { me: 9, b: null })], people,
+      { ...islandText, ratingLabel: (name, _mean, count) => `${name}: ${count} notas` });
+    expect(within(region()).getByText('Tú: 3 notas')).toBeTruthy();
+    expect(within(region()).queryByText(/Bea:.*notas/)).toBeNull();
   });
   it('sin obras lo dice', () => {
     show('opinion', ['me']);

@@ -32,6 +32,7 @@ export function AtlasList({ ref, lens, people, works, active, layouts, islandTex
   const names = useMemo(() => new Map(people.map(person => [person.id, person.name])), [people]);
   const years = useMemo(() => lens === 'tiempo' ? firstYears(layouts.tiempo.instances) : null, [lens, layouts.tiempo]);
   const format = useMemo(() => new Intl.ListFormat(locale, { type: 'conjunction' }), [locale]);
+  const ratingFormat = useMemo(() => new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }), [locale]);
   const islands = useMemo(() => new Map(layouts.islas.islands.map(island => [island.id, island])), [layouts.islas]);
   // Names follow the face filter: only active owners, in people order.
   const join = (ids: string[]) => format.format(ids.flatMap(id => names.has(id) && active.includes(id) ? [names.get(id)!] : []));
@@ -39,6 +40,19 @@ export function AtlasList({ ref, lens, people, works, active, layouts, islandTex
   const heading = (value: ListHeading): ReactNode => value.kind === 'owners' ? join(value.ids)
     : value.kind === 'island' ? (island(value.islandId) ? islandText.title(island(value.islandId)!) : null) : null;
   const reference = layouts.opinion.reference === null ? '' : names.get(layouts.opinion.reference) ?? '';
+  function islandRatings(value: ListHeading): ReactNode {
+    if (value.kind !== 'island') return null;
+    const means = island(value.islandId)?.means.flatMap(mean => {
+      const person = people.find(p => p.id === mean.userId && active.includes(p.id));
+      return person ? [{ ...mean, person }] : [];
+    }) ?? [];
+    if (!means.length) return null;
+    return <ul className={`${styles.scaleValues} ${styles.islandRatings}`}>{means.map(({ person, mean, count }) => <li key={person.id}>
+      <span className={styles.ownerDot} style={{ background: person.color }} aria-hidden="true"/>
+      <span>{islandText.ratingLabel?.(person.name, mean, count)
+        ?? `${person.name}: ${islandText.ratingValue?.(mean) ?? ratingFormat.format(mean)}${count === undefined ? '' : ` · ${count}`}`}</span>
+    </li>)}</ul>;
+  }
   function detail(work: AtlasWork): string {
     if (lens === 'opinion') {
       const point = layouts.opinion.positions.get(work.key);
@@ -64,6 +78,7 @@ export function AtlasList({ ref, lens, people, works, active, layouts, islandTex
     style={insets ? { paddingTop: insets.top + SCRIM, paddingBottom: insets.bottom } : undefined}>
     {sections.length === 0 ? <p className={styles.listEmpty}>{t('atlas.list.empty')}</p> : sections.map(section => <div key={section.id} className={styles.listSection}>
       {section.heading.kind !== 'plain' && <h3 className={styles.listHeading}>{heading(section.heading)}</h3>}
+      {islandRatings(section.heading)}
       <ul className={styles.listItems}>{section.keys.map(key => byKey.get(key)).map(work => work && <li key={work.key}>{item(work)}</li>)}</ul>
     </div>)}
   </section>;

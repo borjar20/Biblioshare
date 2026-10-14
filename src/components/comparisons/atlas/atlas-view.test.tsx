@@ -5,13 +5,14 @@ import { useState, type ReactNode, type Ref } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import messages from '../../../../messages/es.json';
 import type { Snapshot, WorkKey } from '@/lib/comparisons/types';
-import type { Lens } from '@/lib/comparisons/atlas/scene';
+import type { Lens, Scene } from '@/lib/comparisons/atlas/scene';
+import type { QuienLayout } from '@/lib/comparisons/atlas/layout';
 import type { Island, IslandMode } from '@/lib/comparisons/atlas/islands';
 
 const push = vi.fn();
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
 type SavedCamera = { lens: Lens; x: number; y: number; k: number };
-type CanvasProps = { islandText?: { title: (island: Island) => string; common: (count: number) => string }; opinionLabels?: Record<string, string>; onActivate: (hit: { key: WorkKey; x: number; y: number } | null, type: string) => void; onHover: (hit: { key: WorkKey; x: number; y: number } | null) => void; active: string[]; label: string;
+type CanvasProps = { quien: QuienLayout; scene: Scene; islandText?: { title: (island: Island) => string; common: (count: number) => string }; opinionLabels?: Record<string, string>; onActivate: (hit: { key: WorkKey; x: number; y: number } | null, type: string) => void; onHover: (hit: { key: WorkKey; x: number; y: number } | null) => void; active: string[]; label: string;
   initialCamera?: { x: number; y: number; k: number }; onSettled?: (camera: SavedCamera, own: boolean) => void };
 let canvas: CanvasProps;
 const canvasFocus = vi.fn();
@@ -87,6 +88,34 @@ describe('AtlasView', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Bea' }));
     expect(screen.getByRole('button', { name: 'Bea' }).getAttribute('aria-pressed')).toBe('true');
     expect(canvas.active).toEqual(['b']);
+  });
+  it('Quién reagrupa la escena al apagar caras y restaura los destinos al encenderlas', () => {
+    const data: Snapshot = { ...snapshot, works: [...snapshot.works,
+      ...['me', 'b'].map(userId => ({ userId, key: 'book:3' as WorkKey, rating: null, date: null, orderUnknown: false, progress: null })),
+      { userId: 'c', key: 'book:4', rating: null, date: null, orderUnknown: false, progress: null },
+    ] };
+    viewWith(data);
+    const originalPoles = canvas.quien.poles;
+    const original = new Map(canvas.scene.targets);
+    fireEvent.click(screen.getByRole('button', { name: 'Carla' }));
+    expect(canvas.quien.clusters.find(cluster => cluster.id === 'me,b')?.keys).toEqual(['book:1', 'book:3']);
+    expect(canvas.quien.clusters.find(cluster => cluster.id === 'me,b,c')).toBeUndefined();
+    expect(canvas.quien.poles).toEqual(originalPoles);
+    expect(canvas.scene.targets.get('book:1')).not.toEqual(original.get('book:1'));
+    expect(canvas.scene.targets.get('book:4')).toEqual({ ...original.get('book:4'), alpha: 0.06 });
+    fireEvent.click(screen.getByRole('button', { name: 'Bea' }));
+    expect(canvas.quien.clusters.find(cluster => cluster.id === 'me')?.keys).toEqual(['book:1', 'book:3']);
+    expect(canvas.scene.targets.get('book:2')).toEqual({ ...original.get('book:2'), alpha: 0.06 });
+    fireEvent.click(screen.getByRole('button', { name: 'Carla' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Bea' }));
+    expect([...canvas.scene.targets]).toEqual([...original]);
+  });
+  it('hover no recalcula los destinos de Quién si no cambia la selección', () => {
+    view();
+    const layout = canvas.quien, scene = canvas.scene;
+    act(() => canvas.onHover({ key: 'book:1', x: 10, y: 10 }));
+    expect(canvas.quien).toBe(layout);
+    expect(canvas.scene).toBe(scene);
   });
   it('con una selección dada solo activa esas caras y avisa del cambio sin tocarla', () => {
     const onChosenChange = vi.fn();

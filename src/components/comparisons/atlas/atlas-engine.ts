@@ -15,13 +15,15 @@ import { paintTiempoBack } from './paint-tiempo';
 import cdnLoader from '@/lib/images/cdn-loader';
 import { createImageCache, type ImageLike } from '@/lib/comparisons/atlas/image-cache';
 import { islandLabelRoom, paintIslasBack, type IslandText } from './paint-islas';
-import { nearestSprite, probeOf, stepSprites, syncSprites, type Sprite } from './atlas-sprites';
+import { movingClusters, nearestSprite, probeOf, stepSprites, syncSprites, type Sprite } from './atlas-sprites';
 
 export { COVER_ZOOM, TITLE_ZOOM } from './atlas-palette';
 export type AtlasHit = { key: WorkKey; x: number; y: number };
 /** A camera together with the lens it was framing (a camera only makes sense in its lens' world). */
 export type LensCamera = Camera & { lens: Lens };
 export type EngineProps = { people: AtlasPerson[]; works: AtlasWork[]; active: string[]; scene: Scene; quien: QuienLayout; tiempo: TiempoLayout; islas: IslandsLayout;
+  /** Work under the pointer or in the touch sheet; all of its island appearances share attention. */
+  focusedKey?: WorkKey | null;
   /** Texts of the Islas titles; the painter skips them while absent. */
   islandText?: IslandText;
   /** Texts of the Opinión background; the painter skips them while absent. */
@@ -47,7 +49,10 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
   let vp: Viewport = { width: 0, height: 0 }; let dpr = 1;
   let cam: Camera = { x: 0, y: 0, k: 0.3 }; let target: Camera | null = null; let fitted = false;
   let extentKey = ''; let raf = 0; let disposed = false; let dirtyProbe = true;
+  let islandContentKey = '';
+  let syncedLens = props().scene.lens, syncedSelection = props().active.join(',');
   const sprites = new Map<string, Sprite>();
+  let drawnClusters = props().quien.clusters;
   /** Built in `sync()`, not per frame: the work behind each sprite and each person's colour. */
   let byKey = new Map<WorkKey, AtlasWork>(); let colorOf = new Map<string, string>();
   const linkPoint = (id: string) => sprites.get(id) ?? null;
@@ -59,7 +64,12 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
   /** Screen px the lens paints above its extent (Islas titles), reserved on top of the overlays when fitting. */
   const labelRoom = () => { const p = props(); return p.scene.lens === 'islas' && p.islandText ? islandLabelRoom(p.islas, p.people) : 0; };
   const fitCamera = () => {
-    const { top, bottom } = insets(), extent = props().scene.extent, room = labelRoom();
+    const p = props(), { top, bottom } = insets(), extent = p.scene.extent;
+    const framing = p.scene.lens === 'islas' ? p.islas.framing : undefined;
+    // Responsive packing already reserved every row's header in screen pixels; do not reserve it twice.
+    if (framing && framing.viewport.width === vp.width && framing.viewport.height === vp.height
+      && framing.insets.top === top && framing.insets.bottom === bottom) return { ...framing.camera };
+    const room = labelRoom();
     const c = fit(extent, vp, { x: 32, y: top + bottom + 24 });
     if (!room) return framed(c);
     // The labels only cap the zoom: folding them into `fit`'s pad would trip its «band under 40 %» fallback on a
@@ -98,14 +108,22 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
     kick();
   }
   function sync() {
-    const { scene, works, people } = props();
+    const { scene, works, people, islas, active, quien } = props();
+    const selection = active.join(',');
+    const followSelection = own && scene.lens === 'quien' && syncedLens === 'quien' && selection !== syncedSelection;
+    const recoverSelection = restored && extentKey === '' && scene.lens === 'quien';
+    syncedLens = scene.lens; syncedSelection = selection;
     syncSprites(sprites, scene, reduce);
     byKey = new Map(works.map(work => [work.key, work])); colorOf = new Map(people.map(person => [person.id, person.color]));
     const nextExtent = JSON.stringify(scene.extent);
+    const nextIslandContent = scene.lens === 'islas' ? islas.framing?.contentKey
+      ?? JSON.stringify(islas.islands.map(({ id, r, keys, means }) => [id, r, keys, means])) : '';
+    const onlyRepacked = !!nextIslandContent && nextIslandContent === islandContentKey;
+    islandContentKey = nextIslandContent;
     if (nextExtent !== extentKey) {
       // The first extent is the one a restored camera was framing: keep it.
       const first = extentKey === ''; extentKey = nextExtent;
-      if (fitted && !(first && restored)) refit();
+      if (fitted && !(first && restored) && !(onlyRepacked && own) && !followSelection) refit();
     }
     // Overlays measured after the first fit: reframe only while the camera still rests on (or heads to) that fit;
     // before any interaction (initial load) jump there instead of gliding.
@@ -113,6 +131,21 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
     if (nextInsets !== insetsKey) {
       insetsKey = nextInsets;
       if (fitted && atFit()) { if (touched) refit(); else snapFit(); }
+    }
+    if (followSelection || recoverSelection) {
+      const base = target ?? cam, { top, bottom } = insets();
+      const visible = [...scene.targets.values()].some(point => {
+        if (point.alpha < 0.5) return false;
+        const p = toScreen(base, vp, point);
+        return p.x >= 20 && p.x <= vp.width - 20 && p.y >= top + 20 && p.y <= vp.height - bottom - 20;
+      });
+      if (!visible) {
+        // A zoomed-in person follows the regrouping instead of being left looking at an empty canvas.
+        const groups = quien.clusters.filter(cluster => cluster.owners.length && cluster.owners.every(owner => active.includes(owner)));
+        const focus = groups.find(cluster => cluster.owners.length === active.length)
+          ?? groups.toSorted((a, b) => b.keys.length - a.keys.length)[0];
+        if (focus) target = framed({ x: focus.x, y: focus.y, k: base.k });
+      }
     }
     kick();
   }
@@ -165,12 +198,14 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
   /** Paints one frame; true when the request cap left visible covers unrequested. */
   function draw(): boolean {
     if (!ctx) return false;
-    const { active, scene, quien, people, countLabel } = props();
+    const { active, scene, quien, people, countLabel, focusedKey } = props();
+    const focus = scene.lens === 'islas' && focusedKey && scene.targets.get(focusedKey)?.alpha === 1 ? focusedKey : null;
     requests = 0; let starved = false;
     const k = cam.k, coverMode = k > COVER_ZOOM, titles = k > TITLE_ZOOM, hw = vp.width / 2, hh = vp.height / 2;
     const view: PaintView = { ctx, cam, vp, palette, text };
     const tint = (s: Sprite) => s.diff === null ? null : mixHex(palette.glow, palette.clash, diffMix(s.diff));
-    const quienPaint = { layout: quien, active, people, countLabel };
+    if (scene.lens === 'quien') drawnClusters = movingClusters(quien.clusters, sprites);
+    const quienPaint = { layout: { ...quien, clusters: drawnClusters }, active, people, countLabel };
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, vp.width, vp.height);
     switch (scene.lens) {
       case 'quien': paintQuienBack(view, quienPaint); break;
@@ -178,21 +213,26 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
       case 'tiempo': paintTiempoBack(view, { layout: props().tiempo, people }); break;
       case 'islas': paintIslasBack(view, { layout: props().islas, people, text: props().islandText }); break;
     }
-    paintLinks(view, scene.links, linkPoint, linkGlow);
+    paintLinks(view, scene.links, linkPoint, linkGlow, { islands: scene.lens === 'islas', focusedKey: focus });
     for (const s of sprites.values()) {
       if (s.a < 0.02) continue;
       const px = (s.x - cam.x) * k + hw, py = (s.y - cam.y) * k + hh;
       if (px < -60 || py < -80 || px > vp.width + 60 || py > vp.height + 80) continue;
       const work = byKey.get(s.key); if (!work) continue;
-      ctx.globalAlpha = s.a; const shared = work.owners.length > 1;
+      const selected = s.key === focus;
+      ctx.globalAlpha = s.a * (focus && !selected ? 0.28 : 1);
+      const shared = work.owners.filter(owner => active.includes(owner.userId)).length > 1;
+      const highlight = selected ? 1 : s.hl;
       const ink = tint(s);
       if (!coverMode) {
-        const r = (ink ? Math.max(3, 4.2 * k * 1.4) : Math.max(1.5, (shared ? 3.4 : 2.4) * k * 1.4)) * (1 + s.hl * 0.45);
-        ctx.fillStyle = ink ?? (s.hl > 0.5 ? palette.glow : shared ? palette.cream : colorOf.get(work.owners[0].userId)!);
+        const r = (ink ? Math.max(3, 4.2 * k * 1.4) : Math.max(1.5, (shared ? 3.4 : 2.4) * k * 1.4)) * (1 + highlight * 0.45);
+        const first = work.owners.find(owner => active.includes(owner.userId)) ?? work.owners[0];
+        ctx.fillStyle = ink ?? (highlight > 0.5 ? palette.glow : shared ? palette.cream : colorOf.get(first.userId)!);
+        if (selected) { ctx.strokeStyle = palette.glow; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(px, py, r + 4, 0, Math.PI * 2); ctx.stroke(); ctx.lineWidth = 1; }
         ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill(); continue;
       }
       const cw = (ink ? 10 : 8.4) * k, ch = (ink ? 14.5 : 12.2) * k, x = px - cw / 2, y = py - ch / 2;
-      if (ink || s.hl > 0.3) { ctx.fillStyle = ink ?? palette.glow; roundRect(x - 2, y - 2, cw + 4, ch + 4, 3 + k * 0.3); ctx.fill(); }
+      if (ink || highlight > 0.3) { ctx.fillStyle = ink ?? palette.glow; roundRect(x - 2, y - 2, cw + 4, ch + 4, 3 + k * 0.3); ctx.fill(); }
       let img: ImageLike | null = null;
       if (work.coverUrl) {
         if (!covers.has(work.coverUrl)) { if (requests < MAX_REQUESTS) { covers.request(work.coverUrl); requests++; } else starved = true; }
@@ -241,7 +281,7 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
     : props().quien.poles.find(item => dist(toScreen(cam, vp, item), p) < 30);
   /** Shared groups are only targets at map zoom; past COVER_ZOOM the covers inside them are. */
   const hitCluster = (p: Point) => props().scene.lens === 'quien' && cam.k <= COVER_ZOOM
-    ? props().quien.clusters.find(item => dist(toScreen(cam, vp, item), p) < item.r * cam.k + 6) : undefined;
+    ? drawnClusters.find(item => dist(toScreen(cam, vp, item), p) < item.r * cam.k + 6) : undefined;
   function tap(p: Point, pointerType: string, time: number) {
     const { onTogglePerson, onActivate } = props();
     const pole = hitPole(p);
