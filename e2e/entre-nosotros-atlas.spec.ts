@@ -199,7 +199,11 @@ test('escritorio: teclado en el lienzo y la lente en la URL tras recargar', asyn
     await openAtlas(page, fixture);
     const canvas = page.locator('[data-atlas-moving] canvas');
     await canvas.focus();
+    // Back and forth with the keyboard: a keyboard focus, so the ring shows. The host draws it (Chrome hides a canvas's own inset outline).
+    await page.keyboard.press('Shift+Tab'); await page.keyboard.press('Tab');
     await expect(canvas).toBeFocused();
+    const ring = () => page.locator('[data-atlas-moving]').evaluate(host => { const style = getComputedStyle(host, '::after'); return `${style.content} ${style.borderTopWidth} ${style.borderTopStyle}`; });
+    expect(await ring()).toBe('"" 2px solid');
     const before = await zoom(page);
     await page.keyboard.press('+');
     await expect.poll(() => zoom(page)).toBeGreaterThan(before);

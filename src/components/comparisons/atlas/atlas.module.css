@@ -1,9 +1,10 @@
 .canvasWrap { position: absolute; inset: 0; overflow: hidden; }
 .canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
 .canvas[data-dragging='true'] { cursor: grabbing; }
-/* The canvas takes the atlas shortcuts: ring for keyboard focus only (a click or the sheet closing by pointer shows none). Inset: the canvas is full-bleed. */
+/* The canvas takes the atlas shortcuts: ring for keyboard focus only (a click or the sheet closing by pointer shows none). Inset: the canvas is full-bleed.
+   The host draws it, above the overlays: Chrome paints a canvas's own inset outline under its composited bitmap, so it never showed. */
 .canvas:focus { outline: none; }
-.canvas:focus-visible { outline: 2px solid var(--atlas-glow); outline-offset: -3px; }
+.canvasWrap:has(> .canvas:focus-visible)::after { content: ''; position: absolute; inset: 1px; border: 2px solid var(--atlas-glow); pointer-events: none; z-index: 3; }
 /* The scrim keeps canvas threads from running through the summary and the faces; the container never takes pointers. */
 .overlayTop { position: absolute; left: 0; right: 0; top: 0; --scrim: 32px; padding: 12px 16px var(--scrim); background: linear-gradient(to bottom, var(--atlas-ground) calc(100% - var(--scrim)), transparent); display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-start; justify-content: space-between; pointer-events: none; z-index: 2; }
 .overlayTop > * { pointer-events: auto; }
