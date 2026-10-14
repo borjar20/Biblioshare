@@ -1,0 +1,40 @@
+{
+  "issue": 1534,
+  "date": "2026-10-14",
+  "baseCommit": "b1c2513e22efa03225c5ab2837180ee101b30e6a",
+  "runtime": { "react": "19.2.4", "next": "16.3.8", "vitest": "4.1.11", "environment": "jsdom" },
+  "red": {
+    "initial": { "passed": 5, "failed": 1 },
+    "symmetric": { "passed": 6, "failed": 2 },
+    "failure": "El pathname cambia antes de hidratar ChromeGate; el HTML SSR y la primera salida cliente difieren.",
+    "normalToFullscreenRecoverableErrors": 3,
+    "normalToFullscreenDiffs": ["- <Suspense>", "- <Suspense>", "- <Suspense>"]
+  },
+  "discardedCandidate": {
+    "description": "Conservar siempre el Suspense interior y condicionar sólo sus children.",
+    "passed": 5,
+    "failed": 1,
+    "recoverableErrors": 3,
+    "diffs": ["- <header>", "- <nav>", "- <aside>"]
+  },
+  "green": {
+    "hydrationTests": 10,
+    "focalFiles": 3,
+    "focalTests": 39,
+    "failed": 0,
+    "recoverableErrors": 0,
+    "consoleErrors": 0,
+    "eslintExitCode": 0,
+    "globalTypecheckExitCode": 0,
+    "diffCheckExitCode": 0
+  },
+  "sourceSha256": {
+    "src/components/nav/chrome-gate.tsx": "8505b4bbb02adb33cf93cade2bb3aa945bd5165497dba97be777c385e19d8b2e",
+    "src/components/nav/chrome-boundary.test.tsx": "47253e2dc2aa1d7d272b3c215c4ebd844b3c58acd3899fc592216571669f9d72"
+  },
+  "limits": [
+    "El store controlado de pathname y los recursos retenidos modelan el orden de hidratación; no ejecutan App Router, Auth ni transporte RSC reales.",
+    "El JSX de Header anónimo, BottomNav, ChromeBoundary y ChromeGate son reales; la compañera es un nodo aside de prueba.",
+    "No se ha ejecutado ni alterado la build ni el servidor de producción durante esta verificación focal."
+  ]
+}

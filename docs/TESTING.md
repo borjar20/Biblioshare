@@ -22,6 +22,11 @@ El harness del atlas espera la URL del grupo guardado antes de interactuar. Su e
 de reposo cruza dos frames del mismo canvas cargado y comprueba tanto `aria-busy=false`
 como el fin de la animación: el indicador puede conservar el reposo de la escena anterior
 hasta su siguiente frame. Regresión y evidencia: [#1531](testing/2026-10-14-entre-nosotros-atlas-espera-1531.md).
+La prueba de portadas tempranas usa fechas de trimestre únicas entre 1990 y 1997
+para aislar obras en Tiempo y desplaza la cámara antes de acercar. Conserva la
+comprobación de separación, la geometría visible y la identidad al pulsar una esquina;
+la elección no depende del jitter de los UUID. Corrección de la fixture y límites de
+verificación: [#1533](testing/2026-10-14-entre-nosotros-ci-1533-1534.md).
 
 ```powershell
 npm run test:e2e -- e2e/entre-nosotros.spec.ts e2e/entre-nosotros-motion.spec.ts --config playwright.comparisons.config.ts --workers=1 --retries=0
@@ -1004,14 +1009,26 @@ se conservan. Actor, libros y servicios propios limpios. La CI sobre el HEAD
 integrado mantiene su gate independiente; no se declara cura causal del fallo
 CI anterior ni una auditoría global de red limpia.
 
-## Hidratación de cabecera y navegación al iniciar MTG (#1385)
+## Hidratación de cabecera y navegación (#1385, #1534)
 
 [Informe focal](testing/2026-10-05-chrome-hydration-1385.md): el gate de ruta
 mantiene un Suspense externo y el payload de sesión espera en otro interno.
-La regresión SSR/hidratación conserva dos FAIL con la topología anterior y
-pasa sus cinco casos con el candidato; la tanda de navegación suma 31/31.
-Antes de navegar se acredita la hidratación de los gates, y las barras se
-retiran mientras la sesión sigue pendiente. Lint y tipos focales PASS.
+La regresión SSR/hidratación de ese corte conserva dos FAIL con la topología
+anterior y pasa sus cinco casos; la tanda de navegación suma 31/31. Antes de
+navegar se acredita la hidratación de los gates, y las barras se retiran mientras
+la sesión sigue pendiente. Lint y tipos focales de ese corte PASS.
+
+El contrato actual también cubre la ruta retenida: si `main` ya es interactivo
+y navega antes de hidratar el gate, `ChromeGate` reclama primero su HTML con la
+visibilidad SSR serializada en un `template` identificado por `useId`.
+`useSyncExternalStore` aplica después la ruta vigente. Se conservan los límites
+externo de ruta e interno de sesión, las guardas de errores y el retorno desde
+pantalla completa. El candidato local pasa 39/39 pruebas focales de navegación,
+incluidas las 10 de SSR/hidratación, TypeScript y lint. El recorrido real perfil →
+Comparar con Back/Forward pasa 3/3 contra una build/start nueva, sin reintentos y
+con las guardas de salud del navegador intactas. Regresiones y verificación del
+cambio de #1534: [informe de CI de Entre nosotros](testing/2026-10-14-entre-nosotros-ci-1533-1534.md).
+El resultado remoto y la integración se consultan en [PR #1530](https://github.com/borjar20/Biblioshare/pull/1530).
 
 El diagnóstico nativo anterior localiza dos React #418 en Header y BottomNav
 bajo AppShell. La revisión independiente ha pasado sin hallazgos. La build

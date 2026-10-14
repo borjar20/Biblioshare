@@ -589,6 +589,15 @@ verificación no afirma su ejecución. El resto sigue rastreable por `area:catal
   sincronizados con el grupo, los datos y el final de la animación del mapa.
   [Evidencia local](../testing/2026-10-14-entre-nosotros-atlas-espera-1531.md): retorno, cámara y selección, 3/3 PASS.
   Resultado remoto e integración: [PR #1530](https://github.com/borjar20/Biblioshare/pull/1530).
+- [x] [#1533](https://github.com/borjar20/Biblioshare/issues/1533) — fixture de portadas tempranas
+  en `e2e/entre-nosotros-atlas.spec.ts` con obra aislada y encuadrada de forma determinista.
+  [Evidencia local](../testing/2026-10-14-entre-nosotros-ci-1533-1534.md): móvil 3/3 y escritorio 1/1 PASS;
+  resultado remoto e integración en [PR #1530](https://github.com/borjar20/Biblioshare/pull/1530).
+- [x] [#1534](https://github.com/borjar20/Biblioshare/issues/1534) — `ChromeGate` y `ChromeBoundary`
+  en `src/components/nav/` conservan el HTML del chrome al hidratar tras cambiar de ruta.
+  [Evidencia local](../testing/2026-10-14-entre-nosotros-ci-1533-1534.md): 39 pruebas focales
+  (10 de SSR/hidratación), TypeScript, lint y tres recorridos perfil → Comparar con historial
+  contra build/start nuevo PASS; resultado remoto e integración en [PR #1530](https://github.com/borjar20/Biblioshare/pull/1530).
 - [ ] Pendientes y «Lo que esperamos juntos»: alcance futuro separado de Entre nosotros, registrado en [#1462](https://github.com/borjar20/Biblioshare/issues/1462).
 
 **Social y clubes**

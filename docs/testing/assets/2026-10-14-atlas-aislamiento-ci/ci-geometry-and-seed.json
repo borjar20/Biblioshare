@@ -1,0 +1,101 @@
+{
+  "ci_head": "b1c2513e",
+  "lens": "Tiempo",
+  "zoom": 3.4,
+  "viewportWidth": 390,
+  "oldSeedDistinctMonths": 12,
+  "works": 30,
+  "rectangles": [
+    {
+      "x": 172.95594105060997,
+      "y": 152.0936112242796,
+      "width": 39.99805771770647,
+      "height": 58.092417161430824,
+      "nearestCentreDistance": 90.50657008491164,
+      "insideHorizontalAndTopMargins": false,
+      "isolated": true
+    },
+    {
+      "x": 250.95047629842213,
+      "y": 91.89245292467041,
+      "width": 39.99805771770647,
+      "height": 58.092417161430824,
+      "nearestCentreDistance": 86.68198923096804,
+      "insideHorizontalAndTopMargins": false,
+      "isolated": true
+    },
+    {
+      "x": 321.39715329614967,
+      "y": 240.35463144319817,
+      "width": 39.99805771770647,
+      "height": 58.092417161430824,
+      "nearestCentreDistance": 80.90918131686355,
+      "insideHorizontalAndTopMargins": false,
+      "isolated": true
+    },
+    {
+      "x": 250.95047629842213,
+      "y": 200.5606454485413,
+      "width": 39.99805771770647,
+      "height": 58.092417161430824,
+      "nearestCentreDistance": 2.550896538119048,
+      "insideHorizontalAndTopMargins": false,
+      "isolated": false
+    },
+    {
+      "x": 250.95047629842213,
+      "y": 198.00974891042225,
+      "width": 39.99805771770647,
+      "height": 58.092417161430824,
+      "nearestCentreDistance": 2.550896538119048,
+      "insideHorizontalAndTopMargins": false,
+      "isolated": false
+    },
+    {
+      "x": 321.39715329614967,
+      "y": 142.40020437942738,
+      "width": 39.99805771770647,
+      "height": 58.092417161430824,
+      "nearestCentreDistance": 86.68198923096804,
+      "insideHorizontalAndTopMargins": false,
+      "isolated": true
+    },
+    {
+      "x": 321.39715329614967,
+      "y": 489.32213356361626,
+      "width": 39.99805771770647,
+      "height": 58.092417161430824,
+      "nearestCentreDistance": 193.40175797034203,
+      "insideHorizontalAndTopMargins": false,
+      "isolated": true
+    },
+    {
+      "x": 172.95594105060997,
+      "y": 365.34856181103106,
+      "width": 39.99805771770647,
+      "height": 58.092417161430824,
+      "nearestCentreDistance": 28.570041226933256,
+      "insideHorizontalAndTopMargins": true,
+      "isolated": false
+    },
+    {
+      "x": 172.95594105060997,
+      "y": 336.7785205840978,
+      "width": 39.99805771770647,
+      "height": 58.092417161430824,
+      "nearestCentreDistance": 28.570041226933256,
+      "insideHorizontalAndTopMargins": true,
+      "isolated": false
+    }
+  ],
+  "candidatesWithinHorizontalAndTopMargins": 2,
+  "isolatedCandidates": 0,
+  "cause": "La fixture repite mes para obras distintas; el jitter vertical depende de UUID aleatorios y no garantiza una portada aislada dentro de los márgenes. No es un fallo de hit-testing.",
+  "newSeed": "Un trimestre único pasado por obra desde1990, día1/2/3 segúnactor",
+  "newSeedRange": [
+    "1990-01-01",
+    "1997-04-03"
+  ],
+  "newSeedMinHorizontalGapPxAt3_4": 221.32602739760185,
+  "assertionsChanged": false
+}

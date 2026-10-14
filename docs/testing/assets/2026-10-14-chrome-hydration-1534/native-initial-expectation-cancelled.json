@@ -1,0 +1,16 @@
+{
+  "build": "HrO67grVP68imezfuMAPi",
+  "phase": "Ronda interrumpida por una expectativa nueva incorrecta del propio test",
+  "completedCases": 1,
+  "completedCaseStatus": "failed",
+  "reason": "El test esperaba una navegación al volver al perfil, pero includeHidden encuentra correctamente TopNav y BottomNav: dos. Root corrigió la expectativa a dos antes de la nueva ronda.",
+  "expectedNavigationCount": 1,
+  "actualNavigationCount": 2,
+  "productFailure": false,
+  "nextCaseStartedBeforeInterruption": true,
+  "interrupted": true,
+  "jsonReporterFlushed": false,
+  "browserErrors": [],
+  "consoleMessages": ["Service Worker registration blocked by Playwright", "Service Worker registration blocked by Playwright"],
+  "automaticRetries": 0
+}

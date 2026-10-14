@@ -151,7 +151,7 @@ function expectNoRecovery() {
   expect(consoleErrors).not.toHaveBeenCalled();
 }
 
-describe("chrome boundaries during selective hydration (#1385)", () => {
+describe("chrome boundaries during selective hydration (#1385, #1534)", () => {
   it.each(["/partida/activa", "/mascota"])("removes server bars on %s before the session is delivered", async (destination) => {
     const tree = await fixture({ destination });
     container.innerHTML = renderToString(tree);
@@ -214,6 +214,41 @@ describe("chrome boundaries during selective hydration (#1385)", () => {
     expect(container.querySelector("nav.sticky.bottom-0")).not.toBeNull();
   });
 
+  it.each([false, true])("removes all server chrome after navigating before pathname hydration completes (session held: %s)", async (holdSession) => {
+    const tree = await fixture({
+      destination: "/comunidad/entre-nosotros",
+      companion: <aside>Compañera</aside>,
+    });
+    container.innerHTML = renderToString(tree);
+    const header = container.querySelector("header");
+    const nav = container.querySelector("nav.sticky.bottom-0");
+    const companion = container.querySelector("aside");
+    expect(header).not.toBeNull();
+    expect(nav).not.toBeNull();
+    expect(companion).not.toBeNull();
+
+    session.pending = holdSession;
+    pathnameHold.pending = true;
+    await hydrate(tree);
+    expect(pathnameCommits).toEqual([]);
+    expect(container.querySelector("header")).toBe(header);
+    expect(container.querySelector("nav.sticky.bottom-0")).toBe(nav);
+    expect(container.querySelector("aside")).toBe(companion);
+
+    await act(async () => {
+      fireEvent.click(container.querySelectorAll("main button")[1]);
+    });
+    expect(route.pathname).toBe("/comunidad/entre-nosotros");
+    expect(pathnameHold.pending).toBe(true);
+    await act(async () => { pathnameHold.release(); });
+
+    expect(container.querySelector("header, nav, aside, [data-fallback]")).toBeNull();
+    await act(async () => { session.release(); });
+
+    expectNoRecovery();
+    expect(container.querySelector("header, nav, aside, [data-fallback]")).toBeNull();
+  });
+
   it("gates all three pieces without reading the session on a fullscreen route", async () => {
     route = makePathnameStore("/mascota");
     const tree = await fixture({ companion: <aside>Compañera</aside> });
@@ -223,5 +258,51 @@ describe("chrome boundaries during selective hydration (#1385)", () => {
     expect(sessionReads).toBe(0);
     expectNoRecovery();
     expect(container.querySelector("header, nav, aside, [data-fallback]")).toBeNull();
+  });
+
+  it("restores all chrome when returning from an initial fullscreen route", async () => {
+    route = makePathnameStore("/comunidad/entre-nosotros");
+    const tree = await fixture({ companion: <aside>Compañera</aside> });
+    container.innerHTML = renderToString(tree);
+    await hydrate(tree);
+    expect(container.querySelector("header, nav, aside, [data-fallback]")).toBeNull();
+    await act(async () => { route.navigate("/comunidad"); });
+    expectNoRecovery();
+    expect(container.querySelector("header")).not.toBeNull();
+    expect(container.querySelector("nav.sticky.bottom-0")).not.toBeNull();
+    expect(container.querySelector("aside")?.textContent).toBe("Compañera");
+  });
+
+  it.each([false, true])("restores server-gated chrome when returning before pathname hydration completes (session held: %s)", async (holdSession) => {
+    route = makePathnameStore("/comunidad/entre-nosotros");
+    const tree = await fixture({
+      destination: "/comunidad",
+      companion: <aside>Compañera</aside>,
+    });
+    container.innerHTML = renderToString(tree);
+    expect(sessionReads).toBe(0);
+    session.pending = holdSession;
+    pathnameHold.pending = true;
+    await hydrate(tree);
+    expect(pathnameCommits).toEqual([]);
+    expect(container.querySelector("header, nav, aside, [data-fallback]")).toBeNull();
+
+    await act(async () => {
+      fireEvent.click(container.querySelectorAll("main button")[1]);
+    });
+    expect(route.pathname).toBe("/comunidad");
+    expect(pathnameHold.pending).toBe(true);
+    await act(async () => { pathnameHold.release(); });
+
+    if (holdSession) {
+      expect(container.querySelector("header, nav, aside")).toBeNull();
+      expect(container.querySelectorAll("[data-fallback]")).toHaveLength(2);
+    }
+    await act(async () => { session.release(); });
+
+    expectNoRecovery();
+    expect(container.querySelector("header")).not.toBeNull();
+    expect(container.querySelector("nav.sticky.bottom-0")).not.toBeNull();
+    expect(container.querySelector("aside")?.textContent).toBe("Compañera");
   });
 });

@@ -1,0 +1,276 @@
+{
+  "build": "HrO67grVP68imezfuMAPi",
+  "flow": "Perfil → primer clic Comparar → Back al perfil con banner y dos nav DOM → Forward al atlas sin banner/nav → guardar pareja como grupo → perfil sin seguir no ofrece Comparar",
+  "assertionsRelaxed": false,
+  "automaticRetries": 0,
+  "cases": [
+    {
+      "roundIndex": 0,
+      "title": "profile «Comparar» opens an unsaved pair and «Guardar como grupo» keeps it (#1484)",
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 14959,
+      "retry": 0,
+      "browserErrors": [],
+      "consoleMessages": [
+        "Service Worker registration blocked by Playwright",
+        "Service Worker registration blocked by Playwright",
+        "Service Worker registration blocked by Playwright",
+        "Service Worker registration blocked by Playwright"
+      ],
+      "httpErrors": [],
+      "transportFailures": [
+        "GET / net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "POST /login net::ERR_ABORTED",
+        "POST / net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "GET /experiencias net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_b/seguidores net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_b/siguiendo net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_c/seguidores net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED"
+      ],
+      "nonAbortedTransportFailures": [],
+      "actionTimings": [
+        {
+          "method": "POST",
+          "path": "/comunidad/entre-nosotros",
+          "status": 200,
+          "ms": 999,
+          "bytes": 15981,
+          "bodyState": "complete"
+        },
+        {
+          "method": "POST",
+          "path": "/comunidad/entre-nosotros",
+          "status": 200,
+          "ms": 963,
+          "bytes": 15981,
+          "bodyState": "complete"
+        },
+        {
+          "method": "POST",
+          "path": "/comunidad/entre-nosotros",
+          "status": 200,
+          "ms": 588,
+          "bytes": 527,
+          "bodyState": "complete"
+        },
+        {
+          "method": "POST",
+          "path": "/comunidad/entre-nosotros",
+          "status": 200,
+          "ms": 1437,
+          "bytes": 16060,
+          "bodyState": "complete"
+        },
+        {
+          "method": "POST",
+          "path": "/comunidad/entre-nosotros",
+          "status": 200,
+          "ms": 1271,
+          "bytes": 16060,
+          "bodyState": "complete"
+        }
+      ]
+    },
+    {
+      "roundIndex": 1,
+      "title": "profile «Comparar» opens an unsaved pair and «Guardar como grupo» keeps it (#1484)",
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 13797,
+      "retry": 0,
+      "browserErrors": [],
+      "consoleMessages": [
+        "Service Worker registration blocked by Playwright",
+        "Service Worker registration blocked by Playwright",
+        "Service Worker registration blocked by Playwright",
+        "Service Worker registration blocked by Playwright"
+      ],
+      "httpErrors": [],
+      "transportFailures": [
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "GET /experiencias net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "POST / net::ERR_ABORTED",
+        "GET /coleccion net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a net::ERR_ABORTED",
+        "POST /login net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "POST /u/qa_comp_motion_b net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_b/seguidores net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_b/siguiendo net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_c/siguiendo net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_c/seguidores net::ERR_ABORTED",
+        "GET /_next/static/chunks/2cyromxszva01.css net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_c/siguiendo net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED"
+      ],
+      "nonAbortedTransportFailures": [],
+      "actionTimings": [
+        {
+          "method": "POST",
+          "path": "/comunidad/entre-nosotros",
+          "status": 200,
+          "ms": 996,
+          "bytes": 15981,
+          "bodyState": "complete"
+        },
+        {
+          "method": "POST",
+          "path": "/comunidad/entre-nosotros",
+          "status": 200,
+          "ms": 922,
+          "bytes": 15981,
+          "bodyState": "complete"
+        },
+        {
+          "method": "POST",
+          "path": "/comunidad/entre-nosotros",
+          "status": 200,
+          "ms": 567,
+          "bytes": 527,
+          "bodyState": "complete"
+        },
+        {
+          "method": "POST",
+          "path": "/comunidad/entre-nosotros",
+          "status": 200,
+          "ms": 1213,
+          "bytes": 16060,
+          "bodyState": "complete"
+        },
+        {
+          "method": "POST",
+          "path": "/comunidad/entre-nosotros",
+          "status": 200,
+          "ms": 1245,
+          "bytes": 16060,
+          "bodyState": "complete"
+        }
+      ]
+    },
+    {
+      "roundIndex": 2,
+      "title": "profile «Comparar» opens an unsaved pair and «Guardar como grupo» keeps it (#1484)",
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 19335,
+      "retry": 0,
+      "browserErrors": [],
+      "consoleMessages": [
+        "Service Worker registration blocked by Playwright",
+        "Service Worker registration blocked by Playwright",
+        "Service Worker registration blocked by Playwright",
+        "Service Worker registration blocked by Playwright"
+      ],
+      "httpErrors": [],
+      "transportFailures": [
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "POST /login net::ERR_ABORTED",
+        "POST / net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED",
+        "GET / net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_b/seguidores net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_b/siguiendo net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros net::ERR_ABORTED",
+        "POST /comunidad/entre-nosotros net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_c/siguiendo net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_c/seguidores net::ERR_ABORTED",
+        "POST /u/qa_comp_motion_c net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_c/seguidores net::ERR_ABORTED",
+        "GET /comunidad net::ERR_ABORTED",
+        "GET /buscar net::ERR_ABORTED"
+      ],
+      "nonAbortedTransportFailures": [],
+      "actionTimings": [
+        {
+          "method": "POST",
+          "path": "/comunidad/entre-nosotros",
+          "status": 200,
+          "ms": 4017,
+          "bytes": 15981,
+          "bodyState": "complete"
+        },
+        {
+          "method": "POST",
+          "path": "/comunidad/entre-nosotros",
+          "status": 200,
+          "ms": 1349,
+          "bytes": 15981,
+          "bodyState": "complete"
+        },
+        {
+          "method": "POST",
+          "path": "/comunidad/entre-nosotros",
+          "status": 200,
+          "ms": 818,
+          "bytes": 527,
+          "bodyState": "complete"
+        },
+        {
+          "method": "POST",
+          "path": "/comunidad/entre-nosotros",
+          "status": 200,
+          "ms": 1408,
+          "bytes": 16060,
+          "bodyState": "complete"
+        },
+        {
+          "method": "POST",
+          "path": "/comunidad/entre-nosotros",
+          "status": 200,
+          "ms": 1392,
+          "bytes": 18,
+          "bodyState": "unavailable"
+        }
+      ]
+    }
+  ],
+  "traceConsoleErrors": [
+    {
+      "run": "entre-nosotros-profile-«Co-f513a--como-grupo»-keeps-it-1484--chromium",
+      "errors": []
+    },
+    {
+      "run": "entre-nosotros-profile-«Co-f513a--como-grupo»-keeps-it-1484--chromium-repeat1",
+      "errors": []
+    },
+    {
+      "run": "entre-nosotros-profile-«Co-f513a--como-grupo»-keeps-it-1484--chromium-repeat2",
+      "errors": []
+    }
+  ]
+}

@@ -1,0 +1,196 @@
+{
+  "build": "lC6hCPgn3mzY1Vt5aWBWu",
+  "sourceReport": "test-results/atlas-aislamiento-reports/mobile-three-run.json (local, no versionado)",
+  "phase": "Fechas trimestrales sin pan de preparación; ronda inicial conservada",
+  "cases": [
+    {
+      "roundIndex": 0,
+      "project": "mobile",
+      "status": "failed",
+      "duration_ms": 22168,
+      "retry": 0,
+      "errors": [
+        "Error: Opinión: una portada aislada para tocar su esquina\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeDefined\u001b[2m()\u001b[22m\n\nReceived: \u001b[31mundefined\u001b[39m\n\n  818 |               && drawing.images.every(other => other === image || Math.hypot(other.x + other.width / 2 - x, other.y + other.height / 2 - y) > image.height);\n  819 |           });\n> 820 |           expect(item, `${lens}: una portada aislada para tocar su esquina`).toBeDefined();\n      |                                                                              ^\n  821 |           const point = points.find(point => Math.hypot(point.x - item!.x - item!.width / 2, point.y - item!.y - item!.height / 2) < 2);\n  822 |           expect(point, 'la portada pertenece a una obra real publicada por la sonda').toBeDefined();\n  823 |           const book = fixture.books.find(book => `book:${book.id}` === point!.key)!;\n    at C:\\Users\\borja\\.codex\\worktrees\\a1f2\\Biblioshare\\e2e\\entre-nosotros-atlas.spec.ts:820:78\n    at withComparisonFixture (C:\\Users\\borja\\.codex\\worktrees\\a1f2\\Biblioshare\\e2e\\support\\comparison-fixtures.ts:102:13)\n    at C:\\Users\\borja\\.codex\\worktrees\\a1f2\\Biblioshare\\e2e\\entre-nosotros-atlas.spec.ts:776:5"
+      ],
+      "measurements": {
+        "Quién": {
+          "zoom": 0.7,
+          "coversAt07": 0,
+          "minWidthAt07": null,
+          "cornerHit": null,
+          "viewport360": null
+        },
+        "Opinión": {
+          "zoom": 0.7,
+          "coversAt07": 8,
+          "minWidthAt07": 12,
+          "cornerHit": null,
+          "viewport360": null
+        }
+      },
+      "journal": {
+        "errors": [],
+        "failures": [
+          "GET /comunidad: net::ERR_ABORTED",
+          "GET /: net::ERR_ABORTED",
+          "GET /buscar: net::ERR_ABORTED",
+          "GET /: net::ERR_ABORTED",
+          "POST /login: net::ERR_ABORTED",
+          "GET /u/qa_comp_motion_a: net::ERR_ABORTED",
+          "GET /u/qa_comp_motion_a: net::ERR_ABORTED",
+          "POST /: net::ERR_ABORTED",
+          "GET /experiencias: net::ERR_ABORTED",
+          "POST /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED"
+        ]
+      }
+    },
+    {
+      "roundIndex": 1,
+      "project": "mobile",
+      "status": "passed",
+      "duration_ms": 21251,
+      "retry": 0,
+      "errors": [],
+      "measurements": {
+        "Quién": {
+          "zoom": 0.7,
+          "coversAt07": 0,
+          "minWidthAt07": null,
+          "cornerHit": null,
+          "viewport360": null
+        },
+        "Opinión": {
+          "zoom": 0.7,
+          "coversAt07": 6,
+          "minWidthAt07": 12,
+          "cornerHit": {
+            "key": "book:00068a22-fcf0-4374-901e-3b7af9e91fac",
+            "width": 47.6000018106013,
+            "height": 69.02000262537189
+          },
+          "viewport360": null
+        },
+        "Tiempo": {
+          "zoom": 0.7,
+          "coversAt07": 24,
+          "minWidthAt07": 12,
+          "cornerHit": {
+            "key": "book:00068a22-fcf0-4374-901e-3b7af9e91fac",
+            "width": 39.97397069353948,
+            "height": 58.05743362633114
+          },
+          "viewport360": {
+            "zoom": 0.701,
+            "minCoverWidth": 12,
+            "visibleCovers": 24
+          }
+        },
+        "Islas": {
+          "zoom": 0.7,
+          "coversAt07": 0,
+          "minWidthAt07": null,
+          "cornerHit": null,
+          "viewport360": null
+        }
+      },
+      "journal": {
+        "errors": [],
+        "failures": [
+          "GET /comunidad: net::ERR_ABORTED",
+          "GET /buscar: net::ERR_ABORTED",
+          "GET /: net::ERR_ABORTED",
+          "POST /: net::ERR_ABORTED",
+          "POST /login: net::ERR_ABORTED",
+          "GET /signup: net::ERR_ABORTED",
+          "GET /_next/static/chunks/1vo28qmcrbou0.js: net::ERR_ABORTED",
+          "GET /buscar: net::ERR_ABORTED",
+          "GET /u/qa_comp_motion_a: net::ERR_ABORTED",
+          "GET /u/qa_comp_motion_a: net::ERR_ABORTED",
+          "GET /_next/static/chunks/2pzbgrn16lsdz.js: net::ERR_ABORTED",
+          "GET /comunidad: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "POST /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED"
+        ]
+      }
+    },
+    {
+      "roundIndex": 2,
+      "project": "mobile",
+      "status": "passed",
+      "duration_ms": 21878,
+      "retry": 0,
+      "errors": [],
+      "measurements": {
+        "Quién": {
+          "zoom": 0.7,
+          "coversAt07": 0,
+          "minWidthAt07": null,
+          "cornerHit": null,
+          "viewport360": null
+        },
+        "Opinión": {
+          "zoom": 0.7,
+          "coversAt07": 4,
+          "minWidthAt07": 12,
+          "cornerHit": {
+            "key": "book:0835735d-0d89-4e5a-8fd0-75103abbf143",
+            "width": 47.6000018106013,
+            "height": 69.02000262537189
+          },
+          "viewport360": null
+        },
+        "Tiempo": {
+          "zoom": 0.7,
+          "coversAt07": 27,
+          "minWidthAt07": 12,
+          "cornerHit": {
+            "key": "book:0835735d-0d89-4e5a-8fd0-75103abbf143",
+            "width": 39.97397069353948,
+            "height": 58.05743362633114
+          },
+          "viewport360": {
+            "zoom": 0.701,
+            "minCoverWidth": 12,
+            "visibleCovers": 24
+          }
+        },
+        "Islas": {
+          "zoom": 0.7,
+          "coversAt07": 0,
+          "minWidthAt07": null,
+          "cornerHit": null,
+          "viewport360": null
+        }
+      },
+      "journal": {
+        "errors": [],
+        "failures": [
+          "GET /: net::ERR_ABORTED",
+          "GET /buscar: net::ERR_ABORTED",
+          "GET /comunidad: net::ERR_ABORTED",
+          "GET /experiencias: net::ERR_ABORTED",
+          "POST /login: net::ERR_ABORTED",
+          "GET /signup: net::ERR_ABORTED",
+          "POST /: net::ERR_ABORTED",
+          "GET /buscar: net::ERR_ABORTED",
+          "GET /recuperar: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "POST /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED"
+        ]
+      }
+    }
+  ]
+}

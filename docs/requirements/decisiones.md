@@ -7967,3 +7967,22 @@ Verificado localmente en [PR #1530](https://github.com/borjar20/Biblioshare/pull
 [evidencia de notas](../testing/2026-10-14-entre-nosotros-atlas-notas-hover.md),
 62 pruebas de fichas y dos E2E PASS a 1280/360 px. Integración y verificación
 del despliegue en producción pendientes.
+
+## 2026-10-14 — Hidratación tardía del chrome: conservar la visibilidad SSR (#1534)
+
+Header, BottomNav y la compañera pueden seguir sin hidratar cuando el contenido
+principal ya permite navegar. En ese orden, calcular su visibilidad inicial con
+la ruta vigente puede contradecir el HTML que entregó el servidor y provocar
+recuperación de hidratación al entrar o salir de una pantalla completa.
+
+`ChromeGate` serializa su visibilidad SSR en un `template` con `useId`.
+`useSyncExternalStore` usa ese valor como snapshot de hidratación y aplica la
+ruta vigente después. Se conserva la topología de #1385: Suspense externo para
+la ruta e interno para el payload de sesión, sin retrasar la navegación ni
+suprimir errores de hidratación. La marca sólo expresa visibilidad; no guarda
+la ruta, la identidad ni datos de sesión.
+
+El contrato cubre ambos sentidos de navegación con ruta retenida, con sesión
+resuelta o pendiente, además de los controles originales. Las pruebas de React
+DOM controlan el orden de entrega; el streaming y la navegación reales de Next
+mantienen su gate separado. [Evidencia y límites de verificación](../testing/2026-10-14-entre-nosotros-ci-1533-1534.md).

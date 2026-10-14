@@ -754,11 +754,11 @@ async function observeItems(page: Page) {
 const itemDrawing = (page: Page) => page.evaluate(() => (globalThis as unknown as { __atlasItems: ItemDrawing }).__atlasItems);
 
 /** Use an actual wheel gesture, keeping a real item at its existing screen position. */
-async function itemZoom(page: Page, value: number) {
+async function itemZoom(page: Page, value: number, anchor?: { x: number; y: number }) {
   const canvas = page.locator('[data-atlas-moving] canvas');
   const box = (await canvas.boundingBox())!;
   const points = await probe(page);
-  const point = points.find(point => point.x > 60 && point.x < box.width - 60 && point.y > 180 && point.y < box.height - 150) ?? points[0];
+  const point = anchor ?? points.find(point => point.x > 60 && point.x < box.width - 60 && point.y > 180 && point.y < box.height - 150) ?? points[0];
   expect(point, 'una obra real disponible para anclar el zoom').toBeDefined();
   await page.mouse.move(box.x + point.x, box.y + point.y);
   // Chromium's mobile emulation reports wheel deltas divided by the emulated DPR.
@@ -780,9 +780,10 @@ test('portadas tempranas y mayores: Opinión y Tiempo a 0,7; cada lente conserva
       await comparisonRest('passes', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: JSON.stringify(rows.map(row => {
         const index = fixture.books.findIndex(book => book.id === row.item_id);
         const actor = fixture.actors.findIndex(actor => actor.id === row.user_id);
+        // A unique past quarter per work keeps the corner target isolated regardless of UUID-based vertical jitter.
         return { ...row, item_type: 'book', status: 'completed', is_active: false, is_public: true,
           rating: actor === 0 ? index % 10 + 1 : Math.floor(index / 3) + 1,
-          finished_on: `2026-${String(index % 12 + 1).padStart(2, '0')}-${String(actor + 1).padStart(2, '0')}` };
+          finished_on: `${1990 + Math.floor(index / 4)}-${String(index % 4 * 3 + 1).padStart(2, '0')}-${String(actor + 1).padStart(2, '0')}` };
       })) });
       await openAtlas(page, fixture);
       const lenses = page.getByRole('group', { name: 'Lente', exact: true });
@@ -808,12 +809,29 @@ test('portadas tempranas y mayores: Opinión y Tiempo a 0,7; cada lente conserva
         expect(Math.min(...high.images.map(image => image.width)), `${lens}: portadas mayores también por encima del umbral anterior`).toBeGreaterThanOrEqual(lens === 'Opinión' ? 19 : 16);
         expect(Number(await page.locator('[data-atlas-moving]').getAttribute('data-atlas-covers'))).toBeLessThanOrEqual(300);
         if (['Opinión', 'Tiempo'].includes(lens)) {
-          await itemZoom(page, 3.4);
+          // Pan a real work into the test's useful band before magnifying it; UUID order must not choose a clipped corner.
+          const canvasBox = (await page.locator('[data-atlas-moving] canvas').boundingBox())!;
+          const anchor = (await probe(page)).find(point => point.x > 60 && point.x < canvasBox.width - 60 && point.y > 180 && point.y < canvasBox.height - 150);
+          expect(anchor, `${lens}: una obra real para preparar el encuadre`).toBeDefined();
+          const centred = { x: canvasBox.width / 2, y: (210 + canvasBox.height - 160) / 2 };
+          if (Math.hypot(centred.x - anchor!.x, centred.y - anchor!.y) > 5) {
+            await page.mouse.move(canvasBox.x + anchor!.x, canvasBox.y + anchor!.y);
+            await page.mouse.down();
+            await page.mouse.move(canvasBox.x + centred.x, canvasBox.y + centred.y, { steps: 4 });
+            await page.mouse.up();
+            await lensSettled(page);
+          }
+          await itemZoom(page, 3.4, centred);
           const drawing = await itemDrawing(page), points = await probe(page);
           const box = (await page.locator('[data-atlas-moving] canvas').boundingBox())!;
+          const framed = points.find(point => point.key === anchor!.key);
+          expect(framed, `${lens}: la misma obra sigue visible tras el pan y zoom`).toBeDefined();
+          expect(framed!.x > 60 && framed!.x < box.width - 60 && framed!.y > 250 && framed!.y < box.height - 200,
+            `${lens}: la obra elegida queda dentro de la banda útil`).toBe(true);
           const item = drawing.images.find(image => {
             const x = image.x + image.width / 2, y = image.y + image.height / 2;
-            return image.x > 35 && image.x + image.width < box.width - 35 && image.y > 210 && image.y + image.height < box.height - 160
+            return Math.hypot(x - framed!.x, y - framed!.y) < 2
+              && image.x > 35 && image.x + image.width < box.width - 35 && image.y > 210 && image.y + image.height < box.height - 160
               && drawing.images.every(other => other === image || Math.hypot(other.x + other.width / 2 - x, other.y + other.height / 2 - y) > image.height);
           });
           expect(item, `${lens}: una portada aislada para tocar su esquina`).toBeDefined();
