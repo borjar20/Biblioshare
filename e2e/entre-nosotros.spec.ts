@@ -157,7 +157,11 @@ test('two real tabs conflict, same-account focus preserves context, cookie logou
     await (await groups(page)).getByRole('button', { name: 'Editar grupo', exact: true }).click();
     await (await groups(other)).getByRole('button', { name: 'Editar grupo', exact: true }).click();
     await other.getByRole('form', { name: 'Editar grupo' }).getByLabel('Nombre del grupo').fill('Otra pestaña QA');
-    await other.getByRole('form', { name: 'Editar grupo' }).getByRole('button', { name: 'Guardar grupo', exact: true }).click(); await settled(other);
+    // The atlas host settles before the Server Action answers: wait for the other
+    // tab's save to commit, or this tab may save first and win the race.
+    const otherSaved = other.waitForResponse(response => !!response.request().headers()['next-action'] && !!response.request().postData()?.includes('Otra pestaña QA'));
+    await other.getByRole('form', { name: 'Editar grupo' }).getByRole('button', { name: 'Guardar grupo', exact: true }).click();
+    await otherSaved; await expect(other.getByRole('button', { name: 'Grupo: Otra pestaña QA', exact: true })).toBeVisible(); await settled(other);
     const conflict = await comparisonResponse(page, () => page.getByRole('form', { name: 'Editar grupo' }).getByRole('button', { name: 'Guardar grupo', exact: true }).click(), request => request.includes('expectedRevision'));
     expect(resultBody(conflict)).toEqual({ ok: false, code: 'conflict' });
     await expect(page.getByRole('form', { name: 'Editar grupo' }).getByRole('alert')).toContainText('otra pestaña');
