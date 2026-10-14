@@ -190,4 +190,27 @@ describe('AtlasCanvas', () => {
     expect(host.dataset.atlasSprites).toBe('1');
     expect(JSON.parse(host.dataset.atlasProbe!).map((p: { key: string }) => p.key)).toEqual(['book:1']);
   });
+  it('las portadas reales solo se piden con zoom de portada y se publican en data-atlas-covers', () => {
+    const noop = () => {};
+    const fakeCtx = new Proxy({} as Record<string, unknown>, {
+      get: (target, prop: string) => prop === 'measureText' ? () => ({ width: 1 }) : prop in target ? target[prop] : noop,
+      set: (target, prop: string, value) => { target[prop] = value; return true; },
+    });
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(fakeCtx as unknown as CanvasRenderingContext2D);
+    const created: { src: string }[] = [];
+    vi.stubGlobal('Image', class { src = ''; onload = null; onerror = null; decoding = ''; constructor() { created.push(this); } });
+    const withCover = works.map(work => ({ ...work, coverUrl: 'https://covers.openlibrary.org/b/id/1-M.jpg' }));
+    const { container } = render(<AtlasCanvas {...props} works={withCover}/>);
+    flush();
+    const host = container.querySelector<HTMLElement>('[data-atlas-moving]')!;
+    expect(host.dataset.atlasCovers).toBe('0');
+    expect(created).toHaveLength(0);
+    const canvas = container.querySelector('canvas')!;
+    for (let i = 0; i < 12; i++) fireEvent.wheel(canvas, { deltaY: -400, clientX: 400, clientY: 300 });
+    flush();
+    expect(Number(host.dataset.atlasZoom)).toBeGreaterThan(1.1);
+    expect(Number(host.dataset.atlasCovers)).toBeGreaterThan(0);
+    expect(created.length).toBeGreaterThan(0);
+    expect(created[0].src).toContain('1-S.jpg');
+  });
 });

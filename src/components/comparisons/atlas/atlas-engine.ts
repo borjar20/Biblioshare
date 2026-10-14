@@ -13,6 +13,8 @@ import { paintOpinionBack, type OpinionLabels } from './paint-opinion';
 import { paintQuienBack, paintQuienFront } from './paint-quien';
 import { paintLinks } from './paint-links';
 import { paintTiempoBack } from './paint-tiempo';
+import cdnLoader from '@/lib/images/cdn-loader';
+import { createImageCache, type ImageLike } from '@/lib/comparisons/atlas/image-cache';
 import { paintIslasBack, type IslandText } from './paint-islas';
 
 export { COVER_ZOOM, TITLE_ZOOM } from './atlas-palette';
@@ -50,6 +52,10 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
   /** The camera still rests on (or heads to) the last fit: nobody has moved it since. */
   const atFit = () => !!lastFit && ((target ?? cam) === lastFit
     || (!target && Math.abs(cam.k / lastFit.k - 1) < 0.002 && Math.hypot(cam.x - lastFit.x, cam.y - lastFit.y) < 0.5));
+  const covers = createImageCache({ create: () => { const img = new Image(); img.decoding = 'async'; return img as unknown as ImageLike; },
+    resolve: src => cdnLoader({ src, width: 96 }), onReady: () => kick() });
+  /** New cover requests allowed per frame, so a crowded screen does not fire hundreds of fetches at once. */
+  const MAX_REQUESTS = 24; let requests = 0;
   function kick() { dirtyProbe = true; if (!raf && !disposed && typeof requestAnimationFrame === 'function') raf = requestAnimationFrame(frame); }
   function resize() {
     dpr = Math.min(2, globalThis.devicePixelRatio || 1);
@@ -100,7 +106,7 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
       if (s.dying && s.a < 0.02) { sprites.delete(id); continue; }
       if (!(x.settled && y.settled && a.settled && h.settled)) moving = true;
     }
-    draw(); if (pointers.size > 0) moving = true;
+    draw(); host.dataset.atlasCovers = String(covers.size()); if (pointers.size > 0) moving = true;
     host.dataset.atlasMoving = String(moving); host.dataset.atlasZoom = cam.k.toFixed(3); host.dataset.atlasSprites = String(sprites.size);
     if (moving) { if (!pointers.size) kick(); } else if (dirtyProbe) { dirtyProbe = false; publishProbe(); }
   }
@@ -148,7 +154,8 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
   function draw() {
     if (!ctx) return;
     const { works, active, scene, quien, people, countLabel } = props();
-    const k = cam.k, covers = k > COVER_ZOOM, titles = k > TITLE_ZOOM;
+    requests = 0;
+    const k = cam.k, coverMode = k > COVER_ZOOM, titles = k > TITLE_ZOOM;
     const color = new Map(people.map(person => [person.id, person.color]));
     const view: PaintView = { ctx, cam, vp, palette, text };
     const tint = (s: Sprite) => s.diff === null ? null : mixHex(palette.glow, palette.clash, diffMix(s.diff));
@@ -168,15 +175,25 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
       const p = toScreen(cam, vp, s); if (!visible(p)) continue;
       ctx.globalAlpha = s.a; const shared = work.owners.length > 1;
       const ink = tint(s);
-      if (!covers) {
+      if (!coverMode) {
         const r = (ink ? Math.max(3, 4.2 * k * 1.4) : Math.max(1.5, (shared ? 3.4 : 2.4) * k * 1.4)) * (1 + s.hl * 0.45);
         ctx.fillStyle = ink ?? (s.hl > 0.5 ? palette.glow : shared ? palette.cream : color.get(work.owners[0].userId)!);
         ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill(); continue;
       }
       const cw = (ink ? 10 : 8.4) * k, ch = (ink ? 14.5 : 12.2) * k, x = p.x - cw / 2, y = p.y - ch / 2;
       if (ink || s.hl > 0.3) { ctx.fillStyle = ink ?? palette.glow; roundRect(x - 2, y - 2, cw + 4, ch + 4, 3 + k * 0.3); ctx.fill(); }
-      ctx.fillStyle = palette.type[work.itemType]; roundRect(x, y, cw, ch, 1 + k * 0.4); ctx.fill();
-      ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.fillRect(x, y + ch * 0.7, cw, ch * 0.3);
+      let img: ImageLike | null = null;
+      if (work.coverUrl) {
+        if (requests < MAX_REQUESTS && !covers.has(work.coverUrl)) { covers.request(work.coverUrl); requests++; }
+        img = covers.get(work.coverUrl);
+      }
+      if (img) {
+        ctx.save(); roundRect(x, y, cw, ch, 1 + k * 0.4); ctx.clip();
+        ctx.drawImage(img as unknown as HTMLImageElement, x, y, cw, ch); ctx.restore();
+      } else {
+        ctx.fillStyle = palette.type[work.itemType]; roundRect(x, y, cw, ch, 1 + k * 0.4); ctx.fill();
+        ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.fillRect(x, y + ch * 0.7, cw, ch * 0.3);
+      }
       work.owners.slice(0, 5).forEach((owner, i) => {
         ctx.fillStyle = color.get(owner.userId)!; ctx.beginPath();
         ctx.arc(x + cw - (1.6 + i * 1.9) * k, y + 1.6 * k, 0.8 * k, 0, Math.PI * 2); ctx.fill();
