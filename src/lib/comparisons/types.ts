@@ -2,7 +2,6 @@ import type { Database } from '@/lib/supabase/database.types';
 
 export type Media = 'book' | 'movie' | 'series';
 export type Format = 'all' | Media;
-export type FacetKind = 'genre' | 'author' | 'director';
 export type WorkKey = `${Media}:${string}`;
 export type PassRow = Pick<Database['public']['Tables']['passes']['Row'],
   'id' | 'user_id' | 'item_type' | 'item_id' | 'status' | 'is_active' |
@@ -30,13 +29,5 @@ export type AiredCount = { seriesId: string; count: number | null };
 export type Snapshot = { group: Group; format: Format; catalog: CatalogWork[];
   works: PersonWork[]; excludedSeriesWithoutEpisodes: number };
 export type Region = { mask: number; people: string[]; keys: WorkKey[] };
-export type Finding = { key: WorkKey; people: string[]; notes: number[];
-  kind: 'loved' | 'similar' | 'different' };
-export type Facet = { id: string; label: string; people: { userId: string;
-  consumed: WorkKey[]; rated: WorkKey[]; mean: number | null;
-  min: number | null; max: number | null; eligibleTotal: number }[] };
-export type WorkDetail = { work: CatalogWork; people: PersonWork[];
-  commonEpisodes: { season: number; episode: number;
-    notes: { userId: string; rating: number }[] }[] };
 export type Result<T> = { ok: true; data: T } | { ok: false;
   code: 'unauthenticated' | 'unavailable' | 'invalid' | 'conflict' | 'load-failed' };

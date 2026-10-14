@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('server-only', () => ({}));
 const mocks = vi.hoisted(() => ({ user: vi.fn(), client: vi.fn(), from: vi.fn(), rpc: vi.fn() }));
 vi.mock('@/lib/supabase/server', () => ({ getCurrentUser: mocks.user, createClient: mocks.client }));
-import { deleteGroup, loadComparison, loadComparisonWork, saveGroup } from './actions';
+import { deleteGroup, loadComparison, saveGroup } from './actions';
 const id = '20000000-0000-4000-8000-000000000001';
 const owner = '10000000-0000-4000-8000-000000000001';
 const other = '10000000-0000-4000-8000-000000000002';
@@ -29,15 +29,14 @@ describe('comparison server actions', () => {
   });
   it('rejects every entry without session before any application query', async () => {
     mocks.user.mockResolvedValue(null);
-    const results = await Promise.all([loadComparison(id, 'all'), loadComparisonWork(id, `book:${id}`, [owner]),
+    const results = await Promise.all([loadComparison(id, 'all'),
       saveGroup({ id: null, name: 'Group', userIds: [owner, other], expectedRevision: null }), deleteGroup(id, 1)]);
-    expect(results).toEqual(Array(4).fill({ ok: false, code: 'unauthenticated' }));
-    expect(mocks.user).toHaveBeenCalledTimes(4);
+    expect(results).toEqual(Array(3).fill({ ok: false, code: 'unauthenticated' }));
+    expect(mocks.user).toHaveBeenCalledTimes(3);
     expect(mocks.client).not.toHaveBeenCalled(); expect(mocks.from).not.toHaveBeenCalled(); expect(mocks.rpc).not.toHaveBeenCalled();
   });
   it('foreign UUID is unavailable before consumption queries', async () => {
     expect(await loadComparison(id, 'all')).toEqual({ ok: false, code: 'unavailable' });
-    expect(await loadComparisonWork(id, `book:${id}`, [owner])).toEqual({ ok: false, code: 'unavailable' });
     expect(mocks.from.mock.calls.every(([table]) => table === 'comparison_groups')).toBe(true);
   });
   it('validates wire inputs', async () => {

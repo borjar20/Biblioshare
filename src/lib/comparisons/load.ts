@@ -3,8 +3,8 @@ import { readAllRows } from '@/lib/supabase/read-all-rows';
 import { chunkIds } from '@/lib/supabase/in-chunks';
 import { airedFlags, isSeriesEnded, todayISO } from '@/lib/series/aired';
 import { ComparisonError, resolveGroup, type Client } from './groups';
-import { commonEpisodes, normalize } from './normalize';
-import type { AiredCount, CatalogWork, Format, Group, Media, PassRow, Snapshot, WatchRow, WorkDetail, WorkKey } from './types';
+import { normalize } from './normalize';
+import type { AiredCount, CatalogWork, Format, Group, PassRow, Snapshot, WatchRow, WorkKey } from './types';
 
 const passColumns = 'id,user_id,item_type,item_id,status,is_active,rating,finished_on,created_at';
 const watchColumns = 'id,user_id,series_id,pass_id,season_number,episode_number,rating,watched_on,created_at';
@@ -17,20 +17,15 @@ function available(group: Group): string[] {
   return group.members.flatMap(member => member.available && member.userId !== null ? [member.userId] : []);
 }
 
-async function sources(client: Client, ids: string[], format: Format, key?: WorkKey) {
+async function sources(client: Client, ids: string[], format: Format) {
   if (ids.length === 0) return { passes: [], watches: [] };
-  const [type, itemId] = key?.split(':') ?? [];
   const passes = await readAllRows<PassRow>((from, to) => {
     let query = client.from('passes').select(passColumns).in('user_id', ids);
     if (format !== 'all') query = query.eq('item_type', format);
-    if (type) query = query.eq('item_type', type as Media).eq('item_id', itemId);
     return query.order('id').range(from, to);
   });
-  const watches = format === 'all' || format === 'series' ? await readAllRows<WatchRow>((from, to) => {
-    let query = client.from('episode_watches').select(watchColumns).in('user_id', ids);
-    if (itemId) query = query.eq('series_id', itemId);
-    return query.order('id').range(from, to);
-  }) : [];
+  const watches = format === 'all' || format === 'series' ? await readAllRows<WatchRow>((from, to) =>
+    client.from('episode_watches').select(watchColumns).in('user_id', ids).order('id').range(from, to)) : [];
   return { passes, watches };
 }
 
@@ -82,8 +77,8 @@ async function catalog(client: Client, keys: WorkKey[]): Promise<{ catalog: Cata
   return { catalog: [...result.values()], aired };
 }
 
-async function evidence(client: Client, format: Format, ids: string[], key?: WorkKey) {
-  const raw = await sources(client, ids, format, key);
+async function evidence(client: Client, format: Format, ids: string[]) {
+  const raw = await sources(client, ids, format);
   const keys = [...new Set(normalize(raw.passes, raw.watches, []).works.map(work => work.key))];
   return { raw, metadata: await catalog(client, keys) };
 }
@@ -114,24 +109,5 @@ export async function loadSnapshot(client: Client, viewerId: string, groupId: st
     const keys = new Set(facts.works.map(work => work.key));
     return { group: current, format, works: facts.works, catalog: data.metadata.catalog.filter(work => keys.has(work.key)),
       excludedSeriesWithoutEpisodes: facts.excludedSeriesWithoutEpisodes };
-  } catch (error) { loadError(error); }
-}
-
-export async function loadDetail(client: Client, viewerId: string, groupId: string, key: WorkKey, people: string[]): Promise<WorkDetail> {
-  try {
-    const group = await resolveGroup(client, viewerId, groupId);
-    if (people.length < 1 || people.length > 10 || new Set(people).size !== people.length) throw new ComparisonError('invalid');
-    const ids = new Set(available(group));
-    // An unavailable slot deliberately does not expose its old identity.
-    if (people.some(id => !ids.has(id))) throw new ComparisonError('unavailable');
-    const type = key.split(':')[0] as Media;
-    const data = await evidence(client, type, people, key);
-    const current = await revalidate(client, viewerId, group);
-    if (people.some(id => !available(current).includes(id))) throw new ComparisonError('unavailable');
-    const facts = normalize(data.raw.passes, data.raw.watches, data.metadata.aired);
-    const work = data.metadata.catalog.find(work => work.key === key);
-    if (!work) throw new ComparisonError('unavailable');
-    return { work, people: facts.works.filter(work => work.key === key),
-      commonEpisodes: people.length >= 2 ? commonEpisodes(facts, key, people) : [] };
   } catch (error) { loadError(error); }
 }

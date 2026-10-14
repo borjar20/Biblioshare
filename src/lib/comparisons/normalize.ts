@@ -1,5 +1,5 @@
 import type {
-  AiredCount, EpisodeNote, Facts, PassRow, PersonWork, WatchRow, WorkDetail, WorkKey,
+  AiredCount, EpisodeNote, Facts, PassRow, PersonWork, WatchRow, WorkKey,
 } from './types';
 
 function workKey(type: PassRow['item_type'], id: string): WorkKey {
@@ -95,21 +95,4 @@ export function normalize(passes: PassRow[], watches: WatchRow[], aired: AiredCo
   }
 
   return { works, episodes, excludedSeriesWithoutEpisodes };
-}
-
-export function commonEpisodes(facts: Facts, key: WorkKey,
-  people: string[]): WorkDetail['commonEpisodes'] {
-  if (!key.startsWith('series:') || people.length === 0 || new Set(people).size !== people.length) return [];
-  const perPerson = people.map((userId) => facts.episodes[`${userId}|${key}`] ?? []);
-  const shared = perPerson[0].filter((note) => note.rating !== null);
-  return shared.flatMap((first) => {
-    const notes: { userId: string; rating: number }[] = [];
-    for (let index = 0; index < people.length; index++) {
-      const entry = perPerson[index].find((note) => note.season === first.season &&
-        note.episode === first.episode && note.rating !== null);
-      if (entry?.rating === null || entry === undefined) return [];
-      notes.push({ userId: people[index], rating: entry.rating });
-    }
-    return [{ season: first.season, episode: first.episode, notes }];
-  });
 }

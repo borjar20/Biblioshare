@@ -18,13 +18,14 @@ import { atlasQuery, clearAtlasMemory, parseAtlasQuery, readGroupMemory, session
 import { GroupSheet } from './group-sheet';
 import { ComparisonLoading } from './loading';
 import { forFormat } from '@/lib/comparisons/derive';
-import { acceptResponse, changeGroup, changeSelection, clearEvidence, deriveFormat, initialState, reconcileParticipants, reconcileView, selectOwnedGroup, setView } from './state';
-import type { ExplorerState, Section, TasteControls, View } from './state';
+import { acceptResponse, changeGroup, clearEvidence, deriveFormat, initialState, selectOwnedGroup } from './state';
+import type { ExplorerState } from './state';
 import { presentViewer } from './presentation';
 import styles from './explorer.module.css';
 
-function Icon({ kind }: { kind: 'works' | 'lock' | 'edit' | 'plus' }) {
-  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{kind === 'works' ? <><circle cx="9" cy="10" r="6"/><circle cx="15" cy="14" r="6"/></> : kind === 'lock' ? <><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></> : kind === 'edit' ? <><path d="M4 20h4L19 9l-4-4L4 16Z"/><path d="m13.5 6.5 4 4"/></> : <path d="M12 5v14M5 12h14"/>}</svg>;
+/** The empty state's glyph: two overlapping circles. */
+function WorksIcon() {
+  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="9" cy="10" r="6"/><circle cx="15" cy="14" r="6"/></svg>;
 }
 
 type Props = { initialGroups: Group[]; candidates: Candidate[]; viewerId: string };
@@ -37,46 +38,24 @@ function atlasHref(groupId: string | null, lens: Lens, mode: IslandMode) {
   const query = atlasQuery(new URLSearchParams(person ? { con: person } : groupId ? { group: groupId } : {}), lens, mode);
   return `/comunidad/entre-nosotros${query ? `?${query}` : ''}`;
 }
-type Action = { type: 'group'; id: string | null } | { type: 'section'; section: Section }
-  | { type: 'format'; format: Format } | { type: 'refresh' }
-  | { type: 'loading'; seq: number } | { type: 'response'; seq: number; result: Result<Snapshot> }
-  | { type: 'view'; view: View } | { type: 'selection'; people: string[] } | { type: 'tasteControls'; controls: TasteControls };
+type Action = { type: 'group'; id: string | null } | { type: 'format'; format: Format } | { type: 'refresh' }
+  | { type: 'loading'; seq: number } | { type: 'response'; seq: number; result: Result<Snapshot> };
 export function explorerReducer(state: ExplorerState, action: Action): ExplorerState {
   switch (action.type) {
-    case 'tasteControls': return { ...state, tasteControls: action.controls };
     case 'group': return changeGroup(state, action.id);
-    case 'section': {
-      const sameFormat = state.formats[state.section] === state.formats[action.section];
-      if (!sameFormat && state.source) {
-        const derived = deriveFormat({ ...state, section: action.section }); const view = derived.views[action.section];
-        return { ...derived, selection: view.level === 'group' ? derived.selection : [...view.people] };
-      }
+    case 'format':
+      if (state.source) return deriveFormat({ ...state, format: action.format });
       // A load in flight serves every format; dropping it would leave nothing to show.
-      const next = sameFormat || state.snapshot.status === 'loading' ? state : clearEvidence(state);
-      const view = sameFormat && next.snapshot.value ? reconcileView(next.views[action.section], next.snapshot.value) : next.views[action.section];
-      return { ...next, section: action.section, views: { ...next.views, [action.section]: view },
-        selection: view.level === 'group' ? next.selection : [...view.people] };
-    }
-    case 'format': {
-      const formats = { ...state.formats, [state.section]: action.format };
-      if (state.source) return deriveFormat({ ...state, formats });
-      return state.snapshot.status === 'loading' ? { ...state, formats } : { ...clearEvidence(state), formats };
-    }
+      return state.snapshot.status === 'loading' ? { ...state, format: action.format } : { ...clearEvidence(state), format: action.format };
     case 'refresh': return { ...clearEvidence(state), source: null };
-    case 'selection': return changeSelection(state, action.people);
-    case 'view': return setView(state, state.section, action.view);
     case 'loading': return { ...clearEvidence(state), source: null, snapshot: { seq: action.seq, value: null, status: 'loading' } };
     case 'response': {
-      // The request is always `all`; the section's format is derived when it arrives.
+      // The request is always `all`; the chosen format is derived when it arrives.
       const source = action.result.ok ? action.result.data : null;
-      const result: Result<Snapshot> = source ? { ok: true, data: forFormat(source, state.formats[state.section]) } : action.result;
+      const result: Result<Snapshot> = source ? { ok: true, data: forFormat(source, state.format) } : action.result;
       const snapshot = acceptResponse(state.snapshot, action.seq, result);
       if (snapshot === state.snapshot) return state;
-      return { ...state, source, revealSeq: snapshot.seq, snapshot, loadError: action.result.ok ? null : action.result.code, views: snapshot.value ? {
-        works: reconcileParticipants(state.views.works, snapshot.value.group),
-        tastes: reconcileParticipants(state.views.tastes, snapshot.value.group),
-        [state.section]: reconcileView(state.views[state.section], snapshot.value),
-      } : state.views, selection: snapshot.value ? state.selection.filter(id => snapshot.value!.group.members.some(member => member.available && member.userId === id)) : state.selection };
+      return { ...state, source, revealSeq: snapshot.seq, snapshot, loadError: action.result.ok ? null : action.result.code };
     }
   }
 }
@@ -182,7 +161,7 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
   const you = t('you');
   const loaded = state.snapshot.value;
   const snapshot = useMemo(() => loaded && presentViewer(loaded, viewerId, you), [loaded, viewerId, you]);
-  const format = state.formats[state.section];
+  const format = state.format;
   useEffect(() => {
     if (observedQuery.current === groupQuery) return;
     observedQuery.current = groupQuery;
@@ -256,13 +235,13 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
     </header>
     {editor && <GroupEditor key={editor.group?.id ?? 'new'} group={editor.group} initialPeople={editor.people} candidates={candidates} viewerId={viewerId} onSaved={onSaved} onDeleted={id => { setGroups(current => current.filter(group => group.id !== id)); selectGroup(null); }} onCancel={() => { setEditor(null); groupChip.current?.focus(); }} onReload={() => { setEditor(null); groupChip.current?.focus(); refresh(); router.refresh(); }}/>}
     {!choices.length && !editor && <div className={styles.immersiveEmpty}>{candidates.some(person => person.userId !== viewerId)
-      ? <EmptyState variant="panel" glyph={<Icon kind="works"/>} title={t('noGroups')} message={t('noGroupsMessage')} action={<Button onClick={() => setEditor({ group: null })}>{t('createFirstGroup')}</Button>}/>
-      : <EmptyState variant="panel" glyph={<Icon kind="works"/>} title={t('noFollowsTitle')} message={t('noFollowsMessage')} action={<Link href="/comunidad?tab=personas" className={buttonVariants('primary')}>{t('findPeopleToFollow')}</Link>}/>}</div>}
+      ? <EmptyState variant="panel" glyph={<WorksIcon/>} title={t('noGroups')} message={t('noGroupsMessage')} action={<Button onClick={() => setEditor({ group: null })}>{t('createFirstGroup')}</Button>}/>
+      : <EmptyState variant="panel" glyph={<WorksIcon/>} title={t('noFollowsTitle')} message={t('noFollowsMessage')} action={<Link href="/comunidad?tab=personas" className={buttonVariants('primary')}>{t('findPeopleToFollow')}</Link>}/>}</div>}
     {active && <section aria-label={t('canvas')} aria-busy={state.snapshot.status === 'loading'} className={styles.stage}>
       <h2 className={styles.srOnly}>{active.name}</h2>
       {state.snapshot.status === 'loading' && <div className={styles.workspaceLoading}><ComparisonLoading label={t('loading')}/></div>}
       {state.snapshot.status === 'error' && <div role="alert"><p>{t(state.loadError === 'conflict' ? 'loadConflict' : `errors.${state.loadError ?? 'load-failed'}`)}</p><Button variant="secondary" onClick={() => { refresh(); if (state.loadError === 'unavailable' || state.loadError === 'unauthenticated') router.refresh(); }}>{t('reloadComparison')}</Button></div>}
-      {snapshot && <div key={state.snapshot.seq} className={styles.canvasWrap} data-comparison-reveal data-comparison-slot={state.section} data-view={state.views[state.section].level}>
+      {snapshot && <div key={state.snapshot.seq} className={styles.canvasWrap} data-comparison-reveal data-comparison-slot="works">
         <AtlasView snapshot={snapshot} viewerId={viewerId} groupId={state.groupId!} chosen={chosenFaces} lens={atlasUi.lens} onLensChange={setAtlasLens} islandMode={atlasUi.islandMode} onIslandModeChange={setAtlasIslandMode} list={atlasUi.list} onListChange={list => setAtlasUi(current => ({ ...current, list }))} onChosenChange={setAtlasFaces} notice={snapshot.excludedSeriesWithoutEpisodes > 0 ? <p className={styles.coverageNote} data-comparison-coverage>{t('excludedHistoricalSeries', { count: snapshot.excludedSeriesWithoutEpisodes })}</p> : null}/>
       </div>}
       {snapshot && state.revealSeq === state.snapshot.seq && completedHandoff !== state.snapshot.seq && <div key={`handoff-${state.snapshot.seq}`} aria-hidden="true" inert className={`${styles.workspaceLoading} ${styles.loadingExit}`} data-comparison-handoff onAnimationEnd={event => {

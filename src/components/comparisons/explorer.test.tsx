@@ -7,11 +7,11 @@ import type { Group, Result, Snapshot } from '@/lib/comparisons/types';
 const mocks = vi.hoisted(() => ({ load: vi.fn(), save: vi.fn(), remove: vi.fn(), replace: vi.fn(), refresh: vi.fn(), unsubscribe: vi.fn(), getUser: vi.fn(), auth: null as ((event: string, session: { user: { id: string } } | null) => void) | null, query: '' }));
 const mockRouter = { replace: mocks.replace, refresh: mocks.refresh };
 vi.mock('@/lib/supabase/client', () => ({ createClient: () => ({ auth: { getUser: mocks.getUser, onAuthStateChange: (callback: typeof mocks.auth) => { mocks.auth = callback; return { data: { subscription: { unsubscribe: mocks.unsubscribe } } }; } } }) }));
-vi.mock('@/lib/comparisons/actions', () => ({ loadComparison: mocks.load, saveGroup: mocks.save, deleteGroup: mocks.remove, loadComparisonWork: vi.fn(async () => ({ ok: false, code: 'load-failed' })) }));
+vi.mock('@/lib/comparisons/actions', () => ({ loadComparison: mocks.load, saveGroup: mocks.save, deleteGroup: mocks.remove }));
 vi.mock('next/navigation', () => ({ useRouter: () => mockRouter, useSearchParams: () => new URLSearchParams(mocks.query), usePathname: () => '/comunidad/entre-nosotros' }));
 import { Explorer, explorerReducer } from './explorer';
 import { initialState } from './state';
-import type { ExplorerState, View } from './state';
+import type { ExplorerState } from './state';
 const group = (suffix: string, name: string): Group => ({ id: `${suffix.repeat(8)}-${suffix.repeat(4)}-${suffix.repeat(4)}-${suffix.repeat(4)}-${suffix.repeat(12)}`, name, revision: 1, members: [{ slotId: 'one', userId: 'a', name: 'Ana', avatarUrl: null, available: true }, { slotId: 'two', userId: null, name: null, avatarUrl: null, available: false }] });
 const first = group('a', 'Lectores'); const second = group('b', 'Cine');
 const snapshot = (g: Group): Snapshot => ({ group: g, format: 'all', catalog: [], works: [], excludedSeriesWithoutEpisodes: 0 });
@@ -32,67 +32,29 @@ beforeEach(() => {
   sessionStorage.clear();
   document.cookie = 'sb-test-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'; vi.clearAllMocks(); mocks.query = ''; mocks.load.mockResolvedValue({ ok: true, data: snapshot(first) }); mocks.getUser.mockReset().mockResolvedValue({ data: { user: { id: 'a' } }, error: null }); });
 afterEach(cleanup);
-describe('independent format view retention', () => {
-  it('retains controlled taste category and signal across sections and its own reload', () => {
-    const controlled = explorerReducer(initialState('a'), { type: 'tasteControls', controls: { facetKind: 'director', signal: 'rated' } });
-    const switched = explorerReducer(controlled, { type: 'section', section: 'tastes' });
-    const loading = explorerReducer(switched, { type: 'loading', seq: 4 });
-    const ready = explorerReducer(loading, { type: 'response', seq: 4, result: { ok: true, data: snapshot(first) } });
-    expect(ready.tasteControls).toEqual({ facetKind: 'director', signal: 'rated' });
-  });
+describe('format derivation from one load', () => {
   const availableGroup: Group = { ...first, members: [{ ...first.members[0] }, { slotId: 'two', userId: 'b', name: 'Bea', avatarUrl: null, available: true }] };
   const book = { catalog: { key: 'book:x' as const, title: 'Libro', coverUrl: null, genres: ['Ensayo'], creators: [] }, work: { key: 'book:x' as const, userId: 'a', rating: null, date: null, orderUnknown: false, progress: null } };
   const movie = { catalog: { key: 'movie:y' as const, title: 'Película', coverUrl: null, genres: ['Drama'], creators: [] }, work: { key: 'movie:y' as const, userId: 'a', rating: null, date: null, orderUnknown: false, progress: null } };
   const bookSnapshot: Snapshot = { ...snapshot(availableGroup), format: 'book', catalog: [book.catalog], works: [book.work] };
-  // Every request is `all`; each section's format is derived from it (#1481).
+  // Every request is `all`; the chosen format is derived from it (#1481).
   const allSnapshot: Snapshot = { ...snapshot(availableGroup), format: 'all', catalog: [book.catalog, movie.catalog], works: [book.work, movie.work], excludedSeriesWithoutEpisodes: 2 };
-  const stateFor = (section: 'works' | 'tastes', views: ExplorerState['views']): ExplorerState => ({ ...initialState('a'), section, formats: { works: 'book', tastes: 'movie' }, views, selection: ['a', 'b'], snapshot: { seq: 2, value: null, status: 'loading' } });
-  it.each<View>([
-    { level: 'facet', people: ['a', 'b'], facetKind: 'genre', facetId: 'Drama' },
-    { level: 'work', people: ['a', 'b'], origin: { kind: 'facet', facetKind: 'genre', facetId: 'Drama' }, key: 'movie:y' },
-  ])('retains the inactive movie context %j through the book view and restores it from the same load', tasteView => {
-    const state = stateFor('works', { works: { level: 'group' }, tastes: tasteView });
-    const books = explorerReducer(state, { type: 'response', seq: 2, result: { ok: true, data: allSnapshot } });
-    expect(books.views.tastes).toEqual(tasteView); expect(books.snapshot.value).toEqual({ ...bookSnapshot, excludedSeriesWithoutEpisodes: 0 });
-    const switched = explorerReducer(books, { type: 'section', section: 'tastes' });
-    expect(switched.snapshot.status).toBe('ready'); expect(switched.snapshot.value!.format).toBe('movie');
-    expect(switched.snapshot.value!.works.map(work => work.key)).toEqual(['movie:y']); expect(switched.views.tastes).toEqual(tasteView);
-  });
-  it('preserves an inactive book work/region origin while the movie section loads', () => {
-    const bookView: View = { level: 'work', people: ['a', 'b'], origin: { kind: 'region', mask: 1 }, key: 'book:x' };
-    const state = stateFor('tastes', { works: bookView, tastes: { level: 'group' } });
-    expect(explorerReducer(state, { type: 'response', seq: 2, result: { ok: true, data: allSnapshot } }).views.works).toEqual(bookView);
-  });
-  it('invalidates inactive contexts and selection when a participant loses access', () => {
-    const tasteView: View = { level: 'work', people: ['a', 'b'], origin: { kind: 'facet', facetKind: 'genre', facetId: 'Drama' }, key: 'movie:y' };
-    const state = stateFor('works', { works: { level: 'venn', people: ['a', 'b'] }, tastes: tasteView });
-    const revoked: Snapshot = { ...allSnapshot, group: { ...availableGroup, members: [availableGroup.members[0], { slotId: 'two', userId: null, name: null, avatarUrl: null, available: false }] } };
-    const next = explorerReducer(state, { type: 'response', seq: 2, result: { ok: true, data: revoked } });
-    expect(next.views).toEqual({ works: { level: 'group' }, tastes: { level: 'group' } }); expect(next.selection).toEqual(['a']);
-  });
-  it('validates the active facet against its own derived format', () => {
-    const state = stateFor('tastes', { works: { level: 'group' }, tastes: { level: 'facet', people: ['a', 'b'], facetKind: 'genre', facetId: 'Gone' } });
-    expect(explorerReducer(state, { type: 'response', seq: 2, result: { ok: true, data: allSnapshot } }).views.tastes).toEqual({ level: 'group' });
-  });
+  const loadingBooks = (): ExplorerState => ({ ...initialState('a'), format: 'book', snapshot: { seq: 2, value: null, status: 'loading' } });
   it('derives a format switch from the loaded source without a new load or a loader hand-off', () => {
-    const ready = explorerReducer(stateFor('works', { works: { level: 'group' }, tastes: { level: 'group' } }), { type: 'response', seq: 2, result: { ok: true, data: allSnapshot } });
-    expect(ready.revealSeq).toBe(2);
+    const ready = explorerReducer(loadingBooks(), { type: 'response', seq: 2, result: { ok: true, data: allSnapshot } });
+    expect(ready.revealSeq).toBe(2); expect(ready.snapshot.value).toEqual({ ...bookSnapshot, excludedSeriesWithoutEpisodes: 0 });
     const all = explorerReducer(ready, { type: 'format', format: 'all' });
     expect(all.snapshot).toEqual({ seq: 3, value: allSnapshot, status: 'ready' }); expect(all.revealSeq).toBe(2);
     const series = explorerReducer(all, { type: 'format', format: 'series' });
     expect(series.snapshot.value).toMatchObject({ format: 'series', works: [], catalog: [], excludedSeriesWithoutEpisodes: 2 });
     expect(explorerReducer(series, { type: 'refresh' }).source).toBeNull();
   });
-  it('keeps a load in flight across format and section changes and derives the format current on arrival', () => {
-    const loading = stateFor('works', { works: { level: 'group' }, tastes: { level: 'group' } });
-    const moved = explorerReducer(explorerReducer(loading, { type: 'format', format: 'movie' }), { type: 'section', section: 'tastes' });
+  it('keeps a load in flight across format changes and derives the format current on arrival', () => {
+    const loading = loadingBooks();
+    const moved = explorerReducer(loading, { type: 'format', format: 'movie' });
     expect(moved.snapshot).toEqual(loading.snapshot);
     const arrived = explorerReducer(explorerReducer(moved, { type: 'format', format: 'book' }), { type: 'response', seq: 2, result: { ok: true, data: allSnapshot } });
     expect(arrived.snapshot.value!.format).toBe('book'); expect(arrived.source).toBe(allSnapshot);
-  });
-  it('validates a retained destination view on switching sections when its format is already loaded', () => {
-    const state: ExplorerState = { ...stateFor('works', { works: { level: 'group' }, tastes: { level: 'facet', people: ['a', 'b'], facetKind: 'genre', facetId: 'Gone' } }), formats: { works: 'book', tastes: 'book' }, snapshot: { seq: 2, value: bookSnapshot, status: 'ready' } };
-    expect(explorerReducer(state, { type: 'section', section: 'tastes' }).views.tastes).toEqual({ level: 'group' });
   });
 });
 describe('Explorer request boundaries', () => {

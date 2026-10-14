@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { commonEpisodes, normalize } from './normalize';
+import { normalize } from './normalize';
 import { pass, watch } from './fixtures.test-support';
 
 describe('normalize', () => {
@@ -173,28 +173,5 @@ describe('closed active series progress', () => {
     expect(facts.episodes['a|series:s']).toEqual([
       { season: 1, episode: 1, rating: null }, { season: 1, episode: 2, rating: 8 },
     ]);
-  });
-});
-
-describe('commonEpisodes', () => {
-  it('en un trío solo devuelve episodios con notas de las tres personas', () => {
-    const facts = normalize([], [
-      watch({ id: 'a1', user_id: 'a', rating: 8 }),
-      watch({ id: 'b1', user_id: 'b', rating: 7 }),
-      watch({ id: 'c1', user_id: 'c', rating: 9 }),
-      watch({ id: 'a2', user_id: 'a', episode_number: 2, rating: 8 }),
-      watch({ id: 'b2', user_id: 'b', episode_number: 2, rating: 8 }),
-      watch({ id: 'c2', user_id: 'c', episode_number: 2, rating: null }),
-    ], []);
-    expect(commonEpisodes(facts, 'series:s', ['a', 'b', 'c'])).toEqual([{
-      season: 1, episode: 1,
-      notes: [{ userId: 'a', rating: 8 }, { userId: 'b', rating: 7 },
-        { userId: 'c', rating: 9 }],
-    }]);
-  });
-
-  it('no muestra episodios ajenos a la obra activa', () => {
-    const facts = normalize([], [watch({ rating: 8 })], []);
-    expect(commonEpisodes(facts, 'series:other', ['a'])).toEqual([]);
   });
 });

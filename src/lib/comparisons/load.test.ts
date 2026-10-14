@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('server-only', () => ({}));
-import { loadDetail, loadSnapshot } from './load';
+import { loadSnapshot } from './load';
 import type { Client } from './groups';
 import { listCandidates, listEntry, listGroups } from './groups';
 import { forFormat } from './derive';
@@ -118,33 +118,16 @@ describe('authorized comparison loaders', () => {
     await expect(loadSnapshot(f.client, owner, groupId, 'all')).rejects.toMatchObject({ code: 'load-failed' });
     expect(f.queries.some(q => q.table === 'books')).toBe(true);
   });
-  it('includes orphan episode watches, correct aired counts, and only selected people in detail', async () => {
-    f.rows.episode_watches = [watch('a', owner), watch('b'), watch('c', third)];
+  it('includes orphan episode watches and counts only aired episodes', async () => {
+    f.rows.episode_watches = [watch('a', owner), watch('b')];
     f.rows.series = [{ id: seriesId, title: 'A series', cover_url: null, genres: [], tmdb_status: 'Returning Series' }];
     f.rows.series_episodes = [
       { id: 'e1', series_id: seriesId, season_number: 1, episode_number: 1, air_date: '2020-01-01' },
       { id: 'e2', series_id: seriesId, season_number: 1, episode_number: 2, air_date: '2099-01-01' },
     ];
-    const result = await loadDetail(f.client, owner, groupId, `series:${seriesId}`, [owner, friend]);
-    expect(result.people.map(p => p.userId)).toEqual([owner, friend]);
-    expect(result.people[0].progress).toMatchObject({ seenEver: 1, current: null, aired: 1 });
-    expect(result.commonEpisodes).toEqual([{ season: 1, episode: 1, notes: [{ userId: owner, rating: 9 }, { userId: friend, rating: 9 }] }]);
-    expect(f.queries.filter(q => q.table === 'episode_watches').every(q => q.filters.some(([k, v]) => k === 'series_id' && v === seriesId))).toBe(true);
-    const single = await loadDetail(f.client, owner, groupId, `series:${seriesId}`, [friend]);
-    expect(single.commonEpisodes).toEqual([]);
-  });
-  it('rejects unavailable, outsider, duplicate or empty detail selection', async () => {
-    for (const people of [[], [owner, owner]]) {
-      await expect(loadDetail(f.client, owner, groupId, `series:${seriesId}`, people)).rejects.toMatchObject({ code: 'invalid' });
-    }
-    await expect(loadDetail(f.client, owner, groupId, `series:${seriesId}`, ['outsider'])).rejects.toMatchObject({ code: 'unavailable' });
-    f.revoke();
-    await expect(loadDetail(f.client, owner, groupId, `series:${seriesId}`, [friend])).rejects.toMatchObject({ code: 'unavailable' });
-  });
-  it('rejects non-eligible work and detail revocation during load', async () => {
-    await expect(loadDetail(f.client, owner, groupId, `series:${seriesId}`, [friend])).rejects.toMatchObject({ code: 'unavailable' });
-    f.rows.episode_watches = [watch('w')]; f.revokeDuringLoad();
-    await expect(loadDetail(f.client, owner, groupId, `series:${seriesId}`, [friend])).rejects.toMatchObject({ code: 'unavailable' });
+    const result = await loadSnapshot(f.client, owner, groupId, 'series');
+    expect(result.works.map(p => p.userId).toSorted()).toEqual([owner, friend].toSorted());
+    expect(result.works.find(p => p.userId === owner)!.progress).toMatchObject({ seenEver: 1, current: null, aired: 1 });
   });
   it('lists every accepted following beyond 1,000 plus self, excluding pending and invisible accounts', async () => {
     const ids = Array.from({ length: 1205 }, (_, i) => `person${i}`);
