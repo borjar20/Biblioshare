@@ -42,12 +42,31 @@
 .sheetActions { display: flex; gap: 8px; }
 .open { white-space: nowrap; display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 999px; background: var(--atlas-glow); color: var(--atlas-ground); font-weight: 700; font-size: 14px; }
 .close { white-space: nowrap; min-height: 44px; padding: 0 14px; border-radius: 999px; background: transparent; color: var(--atlas-muted); font-size: 14px; }
-.face:focus-visible, .lens button:focus-visible, .zoom button:focus-visible, .open:focus-visible, .close:focus-visible { outline: 2px solid var(--atlas-glow); outline-offset: 2px; }
+/* «Ver como lista»: wide screens put it on top of the zoom column (zoom bottom 96px − dock bottom 16px + 3×40px + 3×6px gaps). */
+.listToggle { pointer-events: auto; position: absolute; right: 0; bottom: 218px; display: flex; align-items: center; gap: 7px; min-height: 40px; padding: 0 14px; border-radius: 12px; background: var(--atlas-panel); color: var(--atlas-fg); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.listToggle[aria-pressed='true'] { background: var(--atlas-fg); color: var(--atlas-ground); }
+.listToggle svg { width: 16px; height: 16px; flex: none; }
+/* The list takes the canvas place: same band as the camera (insets come inline), scrolling under the overlays. */
+.list { position: absolute; inset: 0; overflow: auto; overscroll-behavior: contain; padding: 120px 16px 160px; color: var(--atlas-fg); }
+.listSection { max-width: 720px; margin: 0 auto 20px; }
+.listHeading { font-size: 13px; font-weight: 700; color: var(--atlas-muted); margin: 0 0 8px; }
+.listItems { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.listItem { display: flex; gap: 12px; align-items: center; padding: 6px; border-radius: 10px; color: inherit; text-decoration: none; }
+a.listItem:hover { background: color-mix(in srgb, var(--atlas-panel) 80%, transparent); }
+.listCover { width: 48px; height: 70px; border-radius: 4px; flex: none; object-fit: cover; display: block; }
+.listText { min-width: 0; }
+.listText .workTitle { margin-bottom: 3px; }
+.listDetail { display: block; font-size: 12px; color: var(--atlas-muted); }
+.listEmpty { max-width: 720px; margin: 0 auto; color: var(--atlas-muted); font-size: 14px; }
+.face:focus-visible, .lens button:focus-visible, .zoom button:focus-visible, .open:focus-visible, .close:focus-visible, .listToggle:focus-visible, a.listItem:focus-visible, .list:focus-visible { outline: 2px solid var(--atlas-glow); outline-offset: 2px; }
+.list:focus-visible { outline-offset: -2px; }
 @media (max-width: 640px) {
   .lens button span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .lens button { padding: 10px 14px; }
   .modes button { padding: 6px 12px; }
   .zoom { display: none; }
+  /* Zoom is hidden on phones: the toggle joins the dock, above the lenses. */
+  .listToggle { position: static; border-radius: 999px; background: color-mix(in srgb, var(--atlas-panel) 90%, transparent); backdrop-filter: blur(8px); }
   /* Inner padding so the 2px active ring is not clipped by the scroller; the negative margin keeps the alignment. */
   .faces { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; width: calc(100% + 8px); margin: -4px; padding: 4px; scrollbar-width: none; }
   .faces::-webkit-scrollbar { display: none; }

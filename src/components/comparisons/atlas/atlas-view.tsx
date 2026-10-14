@@ -14,6 +14,7 @@ import { layoutIslands, OTHER_ISLAND, type Island, type IslandMode } from '@/lib
 import { buildScene, type Lens } from '@/lib/comparisons/atlas/scene';
 import { initials } from '../presentation';
 import { AtlasCanvas, type AtlasCanvasHandle } from './atlas-canvas';
+import { AtlasList } from './atlas-list';
 import type { AtlasHit } from './atlas-engine';
 import type { IslandText } from './paint-islas';
 import { summaryMessage } from './atlas-summary-message';
@@ -49,11 +50,12 @@ function WorkCard({ work, people, title, lens }: { work: AtlasWork; people: Atla
 /**
  * `notice` is a coverage note shown right under the summary (e.g. series without episodes).
  * The face selection is controlled by the explorer (`chosen`, null = everyone) so it survives
- * format changes, which remount this view. The lens and the Islas mode are controlled the same way.
+ * format changes, which remount this view. The lens, the Islas mode and «Ver como lista» are controlled the same way.
  */
-export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange, lens, onLensChange, islandMode, onIslandModeChange }: {
+export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange, lens, onLensChange, islandMode, onIslandModeChange, list, onListChange }: {
   snapshot: Snapshot; viewerId: string; notice?: ReactNode; chosen: string[] | null; onChosenChange: (ids: string[]) => void;
   lens: Lens; onLensChange: (lens: Lens) => void; islandMode: IslandMode; onIslandModeChange: (mode: IslandMode) => void;
+  list: boolean; onListChange: (list: boolean) => void;
 }) {
   const t = useTranslations('comparisons'); const locale = useLocale(); const router = useRouter();
   const you = t('you');
@@ -79,8 +81,8 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange, 
     title: (island: Island) => island.id === OTHER_ISLAND ? t('atlas.islas.other') : isType(island.id) ? t(`formats.${island.id}`) : island.label ?? '',
     common: count => t('atlas.islas.common', { count }),
   }), [t]);
-  const scene = useMemo(() => buildScene(lens, works, active, { quien: layout, opinion, tiempo, islas }),
-    [lens, works, active, layout, opinion, tiempo, islas]);
+  const layouts = useMemo(() => ({ quien: layout, opinion, tiempo, islas }), [layout, opinion, tiempo, islas]);
+  const scene = useMemo(() => buildScene(lens, works, active, layouts), [lens, works, active, layouts]);
   // Corner and axis names follow the Opinión reference («Tú» unless she is out).
   const reference = people.find(person => person.id === opinion.reference);
   const refIsMe = String(reference?.isMe ?? true), refName = reference?.name ?? '';
@@ -123,6 +125,7 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange, 
   // A lens change can drop the hovered or picked work from the scene: start clean.
   function changeLens(next: Lens) { setHover(null); setPicked(null); onLensChange(next); }
   function changeMode(next: IslandMode) { setHover(null); setPicked(null); onIslandModeChange(next); }
+  function toggleList() { setHover(null); setPicked(null); onListChange(!list); }
   function open(work: AtlasWork) { if (!work.metadataMissing) router.push(itemHref(work.itemType, work.itemId)); }
   function activate(hit: AtlasHit | null, pointerType: string) {
     if (!hit) { setPicked(null); return; }
@@ -146,8 +149,9 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange, 
   const unavailable = snapshot.group.members.filter(member => !member.available);
 
   return <div ref={stage} className={styles.canvasWrap} data-comparison-stage>
-    <AtlasCanvas ref={camera} label={canvasLabel} people={people} works={works} active={active} scene={scene} quien={layout} tiempo={tiempo} islas={islas} islandText={islandText} opinionLabels={opinionLabels} insets={insets}
-      countLabel={count => t('atlas.poleCount', { count })} onTogglePerson={toggle} onHover={setHover} onActivate={activate}/>
+    {list ? <AtlasList lens={lens} people={people} works={works} active={active} layouts={layouts} islandText={islandText} insets={insets}/>
+      : <AtlasCanvas ref={camera} label={canvasLabel} people={people} works={works} active={active} scene={scene} quien={layout} tiempo={tiempo} islas={islas} islandText={islandText} opinionLabels={opinionLabels} insets={insets}
+      countLabel={count => t('atlas.poleCount', { count })} onTogglePerson={toggle} onHover={setHover} onActivate={activate}/>}
     <div ref={overlay} className={styles.overlayTop}>
       <div><p className={styles.summary} role="status" aria-live="polite">{t.rich(summaryKey, { ...summaryValues, b: bold })}</p>
         {notice}</div>
@@ -160,12 +164,16 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange, 
           <span className={styles.faceDot} aria-hidden="true">?</span>{t('unavailablePerson')}</button>)}
       </div>
     </div>
-    <div className={styles.zoom}>
+    {!list && <div className={styles.zoom}>
       <button type="button" aria-label={t('atlas.zoomIn')} onClick={() => camera.current?.zoomBy(1.8)}>+</button>
       <button type="button" aria-label={t('atlas.zoomOut')} onClick={() => camera.current?.zoomBy(1 / 1.8)}>−</button>
       <button type="button" aria-label={t('atlas.zoomFit')} onClick={() => camera.current?.fit()}>⤢</button>
-    </div>
+    </div>}
     <div ref={dock} className={styles.dock}>
+      {/* Above the zoom buttons on wide screens (CSS); on phones, where zoom is hidden, above the lenses. */}
+      <button type="button" className={styles.listToggle} aria-pressed={list} onClick={toggleList}>
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">{list ? LENS_ICONS.quien : <path d="M5 4h9M5 8h9M5 12h9M2 4h.5M2 8h.5M2 12h.5"/>}</svg>
+        {t(list ? 'atlas.list.hide' : 'atlas.list.show')}</button>
       {lens === 'islas' && <div className={`${styles.lens} ${styles.modes}`} role="group" aria-label={t('atlas.islas.modes')}>
         {MODES.filter(mode => !typeless || mode !== 'type').map(mode => <button key={mode} type="button" aria-pressed={effectiveMode === mode}
           onClick={() => changeMode(mode)}>{t(`atlas.islas.mode.${mode}`)}</button>)}

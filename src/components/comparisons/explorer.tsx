@@ -161,6 +161,8 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
   // The lens and the Islas mode survive the format change, which remounts the view.
   const [atlasLens, setAtlasLens] = useState<Lens>('quien');
   const [atlasIslandMode, setAtlasIslandMode] = useState<IslandMode>('type');
+  // «Ver como lista» also survives the format change.
+  const [atlasList, setAtlasList] = useState(false);
   const sequence = useRef(0); const initialSignature = useRef(JSON.stringify(initialGroups));
   const groupChip = useRef<HTMLButtonElement>(null);
   const groupQuery = withGroup?.id ?? search.get('group');
@@ -239,7 +241,7 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
       {state.snapshot.status === 'loading' && <div className={styles.workspaceLoading}><ComparisonLoading label={t('loading')}/></div>}
       {state.snapshot.status === 'error' && <div role="alert"><p>{t(state.loadError === 'conflict' ? 'loadConflict' : `errors.${state.loadError ?? 'load-failed'}`)}</p><Button variant="secondary" onClick={() => { refresh(); if (state.loadError === 'unavailable' || state.loadError === 'unauthenticated') router.refresh(); }}>{t('reloadComparison')}</Button></div>}
       {snapshot && <div key={state.snapshot.seq} className={styles.canvasWrap} data-comparison-reveal data-comparison-slot={state.section} data-view={state.views[state.section].level}>
-        <AtlasView snapshot={snapshot} viewerId={viewerId} chosen={chosenFaces} lens={atlasLens} onLensChange={setAtlasLens} islandMode={atlasIslandMode} onIslandModeChange={setAtlasIslandMode} onChosenChange={ids => state.groupId && setAtlasFaces({ groupId: state.groupId, ids })} notice={snapshot.excludedSeriesWithoutEpisodes > 0 ? <p className={styles.coverageNote} data-comparison-coverage>{t('excludedHistoricalSeries', { count: snapshot.excludedSeriesWithoutEpisodes })}</p> : null}/>
+        <AtlasView snapshot={snapshot} viewerId={viewerId} chosen={chosenFaces} lens={atlasLens} onLensChange={setAtlasLens} islandMode={atlasIslandMode} onIslandModeChange={setAtlasIslandMode} list={atlasList} onListChange={setAtlasList} onChosenChange={ids => state.groupId && setAtlasFaces({ groupId: state.groupId, ids })} notice={snapshot.excludedSeriesWithoutEpisodes > 0 ? <p className={styles.coverageNote} data-comparison-coverage>{t('excludedHistoricalSeries', { count: snapshot.excludedSeriesWithoutEpisodes })}</p> : null}/>
       </div>}
       {snapshot && state.revealSeq === state.snapshot.seq && completedHandoff !== state.snapshot.seq && <div key={`handoff-${state.snapshot.seq}`} aria-hidden="true" inert className={`${styles.workspaceLoading} ${styles.loadingExit}`} data-comparison-handoff onAnimationEnd={event => {
         if (event.target === event.currentTarget) setCompletedHandoff(state.snapshot.seq);

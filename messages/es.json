@@ -42,6 +42,14 @@
         "other": "Otros",
         "common": "{count} en común"
       },
+      "list": {
+        "show": "Ver como lista",
+        "hide": "Ver como mapa",
+        "label": "Lista de obras",
+        "empty": "No hay obras que mostrar con estas caras.",
+        "diff": "{ref} · media del resto {others}",
+        "other": "Otros"
+      },
       "years": "{name}: {year}",
       "noDate": "{name}: sin fecha",
       "summary": {
