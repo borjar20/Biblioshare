@@ -31,8 +31,8 @@ describe('summaryMessage', () => {
   it('Opinión: pide dos caras, avisa si no hay notas y cuenta con o sin Tú', () => {
     expect(message('opinion', works, ['b'])).toEqual({ key: 'atlas.opinion.needsTwo', values: {} });
     expect(message('opinion', works, ['c', 'd'])).toEqual({ key: 'atlas.opinion.empty', values: { isMe: 'false', ref: 'Carla' } });
-    // book:1 → 9 vs mean(9, 8) = 8.5, agree; book:2 → 9 vs 4, clash
-    expect(message('opinion', works, ['me', 'b', 'c'])).toEqual({ key: 'atlas.opinion.counts', values: { agree: 1, clash: 1, total: 2, ref: 'Tú' } });
+    // book:1 → 9 vs mean(9, 8) = 8.5, agree; book:2 is not owned by Carla.
+    expect(message('opinion', works, ['me', 'b', 'c'])).toEqual({ key: 'atlas.opinion.counts', values: { agree: 1, clash: 0, total: 1, ref: 'Tú' } });
     // Bea as reference: book:1 → 9 vs 8, agree; book:2 has no other active rating
     expect(message('opinion', works, ['b', 'c'])).toEqual({ key: 'atlas.opinion.countsWithRef', values: { agree: 1, clash: 0, total: 1, ref: 'Bea' } });
   });

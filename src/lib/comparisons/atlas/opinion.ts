@@ -1,4 +1,5 @@
 import type { WorkKey } from '../types';
+import { comparable } from './layout';
 import type { AtlasPerson, AtlasWork, Extent, Point } from './types';
 
 export const RATING_STEP = 170;
@@ -37,10 +38,13 @@ export function layoutOpinion(people: AtlasPerson[], works: AtlasWork[], active:
   const reference = opinionReference(people, active);
   const positions = new Map<WorkKey, OpinionPoint>();
   if (reference) for (const work of works) {
+    if (!comparable(work, active)) continue;
+    // Every selected person needs an explicit note: an AB mean must never read as an ABC comparison.
+    const ratings = active.map(id => work.owners.find(owner => owner.userId === id)?.rating);
+    if (ratings.some(rating => rating === null || rating === undefined)) continue;
     const own = work.owners.find(owner => owner.userId === reference)?.rating;
     if (own === null || own === undefined) continue;
-    const others = work.owners.filter(owner => owner.userId !== reference && active.includes(owner.userId) && owner.rating !== null)
-      .map(owner => owner.rating as number);
+    const others = active.filter(id => id !== reference).map(id => work.owners.find(owner => owner.userId === id)!.rating as number);
     if (!others.length) continue;
     const mean = others.reduce((sum, value) => sum + value, 0) / others.length;
     positions.set(work.key, { x: ratingX(own) + jitter(work.key, 0), y: -ratingX(mean) + jitter(work.key, 1),

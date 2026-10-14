@@ -1,0 +1,69 @@
+{
+  "batch": "mobile final",
+  "build": "h2QPPzSuMTZo3PSJxKcph",
+  "failed": 0,
+  "passed": 3,
+  "journals": [
+    {
+      "case": "entre-nosotros-atlas-Islas-13063-a-una-nota-con-nombre-largo-mobile",
+      "journal": {
+        "errors": [],
+        "failures": [
+          "GET /comunidad: net::ERR_ABORTED",
+          "GET /buscar: net::ERR_ABORTED",
+          "GET /: net::ERR_ABORTED",
+          "POST /login: net::ERR_ABORTED",
+          "GET /: net::ERR_ABORTED",
+          "GET /experiencias: net::ERR_ABORTED",
+          "GET /comunidad: net::ERR_ABORTED",
+          "POST /: net::ERR_ABORTED",
+          "GET /comunidad: net::ERR_ABORTED",
+          "GET /comunidad: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /libro/061f52e3-fbf2-4393-9e76-d545075d53a6: net::ERR_ABORTED"
+        ]
+      }
+    },
+    {
+      "case": "entre-nosotros-atlas-Otros-9aa3d-ar-y-series-en-mapa-y-lista-mobile",
+      "journal": {
+        "errors": [],
+        "failures": [
+          "GET /comunidad: net::ERR_ABORTED",
+          "POST /: net::ERR_ABORTED",
+          "GET /coleccion: net::ERR_ABORTED",
+          "GET /coleccion: net::ERR_ABORTED",
+          "GET /: net::ERR_ABORTED",
+          "POST /login: net::ERR_ABORTED",
+          "GET /u/qa_comp_motion_a: net::ERR_ABORTED",
+          "GET /_next/static/chunks/1vo28qmcrbou0.js: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /libro/d1a81b38-b00e-4efd-b792-e7cbb5a7ade4: net::ERR_ABORTED"
+        ]
+      }
+    },
+    {
+      "case": "entre-nosotros-atlas-Selec-8dba9-ABC-desmarcar-C-recupera-AB-mobile",
+      "journal": {
+        "errors": [],
+        "failures": [
+          "GET /comunidad: net::ERR_ABORTED",
+          "GET /buscar: net::ERR_ABORTED",
+          "GET /: net::ERR_ABORTED",
+          "GET /comunidad: net::ERR_ABORTED",
+          "GET /buscar: net::ERR_ABORTED",
+          "GET /u/qa_comp_motion_a: net::ERR_ABORTED",
+          "POST /login: net::ERR_ABORTED",
+          "POST /: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "build": "h2QPPzSuMTZo3PSJxKcph",
+  "verification": "SELECT de solo lectura por Supabase MCP biblioshare-dev tras todas las rondas y login devtest",
+  "auth_fixture": 0,
+  "profiles_fixture": 0,
+  "books_fixture": 0,
+  "movies_fixture": 0,
+  "series_fixture": 0,
+  "creators_fixture": 0,
+  "credits_fixture": 0,
+  "devtest_public": true,
+  "devtest_created_data": false,
+  "persistent_accounts_deleted": false
+}

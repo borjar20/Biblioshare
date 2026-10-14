@@ -4,8 +4,6 @@ import type { AtlasPerson, AtlasWork, Extent, Point } from './types';
 export const POLE_RADIUS = 900;
 export const SPIRAL_STEP = 12;
 const GOLDEN = Math.PI * (3 - Math.sqrt(5));
-/** Shared groups with fewer works draw no count nor thread (6–10 people would saturate the centre). */
-const LABEL_MIN = 3;
 /** Room (world units) a shared group keeps from the pole ring: avatar plus name/count labels. */
 export const POLE_CLEARANCE = 300;
 /** Gap (world units) between a pole and its own single-owner group, which sits outward: avatar plus name/count. */
@@ -146,12 +144,11 @@ function separate(clusters: Cluster[], poles: Point[], at: Map<string, Point>, f
 }
 
 /**
- * Tiempo and Islas compare: with two or more active faces they draw only what at least two of them share; with one
- * face, everything of hers. (Quién keeps everything: it is where each person's own works live.)
+ * Comparison lenses draw only works owned by every active person; with one face, everything of hers.
+ * An empty selection compares nothing. (Quién keeps everything: it is where each person's own works live.)
  */
 export function comparable(work: AtlasWork, active: string[]): boolean {
-  const owners = work.owners.filter(owner => active.includes(owner.userId)).length;
-  return active.length < 2 ? owners > 0 : owners > 1;
+  return active.length > 0 && active.every(id => work.owners.some(owner => owner.userId === id));
 }
 
 export function workState(work: AtlasWork, active: string[]): { alpha: number; glow: boolean; shared: boolean } {
@@ -163,5 +160,5 @@ export function workState(work: AtlasWork, active: string[]): { alpha: number; g
 export function clusterState(cluster: Cluster, active: string[]): { on: boolean; common: boolean; labelled: boolean } {
   return { on: cluster.owners.every(owner => active.includes(owner)),
     common: active.length > 1 && active.every(id => cluster.owners.includes(id)),
-    labelled: cluster.owners.length > 1 && cluster.keys.length >= LABEL_MIN };
+    labelled: cluster.owners.length > 1 && cluster.keys.length > 0 };
 }

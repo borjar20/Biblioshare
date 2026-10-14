@@ -26,32 +26,33 @@ describe('layoutIslands', () => {
     work('1', ['me', 'b', 'c'], { genres: ['Drama', 'SF'] }),
     work('2', ['me', 'b'], { genres: ['Drama'] }),
     work('3', ['c'], { genres: ['Poesía'] }),
-    work('4', ['me', 'b'], {}),
+    work('4', ['me', 'b', 'c'], {}),
     work('5', ['x'], { genres: ['Drama'] }),                        // nobody active owns it
     work('6', ['me', 'b', 'c'], { type: 'movie', genres: ['SF'] }),
   ];
   it('Tipo: islas por tipo no vacías, en orden fijo', () => {
     expect(layoutIslands(people, works, ['me', 'b', 'c'], 'type').islands.map(i => i.id)).toEqual(['book', 'movie']);
   });
-  it('Género: una obra en cada isla de sus géneros; sin género va a Otros; lo que no comparten dos activas no entra', () => {
+  it('Género: una obra común en cada género; sin género va a Otros; las parejas no entran con tres activas', () => {
     const layout = layoutIslands(people, works, ['me', 'b', 'c'], 'genre');
     const byId = new Map(layout.islands.map(i => [i.id, i]));
-    expect(byId.get('g:Drama')!.keys.toSorted()).toEqual(['book:1', 'book:2']);
+    expect(byId.get('g:Drama')!.keys.toSorted()).toEqual(['book:1']);
     expect(byId.get('g:SF')!.keys.toSorted()).toEqual(['book:1', 'movie:6']);
     expect(byId.get(OTHER_ISLAND)!.keys).toEqual(['book:4']);
     expect(layout.instances.filter(i => i.key === 'book:1').map(i => i.island).toSorted()).toEqual(['g:Drama', 'g:SF']);
     expect(layout.instances.some(i => i.key === ('book:5' as WorkKey))).toBe(false);
     expect(layout.instances.some(i => i.key === ('book:3' as WorkKey))).toBe(false);
+    expect(layout.instances.some(i => i.key === ('book:2' as WorkKey))).toBe(false);
   });
   it('con dos o más caras solo entra lo compartido entre activas; con una, todo lo suyo', () => {
-    expect(layoutIslands(people, works, ['me', 'c'], 'genre').instances.map(i => i.key).toSorted()).toEqual(['book:1', 'book:1', 'movie:6']);
+    expect(layoutIslands(people, works, ['me', 'c'], 'genre').instances.map(i => i.key).toSorted()).toEqual(['book:1', 'book:1', 'book:4', 'movie:6']);
     expect(layoutIslands(people, works, ['c'], 'genre').instances.map(i => `${i.key}#${i.island}`).toSorted())
-      .toEqual(['book:1#g:Drama', 'book:1#g:SF', 'book:3#g:Poesía', 'movie:6#g:SF']);
+      .toEqual(['book:1#g:Drama', 'book:1#g:SF', 'book:3#g:Poesía', 'book:4#other', 'movie:6#g:SF']);
   });
-  it('orden por común a todas, luego compartida, luego el resto; núcleo y recuentos', () => {
+  it('el núcleo y los recuentos solo incluyen lo común a todas las personas activas', () => {
     const drama = layoutIslands(people, works, ['me', 'b', 'c'], 'genre').islands.find(i => i.id === 'g:Drama')!;
-    expect(drama.keys).toEqual(['book:1', 'book:2']);
-    expect([drama.common, drama.shared]).toEqual([1, 2]);
+    expect(drama.keys).toEqual(['book:1']);
+    expect([drama.common, drama.shared]).toEqual([1, 1]);
     expect(drama.core).toBeGreaterThan(0);
   });
   it('como mucho ISLAND_LIMIT categorías; el resto a Otros', () => {
@@ -70,17 +71,20 @@ describe('layoutIslands', () => {
     const book = layoutIslands(people, rated, ['me', 'b'], 'type').islands[0];
     expect(book.means).toEqual([{ userId: 'me', mean: 9, count: 3 }]);
   });
-  it('el top 10 prioriza las obras comunes a todas: la categoria sin ninguna comun va a Otros', () => {
+  it('una obra de pareja no se cuela en Otros del top diez al seleccionar tres personas', () => {
     const lots = Array.from({ length: 10 }, (_, k) => work(`c${k}`, ['me', 'b', 'c'], { genres: [`Z${String(k).padStart(2, '0')}`] }));
     const lone = work('lone', ['me', 'b'], { genres: ['AAA'] });
     const layout = layoutIslands(people, [lone, ...lots], ['me', 'b', 'c'], 'genre');
     expect(layout.islands.some(i => i.id === 'g:AAA')).toBe(false);
-    expect(layout.islands.find(i => i.id === OTHER_ISLAND)!.keys).toEqual(['book:lone']);
+    expect(layout.islands).toHaveLength(ISLAND_LIMIT);
+    expect(layout.islands.find(i => i.id === OTHER_ISLAND)).toBeUndefined();
+    expect(layout.instances.some(instance => instance.key === 'book:lone')).toBe(false);
   });
-  it('dentro de una isla, la comun a todas va antes que una compartida de clave menor', () => {
+  it('una obra de pareja con clave menor no entra en la isla hasta desmarcar la tercera persona', () => {
     const pair = [work('a', ['me', 'b'], { genres: ['Drama'] }), work('z', ['me', 'b', 'c'], { genres: ['Drama'] })];
     const drama = layoutIslands(people, pair, ['me', 'b', 'c'], 'genre').islands.find(i => i.id === 'g:Drama')!;
-    expect(drama.keys).toEqual(['book:z', 'book:a']);
+    expect(drama.keys).toEqual(['book:z']);
+    expect(layoutIslands(people, pair, ['me', 'b'], 'genre').islands.find(i => i.id === 'g:Drama')!.keys).toEqual(['book:a', 'book:z']);
   });
   it('las islas no se solapan', () => {
     const { islands } = layoutIslands(people, works, ['me', 'b', 'c'], 'genre');

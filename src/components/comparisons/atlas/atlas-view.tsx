@@ -100,15 +100,25 @@ export function AtlasView({ snapshot, viewerId, groupId, notice, chosen, onChose
   const islas = useMemo(() => layoutIslands(people, works, active, effectiveMode, viewport.width && insets ? { viewport, insets } : undefined),
     [people, works, active, effectiveMode, viewport, insets]);
   const meanFormat = useMemo(() => new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }), [locale]);
+  const causeFormat = useMemo(() => new Intl.ListFormat(locale, { type: 'conjunction' }), [locale]);
   // Shared by the painter (titles over each island) and the summary (best island).
   const islandText = useMemo<IslandText>(() => ({
     title: (island: Island) => island.id === OTHER_ISLAND ? t('atlas.islas.other') : isType(island.id) ? t(`formats.${island.id}`) : island.label ?? '',
     common: count => t('atlas.islas.common', { count }),
+    description: island => {
+      const reasons = island.otherReasons;
+      if (island.id !== OTHER_ISLAND || !reasons) return '';
+      return causeFormat.format([
+        ...(reasons.overflow ? [t('atlas.islas.otherOutside', { count: reasons.overflow })] : []),
+        ...(reasons.missing ? [t(effectiveMode === 'creator' ? 'atlas.islas.otherMissingCreator' : 'atlas.islas.otherMissingGenre', { count: reasons.missing })] : []),
+        ...(reasons.unsupported ? [t('atlas.islas.otherSeries', { count: reasons.unsupported })] : []),
+      ]);
+    },
     ratingValue: mean => meanFormat.format(mean),
     ratingLabel: (name, mean, count) => count === undefined
       ? t('atlas.islas.ratingWithoutCount', { name, mean: meanFormat.format(mean) })
       : t('atlas.islas.ratingLabel', { name, mean: meanFormat.format(mean), count }),
-  }), [t, meanFormat]);
+  }), [t, meanFormat, causeFormat, effectiveMode]);
   const layouts = useMemo(() => ({ quien: layout, opinion, tiempo, islas }), [layout, opinion, tiempo, islas]);
   const scene = useMemo(() => buildScene(lens, works, active, layouts), [lens, works, active, layouts]);
   // Corner and axis names follow the Opinión reference («Tú» unless she is out) and who it is compared with: one other
@@ -207,6 +217,8 @@ export function AtlasView({ snapshot, viewerId, groupId, notice, chosen, onChose
   // On open, focus goes to «Abrir ficha» (or «Cerrar» without a link); Escape closes it (see `onKeyDown`).
   useEffect(() => { if (picked) sheetRef.current?.querySelector<HTMLElement>('a, button')?.focus(); }, [picked]);
   const unavailable = snapshot.group.members.filter(member => !member.available);
+  const otherIsland = islas.islands.find(island => island.id === OTHER_ISLAND);
+  const otherDescription = lens === 'islas' && !list && otherIsland ? islandText.description?.(otherIsland) : '';
 
   return <div ref={stage} className={styles.canvasWrap} data-comparison-stage onKeyDown={onKeyDown}>
     {list ? <AtlasList ref={listRef} lens={lens} people={people} works={works} active={active} layouts={layouts} islandText={islandText} insets={insets}/>
@@ -214,7 +226,8 @@ export function AtlasView({ snapshot, viewerId, groupId, notice, chosen, onChose
       countLabel={count => t('atlas.poleCount', { count })} onTogglePerson={toggle} onHover={setHover} onActivate={activate}/>}
     <div ref={overlay} className={styles.overlayTop}>
       <div><p className={styles.summary} role="status" aria-live="polite">{t.rich(summaryKey, { ...summaryValues, b: bold })}</p>
-        {notice}</div>
+        {notice}
+        {otherDescription && <p className={`${styles.summary} ${styles.listDetail}`}>{t('atlas.islas.other')}: {otherDescription}</p>}</div>
       <div className={styles.faces} role="group" aria-label={t('atlas.faces')}>
         {people.map(person => <button key={person.id} type="button" className={styles.face} aria-pressed={active.includes(person.id)}
           aria-label={person.name} style={{ '--person': person.color } as CSSProperties} onClick={() => toggle(person.id)}>

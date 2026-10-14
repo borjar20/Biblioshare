@@ -42,7 +42,7 @@ export function layoutTiempo(people: AtlasPerson[], works: AtlasWork[], active: 
   const lanes = activePeople.map((person, index) => ({ userId: person.id, y: laneY(index, activePeople.length, compress) }));
   const gap = laneGap(activePeople.length, compress);
   const laneOf = new Map(lanes.map(lane => [lane.userId, lane.y]));
-  // With two or more faces, only what they share (`comparable`): the threads between lanes are the point of the lens.
+  // Only works shared by every selected person; unavailable dates leave their own lane empty.
   const dated = works.filter(work => comparable(work, active)).flatMap(work => work.owners.flatMap(owner => {
     const year = laneOf.has(owner.userId) ? datedYear(owner.date) : null;
     return year === null ? [] : [{ key: work.key, userId: owner.userId, year }];
@@ -65,8 +65,8 @@ export function summarizeTiempo(people: AtlasPerson[], works: AtlasWork[], activ
   if (!me || active.length < 2) return { kind: 'lanes', names: people.filter(person => active.includes(person.id)).map(person => person.name) };
   let first = 0, total = 0, undated = 0;
   for (const work of works) {
-    const owners = work.owners.filter(owner => active.includes(owner.userId));
-    if (owners.length < 2 || !owners.some(owner => owner.userId === me.id)) continue;
+    if (!comparable(work, active)) continue;
+    const owners = active.map(id => work.owners.find(owner => owner.userId === id)!);
     if (owners.some(owner => datedYear(owner.date) === null)) { undated++; continue; }
     total++;
     const mine = owners.find(owner => owner.userId === me.id)!.date!;

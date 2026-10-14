@@ -12,7 +12,7 @@ const work = (key: string, ratings: Record<string, number | null>): AtlasWork =>
 const works = [
   work('book:1', { me: 9, b: 9, c: 8 }),     // mean 8.5 → diff 0.5 → agree
   work('book:2', { me: 9, b: 4, c: 4 }),     // diff 5 → clash
-  work('book:3', { me: 7, b: 5 }),           // diff 2 → neither
+  work('book:3', { me: 7, b: 5 }),           // diff 2 when comparing me+b; no c → out with three faces
   work('book:4', { me: null, b: 6, c: 6 }),  // no reference rating → out
   work('book:5', { me: 6, b: null }),        // nobody else rated → out
   work('book:6', { b: 3, c: 9 }),            // reference does not own it → out
@@ -27,9 +27,9 @@ describe('opinionReference', () => {
 });
 
 describe('layoutOpinion', () => {
-  it('solo obras con nota de la referencia y de otra cara activa', () => {
+  it('solo obras comunes con nota explícita de todas las caras activas', () => {
     const layout = layoutOpinion(people, works, ['me', 'b', 'c']);
-    expect([...layout.positions.keys()].toSorted()).toEqual(['book:1', 'book:2', 'book:3']);
+    expect([...layout.positions.keys()].toSorted()).toEqual(['book:1', 'book:2']);
     expect(layout.extent).toEqual(OPINION_EXTENT);
   });
   it('X = nota de la referencia; Y = −media del resto activo; con jitter determinista acotado', () => {
@@ -60,7 +60,7 @@ describe('colores y resumen', () => {
   });
   it('cuenta coincidencias y choques sobre lo dibujado', () => {
     expect(summarizeOpinion(people, layoutOpinion(people, works, ['me', 'b', 'c'])))
-      .toEqual({ kind: 'counts', agree: 1, clash: 1, total: 3, ref: 'Tú', isMe: true });
+      .toEqual({ kind: 'counts', agree: 1, clash: 1, total: 2, ref: 'Tú', isMe: true });
     expect(summarizeOpinion(people, layoutOpinion(people, works, ['b', 'c'])))
       .toEqual({ kind: 'counts', agree: 3, clash: 1, total: 4, ref: 'B', isMe: false });
   });

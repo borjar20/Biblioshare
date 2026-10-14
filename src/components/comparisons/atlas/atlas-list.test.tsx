@@ -8,7 +8,7 @@ import type { AtlasPerson, AtlasWork } from '@/lib/comparisons/atlas/types';
 import { layoutQuien } from '@/lib/comparisons/atlas/layout';
 import { layoutOpinion } from '@/lib/comparisons/atlas/opinion';
 import { layoutTiempo } from '@/lib/comparisons/atlas/tiempo';
-import { layoutIslands, type Island } from '@/lib/comparisons/atlas/islands';
+import { layoutIslands, type Island, type IslandMode } from '@/lib/comparisons/atlas/islands';
 import type { Lens } from '@/lib/comparisons/atlas/scene';
 import { AtlasList } from './atlas-list';
 import type { IslandText } from './paint-islas';
@@ -24,9 +24,9 @@ const works = [
   work('book:3', '', { b: 5 }, { metadataMissing: true }),
 ];
 const islandText = { title: (island: Island) => island.id === 'other' ? 'Otros' : island.label ?? island.id, common: (count: number) => `${count} en común` };
-function show(lens: Lens, active = ['me', 'b'], listWorks = works, listPeople = people, words: IslandText = islandText) {
+function show(lens: Lens, active = ['me', 'b'], listWorks = works, listPeople = people, words: IslandText = islandText, mode: IslandMode = 'type') {
   const layouts = { quien: layoutQuien(listPeople, listWorks), opinion: layoutOpinion(listPeople, listWorks, active),
-    tiempo: layoutTiempo(listPeople, listWorks, active), islas: layoutIslands(listPeople, listWorks, active, 'type') };
+    tiempo: layoutTiempo(listPeople, listWorks, active), islas: layoutIslands(listPeople, listWorks, active, mode) };
   return render(<NextIntlClientProvider locale="es" messages={messages}>
     <AtlasList lens={lens} people={listPeople} works={listWorks} active={active} layouts={layouts} islandText={words}/>
   </NextIntlClientProvider>);
@@ -91,6 +91,16 @@ describe('AtlasList', () => {
       { ...islandText, ratingLabel: (name, _mean, count) => `${name}: ${count} notas` });
     expect(within(region()).getByText('Tú: 3 notas')).toBeTruthy();
     expect(within(region()).queryByText(/Bea:.*notas/)).toBeNull();
+  });
+  it('Islas: explica Otros bajo su encabezado sin repetir la descripción en islas identificadas', () => {
+    const explanation = '1 obra sin autor/director identificado';
+    const words: IslandText = { ...islandText, description: island => island.id === 'other' ? explanation : '' };
+    show('islas', ['me', 'b'], [work('book:1', 'Sin crédito', { me: 9, b: 8 }),
+      work('book:2', 'Con crédito', { me: 9, b: 8 }, { creators: [{ id: 'a', name: 'Autora', role: 'author' }] })], people, words, 'creator');
+    const heading = within(region()).getByRole('heading', { name: 'Otros' });
+    expect(heading.nextElementSibling?.textContent).toBe(explanation);
+    expect(within(region()).getAllByText(explanation)).toHaveLength(1);
+    expect(within(region()).getByRole('heading', { name: 'Autora' }).nextElementSibling?.textContent).not.toBe(explanation);
   });
   it('sin obras lo dice', () => {
     show('opinion', ['me']);

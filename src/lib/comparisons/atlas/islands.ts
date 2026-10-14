@@ -25,7 +25,8 @@ export function islandHeaderGeometry(meanCount: number, summary = true) {
 export type IslandFrame = { viewport: Viewport; insets: { top: number; bottom: number } };
 type IslandFraming = IslandFrame & { camera: Camera; ratingZoom: number; summaryZoom: number; titleZoom: number; contentKey: string };
 
-export type Island = Point & { id: string; label: string | null; r: number; core: number; keys: WorkKey[]; common: number; shared: number; means: { userId: string; mean: number; count?: number }[] };
+export type Island = Point & { id: string; label: string | null; r: number; core: number; keys: WorkKey[]; common: number; shared: number; means: { userId: string; mean: number; count?: number }[];
+  otherReasons?: { overflow: number; missing: number; unsupported: number } };
 export type IslandInstance = Point & { key: WorkKey; island: string };
 export type IslandsLayout = { mode: IslandMode; islands: Island[]; instances: IslandInstance[]; extent: Extent; framing?: IslandFraming };
 export type IslandsSummary = { kind: 'solo'; name: string } | { kind: 'none' } | { kind: 'onlyOther'; count: number } | { kind: 'best'; island: Island; count: number };
@@ -39,7 +40,7 @@ export function categoriesOf(work: AtlasWork, mode: IslandMode): { id: string; l
 }
 
 export function layoutIslands(people: AtlasPerson[], works: AtlasWork[], active: string[], mode: IslandMode, frame?: IslandFrame): IslandsLayout {
-  // With two or more faces, only what at least two of them share; with one, everything of hers.
+  // With two or more faces, only what every selected person has; with one, everything of hers.
   const touching = works.filter(work => comparable(work, active));
   const ranks = new Map<WorkKey, number>(touching.map(work => [work.key,
     workState(work, active).glow ? 0 : work.owners.filter(owner => active.includes(owner.userId)).length > 1 ? 1 : 2]));
@@ -59,9 +60,18 @@ export function layoutIslands(people: AtlasPerson[], works: AtlasWork[], active:
       .slice(0, ISLAND_LIMIT).map(([id]) => id);
   }
   const drawn = new Set(chosen);
-  const groups: { id: string; label: string | null; works: AtlasWork[] }[] = chosen.map(id => ({ id, label: buckets.get(id)!.label, works: buckets.get(id)!.works }));
+  const groups: { id: string; label: string | null; works: AtlasWork[]; otherReasons?: Island['otherReasons'] }[] = chosen.map(id => ({ id, label: buckets.get(id)!.label, works: buckets.get(id)!.works }));
   const rest = touching.filter(work => !categoriesOf(work, mode).some(category => drawn.has(category.id)));
-  if (rest.length) groups.push({ id: OTHER_ISLAND, label: null, works: rest });
+  if (rest.length) {
+    const otherReasons = { overflow: 0, missing: 0, unsupported: 0 };
+    // Each work contributes once, even if several of its categories fall outside the ten drawn islands.
+    for (const work of rest) {
+      if (mode === 'creator' && work.itemType === 'series') otherReasons.unsupported++;
+      else if (!categoriesOf(work, mode).length) otherReasons.missing++;
+      else otherReasons.overflow++;
+    }
+    groups.push({ id: OTHER_ISLAND, label: null, works: rest, otherReasons });
+  }
 
   const sized = groups.map(group => {
     const keys = group.works.toSorted((a, b) => rank(a) - rank(b) || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0)).map(work => work.key);
@@ -70,7 +80,7 @@ export function layoutIslands(people: AtlasPerson[], works: AtlasWork[], active:
       const notes = group.works.flatMap(work => { const r = work.owners.find(owner => owner.userId === person.id)?.rating; return r === null || r === undefined ? [] : [r]; });
       return notes.length >= 3 ? [{ userId: person.id, mean: notes.reduce((sum, value) => sum + value, 0) / notes.length, count: notes.length }] : [];
     });
-    return { id: group.id, label: group.label, keys, common, shared, means,
+    return { id: group.id, label: group.label, keys, common, shared, means, ...(group.otherReasons ? { otherReasons: group.otherReasons } : {}),
       r: ISLAND_STEP * Math.sqrt(keys.length) + 18, core: common ? ISLAND_STEP * Math.sqrt(common) + 14 : 0 };
   });
 

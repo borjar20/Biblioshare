@@ -7,13 +7,13 @@
       "lens": { "quien": "Quién", "opinion": "Opinión", "tiempo": "Tiempo", "islas": "Islas" },
       "caption": {
         "quien": "Las obras se agrupan entre las personas seleccionadas y se recolocan al cambiar tu selección. Acércate y los puntos se vuelven portadas.",
-        "opinion": "Solo lo que compartís con nota. A la derecha, lo que le gustó a la referencia; arriba, lo que gustó al resto. En la diagonal coincidís; lejos de ella, chocáis.",
-        "tiempo": "Una vía por persona a lo largo de los años, con lo que compartís. Los hilos unen la misma obra: verás quién llegó primero.",
-        "islas": "Lo que compartís, por tipo, género o autor. Medias con al menos tres notas: acércate para leerlas o abre la lista. Señala o toca una obra para seguir sus conexiones."
+        "opinion": "Obras compartidas y valoradas por todas las personas seleccionadas. Derecha: nota de la referencia; arriba: media del resto. En la diagonal coincidís. Desmarca personas para comparar a dos.",
+        "tiempo": "Una vía por persona con las obras de todas las personas seleccionadas. Los hilos unen cada obra: verás quién llegó primero. Desmarca personas para comparar a dos.",
+        "islas": "Obras de todas las personas seleccionadas, por tipo, género o autor. Medias con al menos tres notas. Acércate o abre la lista; toca una obra para seguir sus hilos. Desmarca para comparar a dos."
       },
       "opinion": {
         "needsTwo": "Elige al menos a dos personas para comparar notas.",
-        "empty": "{isMe, select, true {Aún no hay obras con tu nota y la de alguien más.} other {Aún no hay obras con nota de {ref} y de alguien más.}}",
+        "empty": "Aún no hay obras compartidas y valoradas por todas las personas seleccionadas. Si sois más de dos, desmarca personas para comparar a dos.",
         "counts": "Coincidís en <b>{agree}</b> y chocáis en <b>{clash}</b> de <b>{total}</b> {total, plural, one {obra compartida} other {obras compartidas}}",
         "countsWithRef": "Coincidís en <b>{agree}</b> y chocáis en <b>{clash}</b> de <b>{total}</b> {total, plural, one {obra compartida} other {obras compartidas}}, con {ref} como referencia",
         "axisRef": "{isMe, select, true {Tu nota} other {Nota de {ref}}} →",
@@ -37,9 +37,13 @@
         "mode": { "type": "Tipo", "genre": "Género", "creator": "Autor/Director" },
         "best": "Donde más os parecéis: <b>{label}</b>, con <b>{count}</b> en común",
         "none": "Aún no tenéis obras en común en ninguna isla",
-        "onlyOther": "Lo que tenéis en común (<b>{count}</b>) está en Otros: {mode, select, creator {no tiene autor ni director} other {no tiene género}} en el catálogo",
+        "onlyOther": "Lo que tenéis en común (<b>{count}</b>) está en Otros.",
         "solo": "Las islas de {name}. Suma a alguien para ver el cruce.",
         "other": "Otros",
+        "otherOutside": "{count, plural, one {# obra fuera de las diez islas principales} other {# obras fuera de las diez islas principales}}",
+        "otherMissingCreator": "{count, plural, one {# obra sin autor o director identificado} other {# obras sin autor o director identificado}}",
+        "otherMissingGenre": "{count, plural, one {# obra sin género identificado} other {# obras sin género identificado}}",
+        "otherSeries": "{count, plural, one {# serie no agrupada por autor o director} other {# series no agrupadas por autor o director}}",
         "common": "{count} en común",
         "ratingLabel": "{name}: media {mean} de {count, plural, one {# nota} other {# notas}}",
         "ratingWithoutCount": "{name}: media {mean}"

@@ -195,11 +195,11 @@ describe('estado por caras', () => {
     expect(workState(key('book:6'), ['a', 'b']).alpha).toBe(0.06);
     expect(workState(key('book:4'), ['a']).glow).toBe(false);
   });
-  it('grupo encendido si todos sus dueños están activos; con cifra solo si es compartido y tiene ≥3', () => {
+  it('grupo encendido si todos sus dueños están activos; todo grupo compartido tiene cifra e hilos', () => {
     const layout = layoutQuien(people, works);
     const ab = layout.clusters.find(c => c.id === 'a,b')!; const abc = layout.clusters.find(c => c.id === 'a,b,c')!;
-    expect(clusterState(ab, ['a', 'b'])).toEqual({ on: true, common: true, labelled: false });
-    expect(clusterState(abc, ['a', 'b'])).toEqual({ on: false, common: true, labelled: false });
+    expect(clusterState(ab, ['a', 'b'])).toEqual({ on: true, common: true, labelled: true });
+    expect(clusterState(abc, ['a', 'b'])).toEqual({ on: false, common: true, labelled: true });
     expect(clusterState(layout.clusters.find(c => c.id === 'a')!, ['a']).labelled).toBe(false);
   });
 });

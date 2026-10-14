@@ -5,6 +5,7 @@ import { initials } from '../presentation';
 import type { PaintView } from './atlas-palette';
 
 export type IslandText = { title: (island: Island) => string; common: (count: number) => string;
+  description?: (island: Island) => string;
   ratingValue?: (mean: number) => string;
   ratingLabel?: (name: string, mean: number, count?: number) => string };
 const TYPE_TINT = { book: 'book', movie: 'movie', series: 'series' } as const;

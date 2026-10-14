@@ -238,7 +238,7 @@ describe('AtlasCanvas', () => {
   });
   it('las portadas reales solo se piden con zoom de portada y se publican en data-atlas-covers', () => {
     const noop = () => {};
-    const fakeCtx = new Proxy({} as Record<string, unknown>, {
+    const fakeCtx = new Proxy({ createRadialGradient: () => ({ addColorStop: noop }) } as Record<string, unknown>, {
       get: (target, prop: string) => prop === 'measureText' ? () => ({ width: 1 }) : prop in target ? target[prop] : noop,
       set: (target, prop: string, value) => { target[prop] = value; return true; },
     });

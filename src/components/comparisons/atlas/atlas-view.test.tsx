@@ -302,10 +302,10 @@ describe('AtlasView', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Bea' })); fireEvent.click(screen.getByRole('button', { name: 'Carla' }));
     expect(summary()).toBe('Elige al menos a dos personas para comparar notas.');
   });
-  it('Opinión sin obras con nota de la referencia y de otra cara lo dice', () => {
+  it('Opinión sin obras compartidas y valoradas por todas las caras lo dice', () => {
     view();
     fireEvent.click(screen.getByRole('button', { name: 'Opinión' }));
-    expect(summary()).toBe('Aún no hay obras con tu nota y la de alguien más.');
+    expect(summary()).toBe('Aún no hay obras compartidas y valoradas por todas las personas seleccionadas. Si sois más de dos, desmarca personas para comparar a dos.');
   });
   it('Opinión sin Tú usa la primera cara como referencia y lo dice', () => {
     viewRated({ me: 9, b: 9, c: 4 });
@@ -366,7 +366,35 @@ describe('AtlasView', () => {
     expect(within(modes).getByRole('button', { name: 'Género' }).getAttribute('aria-pressed')).toBe('true');
     expect(summary()).toBe('Donde más os parecéis: Ciencia ficción, con 1 en común');
     fireEvent.click(within(modes).getByRole('button', { name: 'Autor/Director' }));
-    expect(summary()).toBe('Lo que tenéis en común (1) está en Otros: no tiene autor ni director en el catálogo');
+    expect(summary()).toBe('Lo que tenéis en común (1) está en Otros.');
+  });
+  it('Islas: distingue las causas de Otros y las conserva bajo su encabezado al abrir la lista', () => {
+    const catalog: Snapshot['catalog'] = [
+      ...Array.from({ length: 10 }, (_, i) => ({ key: `book:top${i}` as WorkKey, title: `Libro ${i}`, coverUrl: null, genres: [],
+        creators: [{ id: `a${i}`, name: `Autora ${i}`, role: 'author' as const }] })),
+      { key: 'book:overflow', title: 'Fuera de las diez', coverUrl: null, genres: [], creators: [{ id: 'z', name: 'Zeta', role: 'author' }] },
+      { key: 'book:missing', title: 'Sin crédito', coverUrl: null, genres: [], creators: [] },
+      { key: 'series:series', title: 'Serie', coverUrl: null, genres: [], creators: [] },
+    ];
+    const data: Snapshot = { ...snapshot, catalog,
+      works: catalog.flatMap(item => ['me', 'b', 'c'].map(userId => ({ userId, key: item.key, rating: null, date: null, orderUnknown: false, progress: null }))) };
+    viewWith(data, 'islas', 'creator');
+    const explanation = '1 obra fuera de las diez islas principales, 1 obra sin autor o director identificado y 1 serie no agrupada por autor o director';
+    expect(screen.getByText(`Otros: ${explanation}`)).toBeTruthy();
+    expect(screen.queryByText(/0 obras|0 series/)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Ver como lista' }));
+    const heading = screen.getByRole('heading', { name: 'Otros' });
+    expect(heading.nextElementSibling?.textContent).toBe(explanation);
+    expect(screen.getAllByText(explanation)).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Tipo' }));
+    expect(screen.queryByText(explanation)).toBeNull();
+  });
+  it('Islas: sin género muestra solo ese motivo y al cambiar de lente retira la nota', () => {
+    viewWith(snapshot, 'islas', 'genre');
+    expect(screen.getByText('Otros: 1 obra sin género identificado')).toBeTruthy();
+    expect(screen.queryByText(/fuera de las diez|serie no agrupada|sin autor o director/)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Quién' }));
+    expect(screen.queryByText('Otros: 1 obra sin género identificado')).toBeNull();
   });
   it('Islas: cambiar de modo cierra la hoja táctil abierta', () => {
     viewWith(withGenre, 'islas');
@@ -443,13 +471,16 @@ describe('AtlasView', () => {
     expect(within(list()).queryByText('Obra sin información de catálogo')).toBeNull();
     expect(within(list()).getByRole('link', { name: /Proyecto Salvación/ })).toBeTruthy();
   });
-  it('la lista sigue a la lente: en Opinión ordena por diferencia', () => {
+  it('la lista de Opinión excluye las parejas con tres caras y al desmarcar recupera su orden por diferencia', () => {
     const two: Snapshot = { ...snapshot, catalog: [...snapshot.catalog, { key: 'book:3', title: 'Solaris', coverUrl: null, genres: [], creators: [] }],
       works: [['me', 'book:1', 9], ['b', 'book:1', 8], ['me', 'book:3', 9], ['b', 'book:3', 2]]
         .map(([userId, key, rating]) => ({ userId: userId as string, key: key as WorkKey, rating: rating as number, date: null, orderUnknown: false, progress: null })) };
     viewWith(two, 'opinion');
     fireEvent.click(screen.getByRole('button', { name: 'Ver como lista' }));
     const list = screen.getByRole('region', { name: 'Lista de obras' });
+    expect(within(list).queryByRole('link')).toBeNull();
+    expect(within(list).getByText('No hay obras que mostrar con estas caras.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Carla' }));
     expect(within(list).getAllByRole('link').map(link => link.getAttribute('href'))).toEqual(['/libro/3', '/libro/1']);
   });
   it('con la lista ya abierta, montar la vista (cambio de formato) no le roba el foco', () => {

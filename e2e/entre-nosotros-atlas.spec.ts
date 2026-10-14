@@ -14,13 +14,13 @@ async function lensSettled(page: Page) {
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await settled(page);
 }
-async function openAtlas(page: Page, fixture: ComparisonFixture) {
+async function openAtlas(page: Page, fixture: ComparisonFixture, participants = fixture.actors) {
   await loginComparisonActor(page, fixture.actors[0]);
   await page.goto('/comunidad/entre-nosotros');
   await page.getByRole('button', { name: 'Crear tu primer grupo', exact: true }).click();
   const form = page.getByRole('form', { name: 'Crear grupo' });
   await form.getByLabel('Nombre del grupo').fill('Atlas QA');
-  await chooseComparisonParticipants(form, fixture.actors[0], fixture.actors);
+  await chooseComparisonParticipants(form, fixture.actors[0], participants);
   await form.getByRole('button', { name: 'Guardar grupo', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Grupo: Atlas QA', exact: true })).toBeVisible();
   await settled(page);
@@ -131,7 +131,8 @@ test('escritorio: Tiempo e Islas resumen lo dibujado y el modo de Islas cambia l
     await expect(summary(page)).toHaveText('Donde más os parecéis: Drama, con 30 en común');
     await modes.getByRole('button', { name: 'Autor/Director', exact: true }).click(); await lensSettled(page);
     // The fixture's authors are free text (not in `credits`): everything in common falls in «Otros».
-    await expect(summary(page)).toHaveText('Lo que tenéis en común (30) está en Otros: no tiene autor ni director en el catálogo');
+    await expect(summary(page)).toHaveText('Lo que tenéis en común (30) está en Otros.');
+    await expect(page.getByText('Otros: 30 obras sin autor o director identificado', { exact: true })).toBeVisible();
     await page.getByRole('group', { name: 'Filtrar por tipo de obra', exact: true }).getByRole('button', { name: 'Libros', exact: true }).click(); await lensSettled(page);
     await expect(modes.getByRole('button', { name: 'Tipo', exact: true })).toHaveCount(0);
   });
@@ -448,7 +449,10 @@ test('Islas vivas: cuatro islas con diez personas conservan espacio y la lista m
       const list = page.getByRole('region', { name: 'Lista de obras', exact: true });
       await expect(list.getByRole('heading')).toHaveCount(4);
       for (const genre of genres) await expect(list.getByRole('heading', { name: genre, exact: true })).toHaveCount(1);
-      const rating = list.getByText(`${longName}: media 10,0 de 30 notas`, { exact: true });
+      // Only the first three books are shared by all ten active people.
+      for (const book of fixture.books.slice(0, 3)) await expect(list.locator(`a[href="/libro/${book.id}"]`)).toHaveCount(4);
+      for (const book of fixture.books.slice(3)) await expect(list.locator(`a[href="/libro/${book.id}"]`)).toHaveCount(0);
+      const rating = list.getByText(`${longName}: media 10,0 de 3 notas`, { exact: true });
       await expect(rating).toHaveCount(4);
       const geometry = await list.evaluate(element => ({ width: element.clientWidth, scrollWidth: element.scrollWidth }));
       expect(geometry.scrollWidth, 'la lista completa cabe sin desplazamiento horizontal').toBeLessThanOrEqual(geometry.width);
@@ -465,4 +469,152 @@ test('Islas vivas: cuatro islas con diez personas conservan espacio y la lista m
     }, { integrated: true });
     expect(journal.errors, 'sin errores de consola ni excepciones del navegador').toEqual([]);
   } finally { await saveAtlasJournal(info, journal); }
+});
+
+type QuienDrawing = { counts: string[]; curves: number };
+
+test('Selección completa: grupos pequeños identificados y las tres lentes comparan ABC; desmarcar C recupera AB', async ({ page }, info) => {
+  await setAtlasViewport(page, info);
+  const journal = atlasJournal(page);
+  // Observe the actual canvas calls, preserving the engine and every drawn pixel.
+  await page.addInitScript(() => {
+    const observed = globalThis as unknown as { __quienDrawing: QuienDrawing };
+    observed.__quienDrawing = { counts: [], curves: 0 };
+    const clear = CanvasRenderingContext2D.prototype.clearRect;
+    CanvasRenderingContext2D.prototype.clearRect = function (this: CanvasRenderingContext2D, ...args: Parameters<typeof clear>) {
+      if (this.canvas.closest('[data-atlas-moving]')) observed.__quienDrawing = { counts: [], curves: 0 };
+      clear.apply(this, args);
+    };
+    const fillText = CanvasRenderingContext2D.prototype.fillText;
+    CanvasRenderingContext2D.prototype.fillText = function (this: CanvasRenderingContext2D, value: string, x: number, y: number, maxWidth?: number) {
+      if (this.canvas.closest('[data-atlas-moving]') && /^[123]$/.test(String(value))) observed.__quienDrawing.counts.push(String(value));
+      if (maxWidth === undefined) fillText.call(this, value, x, y);
+      else fillText.call(this, value, x, y, maxWidth);
+    };
+    const curve = CanvasRenderingContext2D.prototype.quadraticCurveTo;
+    CanvasRenderingContext2D.prototype.quadraticCurveTo = function (this: CanvasRenderingContext2D, ...args: Parameters<typeof curve>) {
+      if (this.canvas.closest('[data-atlas-moving]')) observed.__quienDrawing.curves++;
+      curve.apply(this, args);
+    };
+  });
+  try {
+    await withComparisonFixture(async fixture => {
+      const memberships = [[0, 1], [0, 2], [0, 2], [1, 2], [1, 2], [0, 1, 2], [0, 1, 2], [0, 1, 2]];
+      for (const [index, book] of fixture.books.entries()) {
+        if (index >= memberships.length) {
+          await comparisonRest(`passes?item_id=eq.${book.id}`, { method: 'DELETE' });
+          continue;
+        }
+        for (const [actorIndex, actor] of fixture.actors.entries()) if (!memberships[index].includes(actorIndex)) {
+          await comparisonRest(`passes?user_id=eq.${actor.id}&item_id=eq.${book.id}`, { method: 'DELETE' });
+        }
+        await comparisonRest(`passes?item_id=eq.${book.id}`, { method: 'PATCH', body: JSON.stringify({ finished_on: `2026-${String(index + 1).padStart(2, '0')}-01` }) });
+      }
+      await comparisonRest(`passes?user_id=eq.${fixture.actors[2].id}&item_id=eq.${fixture.books[5].id}`, { method: 'PATCH', body: JSON.stringify({ rating: null }) });
+      await comparisonRest(`passes?user_id=eq.${fixture.actors[2].id}&item_id=eq.${fixture.books[6].id}`, { method: 'PATCH', body: JSON.stringify({ finished_on: null }) });
+      await openAtlas(page, fixture);
+      await expect(summary(page)).toHaveText('3 obras en común entre Tú, Beatriz QA y Carlos QA');
+      const drawing = await page.evaluate(() => (globalThis as unknown as { __quienDrawing: QuienDrawing }).__quienDrawing);
+      expect(drawing.counts.toSorted(), 'también las regiones de una y dos obras dibujan su cifra').toEqual(['1', '2', '2', '3']);
+      expect(drawing.curves, 'cada región compartida dibuja un hilo hacia cada dueño').toBe(9);
+      await info.attach('quien-small-group-drawing', { body: JSON.stringify(drawing, null, 2), contentType: 'application/json' });
+      await atlasEvidence(page, info, 'quien-grupos-uno-dos');
+      const lenses = page.getByRole('group', { name: 'Lente', exact: true });
+      const listToggle = page.getByRole('button', { name: 'Ver como lista', exact: true });
+      const lensCases = [
+        { lens: 'Opinión', triple: [6, 7], pair: [0, 5, 6, 7], summary3: 'Coincidís en 2 y chocáis en 0 de 2 obras compartidas', summary2: 'Coincidís en 4 y chocáis en 0 de 4 obras compartidas' },
+        { lens: 'Tiempo', triple: [5, 6, 7], pair: [0, 5, 6, 7], summary3: 'Llegaste tú primero a 2 de 2 obras compartidas (1 sin fecha)', summary2: 'Llegaste tú primero a 4 de 4 obras compartidas' },
+        { lens: 'Islas', triple: [5, 6, 7], pair: [0, 5, 6, 7], summary3: 'Donde más os parecéis: Libros, con 3 en común', summary2: 'Donde más os parecéis: Libros, con 4 en común' },
+      ];
+      const assertWorks = async (indices: number[]) => {
+        const keys = indices.map(index => `book:${fixture.books[index].id}`).toSorted();
+        expect((await probe(page)).map(work => work.key).toSorted(), 'el mapa sólo contiene la intersección seleccionada').toEqual(keys);
+        await listToggle.click();
+        const list = page.getByRole('region', { name: 'Lista de obras', exact: true });
+        await expect(list.locator('a[href^="/libro/"]')).toHaveCount(indices.length);
+        for (const [index, book] of fixture.books.entries()) await expect(list.locator(`a[href="/libro/${book.id}"]`)).toHaveCount(indices.includes(index) ? 1 : 0);
+        await listToggle.click(); await lensSettled(page);
+      };
+      for (const lensCase of lensCases) {
+        await lenses.getByRole('button', { name: lensCase.lens, exact: true }).click(); await lensSettled(page);
+        await expect(summary(page)).toHaveText(lensCase.summary3);
+        await assertWorks(lensCase.triple);
+        await atlasEvidence(page, info, `${lensCase.lens.toLowerCase()}-abc`);
+        if (lensCase.lens === 'Tiempo') {
+          const box = (await page.locator('[data-atlas-moving] canvas').boundingBox())!;
+          const work = (await probe(page)).find(point => point.key === `book:${fixture.books[6].id}`)!;
+          if (info.project.name === 'mobile') {
+            await page.touchscreen.tap(box.x + work.x, box.y + work.y);
+            const sheet = page.getByRole('dialog', { name: fixture.books[6].title, exact: true });
+            await expect(sheet.getByText('Carlos QA: sin fecha', { exact: true })).toBeVisible();
+            await expect(sheet.getByText('Tú: 2026', { exact: true })).toBeVisible();
+            await sheet.getByRole('button', { name: 'Cerrar', exact: true }).click();
+          } else {
+            await page.mouse.move(box.x + work.x, box.y + work.y);
+            await expect(page.getByText('Carlos QA: sin fecha', { exact: true })).toBeAttached();
+            await expect(page.getByText('Tú: 2026', { exact: true })).toBeAttached();
+            await page.mouse.move(1, 1);
+          }
+        }
+        await faceButton(page, 'Carlos QA').click(); await lensSettled(page);
+        await expect(summary(page)).toHaveText(lensCase.summary2);
+        await assertWorks(lensCase.pair);
+        await atlasEvidence(page, info, `${lensCase.lens.toLowerCase()}-ab`);
+        await faceButton(page, 'Carlos QA').click(); await lensSettled(page);
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'sin scroll horizontal').toBe(true);
+    });
+    expect(journal.errors, 'sin errores de consola ni excepciones del navegador').toEqual([]);
+  } finally { await saveAtlasJournal(info, journal); }
+});
+
+/** Credits are polymorphic: delete the owned credits and people even after an interrupted fixture. */
+async function clearAtlasCreators() {
+  const people = await (await comparisonRest('people?name=like.qa_comp_motion_author_*&select=id,name')).json() as { id: string; name: string }[];
+  for (const person of people) {
+    if (!/^qa_comp_motion_author_\d{2}$/.test(person.name)) throw new Error('Unrecognized atlas creator fixture');
+    await comparisonRest(`credits?person_id=eq.${person.id}`, { method: 'DELETE' });
+    await comparisonRest(`people?id=eq.${person.id}`, { method: 'DELETE' });
+  }
+  expect(await (await comparisonRest('people?name=like.qa_comp_motion_author_*&select=id')).json(), 'disposable creators removed').toEqual([]);
+}
+
+test('Otros explica autores fuera del top diez, créditos sin identificar y series en mapa y lista', async ({ page }, info) => {
+  await page.setViewportSize(info.project.name === 'mobile' ? { width: 360, height: 844 } : { width: 1280, height: 800 });
+  const journal = atlasJournal(page);
+  try {
+    await clearAtlasCreators();
+    await withComparisonFixture(async fixture => {
+      const authors = Array.from({ length: 11 }, (_, index) => ({ id: crypto.randomUUID(), name: `qa_comp_motion_author_${String(index).padStart(2, '0')}` }));
+      await comparisonRest('people', { method: 'POST', body: JSON.stringify(authors) });
+      await comparisonRest('credits', { method: 'POST', body: JSON.stringify(authors.map((author, index) => ({ item_type: 'book', item_id: fixture.books[index].id, person_id: author.id, role: 'author' }))) });
+      await openAtlas(page, fixture, fixture.actors.slice(0, 3));
+      await page.getByRole('group', { name: 'Lente', exact: true }).getByRole('button', { name: 'Islas', exact: true }).click(); await lensSettled(page);
+      await page.getByRole('group', { name: 'Agrupar islas por', exact: true }).getByRole('button', { name: 'Autor/Director', exact: true }).click(); await lensSettled(page);
+      const reasons = '1 obra fuera de las diez islas principales, 20 obras sin autor o director identificado y 1 serie no agrupada por autor o director';
+      await expect(page.getByText(`Otros: ${reasons}`, { exact: true })).toBeVisible();
+      const geometry = await page.locator('[data-comparison-stage]').evaluate(stage => {
+        const overlay = stage.querySelector('[role="status"]')!.parentElement!.parentElement!.getBoundingClientRect();
+        const dock = stage.querySelector('[aria-label="Lente"]')!.parentElement!.getBoundingClientRect();
+        return { overlayBottom: overlay.bottom, dockTop: dock.top, width: document.documentElement.scrollWidth, viewport: innerWidth };
+      });
+      expect(geometry.overlayBottom, 'la explicación de Otros deja una banda de mapa antes del dock').toBeLessThan(geometry.dockTop - 40);
+      expect(geometry.width, 'sin scroll horizontal con la explicación de tres causas').toBeLessThanOrEqual(geometry.viewport);
+      expect((await probe(page)).length, 'el mapa contiene obras visibles tras medir el overlay').toBeGreaterThan(0);
+      await info.attach('other-map-geometry', { body: JSON.stringify(geometry, null, 2), contentType: 'application/json' });
+      await atlasEvidence(page, info, 'otros-tres-causas-mapa');
+      await page.getByRole('button', { name: 'Ver como lista', exact: true }).click();
+      const list = page.getByRole('region', { name: 'Lista de obras', exact: true });
+      await expect(list.getByRole('heading')).toHaveCount(11);
+      const otherSection = list.getByRole('heading', { name: 'Otros', exact: true }).locator('..');
+      await expect(otherSection.getByText(reasons, { exact: true })).toBeAttached();
+      await expect(otherSection.locator('a[href^="/libro/"]')).toHaveCount(20);
+      await expect(otherSection.locator(`a[href="/pelicula/${fixture.movie!.id}"]`)).toHaveCount(1);
+      await expect(otherSection.locator(`a[href="/serie/${fixture.series!.id}"]`)).toHaveCount(1);
+      await expect(otherSection.locator(`a[href="/libro/${fixture.books[10].id}"]`), 'el undécimo autor identificado cae en Otros por límite, no por crédito ausente').toHaveCount(1);
+      await otherSection.getByRole('heading', { name: 'Otros', exact: true }).scrollIntoViewIfNeeded();
+      await atlasEvidence(page, info, 'otros-tres-causas-lista');
+    }, { integrated: true });
+    expect(journal.errors, 'sin errores de consola ni excepciones del navegador').toEqual([]);
+  } finally { await clearAtlasCreators(); await saveAtlasJournal(info, journal); }
 });

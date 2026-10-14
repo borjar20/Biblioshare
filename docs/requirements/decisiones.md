@@ -7878,3 +7878,37 @@ Mejora implementada localmente sobre [PR #1529](https://github.com/borjar20/Bibl
 sin cambios de esquema ni de autenticación. La [evidencia local](../testing/2026-10-14-entre-nosotros-atlas-vivo.md)
 recoge 368 unitarios, TypeScript, lint focal, build de producción y ocho recorridos
 de navegador verificados. Integración y despliegue en producción pendientes.
+
+## 2026-10-14 — Entre nosotros: selección completa y motivos de Otros
+
+Opinión, Tiempo e Islas comparan la intersección de **todas** las caras activas.
+Con A, B y C seleccionadas solo entran obras de A+B+C; para comparar A+B se
+desmarca C. Esta decisión sustituye el criterio de «al menos dos» de la entrada
+«Ajustes del atlas tras probarlo con datos reales» de este mismo día, que se
+conserva como antecedente. Escena, resúmenes y lista aplican la misma selección.
+Sin caras activas no hay obras comparables; con una, Tiempo e Islas muestran
+sus obras y Opinión sigue necesitando al menos dos.
+
+Opinión exige una nota explícita de cada cara seleccionada: tener una obra sin
+valoración no permite presentar una comparación de pareja como una de tres.
+Tiempo conserva las fechas disponibles de las obras comunes, cuenta las
+ausentes y excluye esas obras del cálculo de primeras llegadas; no inventa
+fechas ni reduce silenciosamente la selección. Quién sigue mostrando las
+pertenencias del mapa y todos sus cruces compartidos, incluso de una o dos
+obras, llevan cifra e hilos hacia sus dueños. Al apagar un cruce ambos quedan
+tenues; las obras de una sola persona siguen junto a su polo.
+
+«Otros» explica por qué una obra no tiene isla propia. En Autor/Director
+distingue tres motivos: sus créditos identificados quedan fuera de las diez
+categorías principales, falta una identidad canónica de autor o director,
+o es una serie, que este modo no agrupa por creador. En Género distingue el
+límite de categorías y la ausencia de género. Cada obra aporta un único
+motivo, aunque tenga varios créditos; si al menos uno pertenece a una
+categoría elegida, la obra no entra en Otros. La explicación y los recuentos
+coinciden en mapa y lista. Se mantienen el top diez, las consultas y los
+créditos canónicos con id y nombre; el texto libre de autor o director no
+se convierte en identidad de persona.
+
+Implementación y verificación local en [PR #1529](https://github.com/borjar20/Biblioshare/pull/1529),
+sin cambios de esquema, RLS ni caché. [Evidencia de selección completa](../testing/2026-10-14-entre-nosotros-atlas-seleccion-completa.md);
+integración y despliegue en producción pendientes.

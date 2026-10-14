@@ -39,6 +39,11 @@ export function AtlasList({ ref, lens, people, works, active, layouts, islandTex
   const island = (id: string) => islands.get(id);
   const heading = (value: ListHeading): ReactNode => value.kind === 'owners' ? join(value.ids)
     : value.kind === 'island' ? (island(value.islandId) ? islandText.title(island(value.islandId)!) : null) : null;
+  function islandDescription(value: ListHeading): ReactNode {
+    const found = value.kind === 'island' ? island(value.islandId) : undefined;
+    const description = found && islandText.description?.(found);
+    return description ? <p className={styles.listDetail}>{description}</p> : null;
+  }
   const reference = layouts.opinion.reference === null ? '' : names.get(layouts.opinion.reference) ?? '';
   function islandRatings(value: ListHeading): ReactNode {
     if (value.kind !== 'island') return null;
@@ -78,6 +83,7 @@ export function AtlasList({ ref, lens, people, works, active, layouts, islandTex
     style={insets ? { paddingTop: insets.top + SCRIM, paddingBottom: insets.bottom } : undefined}>
     {sections.length === 0 ? <p className={styles.listEmpty}>{t('atlas.list.empty')}</p> : sections.map(section => <div key={section.id} className={styles.listSection}>
       {section.heading.kind !== 'plain' && <h3 className={styles.listHeading}>{heading(section.heading)}</h3>}
+      {islandDescription(section.heading)}
       {islandRatings(section.heading)}
       <ul className={styles.listItems}>{section.keys.map(key => byKey.get(key)).map(work => work && <li key={work.key}>{item(work)}</li>)}</ul>
     </div>)}
