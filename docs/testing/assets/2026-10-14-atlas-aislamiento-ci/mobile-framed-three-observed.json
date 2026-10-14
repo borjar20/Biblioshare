@@ -1,0 +1,218 @@
+{
+  "build": "lC6hCPgn3mzY1Vt5aWBWu",
+  "sourceReport": "test-results/atlas-aislamiento-reports/mobile-framed-three-run.json (local, no versionado)",
+  "phase": "Fechas trimestrales + pan real, misma key en banda útil",
+  "cases": [
+    {
+      "roundIndex": 0,
+      "project": "mobile",
+      "status": "passed",
+      "duration_ms": 25253,
+      "retry": 0,
+      "errors": [],
+      "measurements": {
+        "Quién": {
+          "zoom": 0.7,
+          "coversAt07": 0,
+          "minWidthAt07": null,
+          "cornerHit": null,
+          "viewport360": null
+        },
+        "Opinión": {
+          "zoom": 0.7,
+          "coversAt07": 7,
+          "minWidthAt07": 12,
+          "cornerHit": {
+            "key": "book:0b2a5ffe-ef44-4aa0-aebd-f709f69d8ef4",
+            "width": 47.6000018106013,
+            "height": 69.02000262537189
+          },
+          "viewport360": null
+        },
+        "Tiempo": {
+          "zoom": 0.7,
+          "coversAt07": 24,
+          "minWidthAt07": 12,
+          "cornerHit": {
+            "key": "book:0b2a5ffe-ef44-4aa0-aebd-f709f69d8ef4",
+            "width": 39.97397069353948,
+            "height": 58.05743362633114
+          },
+          "viewport360": {
+            "zoom": 0.701,
+            "minCoverWidth": 12,
+            "visibleCovers": 24
+          }
+        },
+        "Islas": {
+          "zoom": 0.7,
+          "coversAt07": 0,
+          "minWidthAt07": null,
+          "cornerHit": null,
+          "viewport360": null
+        }
+      },
+      "journal": {
+        "errors": [],
+        "failures": [
+          "GET /comunidad: net::ERR_ABORTED",
+          "GET /buscar: net::ERR_ABORTED",
+          "GET /u/qa_comp_motion_a: net::ERR_ABORTED",
+          "GET /buscar: net::ERR_ABORTED",
+          "GET /comunidad: net::ERR_ABORTED",
+          "POST /login: net::ERR_ABORTED",
+          "POST /: net::ERR_ABORTED",
+          "POST /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /libro/0b2a5ffe-ef44-4aa0-aebd-f709f69d8ef4: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED"
+        ]
+      }
+    },
+    {
+      "roundIndex": 1,
+      "project": "mobile",
+      "status": "passed",
+      "duration_ms": 23000,
+      "retry": 0,
+      "errors": [],
+      "measurements": {
+        "Quién": {
+          "zoom": 0.7,
+          "coversAt07": 0,
+          "minWidthAt07": null,
+          "cornerHit": null,
+          "viewport360": null
+        },
+        "Opinión": {
+          "zoom": 0.7,
+          "coversAt07": 9,
+          "minWidthAt07": 12,
+          "cornerHit": {
+            "key": "book:024a789f-cf7e-4fb4-87ab-b819117d9b30",
+            "width": 47.6000018106013,
+            "height": 69.02000262537189
+          },
+          "viewport360": null
+        },
+        "Tiempo": {
+          "zoom": 0.7,
+          "coversAt07": 24,
+          "minWidthAt07": 12,
+          "cornerHit": {
+            "key": "book:024a789f-cf7e-4fb4-87ab-b819117d9b30",
+            "width": 39.97397069353948,
+            "height": 58.05743362633114
+          },
+          "viewport360": {
+            "zoom": 0.701,
+            "minCoverWidth": 12,
+            "visibleCovers": 24
+          }
+        },
+        "Islas": {
+          "zoom": 0.7,
+          "coversAt07": 0,
+          "minWidthAt07": null,
+          "cornerHit": null,
+          "viewport360": null
+        }
+      },
+      "journal": {
+        "errors": [],
+        "failures": [
+          "GET /comunidad: net::ERR_ABORTED",
+          "GET /buscar: net::ERR_ABORTED",
+          "GET /: net::ERR_ABORTED",
+          "POST /: net::ERR_ABORTED",
+          "GET /u/qa_comp_motion_a: net::ERR_ABORTED",
+          "GET /: net::ERR_ABORTED",
+          "GET /: net::ERR_ABORTED",
+          "POST /login: net::ERR_ABORTED",
+          "GET /coleccion: net::ERR_ABORTED",
+          "POST /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /libro/024a789f-cf7e-4fb4-87ab-b819117d9b30: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED"
+        ]
+      }
+    },
+    {
+      "roundIndex": 2,
+      "project": "mobile",
+      "status": "passed",
+      "duration_ms": 21378,
+      "retry": 0,
+      "errors": [],
+      "measurements": {
+        "Quién": {
+          "zoom": 0.7,
+          "coversAt07": 0,
+          "minWidthAt07": null,
+          "cornerHit": null,
+          "viewport360": null
+        },
+        "Opinión": {
+          "zoom": 0.7,
+          "coversAt07": 8,
+          "minWidthAt07": 12,
+          "cornerHit": {
+            "key": "book:142795da-6f0d-4ba0-8f05-dd5da54374a1",
+            "width": 47.6000018106013,
+            "height": 69.02000262537189
+          },
+          "viewport360": null
+        },
+        "Tiempo": {
+          "zoom": 0.7,
+          "coversAt07": 26,
+          "minWidthAt07": 12,
+          "cornerHit": {
+            "key": "book:142795da-6f0d-4ba0-8f05-dd5da54374a1",
+            "width": 39.97397069353948,
+            "height": 58.05743362633114
+          },
+          "viewport360": {
+            "zoom": 0.701,
+            "minCoverWidth": 12,
+            "visibleCovers": 24
+          }
+        },
+        "Islas": {
+          "zoom": 0.7,
+          "coversAt07": 0,
+          "minWidthAt07": null,
+          "cornerHit": null,
+          "viewport360": null
+        }
+      },
+      "journal": {
+        "errors": [],
+        "failures": [
+          "GET /comunidad: net::ERR_ABORTED",
+          "GET /buscar: net::ERR_ABORTED",
+          "GET /: net::ERR_ABORTED",
+          "GET /buscar: net::ERR_ABORTED",
+          "GET /u/qa_comp_motion_a: net::ERR_ABORTED",
+          "POST /login: net::ERR_ABORTED",
+          "POST /: net::ERR_ABORTED",
+          "GET /comunidad: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED"
+        ]
+      }
+    }
+  ]
+}

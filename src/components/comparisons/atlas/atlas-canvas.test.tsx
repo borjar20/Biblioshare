@@ -8,7 +8,7 @@ import { layoutOpinion } from '@/lib/comparisons/atlas/opinion';
 import { layoutTiempo } from '@/lib/comparisons/atlas/tiempo';
 import { layoutIslands } from '@/lib/comparisons/atlas/islands';
 import type { AtlasPerson, AtlasWork } from '@/lib/comparisons/atlas/types';
-import { buildScene, type Lens } from '@/lib/comparisons/atlas/scene';
+import { buildScene, type Lens, type SceneTarget } from '@/lib/comparisons/atlas/scene';
 import { fit } from '@/lib/comparisons/atlas/camera';
 import { createRef } from 'react';
 import { AtlasCanvas, type AtlasCanvasHandle } from './atlas-canvas';
@@ -364,9 +364,12 @@ describe('AtlasCanvas', () => {
       const k0 = Number(host.dataset.atlasZoom);
       // One wheel step straight to cover zoom: a single frame follows it, which may request only 24 covers.
       fireEvent.wheel(canvas, { deltaY: -Math.log(1.3 / k0) / 0.0018, clientX: 400, clientY: 300 });
+      oneFrame();
+      expect(created).toHaveLength(24);
       flush();
       expect(Number(host.dataset.atlasZoom)).toBeGreaterThan(1.1);
       expect(created.length).toBeGreaterThan(24);
+      expect(frames).toHaveLength(0);
     });
   });
   describe('teclado y cámara recordada', () => {
@@ -512,6 +515,102 @@ describe('AtlasCanvas', () => {
     vi.spyOn(Element.prototype, 'clientWidth', 'get').mockReturnValue(1280);
     rerender(<AtlasCanvas {...base} {...make(1280)} ref={handle}/>); flush();
     expect(handle.current!.camera()).toEqual(ownCamera);
+  });
+});
+describe('legibilidad y alcance de las obras', () => {
+  function drawItem(lens: Lens, k: number, point = { x: 0, y: 0 }, options: { targets?: Map<string, SceneTarget>; extras?: AtlasWork[] } = {}) {
+    const noop = () => {};
+    const roundRect = vi.fn(), arc = vi.fn();
+    const fakeCtx = new Proxy({ roundRect, arc } as Record<string, unknown>, {
+      get: (target, prop: string) => prop === 'measureText' ? () => ({ width: 1 })
+        : prop === 'createRadialGradient' ? () => ({ addColorStop: noop }) : prop in target ? target[prop] : noop,
+      set: (target, prop: string, value) => { target[prop] = value; return true; },
+    });
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(fakeCtx as unknown as CanvasRenderingContext2D);
+    const created: { src: string }[] = [];
+    vi.stubGlobal('Image', class { src = ''; onload = null; onerror = null; decoding = ''; constructor() { created.push(this); } });
+    const item = { ...works[0], coverUrl: 'https://covers.openlibrary.org/b/id/1-M.jpg' };
+    const customScene = { ...scene, lens, targets: options.targets ?? new Map([[item.key, { ...point, key: item.key, alpha: 1, glow: false, diff: lens === 'opinion' ? 0 : null }]]), links: [] };
+    const activate = vi.fn(), hover = vi.fn();
+    const canvasProps = { label: 'Mapa', people, works: [item, ...options.extras ?? []], active: ['a', 'b'], scene: customScene,
+      quien: layout, tiempo: tiempoLayout, islas: islasLayout, initialCamera: { x: 0, y: 0, k }, countLabel: String,
+      onTogglePerson: () => {}, onHover: hover, onActivate: activate };
+    const { container, rerender } = render(<AtlasCanvas {...canvasProps}/>);
+    flush();
+    const canvas = container.querySelector('canvas')!;
+    vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue({ left: 0, top: 0 } as DOMRect);
+    return { created, roundRect, arc, canvas, activate, hover, canvasProps, rerender };
+  }
+
+  it.each(['opinion', 'tiempo'] as Lens[])('%s muestra y pide la portada a zoom 0.7 con un mínimo legible', lens => {
+    const { created, roundRect } = drawItem(lens, 0.7);
+    expect(created).toHaveLength(1);
+    const cover = roundRect.mock.calls.find(([, , , , radius]) => Math.abs(radius - 1.28) < 0.00001)!;
+    expect(cover[2]).toBeCloseTo(12);
+    expect(cover[3] / cover[2]).toBeCloseTo(1.45, 2);
+    expect(frames).toHaveLength(0);
+  });
+  it.each(['quien', 'islas'] as Lens[])('%s conserva los puntos a zoom 0.7 sin pedir portadas', lens => {
+    expect(drawItem(lens, 0.7).created).toHaveLength(0);
+  });
+  it.each(['opinion', 'tiempo'] as Lens[])('%s conserva el modo punto hasta el umbral 0.6', lens => {
+    expect(drawItem(lens, 0.6).created).toHaveLength(0);
+  });
+  it.each([
+    { lens: 'tiempo', width: 23.52, height: 34.16 }, { lens: 'opinion', width: 28, height: 40.6 },
+  ] as const)('$lens pinta la portada un 40 % mayor a igual zoom', ({ lens, width, height }) => {
+    const { roundRect } = drawItem(lens, 2);
+    const cover = roundRect.mock.calls.find(([, , , , radius]) => Math.abs(radius - 1.8) < 0.00001)!;
+    expect(cover[2]).toBeCloseTo(width);
+    expect(cover[3]).toBeCloseTo(height);
+  });
+  it('aumenta también el punto compartido un 40 % antes de mostrar portadas', () => {
+    const { arc } = drawItem('tiempo', 0.5);
+    const dot = arc.mock.calls.find(([x, y]) => x === 400 && y === 300)!;
+    expect(dot[2]).toBeCloseTo(3.332);
+  });
+  it('una esquina visible de una portada ampliada sigue respondiendo a hover y toque', () => {
+    const { canvas, activate, hover } = drawItem('tiempo', 16);
+    const corner = { clientX: 490, clientY: 433, pointerType: 'mouse', pointerId: 1 };
+    fireEvent.pointerMove(canvas, corner);
+    expect(hover).toHaveBeenLastCalledWith(expect.objectContaining({ key: 'book:1' }));
+    fireEvent.pointerDown(canvas, corner); fireEvent.pointerUp(canvas, corner);
+    expect(activate).toHaveBeenLastCalledWith(expect.objectContaining({ key: 'book:1' }), 'mouse');
+  });
+  const target = (key: WorkKey, x: number, alpha = 1): SceneTarget => ({ key, x, y: 0, alpha, glow: false, diff: null });
+  it('entre portadas superpuestas elige el centro más próximo y, en un empate, la aparición posterior', () => {
+    const second: AtlasWork = { ...works[0], key: 'book:2' };
+    const { canvas, hover } = drawItem('tiempo', 2, undefined, { extras: [second], targets: new Map([
+      ['book:1', target('book:1', 0)], ['book:2', target('book:2', 4)],
+    ]) });
+    fireEvent.pointerMove(canvas, { clientX: 402, clientY: 300, pointerType: 'mouse' });
+    expect(hover).toHaveBeenLastCalledWith(expect.objectContaining({ key: 'book:1' }));
+    fireEvent.pointerMove(canvas, { clientX: 404, clientY: 300, pointerType: 'mouse' });
+    expect(hover).toHaveBeenLastCalledWith(expect.objectContaining({ key: 'book:2' }));
+  });
+  it.each([{ alpha: 0.49, expected: 'book:1' }, { alpha: 0.5, expected: 'book:2' }])('el alcance respeta el mínimo de alfa: $alpha → $expected', ({ alpha, expected }) => {
+    const second: AtlasWork = { ...works[0], key: 'book:2' };
+    const { canvas, hover } = drawItem('tiempo', 2, undefined, { extras: [second], targets: new Map([
+      ['book:1', target('book:1', 0)], ['book:2', target('book:2', 2, alpha)],
+    ]) });
+    fireEvent.pointerMove(canvas, { clientX: 404, clientY: 300, pointerType: 'mouse' });
+    expect(hover).toHaveBeenLastCalledWith(expect.objectContaining({ key: expected }));
+  });
+  it('una aparición que está volviendo a casa deja de responder aunque siga visible', () => {
+    const { canvas, hover, canvasProps, rerender } = drawItem('tiempo', 2, undefined, { targets: new Map([
+      ['book:1', target('book:1', 0)], ['book:1@b', target('book:1', 40)],
+    ]) });
+    fireEvent.pointerMove(canvas, { clientX: 480, clientY: 300, pointerType: 'mouse' });
+    expect(hover).toHaveBeenLastCalledWith(expect.objectContaining({ key: 'book:1' }));
+    rerender(<AtlasCanvas {...canvasProps} scene={{ ...canvasProps.scene, targets: new Map([['book:1', target('book:1', 0)]]) }}/>);
+    // Before the next frame, the extra is still at its old place and fully visible, but marked as dying.
+    fireEvent.pointerMove(canvas, { clientX: 480, clientY: 300, pointerType: 'mouse' });
+    expect(hover).toHaveBeenLastCalledWith(null);
+  });
+  it.each([{ x: -475 / 16, y: 0 }, { x: 0, y: -400 / 16 }])('pinta y pide la portada que asoma aunque su centro esté fuera del margen antiguo: %j', point => {
+    const { created, roundRect } = drawItem('tiempo', 16, point);
+    expect(created).toHaveLength(1);
+    expect(roundRect.mock.calls.some(([, , width]) => Math.abs(width - 188.16) < 0.00001)).toBe(true);
   });
 });
 const pick = ({ x, y, k }: { x: number; y: number; k: number }) => ({ x, y, k });

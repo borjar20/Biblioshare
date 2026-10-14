@@ -1,0 +1,134 @@
+{
+  "measurements": {
+    "Quién": {
+      "width": 336,
+      "scrollWidth": 336,
+      "rows": [
+        "Tú 8/10",
+        "Beatriz QA con un nombre extraordinariamente largo 4/10",
+        "Carlos QA sin nota"
+      ],
+      "text": [
+        {
+          "width": 9,
+          "scrollWidth": 9
+        },
+        {
+          "width": 190,
+          "scrollWidth": 190
+        },
+        {
+          "width": 9,
+          "scrollWidth": 9
+        },
+        {
+          "width": 190,
+          "scrollWidth": 190
+        },
+        {
+          "width": 9,
+          "scrollWidth": 9
+        },
+        {
+          "width": 190,
+          "scrollWidth": 190
+        }
+      ]
+    },
+    "Tiempo": {
+      "width": 336,
+      "scrollWidth": 336,
+      "rows": [
+        "Tú: 2026 8/10",
+        "Beatriz QA con un nombre extraordinariamente largo: 2026 4/10",
+        "Carlos QA: sin fecha sin nota"
+      ],
+      "text": [
+        {
+          "width": 9,
+          "scrollWidth": 9
+        },
+        {
+          "width": 190,
+          "scrollWidth": 190
+        },
+        {
+          "width": 9,
+          "scrollWidth": 9
+        },
+        {
+          "width": 190,
+          "scrollWidth": 190
+        },
+        {
+          "width": 9,
+          "scrollWidth": 9
+        },
+        {
+          "width": 190,
+          "scrollWidth": 190
+        }
+      ]
+    },
+    "Islas": {
+      "width": 336,
+      "scrollWidth": 336,
+      "rows": [
+        "Tú 8/10",
+        "Beatriz QA con un nombre extraordinariamente largo 4/10",
+        "Carlos QA sin nota"
+      ],
+      "text": [
+        {
+          "width": 9,
+          "scrollWidth": 9
+        },
+        {
+          "width": 190,
+          "scrollWidth": 190
+        },
+        {
+          "width": 9,
+          "scrollWidth": 9
+        },
+        {
+          "width": 190,
+          "scrollWidth": 190
+        },
+        {
+          "width": 9,
+          "scrollWidth": 9
+        },
+        {
+          "width": 190,
+          "scrollWidth": 190
+        }
+      ]
+    }
+  },
+  "journal": {
+    "errors": [],
+    "failures": [
+      "GET /comunidad: net::ERR_ABORTED",
+      "GET /buscar: net::ERR_ABORTED",
+      "GET /: net::ERR_ABORTED",
+      "GET /comunidad: net::ERR_ABORTED",
+      "GET /_next/static/chunks/203f8ywxvb7aa.js: net::ERR_ABORTED",
+      "GET /buscar: net::ERR_ABORTED",
+      "POST /: net::ERR_ABORTED",
+      "GET /_next/static/chunks/3x261o93uy504.js: net::ERR_ABORTED",
+      "GET /_next/static/chunks/17b1bnpkje82g.js: net::ERR_ABORTED",
+      "GET /: net::ERR_ABORTED",
+      "GET /_next/static/chunks/289tdhhagej62.js: net::ERR_ABORTED",
+      "POST /login: net::ERR_ABORTED",
+      "GET /signup: net::ERR_ABORTED",
+      "POST /comunidad/entre-nosotros: net::ERR_ABORTED",
+      "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+      "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+      "GET /libro/45937388-5dc4-4e5f-89bf-40458767d0f6: net::ERR_ABORTED",
+      "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+      "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+      "GET /comunidad/entre-nosotros: net::ERR_ABORTED"
+    ]
+  }
+}

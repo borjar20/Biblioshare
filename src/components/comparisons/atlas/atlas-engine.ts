@@ -15,7 +15,8 @@ import { paintTiempoBack } from './paint-tiempo';
 import cdnLoader from '@/lib/images/cdn-loader';
 import { createImageCache, type ImageLike } from '@/lib/comparisons/atlas/image-cache';
 import { islandLabelRoom, paintIslasBack, type IslandText } from './paint-islas';
-import { movingClusters, nearestSprite, probeOf, stepSprites, syncSprites, type Sprite } from './atlas-sprites';
+import { movingClusters, probeOf, stepSprites, syncSprites, type Sprite } from './atlas-sprites';
+import { containsItem, dotRadius, itemFrame, itemVisible } from './atlas-item-geometry';
 
 export { COVER_ZOOM, TITLE_ZOOM } from './atlas-palette';
 export type AtlasHit = { key: WorkKey; x: number; y: number };
@@ -55,6 +56,7 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
   let drawnClusters = props().quien.clusters;
   /** Built in `sync()`, not per frame: the work behind each sprite and each person's colour. */
   let byKey = new Map<WorkKey, AtlasWork>(); let colorOf = new Map<string, string>();
+  const sharedKeys = new Set<WorkKey>();
   const linkPoint = (id: string) => sprites.get(id) ?? null;
   const linkGlow = (id: string) => (sprites.get(id)?.hl ?? 0) > 0.5;
 
@@ -115,6 +117,12 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
     syncedLens = scene.lens; syncedSelection = selection;
     syncSprites(sprites, scene, reduce);
     byKey = new Map(works.map(work => [work.key, work])); colorOf = new Map(people.map(person => [person.id, person.color]));
+    sharedKeys.clear();
+    const selectedPeople = new Set(active);
+    for (const work of works) {
+      let owners = 0;
+      for (const owner of work.owners) if (selectedPeople.has(owner.userId) && ++owners > 1) { sharedKeys.add(work.key); break; }
+    }
     const nextExtent = JSON.stringify(scene.extent);
     const nextIslandContent = scene.lens === 'islas' ? islas.framing?.contentKey
       ?? JSON.stringify(islas.islands.map(({ id, r, keys, means }) => [id, r, keys, means])) : '';
@@ -201,7 +209,7 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
     const { active, scene, quien, people, countLabel, focusedKey } = props();
     const focus = scene.lens === 'islas' && focusedKey && scene.targets.get(focusedKey)?.alpha === 1 ? focusedKey : null;
     requests = 0; let starved = false;
-    const k = cam.k, coverMode = k > COVER_ZOOM, titles = k > TITLE_ZOOM, hw = vp.width / 2, hh = vp.height / 2;
+    const k = cam.k, geometry = itemFrame(scene.lens, k), { coverMode } = geometry, titles = k > TITLE_ZOOM, hw = vp.width / 2, hh = vp.height / 2;
     const view: PaintView = { ctx, cam, vp, palette, text };
     const tint = (s: Sprite) => s.diff === null ? null : mixHex(palette.glow, palette.clash, diffMix(s.diff));
     if (scene.lens === 'quien') drawnClusters = movingClusters(quien.clusters, sprites);
@@ -217,21 +225,23 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
     for (const s of sprites.values()) {
       if (s.a < 0.02) continue;
       const px = (s.x - cam.x) * k + hw, py = (s.y - cam.y) * k + hh;
-      if (px < -60 || py < -80 || px > vp.width + 60 || py > vp.height + 80) continue;
       const work = byKey.get(s.key); if (!work) continue;
       const selected = s.key === focus;
-      ctx.globalAlpha = s.a * (focus && !selected ? 0.28 : 1);
-      const shared = work.owners.filter(owner => active.includes(owner.userId)).length > 1;
+      const shared = sharedKeys.has(s.key), opinion = s.diff !== null;
       const highlight = selected ? 1 : s.hl;
+      const size = opinion ? geometry.opinion : geometry.normal;
+      const r = coverMode ? 0 : dotRadius(k, shared, opinion, highlight);
+      const border = coverMode ? opinion || highlight > 0.3 ? 2 : 0 : selected ? 4.75 : 0;
+      if (!itemVisible(px, py, (coverMode ? size.width / 2 : r) + border, (coverMode ? size.height / 2 : r) + border, vp)) continue;
+      ctx.globalAlpha = s.a * (focus && !selected ? 0.28 : 1);
       const ink = tint(s);
       if (!coverMode) {
-        const r = (ink ? Math.max(3, 4.2 * k * 1.4) : Math.max(1.5, (shared ? 3.4 : 2.4) * k * 1.4)) * (1 + highlight * 0.45);
         const first = work.owners.find(owner => active.includes(owner.userId)) ?? work.owners[0];
         ctx.fillStyle = ink ?? (highlight > 0.5 ? palette.glow : shared ? palette.cream : colorOf.get(first.userId)!);
         if (selected) { ctx.strokeStyle = palette.glow; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(px, py, r + 4, 0, Math.PI * 2); ctx.stroke(); ctx.lineWidth = 1; }
         ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill(); continue;
       }
-      const cw = (ink ? 10 : 8.4) * k, ch = (ink ? 14.5 : 12.2) * k, x = px - cw / 2, y = py - ch / 2;
+      const cw = size.width, ch = size.height, x = px - cw / 2, y = py - ch / 2;
       if (ink || highlight > 0.3) { ctx.fillStyle = ink ?? palette.glow; roundRect(x - 2, y - 2, cw + 4, ch + 4, 3 + k * 0.3); ctx.fill(); }
       let img: ImageLike | null = null;
       if (work.coverUrl) {
@@ -267,8 +277,19 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
     return starved;
   }
   function hitWork(s: Point): AtlasHit | null {
-    const world = toWorld(cam, vp, s);
-    const hit = nearestSprite(sprites, world.x, world.y, Math.max(6, 10 / cam.k));
+    const { scene, focusedKey } = props(), geometry = itemFrame(scene.lens, cam.k);
+    const focus = scene.lens === 'islas' && focusedKey && scene.targets.get(focusedKey)?.alpha === 1 ? focusedKey : null;
+    let hit: Sprite | null = null, distance = Infinity;
+    for (const sprite of sprites.values()) {
+      if (sprite.dying || sprite.a < 0.5 || !byKey.has(sprite.key)) continue;
+      const dx = (sprite.x - cam.x) * cam.k + vp.width / 2 - s.x, dy = (sprite.y - cam.y) * cam.k + vp.height / 2 - s.y;
+      const opinion = sprite.diff !== null, size = opinion ? geometry.opinion : geometry.normal;
+      const radius = geometry.coverMode ? 0 : dotRadius(cam.k, sharedKeys.has(sprite.key), opinion, sprite.key === focus ? 1 : sprite.hl);
+      if (!containsItem(dx, dy, geometry.coverMode, size, radius)) continue;
+      const d = dx * dx + dy * dy;
+      // Preserve nearest-centre selection and later-sprite ties, while covering the entire painted shape.
+      if (d <= distance) { distance = d; hit = sprite; }
+    }
     return hit && { key: hit.key, x: s.x, y: s.y };
   }
   /** `anchor`: the world point under the fingers' midpoint when the pinch began; it stays under the midpoint. */

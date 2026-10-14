@@ -1,0 +1,12 @@
+{
+  "phase": "Primera ronda local: fechas trimestrales, todavía sin pan de preparación",
+  "results": { "passed": 2, "failed": 1 },
+  "lens": "Opinión",
+  "zoom": 3.4,
+  "visibleImages": 1,
+  "image": { "x": 232.21000788836147, "y": 202.7389558601047, "width": 47.6000018106013, "height": 69.02000262537189 },
+  "requiredTop": 210,
+  "cause": "La única portada está aislada, pero queda por encima de la banda que exige la prueba. El anclaje anterior admitía un centro a y>180; eso no garantiza un rectángulo completo con y>210.",
+  "fix": "Arrastrar una obra real a la banda útil, anclar allí el zoom y comprobar que conserva su key antes de mantener las mismas aserciones de esquina y aislamiento.",
+  "ratingsChanged": false
+}

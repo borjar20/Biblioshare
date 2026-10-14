@@ -1,7 +1,10 @@
 import type { AtlasWork, Camera, Viewport } from '@/lib/comparisons/atlas/types';
+import type { Lens } from '@/lib/comparisons/atlas/scene';
 
 export const COVER_ZOOM = 1.1;
+export const COMPARISON_COVER_ZOOM = 0.6;
 export const TITLE_ZOOM = 3.2;
+export const coverZoom = (lens: Lens) => lens === 'opinion' || lens === 'tiempo' ? COMPARISON_COVER_ZOOM : COVER_ZOOM;
 
 export type Palette = { fg: string; muted: string; line: string; glow: string; cream: string; faint: string; clash: string; font: string;
   type: Record<AtlasWork['itemType'], string> };

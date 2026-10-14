@@ -41,7 +41,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           rutas con parámetros desconocidos durante el prerender. La sesión
           espera bajo otro límite INTERNO: el gate debe hidratarse antes y poder
           retirar las barras al navegar sin hidratar su HTML con otra ruta
-          (#1385). Ambos límites conservan la misma reserva de altura. */}
+          (#1385). Si también se retiene la ruta, el gate conserva su snapshot
+          SSR hasta hidratarse (#1534). Ambos límites reservan la misma altura. */}
       <ChromeBoundary fallback={<HeaderSkeleton />}>
         <SessionChrome />
       </ChromeBoundary>
