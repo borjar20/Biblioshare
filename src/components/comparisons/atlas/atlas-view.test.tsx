@@ -38,7 +38,7 @@ function Harness({ notice, data = snapshot, initialLens = 'quien', initialMode =
   const [lens, setLens] = useState<Lens>(initialLens);
   const [islandMode, setIslandMode] = useState<IslandMode>(initialMode);
   const [list, setList] = useState(false);
-  return <AtlasView snapshot={data} viewerId="me" notice={notice} chosen={chosen} onChosenChange={setChosen} lens={lens} onLensChange={setLens}
+  return <AtlasView snapshot={data} viewerId="me" groupId="g" notice={notice} chosen={chosen} onChosenChange={setChosen} lens={lens} onLensChange={setLens}
     islandMode={islandMode} onIslandModeChange={setIslandMode} list={list} onListChange={setList}/>;
 }
 const viewWith = (data: Snapshot, initialLens?: Lens, initialMode?: IslandMode) =>
@@ -66,10 +66,10 @@ describe('AtlasView', () => {
     const names: Record<string, string> = { me: 'Tú', b: 'Bea', c: 'Carla', d: 'Dani' };
     const big: Snapshot = { ...snapshot, group: { ...snapshot.group, members: four.map(id => member(id, names[id])) },
       works: four.map(userId => ({ userId, key: 'book:1' as WorkKey, rating: null, date: null, orderUnknown: false, progress: null })) };
-    render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={big} viewerId="me" chosen={null} onChosenChange={vi.fn()} lens="quien" onLensChange={vi.fn()} islandMode="type" onIslandModeChange={vi.fn()} list={false} onListChange={vi.fn()}/></NextIntlClientProvider>);
+    render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={big} viewerId="me" groupId="g" chosen={null} onChosenChange={vi.fn()} lens="quien" onLensChange={vi.fn()} islandMode="type" onIslandModeChange={vi.fn()} list={false} onListChange={vi.fn()}/></NextIntlClientProvider>);
     expect(summary()).toBe('1 obra en común entre las 4 personas');
     cleanup();
-    render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={big} viewerId="me" chosen={['me', 'b', 'c']} onChosenChange={vi.fn()} lens="quien" onLensChange={vi.fn()} islandMode="type" onIslandModeChange={vi.fn()} list={false} onListChange={vi.fn()}/></NextIntlClientProvider>);
+    render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={big} viewerId="me" groupId="g" chosen={['me', 'b', 'c']} onChosenChange={vi.fn()} lens="quien" onLensChange={vi.fn()} islandMode="type" onIslandModeChange={vi.fn()} list={false} onListChange={vi.fn()}/></NextIntlClientProvider>);
     expect(summary()).toBe('1 obra en común entre Tú, Bea y Carla');
   });
   it('pinta el aviso de cobertura bajo el resumen cuando se le pasa', () => {
@@ -89,7 +89,7 @@ describe('AtlasView', () => {
   });
   it('con una selección dada solo activa esas caras y avisa del cambio sin tocarla', () => {
     const onChosenChange = vi.fn();
-    render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={snapshot} viewerId="me" chosen={['b', 'me']} onChosenChange={onChosenChange} lens="quien" onLensChange={vi.fn()} islandMode="type" onIslandModeChange={vi.fn()} list={false} onListChange={vi.fn()}/></NextIntlClientProvider>);
+    render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={snapshot} viewerId="me" groupId="g" chosen={['b', 'me']} onChosenChange={onChosenChange} lens="quien" onLensChange={vi.fn()} islandMode="type" onIslandModeChange={vi.fn()} list={false} onListChange={vi.fn()}/></NextIntlClientProvider>);
     expect(screen.getByRole('button', { name: 'Carla' }).getAttribute('aria-pressed')).toBe('false');
     expect(canvas.active).toEqual(['me', 'b']);
     fireEvent.click(screen.getByRole('button', { name: 'Tú' }));
@@ -97,7 +97,7 @@ describe('AtlasView', () => {
     expect(screen.getByRole('button', { name: 'Tú' }).getAttribute('aria-pressed')).toBe('true');
   });
   it('si nadie de la selección sigue en el cruce, vuelven a estar todas las caras', () => {
-    render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={snapshot} viewerId="me" chosen={['gone']} onChosenChange={vi.fn()} lens="quien" onLensChange={vi.fn()} islandMode="type" onIslandModeChange={vi.fn()} list={false} onListChange={vi.fn()}/></NextIntlClientProvider>);
+    render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={snapshot} viewerId="me" groupId="g" chosen={['gone']} onChosenChange={vi.fn()} lens="quien" onLensChange={vi.fn()} islandMode="type" onIslandModeChange={vi.fn()} list={false} onListChange={vi.fn()}/></NextIntlClientProvider>);
     for (const name of ['Tú', 'Bea', 'Carla']) expect(screen.getByRole('button', { name }).getAttribute('aria-pressed')).toBe('true');
     expect(summary()).toBe('1 obra en común entre Tú, Bea y Carla');
   });
@@ -342,7 +342,7 @@ describe('AtlasView', () => {
   it('con la lista ya abierta, montar la vista (cambio de formato) no le roba el foco', () => {
     const outside = document.createElement('button'); document.body.appendChild(outside); outside.focus();
     try {
-      render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={snapshot} viewerId="me" chosen={null} onChosenChange={vi.fn()} lens="quien" onLensChange={vi.fn()}
+      render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={snapshot} viewerId="me" groupId="g" chosen={null} onChosenChange={vi.fn()} lens="quien" onLensChange={vi.fn()}
         islandMode="type" onIslandModeChange={vi.fn()} list onListChange={vi.fn()}/></NextIntlClientProvider>);
       expect(screen.getByRole('region', { name: 'Lista de obras' })).toBeTruthy();
       expect(document.activeElement).toBe(outside);
@@ -373,7 +373,23 @@ describe('AtlasView', () => {
       expect(canvas.initialCamera).toBeUndefined();
     } finally { getItem.mockRestore(); setItem.mockRestore(); }
   });
+  it('guarda la cámara bajo la cuenta y el grupo que le da el explorer, no el del snapshot', () => {
+    render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={snapshot} viewerId="me" groupId="from-explorer" chosen={null} onChosenChange={vi.fn()}
+      lens="quien" onLensChange={vi.fn()} islandMode="type" onIslandModeChange={vi.fn()} list={false} onListChange={vi.fn()}/></NextIntlClientProvider>);
+    act(() => canvas.onSettled!({ lens: 'quien', x: 5, y: 6, k: 2 }));
+    expect(JSON.parse(sessionStorage.getItem('biblioshare:atlas:me:from-explorer')!).camera).toEqual({ lens: 'quien', x: 5, y: 6, k: 2 });
+    expect(sessionStorage.getItem('biblioshare:atlas:me:g')).toBeNull();
+  });
   describe('teclado', () => {
+    it('un dígito con el foco en una cara cambia la lente y no alterna la cara', () => {
+      view();
+      const bea = screen.getByRole('button', { name: 'Bea' });
+      bea.focus();
+      expect(fireEvent.keyDown(bea, { key: '3' })).toBe(false);
+      expect(screen.getByRole('button', { name: 'Tiempo' }).getAttribute('aria-pressed')).toBe('true');
+      expect(bea.getAttribute('aria-pressed')).toBe('true');
+      expect(canvas.active).toEqual(['me', 'b', 'c']);
+    });
     it('una tecla 2 con el foco en el lienzo pasa a Opinión; en un campo de texto no hace nada', () => {
       view(<input aria-label="Campo"/>);
       const field = screen.getByRole('textbox', { name: 'Campo' });

@@ -53,11 +53,11 @@ function WorkCard({ work, people, title, lens }: { work: AtlasWork; people: Atla
  * `notice` is a coverage note shown right under the summary (e.g. series without episodes).
  * The face selection is controlled by the explorer (`chosen`, null = everyone) so it survives
  * format changes, which remount this view. The lens, the Islas mode and «Ver como lista» are controlled the same way.
- * The camera is remembered per group in sessionStorage when the scene settles, and restored when the canvas mounts
+ * The camera is remembered per account and group (`groupId`, the explorer's, like the faces) in sessionStorage when the scene settles, and restored when the canvas mounts
  * again in the same lens (list → map, format change); without storage the canvas fits.
  */
-export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange, lens, onLensChange, islandMode, onIslandModeChange, list, onListChange }: {
-  snapshot: Snapshot; viewerId: string; notice?: ReactNode; chosen: string[] | null; onChosenChange: (ids: string[]) => void;
+export function AtlasView({ snapshot, viewerId, groupId, notice, chosen, onChosenChange, lens, onLensChange, islandMode, onIslandModeChange, list, onListChange }: {
+  snapshot: Snapshot; viewerId: string; groupId: string; notice?: ReactNode; chosen: string[] | null; onChosenChange: (ids: string[]) => void;
   lens: Lens; onLensChange: (lens: Lens) => void; islandMode: IslandMode; onIslandModeChange: (mode: IslandMode) => void;
   list: boolean; onListChange: (list: boolean) => void;
 }) {
@@ -134,18 +134,17 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange, 
   // Only an opening within this mount: a format change remounts the view with the list open and must not steal focus.
   const listRef = useRef<HTMLElement>(null); const wasList = useRef(list);
   useEffect(() => { if (list && !wasList.current) listRef.current?.focus(); wasList.current = list; }, [list]);
-  const groupId = snapshot.group.id;
   // Read when the canvas (re)mounts; the engine only uses it at its first valid size, so later lens changes do not move it.
   const initialCamera = useMemo(() => {
     if (list) return undefined;
-    const saved = readGroupMemory(sessionStore(), groupId).camera;
+    const saved = readGroupMemory(sessionStore(), viewerId, groupId).camera;
     return saved && saved.lens === lens ? { x: saved.x, y: saved.y, k: saved.k } : undefined;
-  }, [list, groupId, lens]);
+  }, [list, viewerId, groupId, lens]);
   // The probe is republished after hovers too: write only a camera that changed.
   const savedCamera = useRef('');
   function rememberCamera(next: LensCamera) {
     const value = JSON.stringify(next); if (value === savedCamera.current) return;
-    savedCamera.current = value; writeGroupMemory(sessionStore(), groupId, { camera: next });
+    savedCamera.current = value; writeGroupMemory(sessionStore(), viewerId, groupId, { camera: next });
   }
   /** Shortcuts while focus is inside the atlas (spec §5.3); lenses work over the list too, the camera only over the map. */
   function onKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {

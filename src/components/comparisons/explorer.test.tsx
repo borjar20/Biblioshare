@@ -237,8 +237,8 @@ describe('Explorer request boundaries', () => {
         mocks.query = `group=${first.id}`;
         const mounted = render(ui(groups)); await screen.findByRole('button', { name: 'Tú' });
         fireEvent.click(screen.getByRole('button', { name: 'Carlos' }));
-        expect([...data.keys()]).toContain(`biblioshare:atlas:${first.id}`);
-        expect(data.get(`biblioshare:atlas:${first.id}`)).toContain('"faces"');
+        expect([...data.keys()]).toContain(`biblioshare:atlas:a:${first.id}`);
+        expect(data.get(`biblioshare:atlas:a:${first.id}`)).toContain('"faces"');
         mounted.unmount();
         render(ui(groups)); await screen.findByRole('button', { name: 'Tú' });
         expect(screen.getByRole('button', { name: 'Carlos' }).getAttribute('aria-pressed')).toBe('false');
@@ -251,6 +251,37 @@ describe('Explorer request boundaries', () => {
         await waitFor(() => expect(mocks.load).toHaveBeenLastCalledWith(first.id, 'all'));
         await waitFor(() => expect(screen.getByRole('button', { name: 'Carlos' }).getAttribute('aria-pressed')).toBe('false'));
       } finally { vi.unstubAllGlobals(); }
+    });
+    it('never restores another account’s memory for the same unsaved pair on the same tab', async () => {
+      const bea = '10000000-0000-4000-8000-000000000002';
+      const pairId = `with:${bea}`;
+      mocks.query = `con=${bea}`;
+      mocks.load.mockImplementation(async () => ({ ok: true, data: { group: { id: pairId, name: 'Par', revision: 1, members: [
+        { slotId: 'self', userId: 'self', name: 'Yo', avatarUrl: null, available: true }, { slotId: 'with', userId: bea, name: 'Bea', avatarUrl: null, available: true }] },
+        format: 'all', excludedSeriesWithoutEpisodes: 0, catalog: [{ key: 'book:x', title: 'Libro', coverUrl: null, genres: [], creators: [] }],
+        works: ['self', bea].map(userId => ({ userId, key: 'book:x', rating: null, date: null, orderUnknown: false, progress: null })) } }));
+      // Account «a» left only Bea on, with a camera, for its pair with Bea.
+      sessionStorage.setItem(`biblioshare:atlas:a:${pairId}`, JSON.stringify({ faces: [bea], camera: { lens: 'quien', x: 1, y: 2, k: 3 } }));
+      const pairUi = (viewerId: string) => <NextIntlClientProvider locale="es" messages={messages}><Explorer initialGroups={[]}
+        candidates={[{ userId: viewerId, name: 'Yo', avatarUrl: null }, { userId: bea, name: 'Bea', avatarUrl: null }]} viewerId={viewerId}/></NextIntlClientProvider>;
+      const asA = render(pairUi('a')); await screen.findByRole('button', { name: 'Bea' });
+      // Sanity: «a» gets its own memory back (the viewer's own face is off).
+      const pressed = () => within(screen.getByRole('group', { name: 'Personas del cruce' })).getAllByRole('button').map(button => button.getAttribute('aria-pressed'));
+      expect(pressed()).toEqual(['false', 'true']);
+      asA.unmount();
+      render(pairUi('z')); await screen.findByRole('button', { name: 'Bea' });
+      expect(pressed()).toEqual(['true', 'true']);
+      expect(sessionStorage.getItem(`biblioshare:atlas:z:${pairId}`) ?? '').not.toContain('"x":1,"y":2,"k":3');
+    });
+    it('clears every atlas memory when the session boundary invalidates (sign-out or account change)', async () => {
+      sessionStorage.setItem(`biblioshare:atlas:a:${first.id}`, JSON.stringify({ faces: ['a'] }));
+      sessionStorage.setItem('biblioshare:atlas:b:with:x', JSON.stringify({ faces: ['b'] }));
+      sessionStorage.setItem('other:key', '1');
+      render(ui()); await waitFor(() => expect(mocks.auth).not.toBeNull());
+      act(() => mocks.auth!('SIGNED_OUT', null));
+      expect(sessionStorage.getItem(`biblioshare:atlas:a:${first.id}`)).toBeNull();
+      expect(sessionStorage.getItem('biblioshare:atlas:b:with:x')).toBeNull();
+      expect(sessionStorage.getItem('other:key')).toBe('1');
     });
   });
   it('starts with no arbitrary selected group and lets keyboard users create one', () => {

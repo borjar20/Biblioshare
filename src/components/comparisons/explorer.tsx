@@ -14,7 +14,7 @@ import { GroupEditor } from './group-editor';
 import { AtlasView } from './atlas/atlas-view';
 import type { Lens } from '@/lib/comparisons/atlas/scene';
 import type { IslandMode } from '@/lib/comparisons/atlas/islands';
-import { atlasQuery, parseAtlasQuery, readGroupMemory, sessionStore, writeGroupMemory } from './atlas-ui-state';
+import { atlasQuery, clearAtlasMemory, parseAtlasQuery, readGroupMemory, sessionStore, writeGroupMemory } from './atlas-ui-state';
 import { GroupSheet } from './group-sheet';
 import { ComparisonLoading } from './loading';
 import { forFormat } from '@/lib/comparisons/derive';
@@ -30,7 +30,7 @@ function Icon({ kind }: { kind: 'works' | 'lock' | 'edit' | 'plus' }) {
 type Props = { initialGroups: Group[]; candidates: Candidate[]; viewerId: string };
 /** The atlas UI the explorer keeps across format changes (which remount AtlasView). `faces` belong to `groupId`. */
 type AtlasUi = { groupId: string | null; faces: string[] | null; lens: Lens; islandMode: IslandMode; list: boolean };
-const rememberedFaces = (groupId: string | null) => groupId ? readGroupMemory(sessionStore(), groupId).faces : null;
+const rememberedFaces = (viewerId: string, groupId: string | null) => groupId ? readGroupMemory(sessionStore(), viewerId, groupId).faces : null;
 /** `?con=` for the unsaved pair, `?group=` for a saved group, plus the lens and Islas mode when not the default. */
 function atlasHref(groupId: string | null, lens: Lens, mode: IslandMode) {
   const person = groupId && withPersonTarget(groupId);
@@ -106,6 +106,8 @@ function SessionBoundary(props: Props) {
       if (invalidated || disposed) return;
       checkSeq += 1;
       invalidated = true; setBlockedGroups(props.initialGroups);
+      // Faces and cameras are this account's: none survives into the next one on this tab.
+      clearAtlasMemory(sessionStore());
       // Keep the auth callback synchronous; refresh outside the auth event stack.
       refreshTimer = setTimeout(() => router.refresh(), 0);
     }
@@ -168,8 +170,8 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
   // Atlas UI state lives here, not in AtlasView: a format change remounts the view. The lens and the Islas mode come from
   // (and go to) the URL; the faces are remembered per group in sessionStorage (no person ids in the URL). A group without
   // memory starts with everyone.
-  const [atlasUi, setAtlasUi] = useState<AtlasUi>(() => ({ groupId: state.groupId, faces: rememberedFaces(state.groupId), ...parseAtlasQuery(search), list: false }));
-  if (atlasUi.groupId !== state.groupId) setAtlasUi(current => ({ ...current, groupId: state.groupId, faces: rememberedFaces(state.groupId) }));
+  const [atlasUi, setAtlasUi] = useState<AtlasUi>(() => ({ groupId: state.groupId, faces: rememberedFaces(viewerId, state.groupId), ...parseAtlasQuery(search), list: false }));
+  if (atlasUi.groupId !== state.groupId) setAtlasUi(current => ({ ...current, groupId: state.groupId, faces: rememberedFaces(viewerId, state.groupId) }));
   const chosenFaces = atlasUi.groupId === state.groupId ? atlasUi.faces : null;
   const sequence = useRef(0); const initialSignature = useRef(JSON.stringify(initialGroups));
   const groupChip = useRef<HTMLButtonElement>(null);
@@ -226,7 +228,7 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
   function setAtlasFaces(faces: string[]) {
     const id = state.groupId; if (!id) return;
     setAtlasUi(current => ({ ...current, groupId: id, faces }));
-    writeGroupMemory(sessionStore(), id, { faces });
+    writeGroupMemory(sessionStore(), viewerId, id, { faces });
   }
   function refresh() { sequence.current += 1; dispatch({ type: 'refresh' }); forceReload(); }
   function onSaved(group: Group) {
@@ -261,7 +263,7 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
       {state.snapshot.status === 'loading' && <div className={styles.workspaceLoading}><ComparisonLoading label={t('loading')}/></div>}
       {state.snapshot.status === 'error' && <div role="alert"><p>{t(state.loadError === 'conflict' ? 'loadConflict' : `errors.${state.loadError ?? 'load-failed'}`)}</p><Button variant="secondary" onClick={() => { refresh(); if (state.loadError === 'unavailable' || state.loadError === 'unauthenticated') router.refresh(); }}>{t('reloadComparison')}</Button></div>}
       {snapshot && <div key={state.snapshot.seq} className={styles.canvasWrap} data-comparison-reveal data-comparison-slot={state.section} data-view={state.views[state.section].level}>
-        <AtlasView snapshot={snapshot} viewerId={viewerId} chosen={chosenFaces} lens={atlasUi.lens} onLensChange={setAtlasLens} islandMode={atlasUi.islandMode} onIslandModeChange={setAtlasIslandMode} list={atlasUi.list} onListChange={list => setAtlasUi(current => ({ ...current, list }))} onChosenChange={setAtlasFaces} notice={snapshot.excludedSeriesWithoutEpisodes > 0 ? <p className={styles.coverageNote} data-comparison-coverage>{t('excludedHistoricalSeries', { count: snapshot.excludedSeriesWithoutEpisodes })}</p> : null}/>
+        <AtlasView snapshot={snapshot} viewerId={viewerId} groupId={state.groupId!} chosen={chosenFaces} lens={atlasUi.lens} onLensChange={setAtlasLens} islandMode={atlasUi.islandMode} onIslandModeChange={setAtlasIslandMode} list={atlasUi.list} onListChange={list => setAtlasUi(current => ({ ...current, list }))} onChosenChange={setAtlasFaces} notice={snapshot.excludedSeriesWithoutEpisodes > 0 ? <p className={styles.coverageNote} data-comparison-coverage>{t('excludedHistoricalSeries', { count: snapshot.excludedSeriesWithoutEpisodes })}</p> : null}/>
       </div>}
       {snapshot && state.revealSeq === state.snapshot.seq && completedHandoff !== state.snapshot.seq && <div key={`handoff-${state.snapshot.seq}`} aria-hidden="true" inert className={`${styles.workspaceLoading} ${styles.loadingExit}`} data-comparison-handoff onAnimationEnd={event => {
         if (event.target === event.currentTarget) setCompletedHandoff(state.snapshot.seq);
