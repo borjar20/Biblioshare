@@ -1,5 +1,5 @@
 import type { AtlasPerson } from '@/lib/comparisons/atlas/types';
-import { clusterState, type QuienLayout } from '@/lib/comparisons/atlas/layout';
+import { clusterState, poleLabelAbove, type QuienLayout } from '@/lib/comparisons/atlas/layout';
 import { toScreen } from '@/lib/comparisons/atlas/camera';
 import { initials } from '../presentation';
 import { TITLE_ZOOM, type PaintView } from './atlas-palette';
@@ -45,8 +45,10 @@ export function paintQuienFront({ ctx, cam, vp, palette, text }: PaintView, { la
     ctx.globalAlpha = on ? 1 : 0.4; ctx.fillStyle = person.color; ctx.beginPath(); ctx.arc(p.x, p.y, 26, 0, Math.PI * 2); ctx.fill();
     if (on) { ctx.strokeStyle = palette.fg; ctx.lineWidth = 3; ctx.stroke(); }
     text(initials(person.name), p.x, p.y + 5, `800 15px ${palette.font}`, '#fff', 'center');
-    text(person.name, p.x, p.y + 44, `600 13px ${palette.font}`, palette.fg, 'center');
-    text(countLabel(pole.count), p.x, p.y + 59, `500 12px ${palette.font}`, palette.muted, 'center');
+    // Away from the pole's own group (outward): below the avatar, or above it when that group hangs below.
+    const above = poleLabelAbove(pole);
+    text(person.name, p.x, p.y + (above ? -50 : 44), `600 13px ${palette.font}`, palette.fg, 'center');
+    text(countLabel(pole.count), p.x, p.y + (above ? -35 : 59), `500 12px ${palette.font}`, palette.muted, 'center');
   }
   ctx.globalAlpha = 1;
 }

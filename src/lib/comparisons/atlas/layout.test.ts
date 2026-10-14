@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Snapshot, WorkKey } from '../types';
 import { regions } from '../derive';
 import { atlasModel } from './model';
-import { clusterState, layoutQuien, polePositions, POLE_CLEARANCE, POLE_RADIUS, workState } from './layout';
+import { clusterState, layoutQuien, poleLabelAbove, polePositions, POLE_CLEARANCE, POLE_RADIUS, workState } from './layout';
 import { summarizeQuien } from './summary';
 
 const member = (id: string) => ({ slotId: id, userId: id, name: id.toUpperCase(), avatarUrl: null, available: true });
@@ -45,6 +45,63 @@ describe('layoutQuien', () => {
     expect(shared.length).toBe(2);
     for (const cluster of shared) for (const pole of layout.poles)
       expect(Math.hypot(cluster.x - pole.x, cluster.y - pole.y)).toBeGreaterThanOrEqual(POLE_CLEARANCE + cluster.r);
+  });
+  it('con cuatro personas en cuadrado, ningún grupo se solapa con otro ni tapa un polo', () => {
+    // T arriba, L derecha, M abajo, F izquierda: {T,M}, {L,F} y {T,L,M,F} caen los tres en el centro.
+    const ids = ['t', 'l', 'm', 'f'];
+    const sets: [string[], number][] = [[['t', 'm'], 77], [['l', 'f'], 40], [['t', 'l', 'm', 'f'], 60], [['t', 'l'], 25], [['t', 'f'], 20],
+      [['l', 'm'], 15], [['t'], 830], [['l'], 400], [['m'], 300], [['f'], 120]];
+    const keysOf: Record<string, string[]> = Object.fromEntries(ids.map(id => [id, []]));
+    let n = 0;
+    for (const [owners, count] of sets) for (let i = 0; i < count; i++, n++) for (const id of owners) keysOf[id].push(`book:${n}`);
+    const snap: Snapshot = { group: { id: 'g', name: 'G', revision: 1, members: ids.map(member) }, format: 'all', excludedSeriesWithoutEpisodes: 0,
+      catalog: [], works: Object.entries(keysOf).flatMap(([userId, keys]) => keys.map(key => ({ userId, key: key as WorkKey, rating: null, date: null, orderUnknown: false, progress: null }))) };
+    const model = atlasModel(snap, 't', 'Tú');
+    const layout = layoutQuien(model.people, model.works);
+    const { clusters, poles } = layout;
+    expect(clusters).toHaveLength(sets.length);
+    for (let i = 0; i < clusters.length; i++) for (let j = i + 1; j < clusters.length; j++) {
+      const a = clusters[i], b = clusters[j];
+      expect(Math.hypot(a.x - b.x, a.y - b.y), `${a.id} / ${b.id}`).toBeGreaterThan(a.r + b.r);
+    }
+    for (const cluster of clusters) for (const pole of poles)
+      expect(Math.hypot(cluster.x - pole.x, cluster.y - pole.y), `${cluster.id} / ${pole.userId}`).toBeGreaterThanOrEqual(cluster.r + 80);
+    // Single-owner groups sit outward, beyond their own pole.
+    for (const cluster of clusters.filter(c => c.owners.length === 1)) {
+      const pole = poles.find(p => p.userId === cluster.owners[0])!;
+      expect(Math.hypot(cluster.x, cluster.y)).toBeGreaterThan(Math.hypot(pole.x, pole.y) + cluster.r);
+    }
+    // Every work stays inside its group's disc, and the extent holds every group.
+    for (const cluster of clusters) for (const key of cluster.keys) {
+      const p = layout.positions.get(key)!;
+      expect(Math.hypot(p.x - cluster.x, p.y - cluster.y)).toBeLessThanOrEqual(cluster.r);
+    }
+    for (const c of clusters) {
+      expect(c.x - c.r).toBeGreaterThanOrEqual(layout.extent.minX); expect(c.x + c.r).toBeLessThanOrEqual(layout.extent.maxX);
+      expect(c.y - c.r).toBeGreaterThanOrEqual(layout.extent.minY); expect(c.y + c.r).toBeLessThanOrEqual(layout.extent.maxY);
+    }
+    const again = layoutQuien(model.people, model.works);
+    expect(again.clusters.map(c => [c.id, c.x, c.y])).toEqual(clusters.map(c => [c.id, c.x, c.y]));
+  });
+  it('con una sola persona, su grupo queda debajo del polo sin taparlo', () => {
+    const solo = atlasModel({ ...snapshot, group: { ...snapshot.group, members: [member('a')] } }, 'a', 'Tú');
+    const [cluster] = layoutQuien(solo.people, solo.works).clusters;
+    expect(cluster.x).toBeCloseTo(0); expect(cluster.y).toBeGreaterThanOrEqual(cluster.r + 80);
+  });
+  it('con dos personas, lo de cada una queda hacia fuera, a izquierda y derecha', () => {
+    const two = atlasModel({ ...snapshot, group: { ...snapshot.group, members: [member('a'), member('b')] } }, 'a', 'Tú');
+    const layout = layoutQuien(two.people, two.works);
+    for (const id of ['a', 'b']) {
+      const pole = layout.poles.find(p => p.userId === id)!, cluster = layout.clusters.find(c => c.id === id)!;
+      expect(cluster.y).toBeCloseTo(0);
+      expect(Math.sign(cluster.x)).toBe(Math.sign(pole.x));
+      expect(Math.abs(cluster.x) - cluster.r).toBeGreaterThanOrEqual(Math.abs(pole.x) + 80);
+    }
+  });
+  it('el nombre del polo va al lado contrario de su grupo propio: encima si el grupo cae debajo', () => {
+    const [top, right, bottom, left] = polePositions(['t', 'l', 'm', 'f']);
+    expect([top, right, bottom, left].map(poleLabelAbove)).toEqual([false, false, true, false]);
+    expect(poleLabelAbove(polePositions(['solo'])[0])).toBe(true);
   });
   it('con dos personas, polos en horizontal', () => {
     const [left, right] = polePositions(['x', 'y']);
