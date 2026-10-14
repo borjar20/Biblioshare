@@ -1,0 +1,11 @@
+{
+  "environment": "biblioshare-dev",
+  "buildId": "BCib195qC4SLImf_BoE68",
+  "projects": ["chromium", "mobile"],
+  "tests": { "passed": 2, "failed": 0, "skipped": 0, "retries": 0, "durationSeconds": 29.7 },
+  "cleanup": { "ownedAuth": 0, "ownedProfiles": 0, "ownedBooks": 0, "ownedMovies": 0, "ownedSeries": 0, "devtestPublic": true },
+  "consoleErrors": 0,
+  "requestFailures": { "chromium": 20, "mobile": 16, "reason": "net::ERR_ABORTED" },
+  "browser": "Chromium; viewport 1280x800 desktop, Pixel 7 touch 390x844 and 360x844",
+  "limits": "No Preview MCP tools available; real browser flow driven with repository Playwright fixture, real login/RLS/Server Actions. Only owned catalogue cover assets intercepted. This run does not verify Android, deployment or globally clean network."
+}

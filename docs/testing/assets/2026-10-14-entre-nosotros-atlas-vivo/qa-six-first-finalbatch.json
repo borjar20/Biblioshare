@@ -1,0 +1,125 @@
+[
+  {
+    "caseFolder": "entre-nosotros-atlas-Islas-13063-a-una-nota-con-nombre-largo-chromium",
+    "journal": {
+      "errors": [],
+      "failures": [
+        "GET /: net::ERR_ABORTED",
+        "GET /coleccion: net::ERR_ABORTED",
+        "GET /experiencias: net::ERR_ABORTED",
+        "POST /login: net::ERR_ABORTED",
+        "POST /: net::ERR_ABORTED",
+        "GET /comunidad: net::ERR_ABORTED",
+        "GET /coleccion: net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros: net::ERR_ABORTED"
+      ]
+    }
+  },
+  {
+    "caseFolder": "entre-nosotros-atlas-Islas-13063-a-una-nota-con-nombre-largo-mobile",
+    "journal": {
+      "errors": [],
+      "failures": [
+        "GET /comunidad: net::ERR_ABORTED",
+        "GET /buscar: net::ERR_ABORTED",
+        "GET /: net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a: net::ERR_ABORTED",
+        "GET /experiencias: net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a: net::ERR_ABORTED",
+        "POST /login: net::ERR_ABORTED",
+        "POST /: net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a: net::ERR_ABORTED",
+        "GET /comunidad: net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros: net::ERR_ABORTED"
+      ]
+    }
+  },
+  {
+    "caseFolder": "entre-nosotros-atlas-Islas-3919f-esaltadas-con-ratón-o-toque-chromium",
+    "journal": {
+      "errors": [],
+      "failures": [
+        "GET /comunidad: net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a: net::ERR_ABORTED",
+        "GET /coleccion: net::ERR_ABORTED",
+        "POST /: net::ERR_ABORTED",
+        "GET /experiencias: net::ERR_ABORTED",
+        "POST /login: net::ERR_ABORTED",
+        "GET /: net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros: net::ERR_ABORTED"
+      ]
+    }
+  },
+  {
+    "caseFolder": "entre-nosotros-atlas-Islas-3919f-esaltadas-con-ratón-o-toque-mobile",
+    "journal": {
+      "errors": [],
+      "failures": [
+        "GET /comunidad: net::ERR_ABORTED",
+        "GET /buscar: net::ERR_ABORTED",
+        "GET /: net::ERR_ABORTED",
+        "POST /login: net::ERR_ABORTED",
+        "GET /: net::ERR_ABORTED",
+        "POST /: net::ERR_ABORTED",
+        "GET /_next/static/chunks/1vo28qmcrbou0.js: net::ERR_ABORTED",
+        "GET /_next/static/chunks/2pzbgrn16lsdz.js: net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a: net::ERR_ABORTED",
+        "GET /coleccion: net::ERR_ABORTED",
+        "GET /: net::ERR_ABORTED",
+        "GET /comunidad: net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+        "GET /libro/03d8b4d5-fe4c-4ce9-8de6-6450c8907f62: net::ERR_ABORTED"
+      ]
+    }
+  },
+  {
+    "caseFolder": "entre-nosotros-atlas-Quién-76290-ién-con-movimiento-reducido-chromium",
+    "journal": {
+      "errors": [],
+      "failures": [
+        "GET /comunidad: net::ERR_ABORTED",
+        "GET /buscar: net::ERR_ABORTED",
+        "GET /: net::ERR_ABORTED",
+        "POST /login: net::ERR_ABORTED",
+        "GET /buscar: net::ERR_ABORTED",
+        "GET /comunidad: net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a: net::ERR_ABORTED",
+        "POST /: net::ERR_ABORTED",
+        "POST /comunidad/entre-nosotros: net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+        "GET /comunidad: net::ERR_ABORTED",
+        "POST /comunidad/entre-nosotros: net::ERR_ABORTED",
+        "GET /comunidad: net::ERR_ABORTED",
+        "GET /libro/04248dab-9d0e-4b0f-a5c9-150cea0bdedb: net::ERR_ABORTED"
+      ]
+    }
+  },
+  {
+    "caseFolder": "entre-nosotros-atlas-Quién-76290-ién-con-movimiento-reducido-mobile",
+    "journal": {
+      "errors": [],
+      "failures": [
+        "GET /comunidad: net::ERR_ABORTED",
+        "GET /buscar: net::ERR_ABORTED",
+        "GET /: net::ERR_ABORTED",
+        "GET /u/qa_comp_motion_a: net::ERR_ABORTED",
+        "GET /comunidad: net::ERR_ABORTED",
+        "GET /buscar: net::ERR_ABORTED",
+        "POST /login: net::ERR_ABORTED",
+        "POST /: net::ERR_ABORTED",
+        "POST /comunidad/entre-nosotros: net::ERR_ABORTED",
+        "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+        "POST /comunidad/entre-nosotros: net::ERR_ABORTED",
+        "GET /comunidad: net::ERR_ABORTED",
+        "POST /comunidad/entre-nosotros: net::ERR_ABORTED",
+        "GET /comunidad: net::ERR_ABORTED"
+      ]
+    }
+  }
+]

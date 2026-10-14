@@ -551,7 +551,26 @@ verificación no afirma su ejecución. El resto sigue rastreable por `area:catal
 - [x] «Tu año en Biblioshare» (§7.24), ampliado a semana y mes: integrado en [PR #1436](https://github.com/borjar20/Biblioshare/pull/1436), activo en producción el 2026-10-07; [spec](../superpowers/specs/2026-10-06-wrap-ups-design.md) y [recibo](../testing/2026-10-06-wrap-ups.md#activación-productiva--2026-10-07). Despacho dev pendiente [#1439](https://github.com/borjar20/Biblioshare/issues/1439).
 - [x] Crónicas mensuales: revisión visual de Terminado, En marcha, Ritmo y En compañía (payload v2, rejilla con scroll, calendario y mapas de calor, compañeros resueltos al pintar): [spec](../superpowers/specs/2026-10-13-wrap-up-mensual-revision-visual-design.md). Pendiente de aplicar la migración v2 en producción antes de desplegar.
 - [x] Crónicas: reparto de tiempo con etiquetas y avances semanales en series, también en el resumen final. Hitos históricos de temporada y ponerse al día pendientes [#1444](https://github.com/borjar20/Biblioshare/issues/1444).
-- [x] Comparar bibliotecas (§7.25), «Entre nosotros»: primera entrega integrada en [PR #1474](https://github.com/borjar20/Biblioshare/pull/1474) y activa en producción el 2026-10-10. Ruta `/comunidad/entre-nosotros`, dominio `src/lib/comparisons/`, interfaz `src/components/comparisons/` y tablas privadas `comparison_groups`/`comparison_group_members`: selecciones de 2–10 participantes, Obras/Gustos y regiones exactas de pareja/trío. [Especificación](../superpowers/specs/2026-10-10-entre-nosotros-design.md) y [evidencia integrada](../testing/2026-10-10-entre-nosotros.md). Corrección visual implementada y verificada localmente: mapa con avatares y portadas, Venn con pilas y navegación dentro del lienzo, y Gustos con paneles separados de consumo y valoraciones; [evidencia visual](../testing/2026-10-10-entre-nosotros-visual.md). Ajuste de navegación: transición suave de carga a datos, lienzo de altura responsive estable y navegación sin zoom por rueda; [evidencia local](../testing/2026-10-10-entre-nosotros-stable-canvas.md). CI e integración se registran en [PR #1478](https://github.com/borjar20/Biblioshare/pull/1478).
+- [x] Comparar bibliotecas (§7.25), «Entre nosotros»: grupos privados de 2–10 participantes
+  en `/comunidad/entre-nosotros`, `src/lib/comparisons/`, `src/components/comparisons/`
+  y tablas `comparison_groups`/`comparison_group_members`; primera entrega integrada
+  en [PR #1474](https://github.com/borjar20/Biblioshare/pull/1474) y activa en producción
+  desde el 2026-10-10. Atlas implementado y verificado localmente sobre
+  [PR #1529](https://github.com/borjar20/Biblioshare/pull/1529): lienzo oscuro con Quién,
+  Opinión, Tiempo, Islas y alternativa accesible «Ver como lista». Quién reagrupa según
+  las caras activas y muestra cifra e hilos también en cruces de una o dos obras;
+  las otras tres lentes comparan obras de todas las caras seleccionadas. Opinión
+  exige todas sus notas y Tiempo informa de las fechas ausentes. Islas muestra
+  medias con escala y tamaño de muestra, resalta copias y conexiones, y explica
+  «Otros» por límite de diez categorías, identidad de autor/director ausente o series.
+  La leyenda inferior es plegable en móvil y permanece visible en escritorio;
+  [evidencia de leyenda](../testing/2026-10-14-entre-nosotros-atlas-leyenda.md).
+  Dominio y pintura en `src/lib/comparisons/atlas/` y `src/components/comparisons/atlas/`.
+  [Especificación del atlas](../superpowers/specs/2026-10-13-entre-nosotros-atlas-design.md),
+  [evidencia de movimiento y medias](../testing/2026-10-14-entre-nosotros-atlas-vivo.md)
+  y [evidencia de selección completa](../testing/2026-10-14-entre-nosotros-atlas-seleccion-completa.md):
+  387 unitarios, TypeScript, lint, build y siete casos de navegador PASS.
+  Integración y despliegue del atlas en producción pendientes; seguimiento del atlas en #1520–#1527.
 - [ ] Pendientes y «Lo que esperamos juntos»: alcance futuro separado de Entre nosotros, registrado en [#1462](https://github.com/borjar20/Biblioshare/issues/1462).
 
 **Social y clubes**

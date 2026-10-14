@@ -1,0 +1,26 @@
+{
+  "batch": "chromium Otros focal tras corregir locator",
+  "passed": 1,
+  "build": "h2QPPzSuMTZo3PSJxKcph",
+  "journals": [
+    {
+      "journal": {
+        "errors": [],
+        "failures": [
+          "GET /comunidad: net::ERR_ABORTED",
+          "GET /: net::ERR_ABORTED",
+          "GET /comunidad: net::ERR_ABORTED",
+          "POST /: net::ERR_ABORTED",
+          "POST /login: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "POST /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /libro/da44282b-4215-4084-9caf-ec1a0ff29610: net::ERR_ABORTED"
+        ]
+      },
+      "case": "entre-nosotros-atlas-Otros-9aa3d-ar-y-series-en-mapa-y-lista-chromium"
+    }
+  ],
+  "failed": 0
+}

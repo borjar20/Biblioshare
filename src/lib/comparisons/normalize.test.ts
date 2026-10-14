@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { commonEpisodes, normalize } from './normalize';
+import { normalize } from './normalize';
 import { pass, watch } from './fixtures.test-support';
 
 describe('normalize', () => {
@@ -90,7 +90,7 @@ describe('normalize', () => {
 
   it('episodio huérfano sin pase general incluye la serie con progreso actual nulo', () => {
     const facts = normalize([], [watch({ pass_id: null, rating: 7 })], []);
-    expect(facts.works).toEqual([{ userId: 'a', key: 'series:s', rating: null,
+    expect(facts.works).toEqual([{ userId: 'a', key: 'series:s', rating: null, date: '2026-01-01',
       orderUnknown: false,
       progress: { seenEver: 1, current: null, aired: null, status: null } }]);
   });
@@ -120,6 +120,38 @@ describe('normalize', () => {
       rating: null, progress: { current: null, status: 'completed' },
     });
   });
+
+  describe('fecha del registro (atlas)', () => {
+    it('libro: finished_on del mismo pase que da la nota', () => {
+      const facts = normalize([
+        pass({ id: 'old', rating: 8, finished_on: '2024-03-01' }),
+        pass({ id: 'new', rating: 6, finished_on: '2025-05-02' }),
+      ], [], []);
+      expect(facts.works[0]).toMatchObject({ rating: 6, date: '2025-05-02' });
+    });
+    it('libro terminado sin fecha deja date nula', () => {
+      expect(normalize([pass({ finished_on: null })], [], []).works[0].date).toBeNull();
+    });
+    it('serie en curso: último watched_on', () => {
+      const facts = normalize([
+        pass({ id: 'p', item_type: 'series', item_id: 's', status: 'in_progress', finished_on: null }),
+      ], [
+        watch({ id: 'w1', episode_number: 1, watched_on: '2026-01-03' }),
+        watch({ id: 'w2', episode_number: 2, watched_on: '2026-02-10' }),
+      ], []);
+      expect(facts.works[0].date).toBe('2026-02-10');
+    });
+    it('serie cerrada: finished_on del pase, o último watched_on si falta', () => {
+      const closed = normalize([
+        pass({ id: 'p', item_type: 'series', item_id: 's', status: 'completed', is_active: false, finished_on: '2025-12-24' }),
+      ], [watch({ watched_on: '2025-12-01' })], []);
+      expect(closed.works[0].date).toBe('2025-12-24');
+      const undated = normalize([
+        pass({ id: 'p', item_type: 'series', item_id: 's', status: 'dropped', is_active: false, finished_on: null }),
+      ], [watch({ watched_on: '2025-11-30' })], []);
+      expect(undated.works[0].date).toBe('2025-11-30');
+    });
+  });
 });
 
 describe('closed active series progress', () => {
@@ -136,33 +168,10 @@ describe('closed active series progress', () => {
       watch({ id: 'repeat', pass_id: 'current', episode_number: 1, rating: null,
         watched_on: '2026-02-02' }),
     ], [{ seriesId: 's', count: 12 }]);
-    expect(facts.works).toEqual([{ userId: 'a', key: 'series:s', rating: 6,
+    expect(facts.works).toEqual([{ userId: 'a', key: 'series:s', rating: 6, date: '2026-02-01',
       orderUnknown: false, progress: { seenEver: 2, current: 1, aired: 12, status } }]);
     expect(facts.episodes['a|series:s']).toEqual([
       { season: 1, episode: 1, rating: null }, { season: 1, episode: 2, rating: 8 },
     ]);
-  });
-});
-
-describe('commonEpisodes', () => {
-  it('en un trío solo devuelve episodios con notas de las tres personas', () => {
-    const facts = normalize([], [
-      watch({ id: 'a1', user_id: 'a', rating: 8 }),
-      watch({ id: 'b1', user_id: 'b', rating: 7 }),
-      watch({ id: 'c1', user_id: 'c', rating: 9 }),
-      watch({ id: 'a2', user_id: 'a', episode_number: 2, rating: 8 }),
-      watch({ id: 'b2', user_id: 'b', episode_number: 2, rating: 8 }),
-      watch({ id: 'c2', user_id: 'c', episode_number: 2, rating: null }),
-    ], []);
-    expect(commonEpisodes(facts, 'series:s', ['a', 'b', 'c'])).toEqual([{
-      season: 1, episode: 1,
-      notes: [{ userId: 'a', rating: 8 }, { userId: 'b', rating: 7 },
-        { userId: 'c', rating: 9 }],
-    }]);
-  });
-
-  it('no muestra episodios ajenos a la obra activa', () => {
-    const facts = normalize([], [watch({ rating: 8 })], []);
-    expect(commonEpisodes(facts, 'series:other', ['a'])).toEqual([]);
   });
 });

@@ -1,0 +1,18 @@
+{
+  "errors": [],
+  "failures": [
+    "GET /comunidad: net::ERR_ABORTED",
+    "GET /buscar: net::ERR_ABORTED",
+    "GET /: net::ERR_ABORTED",
+    "GET /comunidad: net::ERR_ABORTED",
+    "GET /u/qa_comp_motion_a: net::ERR_ABORTED",
+    "GET /buscar: net::ERR_ABORTED",
+    "POST /login: net::ERR_ABORTED",
+    "POST /: net::ERR_ABORTED",
+    "GET /comunidad: net::ERR_ABORTED",
+    "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+    "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+    "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+    "GET /libro/010d2810-c84c-4234-90bb-996b3334c666: net::ERR_ABORTED"
+  ]
+}

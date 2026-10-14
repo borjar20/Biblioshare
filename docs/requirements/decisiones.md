@@ -7783,3 +7783,147 @@ pares (día, franja) de sesiones, episodios y terminados, estos con la hora en q
 `/estadisticas` no cambia: allí «cuándo lees» sigue midiendo sesiones. En el mismo arreglo, «En
 marcha» toma `created_at` como inicio de los pases sin `started_on`. Detalle en la
 [spec](../superpowers/specs/2026-10-13-wrap-up-mensual-revision-visual-design.md).
+
+## 2026-10-14 — Entre nosotros: el atlas sustituye a Obras y Gustos
+
+`/comunidad/entre-nosotros` pasa a ser un atlas en `<canvas>` a sangre y siempre oscuro,
+sea cual sea el tema de la app. Entra en `isFullscreenRoute` (sin topbar ni barra inferior)
+y usa tokens propios: es una vista inmersiva, y la paleta fija de diez colores de persona
+está pensada para leerse sobre ese fondo. Sustituye a Obras (Venn general ›
+cruce › obra) y a Gustos. Tiene cuatro lentes sobre las mismas obras: Quién, Opinión,
+Tiempo e Islas. Islas, en sus modos Tipo, Género y Autor/Director, cubre las agrupaciones
+que daba Gustos, así que Gustos desaparece en vez de convivir. «En común» significa
+siempre que la obra la tienen **todas** las caras activas, no una pareja cualquiera.
+
+El estado se reparte por privacidad. La lente y el modo de Islas van en la URL
+(`?lente=…&islas=…`, con `router.replace` y conservando `group`/`con`), porque se pueden
+compartir y no dicen nada de nadie. Las caras activas y la cámara van a `sessionStorage`
+con clave por cuenta y grupo: así los ids de persona nunca llegan a la URL ni al historial.
+Ese almacenamiento se borra al cambiar de sesión y, si falla, el atlas encaja la vista.
+
+Se retira la server action del detalle de obra (`loadComparisonWork`) junto con el
+detalle de Gustos y el lienzo DOM antiguo: el atlas trabaja solo con el snapshot de
+`loadComparison`, de modo que hay una respuesta menos que proteger (#1519 se cierra por
+eso). La vía de teclado y de lector de pantalla es «Ver como lista»: enlaces a la ficha
+con el mismo filtro de caras, formato y lente, ordenados según la lente. Se decidió no
+mezclar el atlas en `main` hasta que esa lista existiera, porque un canvas sin
+alternativa dejaba fuera a quien no usa puntero; con la F4 la condición se cumple.
+Diseño en la [spec del atlas](../superpowers/specs/2026-10-13-entre-nosotros-atlas-design.md)
+y evidencia en [F1](../testing/2026-10-13-entre-nosotros-atlas-f1.md),
+[F2](../testing/2026-10-13-entre-nosotros-atlas-f2.md),
+[F3](../testing/2026-10-14-entre-nosotros-atlas-f3.md) y
+[F4](../testing/2026-10-14-entre-nosotros-atlas-f4.md); lo que quedó pendiente está en
+#1520–#1527.
+
+## 2026-10-14 — Entre nosotros: qué memoria del atlas se guarda y cuándo se borra
+
+Nota a la entrada anterior. De la cámara solo se recuerda la que el usuario movió (rueda,
+pellizco, arrastre, zoom, teclado o un vuelo a un grupo); un encaje automático no se
+guarda y borra la que hubiera, para que la escena siguiente (otro formato, otro modo de
+Islas, otro tamaño de pantalla) encaje la suya. El borrado al cambiar de sesión cubre ahora
+cualquier salida: el botón de Ajustes vacía la memoria del atlas antes del logout, el
+explorador poda al montar la de otras cuentas que quede en la pestaña y, tras invalidar la
+sesión, ninguna escritura tardía la recupera.
+
+## 2026-10-14 — Entre nosotros: ajustes del atlas tras probarlo con datos reales
+
+Al probar el atlas con datos reales (4 personas, hasta 830 obras por persona) salieron
+cinco problemas que la fixture de QA no enseñaba, porque en ella casi todo es compartido:
+
+- **Quién solapaba grupos.** Con 4 personas en cuadrado, las parejas opuestas y las cuatro
+  tienen el mismo centroide. Los grupos de una sola persona se centraban en su polo y, con
+  cientos de obras, tapaban su nombre. Ahora lo de una sola persona va hacia fuera, más
+  allá de su polo, y los compartidos pasan por una separación determinista que los aparta
+  entre sí y de los polos. Se mantienen la pertenencia y el orden de cada grupo (siguen
+  siendo las regiones exactas del Venn); solo cambia dónde se dibujan.
+- **La mini-ficha no enseñaba portadas y listaba caras apagadas.** Ahora usa la portada
+  real (loader del CDN, sin el optimizador de Next) y solo las caras activas: quien está
+  fuera del cruce tampoco aparece en la ficha.
+- **Las notas de la escala de Opinión no se leían** (puntos apilados con iniciales). Bajo
+  la pista va la nota de cada cara activa en cifras; la etiqueta accesible no cambia.
+- **«Ellos» confundía** cuando era una persona o una media. Los textos de los ejes y las
+  esquinas se construyen con el conjunto real de caras con las que se compara.
+- **Tiempo e Islas pintaban todo lo de cada persona**, aunque su sentido es comparar. Con
+  dos o más caras activas solo entra lo que comparten al menos dos de ellas; con una cara,
+  todo lo suyo. Resúmenes, lista y escena leen el mismo layout, así que siguen de acuerdo.
+
+Evidencia en [F4, «Ajustes tras prueba con datos reales»](../testing/2026-10-14-entre-nosotros-atlas-f4.md).
+
+## 2026-10-14 — Entre nosotros: Quién se reagrupa con la selección e Islas explica sus medias
+
+En Quién, la pertenencia visual de cada obra se proyecta sobre las caras activas:
+si A y B siguen activas y C se apaga, lo de A+B y lo de A+B+C ocupa un único grupo
+A+B. Así el mapa describe el mismo cruce que la lista. Los polos conservan su sitio
+y las obras sin ninguna cara activa mantienen su posición tenue, para preservar la
+orientación al cambiar la selección. Las portadas, los recuentos, los halos y los
+hilos acompañan el desplazamiento con el motor de transición existente; el atlas
+se mueve al responder a la selección, sin animación continua.
+
+Islas conserva el cálculo de las medias por persona y el mínimo de tres notas para
+mostrarlas. Cambia su lectura: cifras decimales, iniciales, escala explícita 1–10 y
+tamaño de muestra; «Ver como lista» expone todas las cifras y muestras de forma
+accesible. La identidad de la obra se mantiene entre islas: señalar o tocar una
+copia resalta todas sus copias y sus hilos, y atenúa el resto, también cuando la obra
+solo aparece una vez. Las conexiones curvan respecto de la dirección del par y la
+red de fondo queda tenue para que se pueda seguir el vínculo elegido.
+
+Las cabeceras de Islas reservan píxeles por fila y columna dentro de la banda libre,
+en vez de confiar en márgenes de mundo que encogen al encajar. En mapas densos el
+detalle aparece al acercar; al alejar los títulos también se acotan y desaparecen
+si no caben. La lista conserva todos los nombres, cifras y muestras. Una cámara
+propia de Quién sigue el grupo sin perder zoom cuando los nuevos destinos quedan
+fuera del encuadre, incluido el retorno desde la lista con otra selección.
+
+Mejora implementada localmente sobre [PR #1529](https://github.com/borjar20/Biblioshare/pull/1529),
+sin cambios de esquema ni de autenticación. La [evidencia local](../testing/2026-10-14-entre-nosotros-atlas-vivo.md)
+recoge 368 unitarios, TypeScript, lint focal, build de producción y ocho recorridos
+de navegador verificados. Integración y despliegue en producción pendientes.
+
+## 2026-10-14 — Entre nosotros: selección completa y motivos de Otros
+
+Opinión, Tiempo e Islas comparan la intersección de **todas** las caras activas.
+Con A, B y C seleccionadas solo entran obras de A+B+C; para comparar A+B se
+desmarca C. Esta decisión sustituye el criterio de «al menos dos» de la entrada
+«Ajustes del atlas tras probarlo con datos reales» de este mismo día, que se
+conserva como antecedente. Escena, resúmenes y lista aplican la misma selección.
+Sin caras activas no hay obras comparables; con una, Tiempo e Islas muestran
+sus obras y Opinión sigue necesitando al menos dos.
+
+Opinión exige una nota explícita de cada cara seleccionada: tener una obra sin
+valoración no permite presentar una comparación de pareja como una de tres.
+Tiempo conserva las fechas disponibles de las obras comunes, cuenta las
+ausentes y excluye esas obras del cálculo de primeras llegadas; no inventa
+fechas ni reduce silenciosamente la selección. Quién sigue mostrando las
+pertenencias del mapa y todos sus cruces compartidos, incluso de una o dos
+obras, llevan cifra e hilos hacia sus dueños. Al apagar un cruce ambos quedan
+tenues; las obras de una sola persona siguen junto a su polo.
+
+«Otros» explica por qué una obra no tiene isla propia. En Autor/Director
+distingue tres motivos: sus créditos identificados quedan fuera de las diez
+categorías principales, falta una identidad canónica de autor o director,
+o es una serie, que este modo no agrupa por creador. En Género distingue el
+límite de categorías y la ausencia de género. Cada obra aporta un único
+motivo, aunque tenga varios créditos; si al menos uno pertenece a una
+categoría elegida, la obra no entra en Otros. La explicación y los recuentos
+coinciden en mapa y lista. Se mantienen el top diez, las consultas y los
+créditos canónicos con id y nombre; el texto libre de autor o director no
+se convierte en identidad de persona.
+
+Implementación y verificación local en [PR #1529](https://github.com/borjar20/Biblioshare/pull/1529),
+sin cambios de esquema, RLS ni caché. [Evidencia de selección completa](../testing/2026-10-14-entre-nosotros-atlas-seleccion-completa.md);
+integración y despliegue en producción pendientes.
+
+## 2026-10-14 — Entre nosotros: leyenda plegable en móvil
+
+Hasta 640 px, la leyenda inferior del atlas empieza cerrada para dejar más
+espacio al mapa. El botón «Leyenda», con área táctil de 44 px y estado
+accesible de expansión, permite consultarla. En escritorio el texto permanece
+visible; «Ver como lista» no muestra esta leyenda. Al abrirla o cerrarla se
+actualiza la banda disponible y vuelve a encajar el mapa cuando está en
+encaje automático. El estado abierto se conserva entre lentes de la misma
+vista, sin guardarlo como preferencia persistente.
+
+[Verificación local](../testing/2026-10-14-entre-nosotros-atlas-leyenda.md):
+55 pruebas de AtlasView, TypeScript, lint, build y dos E2E de escritorio/móvil
+PASS; sin desbordamiento horizontal a 360 y 390 px. Integración y despliegue
+en producción pendientes.

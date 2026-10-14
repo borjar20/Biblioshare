@@ -57,14 +57,14 @@ Entre nosotros está integrado y publicado desde PR #1474, con esquema y grants
 verificados en desarrollo y producción. Los nodos `r-comparisons`, `c-comparisons`,
 `a-comparisons`, `m-comparisons`, `d-comparisons` y `t-comparisons` describen el flujo
 `flow-comparison`. La evidencia inicial está en [el informe integrado](../testing/2026-10-10-entre-nosotros.md)
-y la composición del prototipo llevada al producto, en
-[el informe visual](../testing/2026-10-10-entre-nosotros-visual.md). El ajuste posterior
-posterior mantiene un marco responsive de 560–720 px al cambiar de estado,
-con controles y avisos dentro del scroll del lienzo; la rueda desplaza la página
-sin cambiar el nivel de zoom. La carga da paso a los datos mediante un fundido
-de 420 ms. Geometría y retorno del foco se documentan en
-[la verificación local del lienzo](../testing/2026-10-10-entre-nosotros-stable-canvas.md).
-La evidencia de CI e integración se registra en la PR de la entrega.
+Desde el 2026-10-14 la pantalla es un atlas a sangre y siempre oscuro en `<canvas>`
+(`src/components/comparisons/atlas/`, módulos puros en `src/lib/comparisons/atlas/`)
+con cuatro lentes y «Ver como lista» como vía accesible; sustituye a Obras y Gustos.
+Diseño en [la spec del atlas](../superpowers/specs/2026-10-13-entre-nosotros-atlas-design.md)
+y evidencia en los informes [F1](../testing/2026-10-13-entre-nosotros-atlas-f1.md),
+[F2](../testing/2026-10-13-entre-nosotros-atlas-f2.md),
+[F3](../testing/2026-10-14-entre-nosotros-atlas-f3.md) y
+[F4](../testing/2026-10-14-entre-nosotros-atlas-f4.md).
 
 La cabecera móvil del usuario con perfil muestra marca, campana, Más y avatar;
 Cambiar tema vive en Más bajo 768 px y mantiene el icono directo desde 768 px.

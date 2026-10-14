@@ -1,6 +1,6 @@
 import { expect, test as base, type Page, type TestInfo, type Request } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
-import { chooseComparisonParticipants, comparisonRest, deleteComparisonActor, shownName, loginComparisonActor, withComparisonFixture, type ComparisonActor, type ComparisonFixture } from './support/comparison-fixtures';
+import { chooseComparisonParticipants, comparisonRest, deleteComparisonActor, loginComparisonActor, withComparisonFixture, type ComparisonActor, type ComparisonFixture } from './support/comparison-fixtures';
 
 function coverOwnership(request: Request) {
   const url = new URL(request.url());
@@ -53,10 +53,20 @@ const test = base.extend<{ journal: Record[] }>({
   }, { auto: true }],
 });
 async function settled(page: Page) {
-  await expect(page.locator('[data-camera-moving]')).toHaveAttribute('data-camera-moving', 'false');
+  await expect(page.locator('[data-atlas-moving]').first()).toBeAttached();
+  await expect(page.locator('[data-atlas-moving="true"]')).toHaveCount(0);
 }
+async function groups(page: Page) {
+  const sheet = page.getByRole('dialog', { name: 'Grupos', exact: true });
+  if (!await sheet.isVisible()) await page.getByRole('button', { name: /^Grupo: / }).click();
+  return sheet;
+}
+const faces = (page: Page) => page.getByRole('group', { name: 'Personas del cruce', exact: true }).getByRole('button');
+const summary = (page: Page) => page.locator('[data-comparison-stage]').getByRole('status');
 async function createGroup(page: Page, actors: ComparisonActor[], name = 'Mi grupo QA', owner = actors[0]) {
-  await page.getByRole('button', { name: 'Crear grupo', exact: true }).click();
+  const firstGroup = page.getByRole('button', { name: 'Crear tu primer grupo', exact: true });
+  if (await firstGroup.isVisible()) await firstGroup.click();
+  else await (await groups(page)).getByRole('button', { name: 'Crear grupo', exact: true }).click();
   const form = page.getByRole('form', { name: 'Crear grupo' });
   await form.getByLabel('Nombre del grupo').fill(name);
   // The owner never has to pick themselves: a new group starts with them included.
@@ -64,7 +74,7 @@ async function createGroup(page: Page, actors: ComparisonActor[], name = 'Mi gru
   await expect(form.getByRole('checkbox', { name: owner.name, exact: true })).toHaveCount(0);
   await chooseComparisonParticipants(form, owner, actors);
   await form.getByRole('button', { name: 'Guardar grupo', exact: true }).click();
-  await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: `Grupo: ${name}`, exact: true })).toBeVisible();
   await settled(page);
   return new URL(page.url()).searchParams.get('group')!;
 }
@@ -72,12 +82,6 @@ async function open(page: Page, fixture: ComparisonFixture, actors = fixture.act
   await loginComparisonActor(page, fixture.actors[0]);
   await page.goto('/comunidad/entre-nosotros');
   return createGroup(page, actors, name);
-}
-async function selectPeople(page: Page, fixture: ComparisonFixture, selected: number[]) {
-  for (const [index, actor] of fixture.actors.entries()) {
-    const checkbox = page.getByRole('checkbox', { name: shownName(fixture, actor), exact: true });
-    if (await checkbox.count()) await checkbox.setChecked(selected.includes(index));
-  }
 }
 async function comparisonResponse(page: Page, action: () => Promise<unknown>, predicate: (request: string) => boolean = () => true) {
   // Inspect genuine upstream bytes before browser delivery: Chromium can lose
@@ -107,54 +111,30 @@ function resultBody(response: { body: string }) {
   }
   throw new Error('Missing Server Action result in real response');
 }
-async function geometry(page: Page, info: TestInfo, name: string) {
-  const data = await page.evaluate(() => {
-    const stage = document.querySelector('[data-comparison-stage]')!;
-    return { viewport: { width: innerWidth, height: innerHeight }, scrollY, documentWidth: document.documentElement.scrollWidth,
-      documentHeight: document.documentElement.scrollHeight, stage: stage.getBoundingClientRect().toJSON(),
-      colors: { background: getComputedStyle(stage).backgroundColor, text: getComputedStyle(stage).color } };
-  });
-  expect(data.documentWidth).toBeLessThanOrEqual(data.viewport.width);
-  await attachJson(info, name, data);
-  await page.screenshot({ path: info.outputPath(`${name}.png`), fullPage: false });
-  return data;
-}
 
-test('ten-person CRUD, owner-free group, exact pair/trio, formats, notes, persistence and keyboard', async ({ page, journal }, info) => {
+test('ten-person CRUD, owner-free group, atlas faces and formats, persistence and keyboard', async ({ page, journal }, info) => {
   await withComparisonFixture(async fixture => {
     const group = await open(page, fixture);
     expect(group).toMatch(/^[0-9a-f-]{36}$/);
-    await expect(page.getByRole('checkbox')).toHaveCount(10);
+    await expect(faces(page)).toHaveCount(10);
     expect(journal.some(row => row.body?.includes('PRIVATE PASS QA MUST NOT LEAVE'))).toBe(false);
-    await selectPeople(page, fixture, [0, 1]);
-    await page.getByRole('button', { name: 'Comparar selección', exact: true }).click(); await settled(page);
-    await expect(page.getByRole('button', { name: 'Abrir región: Tú, Beatriz QA; 32 obras', exact: true })).toBeVisible();
-    await page.getByRole('checkbox', { name: 'Carlos QA', exact: true }).check(); await settled(page);
-    await expect(page.getByRole('button', { name: 'Abrir región: Tú, Beatriz QA; 0 obras', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Abrir región: Tú, Beatriz QA, Carlos QA; 32 obras', exact: true })).toBeVisible();
+    // All ten share the first three books; the first three also share 27 more, the movie and the series.
+    await expect(summary(page)).toHaveText('3 obras en común entre las 10 personas');
+    for (const actor of fixture.actors.slice(3)) await faces(page).filter({ hasText: actor.name }).click();
+    await expect(summary(page)).toHaveText('32 obras en común entre Tú, Beatriz QA y Carlos QA');
     await page.getByRole('group', { name: 'Filtrar por tipo de obra', exact: true }).getByRole('button', { name: 'Libros', exact: true }).click(); await settled(page);
-    await expect(page.getByRole('button', { name: 'Abrir región: Tú, Beatriz QA, Carlos QA; 30 obras', exact: true })).toBeVisible();
-    await page.getByRole('button', { name: 'Abrir región: Tú, Beatriz QA, Carlos QA; 30 obras', exact: true }).click(); await settled(page);
-    const cover = page.locator(`[data-work-key="book:${fixture.books[0].id}"]`);
-    const detail = await comparisonResponse(page, () => cover.click(), request => request.includes(`book:${fixture.books[0].id}`));
-    const result = resultBody(detail);
-    expect(result.data.people.map((person: { userId: string }) => person.userId).sort()).toEqual(fixture.actors.slice(0, 3).map(actor => actor.id).sort());
-    expect(result.data.people.find((person: { userId: string }) => person.userId === fixture.actors[0].id).rating).toBeNull();
-    await expect(page.getByRole('link', { name: 'Ver ficha', exact: true })).toBeVisible(); await settled(page);
-    await expect(page.getByText('Sin valorar', { exact: true })).toBeVisible();
-    await page.keyboard.press('Escape'); await settled(page); await expect(cover).toBeFocused();
-    await page.reload(); await settled(page); await expect(page.getByRole('heading', { name: 'Mi grupo QA', exact: true })).toBeVisible();
+    await expect(summary(page)).toHaveText('30 obras en común entre Tú, Beatriz QA y Carlos QA');
+    await page.reload(); await settled(page); await expect(page.getByRole('button', { name: 'Grupo: Mi grupo QA', exact: true })).toBeVisible();
     expect(new URL(page.url()).searchParams.get('group')).toBe(group);
-    await page.getByRole('button', { name: 'Editar grupo', exact: true }).click();
+    await (await groups(page)).getByRole('button', { name: 'Editar grupo', exact: true }).click();
     const form = page.getByRole('form', { name: 'Editar grupo' });
     await expect(form.getByLabel('Nombre del grupo')).toBeFocused();
     await form.getByLabel('Nombre del grupo').fill('Grupo sin dueño QA');
     await form.getByRole('checkbox', { name: 'Incluirme en la comparación', exact: true }).setChecked(false);
     for (const [index, actor] of fixture.actors.entries()) if (index > 0) await form.getByRole('checkbox', { name: actor.name, exact: true }).setChecked(index === 1 || index === 2);
     await form.getByRole('button', { name: 'Guardar grupo', exact: true }).focus(); await page.keyboard.press('Enter'); await settled(page);
-    await expect(page.getByRole('checkbox', { name: 'Tú', exact: true })).toHaveCount(0);
-    await expect(page.getByRole('checkbox')).toHaveCount(2);
-    await page.getByRole('button', { name: 'Editar grupo', exact: true }).click();
+    await expect(faces(page).filter({ hasText: 'Tú' })).toHaveCount(0); await expect(faces(page)).toHaveCount(2);
+    await (await groups(page)).getByRole('button', { name: 'Editar grupo', exact: true }).click();
     await page.getByRole('form', { name: 'Editar grupo' }).getByRole('button', { name: 'Eliminar grupo', exact: true }).focus(); await page.keyboard.press('Enter');
     const focusAfterConfirm = await page.evaluate(() => ({ tag: document.activeElement?.tagName, text: document.activeElement?.textContent?.slice(0, 100) }));
     await attachJson(info, 'editor-confirmation-focus-observation', { focusAfterConfirm });
@@ -170,110 +150,18 @@ test('ten-person CRUD, owner-free group, exact pair/trio, formats, notes, persis
   }, { integrated: true });
 });
 
-for (const width of [320, 768, 1280]) test(`Gustos restores A/B after Works selects C; ${width}px both themes and long async series evidence`, async ({ page }, info) => {
-  await page.setViewportSize({ width, height: 800 });
-  await withComparisonFixture(async fixture => {
-    await open(page, fixture, fixture.actors.slice(0, 3));
-    await selectPeople(page, fixture, [0, 1]);
-    await page.getByRole('button', { name: 'Gustos', exact: true }).click();
-    await page.getByRole('button', { name: 'Explorar Drama', exact: true }).click(); await settled(page);
-    await page.getByRole('button', { name: 'Obras', exact: true }).click();
-    await page.getByRole('checkbox', { name: 'Carlos QA', exact: true }).check();
-    await page.getByRole('button', { name: 'Gustos', exact: true }).click(); await settled(page);
-    await expect(page.getByRole('checkbox', { name: 'Carlos QA', exact: true })).not.toBeChecked();
-    for (const name of ['Tú', 'Beatriz QA']) await expect(page.getByRole('checkbox', { name, exact: true })).toBeChecked();
-    await expect(page.getByRole('region', { name: 'Obras de Carlos QA', exact: true })).toHaveCount(0);
-    const cover = page.locator(`[data-work-key="series:${fixture.series!.id}"]`), original = await cover.elementHandle();
-    await cover.scrollIntoViewIfNeeded();
-    const savedScroll = await page.evaluate(() => scrollY);
-    const canvas = page.locator('[data-canvas-scroll]');
-    const savedCanvasScroll = await canvas.evaluate(node => node.scrollTop);
-    const frameHeight = (await canvas.boundingBox())!.height;
-    // Delay transport delivery only: response is still the genuine action/RLS result.
-    let release!: () => void;
-    let originalDetailBody = '';
-    const hold = new Promise<void>(resolve => { release = resolve; });
-    await page.route('**/comunidad/entre-nosotros**', async route => {
-      if (route.request().method() !== 'POST' || !route.request().postData()?.includes(`series:${fixture.series!.id}`)) return route.continue();
-      const response = await route.fetch({ maxRetries: 0, maxRedirects: 0 });
-      originalDetailBody = await response.text();
-      await hold; await route.fulfill({ response });
-    });
-    const response = page.waitForResponse(response => response.request().postData()?.includes(`series:${fixture.series!.id}`) ?? false);
-    const probe = await page.evaluateHandle(() => {
-      const samples: { t: number; moving: string | null; height: number; transform: string }[] = [];
-      const start = performance.now(); let running = true;
-      function tick() { const node = document.querySelector('[data-camera-moving]')!, stage = document.querySelector('[data-comparison-stage]')!;
-        samples.push({ t: performance.now() - start, moving: node.getAttribute('data-camera-moving'), height: stage.getBoundingClientRect().height,
-          transform: (document.querySelector('[data-comparison-world]') as HTMLElement).style.transform }); if (running) requestAnimationFrame(tick); }
-      requestAnimationFrame(tick); return { samples, stop() { running = false; } };
-    });
-    await cover.click(); await page.waitForTimeout(300); release();
-    const detail = await response;
-    expect(detail.status()).toBe(200);
-    expect(JSON.parse(detail.request().postData()!)[2]).toEqual(fixture.actors.slice(0, 2).map(actor => actor.id));
-    // Read the same original forwarded response, avoiding Chromium's intermittent
-    // Network.getResponseBody failure without replacing the delivered DTO.
-    const dto = resultBody({ body: originalDetailBody }); expect(dto.data.commonEpisodes).toHaveLength(40);
-    await expect(page.getByRole('link', { name: 'Ver ficha', exact: true })).toBeVisible(); await settled(page);
-    await page.waitForTimeout(300); await probe.evaluate(probe => probe.stop());
-    const samples = await probe.evaluate(probe => probe.samples);
-    const finalMoving = samples.findLastIndex(sample => sample.moving === 'true');
-    // Measured wall clock includes native click/commit overhead; catches a response-driven restart.
-    expect(samples[finalMoving].t - samples.find(sample => sample.moving === 'true')!.t).toBeLessThan(950);
-    const final = samples.at(-1)!;
-    expect(final.height).toBeGreaterThan(3000);
-    expect((await canvas.boundingBox())!.height).toBeCloseTo(frameHeight, 0);
-    expect(samples.slice(finalMoving + 2).every(sample => sample.transform === final.transform)).toBe(true);
-    expect(await original!.evaluate(node => node.isConnected)).toBe(true);
-    await expect(page.getByRole('button', { name: 'Volver a la categoría', exact: true })).toBeFocused();
-    for (const [index, status] of ['completed', 'dropped'].entries()) {
-      expect(dto.data.people.find((person: { userId: string }) => person.userId === fixture.actors[index].id).progress.status).toBe(status);
-    }
-    await expect(page.getByText('Abandonada', { exact: true })).toHaveCount(1);
-    await expect(page.getByText('Terminada', { exact: true })).toHaveCount(1);
-    const titleLayout = await page.getByRole('heading', { name: fixture.series!.title, exact: true }).evaluate((heading, key) => {
-      const cover = document.querySelector(`[data-work-key="${key}"]`)!, stage = heading.closest('[data-comparison-stage]')!;
-      const title = heading.getBoundingClientRect(), hero = cover.getBoundingClientRect(), boundary = stage.getBoundingClientRect();
-      const range = document.createRange(); range.selectNodeContents(heading);
-      return { title: title.toJSON(), cover: hero.toJSON(), stage: boundary.toJSON(),
-        overlapArea: Math.max(0, Math.min(title.right, hero.right) - Math.max(title.left, hero.left)) * Math.max(0, Math.min(title.bottom, hero.bottom) - Math.max(title.top, hero.top)),
-        scrollWidth: heading.scrollWidth, clientWidth: heading.clientWidth,
-        textRects: [...range.getClientRects()].map(rect => rect.toJSON()), text: heading.textContent };
-    }, `series:${fixture.series!.id}`);
-    await attachJson(info, `work-title-${width}`, titleLayout);
-    expect(titleLayout.overlapArea, 'full heading must not pass behind the unchanged cover').toBe(0);
-    expect(titleLayout.scrollWidth, 'full title text must fit its own box').toBeLessThanOrEqual(titleLayout.clientWidth + 1);
-    expect(titleLayout.text).toBe(fixture.series!.title);
-    for (const line of titleLayout.textRects) {
-      expect(line.x).toBeGreaterThanOrEqual(titleLayout.stage.x - 1);
-      expect(line.x + line.width).toBeLessThanOrEqual(titleLayout.stage.x + titleLayout.stage.width + 1);
-      expect(line.y + line.height).toBeLessThanOrEqual(titleLayout.stage.y + titleLayout.stage.height + 1);
-    }
-    for (const theme of ['light', 'dark'] as const) {
-      await page.emulateMedia({ colorScheme: theme });
-      await page.evaluate(theme => document.documentElement.classList.toggle('dark', theme === 'dark'), theme);
-      await geometry(page, info, `series-${width}-${theme}`);
-    }
-    const last = page.getByRole('heading', { name: 'Temporada 1 · episodio 40', exact: true });
-    await last.scrollIntoViewIfNeeded(); await expect(last).toBeInViewport();
-    expect(await canvas.evaluate(node => node.scrollTop)).toBeGreaterThan(2000);
-    expect((await canvas.boundingBox())!.height).toBeCloseTo(frameHeight, 0);
-    await page.keyboard.press('Escape'); await settled(page); await expect(cover).toBeFocused();
-    expect(await page.evaluate(() => scrollY)).toBeCloseTo(savedScroll, 0);
-    expect(await canvas.evaluate(node => node.scrollTop)).toBeCloseTo(savedCanvasScroll, 0);
-    await attachJson(info, 'async-series-motion', { samples, savedScroll, savedCanvasScroll, frameHeight, width });
-  }, { integrated: true });
-});
-
 test('two real tabs conflict, same-account focus preserves context, cookie logout/account switch removes old evidence', async ({ page, context }, info) => {
   await withComparisonFixture(async fixture => {
     const group = await open(page, fixture, fixture.actors.slice(0, 3));
     const other = await context.newPage(); await other.goto(`/comunidad/entre-nosotros?group=${group}`); await settled(other);
-    await page.getByRole('button', { name: 'Editar grupo', exact: true }).click();
-    await other.getByRole('button', { name: 'Editar grupo', exact: true }).click();
+    await (await groups(page)).getByRole('button', { name: 'Editar grupo', exact: true }).click();
+    await (await groups(other)).getByRole('button', { name: 'Editar grupo', exact: true }).click();
     await other.getByRole('form', { name: 'Editar grupo' }).getByLabel('Nombre del grupo').fill('Otra pestaña QA');
-    await other.getByRole('form', { name: 'Editar grupo' }).getByRole('button', { name: 'Guardar grupo', exact: true }).click(); await settled(other);
+    // The atlas host settles before the Server Action answers: wait for the other
+    // tab's save to commit, or this tab may save first and win the race.
+    const otherSaved = other.waitForResponse(response => !!response.request().headers()['next-action'] && !!response.request().postData()?.includes('Otra pestaña QA'));
+    await other.getByRole('form', { name: 'Editar grupo' }).getByRole('button', { name: 'Guardar grupo', exact: true }).click();
+    await otherSaved; await expect(other.getByRole('button', { name: 'Grupo: Otra pestaña QA', exact: true })).toBeVisible(); await settled(other);
     const conflict = await comparisonResponse(page, () => page.getByRole('form', { name: 'Editar grupo' }).getByRole('button', { name: 'Guardar grupo', exact: true }).click(), request => request.includes('expectedRevision'));
     expect(resultBody(conflict)).toEqual({ ok: false, code: 'conflict' });
     await expect(page.getByRole('form', { name: 'Editar grupo' }).getByRole('alert')).toContainText('otra pestaña');
@@ -286,11 +174,11 @@ test('two real tabs conflict, same-account focus preserves context, cookie logou
     const reloadAfterRefresh = page.waitForRequest(request => groupsRefreshed && request.method() === 'POST' && !!request.headers()['next-action']);
     await page.getByRole('button', { name: 'Recargar grupo', exact: true }).click();
     await refreshedGroups; await (await reloadAfterRefresh).response(); await settled(page);
-    await selectPeople(page, fixture, [0, 1]); await page.getByRole('button', { name: 'Gustos', exact: true }).click();
-    await page.getByRole('button', { name: 'Explorar Drama', exact: true }).click(); await settled(page);
+    await page.getByRole('button', { name: 'Opinión', exact: true }).click();
+    await faces(page).filter({ hasText: 'Carlos QA' }).click(); await settled(page);
     await other.bringToFront(); await page.bringToFront();
-    await expect(page.getByRole('checkbox', { name: 'Beatriz QA', exact: true })).toBeChecked();
-    await expect(page.locator('[data-comparison-slot="tastes"]')).toHaveAttribute('data-view', 'facet');
+    await expect(page.getByRole('button', { name: 'Opinión', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(faces(page).filter({ hasText: 'Carlos QA' })).toHaveAttribute('aria-pressed', 'false');
     await other.goto('/ajustes');
     const timeline: { phase: string; t: number }[] = [];
     const mark = (phase: string) => timeline.push({ phase, t: Date.now() });
@@ -328,7 +216,7 @@ test('two real tabs conflict, same-account focus preserves context, cookie logou
       await page.bringToFront(); await page.evaluate(() => window.dispatchEvent(new Event('focus'))); await haveA;
       // Unchanged session cookies: the same account keeps its evidence while auth answers.
       await expect(page.getByText('Verificando tu sesi\u00f3n\u2026', { exact: true })).toHaveCount(0);
-      await expect(page.locator('[data-comparison-slot="tastes"]')).toBeVisible();
+      await expect(page.locator('[data-comparison-slot="works"]')).toBeVisible();
       await other.bringToFront();
       await other.getByRole('button', { name: 'Cerrar sesi\u00f3n', exact: true }).click();
       await expect(other).toHaveURL(new URL('/', info.project.use.baseURL).href); mark('real logout completed');
@@ -365,10 +253,12 @@ test('two real tabs conflict, same-account focus preserves context, cookie logou
     // B follows nobody in the fixture: the empty state points to people to follow.
     const empty = page.getByRole('main').getByText('Aún no sigues a nadie', { exact: true });
     await expect(empty).toHaveCount(1); await expect(empty).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Mi perfil', exact: true })).toHaveAttribute('href', `/u/${fixture.actors[2].username}`);
-    await expect(page.getByRole('option', { name: 'Otra pestaña QA', exact: true })).toHaveCount(0);
+    await expect((await groups(page)).getByRole('option', { name: 'Otra pestaña QA', exact: true })).toHaveCount(0);
     await page.waitForTimeout(300);
     await expect(page.locator('[data-comparison-stage]')).toHaveCount(0);
+    // The atlas route is full-bleed (no app topbar): confirm the tab's account where «Mi perfil» lives.
+    await page.goto('/comunidad');
+    await expect(page.getByRole('link', { name: 'Mi perfil', exact: true })).toHaveAttribute('href', `/u/${fixture.actors[2].username}`);
     await attachJson(info, 'identity-switch', { group, oldEvidenceRemoved: true, newAccount: fixture.actors[2].username, authChecks, staleResponseAccount: fixture.actors[0].username });
     await other.close();
   }, { integrated: true });
@@ -378,7 +268,7 @@ test('foreign owner isolation and revoke/block/delete redact actual action respo
   await withComparisonFixture(async fixture => {
     const group = await open(page, fixture, fixture.actors.slice(0, 3));
     const ownerResponse = page.waitForResponse(response => !!response.request().headers()['next-action'] && response.request().postData() === JSON.stringify([group, 'all']));
-    await page.getByRole('button', { name: 'Actualizar', exact: true }).click();
+    await (await groups(page)).getByRole('button', { name: 'Actualizar', exact: true }).click();
     const ownerAction = (await ownerResponse).request(); await settled(page);
     const stranger = await browser.newContext(); const strangerPage = await stranger.newPage();
     try {
@@ -392,24 +282,26 @@ test('foreign owner isolation and revoke/block/delete redact actual action respo
       expect(forbidden.status()).toBe(200);
       expect(resultBody({ body: await forbidden.text() })).toEqual({ ok: false, code: 'unavailable' });
       expect(body).not.toContain('Mi grupo QA'); expect(body).not.toContain(fixture.books[0].id);
-      await expect(strangerPage.getByRole('option', { name: 'Mi grupo QA', exact: true })).toHaveCount(0);
+      await expect((await groups(strangerPage)).getByRole('option', { name: 'Mi grupo QA', exact: true })).toHaveCount(0);
       await expect(strangerPage.locator('[data-comparison-stage]')).toHaveCount(0);
     } finally { await stranger.close(); }
     await comparisonRest(`follows?follower_id=eq.${fixture.actors[0].id}&followee_id=eq.${fixture.actors[1].id}`, { method: 'DELETE' });
-    const revoked = resultBody(await comparisonResponse(page, () => page.getByRole('button', { name: 'Actualizar', exact: true }).click()));
+    const revoked = resultBody(await comparisonResponse(page, async () => (await groups(page)).getByRole('button', { name: 'Actualizar', exact: true }).click()));
     expect(revoked.data.group.members[1]).toMatchObject({ userId: null, name: null, avatarUrl: null, available: false });
     expect(revoked.data.works.some((work: { userId: string }) => work.userId === fixture.actors[1].id)).toBe(false);
-    await expect(page.getByRole('checkbox', { name: 'Beatriz QA', exact: true })).toHaveCount(0);
+    await expect(faces(page).filter({ hasText: 'Beatriz QA' })).toHaveCount(0);
     await comparisonRest('user_blocks', { method: 'POST', body: JSON.stringify({ blocker_id: fixture.actors[0].id, blocked_id: fixture.actors[2].id }) });
-    const blocked = resultBody(await comparisonResponse(page, () => page.getByRole('button', { name: 'Actualizar', exact: true }).click()));
+    const blocked = resultBody(await comparisonResponse(page, async () => (await groups(page)).getByRole('button', { name: 'Actualizar', exact: true }).click()));
     expect(blocked.data.group.members[2]).toMatchObject({ userId: null, name: null, available: false });
     await comparisonRest(`user_blocks?blocker_id=eq.${fixture.actors[0].id}&blocked_id=eq.${fixture.actors[2].id}`, { method: 'DELETE' });
     await deleteComparisonActor(fixture.actors[2]);
-    const deleted = resultBody(await comparisonResponse(page, () => page.getByRole('button', { name: 'Actualizar', exact: true }).click()));
+    const deleted = resultBody(await comparisonResponse(page, async () => (await groups(page)).getByRole('button', { name: 'Actualizar', exact: true }).click()));
     expect(deleted.data.group.members[2]).toMatchObject({ userId: null, name: null, available: false });
     expect(deleted.data.works.every((work: { userId: string }) => work.userId === fixture.actors[0].id)).toBe(true);
     expect(JSON.stringify(deleted)).not.toContain('PRIVATE');
-    await expect(page.getByRole('checkbox')).toHaveCount(1);
+    // Only «Tú» remains available; the revoked and deleted members stay as «Persona no disponible».
+    await expect(faces(page)).toHaveCount(3);
+    await expect(faces(page).filter({ hasText: 'Persona no disponible' })).toHaveCount(2);
   }, { integrated: true });
 });
 
@@ -421,20 +313,22 @@ test('profile «Comparar» opens an unsaved pair and «Guardar como grupo» keep
     await page.getByRole('link', { name: 'Comparar', exact: true }).click();
     await expect(page).toHaveURL(url => url.pathname === '/comunidad/entre-nosotros' && url.searchParams.get('con') === beatriz.id);
     await settled(page);
-    const select = page.getByRole('combobox', { name: 'Grupo', exact: true });
+    const select = (await groups(page)).getByRole('combobox', { name: 'Grupo', exact: true });
     await expect(select).toHaveValue(`with:${beatriz.id}`);
     await expect(select.locator('option:checked')).toHaveText('Tú y Beatriz QA · sin guardar');
+    await page.keyboard.press('Escape');
     // The pair shares the 30 fixture books; nothing was saved to get here.
-    await page.getByRole('button', { name: 'Tú, Beatriz QA 30 obras comunes', exact: true }).click(); await settled(page);
+    await expect(summary(page)).toHaveText('30 obras en común entre Tú y Beatriz QA');
     expect(await (await comparisonRest(`comparison_groups?owner_id=eq.${owner.id}&select=id`)).json()).toEqual([]);
-    await page.getByRole('button', { name: 'Guardar como grupo', exact: true }).click();
+    await (await groups(page)).getByRole('button', { name: 'Guardar como grupo', exact: true }).click();
     const form = page.getByRole('form', { name: 'Crear grupo' });
     await expect(form.getByLabel('Nombre del grupo')).toHaveValue('Tú y Beatriz QA');
     await expect(form.getByRole('checkbox', { name: 'Beatriz QA', exact: true })).toBeChecked();
     await form.getByRole('button', { name: 'Guardar grupo', exact: true }).click();
     // The unsaved pair already shows this name: wait for the saved group's URL instead.
     await expect(page).toHaveURL(url => /^[0-9a-f-]{36}$/.test(url.searchParams.get('group') ?? '') && !url.searchParams.has('con')); await settled(page);
-    await expect(select.locator('option:checked')).toHaveText('Tú y Beatriz QA');
+    await expect((await groups(page)).getByRole('combobox', { name: 'Grupo', exact: true }).locator('option:checked')).toHaveText('Tú y Beatriz QA');
+    await page.keyboard.press('Escape');
     expect(await (await comparisonRest(`comparison_groups?owner_id=eq.${owner.id}&select=name`)).json()).toEqual([{ name: 'Tú y Beatriz QA' }]);
     // A profile you do not follow offers no comparison.
     await page.goto(`/u/${fixture.actors[2].username}`);
@@ -448,7 +342,7 @@ test('read transport error clears visible evidence and explicit retry recovers r
   await withComparisonFixture(async fixture => {
     await open(page, fixture, fixture.actors.slice(0, 3));
     await page.route('**/comunidad/entre-nosotros**', route => route.request().headers()['next-action'] ? route.abort('failed') : route.continue());
-    await page.getByRole('button', { name: 'Actualizar', exact: true }).click();
+    await (await groups(page)).getByRole('button', { name: 'Actualizar', exact: true }).click();
     await expect(page.getByRole('region', { name: 'Lienzo de comparación' }).getByRole('alert')).toBeVisible();
     await expect(page.locator('[data-comparison-stage]')).toHaveCount(0);
     await page.unroute('**/comunidad/entre-nosotros**');
@@ -464,69 +358,6 @@ test('LOCAL ONLY ten-person full HTTP snapshot includes 1205 historical book pas
   await withComparisonFixture(async fixture => {
     const start = Date.now(); const group = await open(page, fixture);
     const elapsed = Date.now() - start;
-    const stage = page.locator('[data-comparison-stage]');
-    const map = await stage.evaluate((stage, names) => {
-      const boundary = stage.getBoundingClientRect();
-      const people = names.map(name => {
-        const input = [...stage.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')].find(input => input.getAttribute('aria-label') === name)!;
-        const control = input.closest('label')!;
-        const node = [...control.querySelectorAll('span')].find(node => node.textContent === name)!;
-        const rect = node.getBoundingClientRect();
-        return { name, rect: rect.toJSON(), control: control.getBoundingClientRect().toJSON(), checkbox: input.getBoundingClientRect().toJSON(),
-          lineHeight: parseFloat(getComputedStyle(node).lineHeight), scrollWidth: node.scrollWidth, clientWidth: node.clientWidth,
-          scrollHeight: node.scrollHeight, clientHeight: node.clientHeight };
-      });
-      const summary = [...stage.querySelectorAll('strong')].find(node => node.parentElement?.querySelector('span'))!.parentElement!.getBoundingClientRect().toJSON();
-      const covers = [...stage.querySelectorAll('[data-work-key]')].map(node => node.getBoundingClientRect().toJSON());
-      return { stage: boundary.toJSON(), people, summary, covers };
-    }, fixture.actors.map(actor => shownName(fixture, actor)));
-    await attachJson(info, 'ten-person-mobile-map', map);
-    await stage.screenshot({ path: info.outputPath('ten-person-mobile-map.png') });
-    // The tall element capture includes sticky shell at the current viewport.
-    // A real full-page capture from the top keeps those controls at their normal
-    // page positions, without hiding UI or changing the measured map geometry.
-    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
-    await page.screenshot({ path: info.outputPath('ten-person-mobile-map-full-page.png'), fullPage: true });
-    for (const person of map.people) {
-      await expect(stage.getByRole('checkbox', { name: person.name, exact: true })).toBeVisible();
-      await expect(stage.getByText(person.name, { exact: true })).toBeVisible();
-      expect(person.checkbox.width).toBeGreaterThanOrEqual(44);
-      expect(person.checkbox.height).toBeGreaterThanOrEqual(44);
-      expect(person.scrollHeight).toBeLessThanOrEqual(person.clientHeight + 1);
-      for (const rect of [person.control, person.checkbox]) {
-        expect(rect.x).toBeGreaterThanOrEqual(map.stage.x);
-        expect(rect.right).toBeLessThanOrEqual(map.stage.right);
-        expect(rect.top).toBeGreaterThanOrEqual(map.stage.top);
-        expect(rect.bottom).toBeLessThanOrEqual(map.stage.bottom);
-      }
-      expect(person.rect.x).toBeGreaterThanOrEqual(map.stage.x);
-      expect(person.rect.x + person.rect.width).toBeLessThanOrEqual(map.stage.x + map.stage.width);
-      expect(person.rect.top).toBeGreaterThanOrEqual(map.stage.top);
-      expect(person.rect.bottom).toBeLessThanOrEqual(map.stage.bottom);
-      expect(person.scrollWidth).toBeLessThanOrEqual(person.clientWidth + 1);
-      for (const other of [map.summary, ...map.covers]) {
-        for (const a of [person.rect, person.control]) {
-          const b = other;
-          expect(Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)), `${person.name} must not intersect the summary or a cover`).toBe(0);
-        }
-      }
-    }
-    const longName = map.people.find(person => person.name === fixture.actors[3].name)!;
-    // The avatar and consumption count belong to the touch target, not the name.
-    // Protect actual two-line wrapping without counting those other elements.
-    expect(longName.rect.height).toBeGreaterThanOrEqual(longName.lineHeight * 2 - 1);
-    expect(longName.rect.height).toBeLessThanOrEqual(longName.lineHeight * 2 + 1);
-    for (const rect of [map.summary, ...map.covers]) {
-      expect(rect.x).toBeGreaterThanOrEqual(map.stage.x); expect(rect.right).toBeLessThanOrEqual(map.stage.right);
-      expect(rect.top).toBeGreaterThanOrEqual(map.stage.top); expect(rect.bottom).toBeLessThanOrEqual(map.stage.bottom);
-    }
-    for (let first = 0; first < map.people.length; first++) for (let second = first + 1; second < map.people.length; second++) {
-      for (const part of ['rect', 'control'] as const) {
-        const a = map.people[first][part], b = map.people[second][part];
-        const intersection = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
-        expect(intersection, `${map.people[first].name} and ${map.people[second].name} ${part} must not overlap`).toBe(0);
-      }
-    }
     // Chromium cannot always retrieve this large Flight body through CDP.
     // Buffer the ORIGINAL upstream HTTP response and deliver it unchanged to UI.
     let captured!: (response: { body: string; status: number }) => void;
@@ -537,7 +368,7 @@ test('LOCAL ONLY ten-person full HTTP snapshot includes 1205 historical book pas
       await route.fulfill({ response: upstream }); captured({ body, status: upstream.status() });
     });
     const before = Date.now();
-    await page.getByRole('button', { name: 'Actualizar', exact: true }).click();
+    await (await groups(page)).getByRole('button', { name: 'Actualizar', exact: true }).click();
     const response = await fullResponse; expect(response.status).toBe(200);
     const refreshMs = Date.now() - before, bytes = Buffer.byteLength(response.body), result = resultBody(response);
     expect(result.data.group.members).toHaveLength(10);
@@ -549,349 +380,3 @@ test('LOCAL ONLY ten-person full HTTP snapshot includes 1205 historical book pas
   }, { integrated: true, volume: true });
 });
 
-
-test('final fixes: natural origin focus, 320px selector, all-person episode sample and exclusions', async ({ page }, info) => {
-  await page.setViewportSize({ width: 320, height: 800 });
-  await withComparisonFixture(async fixture => {
-    await loginComparisonActor(page, fixture.actors[0]); await page.goto('/comunidad/entre-nosotros');
-    const selector = page.getByRole('combobox', { name: 'Grupo', exact: true });
-    const selectorBox = async (phase: string) => {
-      await expect(selector).toBeVisible(); await selector.focus(); await expect(selector).toBeFocused();
-      const layout = await selector.evaluate(select => {
-        const label = select.closest('label')!, picker = label.parentElement!, controls = picker.parentElement!;
-        const box = (node: Element) => node.getBoundingClientRect().toJSON();
-        return { select: box(select), picker: box(picker), label: box(label), controls: box(controls), header: box(controls.parentElement!),
-          buttons: [...controls.querySelectorAll('button')].map(box), documentWidth: document.documentElement.scrollWidth };
-      });
-      // The native select uses its picker width; inline edit/create actions also
-      // need real touch targets. A long option must not expand the shared row.
-      expect(layout.select.width).toBeGreaterThanOrEqual(44); expect(layout.select.height).toBeGreaterThanOrEqual(44);
-      expect(Math.abs(layout.select.width - layout.picker.width)).toBeLessThanOrEqual(1);
-      expect(Math.abs(layout.label.width - layout.picker.width)).toBeLessThanOrEqual(1);
-      expect(Math.abs(layout.controls.width - layout.header.width)).toBeLessThanOrEqual(1);
-      expect(Math.abs(layout.controls.x - layout.header.x)).toBeLessThanOrEqual(1);
-      expect(Math.abs(layout.controls.right - layout.header.right)).toBeLessThanOrEqual(1);
-      expect(Math.abs(layout.select.x - layout.controls.x)).toBeLessThanOrEqual(1);
-      expect(Math.abs(layout.buttons.at(-1)!.right - layout.controls.right)).toBeLessThanOrEqual(1);
-      expect(layout.buttons[0].x - layout.select.right).toBeLessThanOrEqual(16);
-      expect(layout.documentWidth).toBeLessThanOrEqual(320);
-      for (const box of [layout.select, layout.controls, ...layout.buttons]) {
-        expect(box.x).toBeGreaterThanOrEqual(0); expect(box.right).toBeLessThanOrEqual(320);
-      }
-      for (const button of layout.buttons) {
-        expect(button.width).toBeGreaterThanOrEqual(44); expect(button.height).toBeGreaterThanOrEqual(44);
-        expect(button.x).toBeGreaterThanOrEqual(layout.select.right);
-        expect(button.bottom).toBeLessThanOrEqual(layout.controls.bottom);
-        expect(button.top).toBeGreaterThanOrEqual(layout.controls.top);
-      }
-      for (let first = 0; first < layout.buttons.length - 1; first++) {
-        expect(layout.buttons[first].right).toBeLessThanOrEqual(layout.buttons[first + 1].x);
-        expect(layout.buttons[first + 1].x - layout.buttons[first].right).toBeLessThanOrEqual(16);
-      }
-      await attachJson(info, `selector-${phase}`, layout);
-      await page.screenshot({ path: info.outputPath(`selector-${phase}.png`) });
-    };
-    await selectorBox('empty');
-    await createGroup(page, fixture.actors, 'Un grupo de bibliotecas y amistades con un nombre largo QA');
-    await expect(selector.locator('option:checked')).toHaveText('Un grupo de bibliotecas y amistades con un nombre largo QA');
-    await selectorBox('long-selected');
-    const pairs = page.locator('[data-map-pair]'); const originPair = pairs.nth(2);
-    const originIdentity = await originPair.getAttribute('data-map-pair');
-    await originPair.focus(); await page.keyboard.press('Enter'); await settled(page);
-    const region = page.locator('button[data-region-mask="2"]:visible').filter({ has: page.locator('strong') });
-    await region.focus(); await page.keyboard.press('Enter'); await settled(page);
-    await page.keyboard.press('Escape'); await settled(page); await expect(region).toBeFocused();
-    await page.keyboard.press('Escape'); await settled(page);
-    await expect(page.locator(`[data-map-pair='${originIdentity}']`)).toBeFocused();
-    await selectPeople(page, fixture, [0, 1]);
-    await page.getByRole('button', { name: 'Gustos', exact: true }).click();
-    const explore = page.getByRole('button', { name: 'Explorar Drama', exact: true });
-    await explore.focus(); await page.keyboard.press('Enter'); await settled(page);
-    await page.getByRole('button', { name: 'Volver al grupo', exact: true }).click(); await expect(explore).toBeFocused();
-    await page.getByRole('button', { name: 'Obras', exact: true }).click();
-    await page.getByRole('group', { name: 'Filtrar por tipo de obra', exact: true }).getByRole('button', { name: 'Series', exact: true }).click(); await settled(page);
-    await selectPeople(page, fixture, [0, 1]);
-    await page.getByRole('button', { name: 'Comparar selección', exact: true }).click(); await settled(page);
-    await page.getByRole('button', { name: /^Abrir región: (Tú, Beatriz QA|Beatriz QA, Tú); 1 obras$/ }).click(); await settled(page);
-    const series = page.locator(`[data-work-key="series:${fixture.series!.id}"]`);
-    await series.click(); await settled(page);
-    await expect(page.getByText('40 episodios comunes valorados por todas las personas indicadas.', { exact: true })).toBeVisible();
-    // Genuine data mutation: an existing common episode is unscored by B.
-    await comparisonRest(`episode_watches?user_id=eq.${fixture.actors[1].id}&series_id=eq.${fixture.series!.id}`, { method: 'PATCH', body: JSON.stringify({ rating: null }) });
-    await page.keyboard.press('Escape'); await settled(page); await series.click(); await settled(page);
-    await expect(page.getByText('0 episodios comunes valorados por todas las personas indicadas.', { exact: true })).toBeVisible();
-    await expect(page.getByText('No hay episodios comunes valorados por todas las personas indicadas.', { exact: true })).toBeVisible();
-    await attachJson(info, 'joint-episodes-copy', await page.locator('[data-camera-moving][data-view="work"]').innerText());
-    await page.keyboard.press('Escape'); await settled(page);
-    await page.keyboard.press('Escape'); await settled(page);
-    await comparisonRest(`episode_watches?user_id=eq.${fixture.actors[1].id}&series_id=eq.${fixture.series!.id}`, { method: 'DELETE' });
-    await page.getByRole('button', { name: 'Actualizar', exact: true }).click(); await settled(page);
-    await expect(page.locator('[data-camera-moving]')).toHaveAttribute('data-view', 'venn');
-    // Refresh keeps the current level. The selection CTA belongs to the map,
-    // so follow the real return path before comparing that preserved selection.
-    await page.getByRole('button', { name: 'Volver al grupo', exact: true }).click(); await settled(page);
-    await expect(page.locator('[data-camera-moving]')).toHaveAttribute('data-view', 'group');
-    await expect(page.getByRole('checkbox', { name: 'Tú', exact: true })).toBeChecked();
-    await expect(page.getByRole('checkbox', { name: 'Beatriz QA', exact: true })).toBeChecked();
-    await page.getByRole('button', { name: 'Comparar selección', exact: true }).click(); await settled(page);
-    await page.getByRole('button', { name: 'Abrir región: Tú; 1 obras', exact: true }).click(); await settled(page);
-    await series.click(); await settled(page);
-    await expect(page.getByText('Esta región corresponde a una sola persona; no hay comparación conjunta de episodios.', { exact: true })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Episodios comunes', exact: true })).toHaveCount(0);
-    await page.keyboard.press('Escape'); await settled(page);
-    // Both completed/dropped histories remain; remove their only episode evidence.
-    await comparisonRest(`episode_watches?series_id=eq.${fixture.series!.id}`, { method: 'DELETE' });
-    await page.getByRole('button', { name: 'Actualizar', exact: true }).click(); await settled(page);
-    await expect(page.locator('[data-comparison-coverage]')).toContainText('3 historiales de persona y serie del grupo cargado');
-    await expect(page.getByRole('button', { name: /Abrir obra:/ })).toHaveCount(0);
-    await expect(page.locator('[data-camera-moving]')).toHaveAttribute('data-view', 'region');
-    await page.getByRole('button', { name: 'Volver al Venn', exact: true }).click(); await settled(page);
-    await expect(page.locator('[data-camera-moving]')).toHaveAttribute('data-view', 'venn');
-    await page.getByRole('button', { name: 'Volver al grupo', exact: true }).click(); await settled(page);
-    await expect(page.locator('[data-camera-moving]')).toHaveAttribute('data-view', 'group');
-    await expect(page.getByRole('checkbox', { name: 'Tú', exact: true })).toBeChecked();
-    await expect(page.getByRole('checkbox', { name: 'Beatriz QA', exact: true })).toBeChecked();
-    await page.getByRole('button', { name: 'Comparar selección', exact: true }).click(); await settled(page);
-    await page.getByRole('button', { name: /^Abrir región: (Tú, Beatriz QA|Beatriz QA, Tú); 0 obras$/ }).click(); await settled(page);
-    await expect(page.getByText('No hay registros elegibles visibles en esta región.', { exact: true })).toBeVisible();
-    await expect(page.locator('[data-comparison-coverage]')).toBeVisible();
-    // Unavailable participant must not suppress the loaded-group notice.
-    await deleteComparisonActor(fixture.actors[2]);
-    await page.getByRole('button', { name: 'Actualizar', exact: true }).click(); await settled(page);
-    await expect(page.locator('[data-comparison-coverage]')).toContainText('2 historiales de persona y serie del grupo cargado');
-    await page.screenshot({ path: info.outputPath('excluded-empty-unavailable.png'), fullPage: true });
-  }, { integrated: true });
-});
-
-test('final fixes: intermediate map DOM names, piles and summary stay disjoint', async ({ page }, info) => {
-  await withComparisonFixture(async fixture => {
-    for (const [index, actor] of fixture.actors.entries()) {
-      actor.name = `Diana A${index} García`;
-      await comparisonRest(`profiles?user_id=eq.${actor.id}`, { method: 'PATCH', body: JSON.stringify({ display_name: actor.name }) });
-    }
-    await comparisonRest(`passes?user_id=eq.${fixture.actors[9].id}&item_id=eq.${fixture.books[0].id}`, { method: 'DELETE' });
-    await open(page, fixture);
-    for (const width of [365, 366, 367, 425, 426, 427, 430, 466, 665, 666, 667, 1041, 1042, 1043, 1073, 1074, 1075, 1280]) {
-      await page.setViewportSize({ width, height: 800 });
-      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))); await settled(page);
-      const boxes = await page.evaluate(() => {
-        const stage = document.querySelector('[data-comparison-stage]')!;
-        const box = (node: Element) => { const b = node.getBoundingClientRect(); return { x: b.x, y: b.y, width: b.width, height: b.height, right: b.right, bottom: b.bottom, text: node.textContent }; };
-        const labels = [...stage.querySelectorAll('label')].filter(node => node.querySelector('input[type="checkbox"]'));
-        return { stage: box(stage), labels: labels.map(node => {
-          const input = node.querySelector('input[type="checkbox"]')!;
-          const name = [...node.querySelectorAll('span')].find(span => span.textContent === input.getAttribute('aria-label'))!;
-          return { ...box(node), name: box(name), checkbox: box(input), font: getComputedStyle(name).fontSize,
-            lineHeight: parseFloat(getComputedStyle(name).lineHeight), scrollWidth: name.scrollWidth, clientWidth: name.clientWidth,
-            scrollHeight: name.scrollHeight, clientHeight: name.clientHeight };
-        }),
-          piles: [...stage.querySelectorAll('[data-work-key][data-background="false"][data-inactive="false"]')].map(box), summary: box(stage.querySelector('[class*="shared"]')!), documentWidth: document.documentElement.scrollWidth };
-      });
-      const overlap = (a: typeof boxes.stage, b: typeof boxes.stage) => Math.max(0, Math.min(a.right, b.right) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.y, b.y));
-      expect(boxes.labels).toHaveLength(10); expect(boxes.documentWidth).toBeLessThanOrEqual(width);
-      // Compact names must wrap; desktop names may fit on one line. Measure the
-      // actual text, rather than the avatar/name/count container's fixed height.
-      if (boxes.labels[0].width <= 84) expect(boxes.labels.some(label => label.name.height >= label.lineHeight * 2 - 1)).toBe(true);
-      expect(boxes.summary.x).toBeGreaterThanOrEqual(boxes.stage.x); expect(boxes.summary.right).toBeLessThanOrEqual(boxes.stage.right);
-      expect(boxes.summary.y).toBeGreaterThanOrEqual(boxes.stage.y); expect(boxes.summary.bottom).toBeLessThanOrEqual(boxes.stage.bottom);
-      for (const [index, label] of boxes.labels.entries()) {
-        expect(label.checkbox.width).toBeGreaterThanOrEqual(44); expect(label.checkbox.height).toBeGreaterThanOrEqual(44);
-        expect(label.scrollWidth).toBeLessThanOrEqual(label.clientWidth + 1); expect(label.scrollHeight).toBeLessThanOrEqual(label.clientHeight + 1);
-        expect(label.name.height).toBeLessThanOrEqual(label.lineHeight * 2 + 1);
-        expect(label.name.x).toBeGreaterThanOrEqual(label.x); expect(label.name.right).toBeLessThanOrEqual(label.right);
-        expect(label.name.y).toBeGreaterThanOrEqual(label.y); expect(label.name.bottom).toBeLessThanOrEqual(label.bottom);
-        expect(label.checkbox.x).toBeGreaterThanOrEqual(boxes.stage.x); expect(label.checkbox.right).toBeLessThanOrEqual(boxes.stage.right);
-        expect(label.checkbox.y).toBeGreaterThanOrEqual(boxes.stage.y); expect(label.checkbox.bottom).toBeLessThanOrEqual(boxes.stage.bottom);
-        expect(label.x).toBeGreaterThanOrEqual(boxes.stage.x); expect(label.right).toBeLessThanOrEqual(boxes.stage.right);
-        expect(label.y).toBeGreaterThanOrEqual(boxes.stage.y); expect(label.bottom).toBeLessThanOrEqual(boxes.stage.bottom);
-        for (const other of boxes.labels.slice(index + 1)) expect(overlap(label, other), `name/name ${width}`).toBe(0);
-        for (const pile of boxes.piles) expect(overlap(label, pile), `name/pile ${width}`).toBe(0);
-        expect(overlap(label, boxes.summary), `name/summary ${width}`).toBe(0);
-      }
-      await attachJson(info, `map-${width}-bounds`, boxes);
-      if ([366, 430, 666, 667, 1074, 1075, 1280].includes(width)) await page.screenshot({ path: info.outputPath(`map-${width}.png`), fullPage: true });
-    }
-  }, { integrated: true });
-});
-
-for (const width of [320, 1280]) test(`stable canvas: real loading handoff, native wheel and reverse keyboard traversal; ${width}px`, async ({ page }, info) => {
-  await page.setViewportSize({ width, height: 800 });
-  await page.emulateMedia({ reducedMotion: 'no-preference' });
-  await withComparisonFixture(async fixture => {
-    const group = await open(page, fixture, fixture.actors.slice(0, 2));
-    const workspace = page.getByRole('region', { name: 'Lienzo de comparación', exact: true });
-    const canvas = page.locator('[data-canvas-scroll]');
-    await expect(page.locator('[data-comparison-handoff]')).toHaveCount(0);
-    const initialHeight = (await workspace.boundingBox())!.height;
-    const frames: { phase: string; exterior: number; interior: number }[] = [];
-    const measureFrame = async (phase: string) => {
-      const exterior = (await workspace.boundingBox())!.height;
-      const interior = (await canvas.boundingBox())!.height;
-      expect(exterior, `exterior stays fixed at ${phase}`).toBeCloseTo(initialHeight, 0);
-      expect(interior, `canvas viewport fills the same frame at ${phase}`).toBeCloseTo(initialHeight, 0);
-      frames.push({ phase, exterior, interior }); return interior;
-    };
-    await measureFrame('group');
-
-    // Hold only genuine server transport. Auth/RLS/action bytes are forwarded
-    // unchanged; no synthetic snapshot bypasses the loading/reveal lifecycle.
-    let release!: () => void;
-    const held = new Promise<void>(resolve => { release = resolve; });
-    const reloadHandler: Parameters<Page['route']>[1] = async route => {
-      if (!route.request().headers()['next-action'] || route.request().postData() !== JSON.stringify([group, 'all'])) return route.continue();
-      const original = await route.fetch({ maxRetries: 0, maxRedirects: 0 });
-      expect(original.status()).toBe(200);
-      await held; await route.fulfill({ response: original });
-    };
-    const handoff = await page.evaluateHandle(() => {
-      const samples: { height: number; loading: boolean; reveal: number | null; overlay: number | null }[] = [];
-      let running = true;
-      function tick() {
-        const workspace = document.querySelector('section[aria-label="Lienzo de comparación"]')!;
-        const reveal = workspace.querySelector('[data-comparison-reveal]');
-        const overlay = workspace.querySelector('[data-comparison-handoff]');
-        samples.push({ height: workspace.getBoundingClientRect().height, loading: workspace.getAttribute('aria-busy') === 'true',
-          reveal: reveal ? Number(getComputedStyle(reveal).opacity) : null, overlay: overlay ? Number(getComputedStyle(overlay).opacity) : null });
-        if (running) requestAnimationFrame(tick);
-      }
-      requestAnimationFrame(tick); return { samples, stop() { running = false; } };
-    });
-    await page.route('**/comunidad/entre-nosotros**', reloadHandler);
-    try {
-      await page.getByRole('button', { name: 'Actualizar', exact: true }).click();
-      await expect(workspace).toHaveAttribute('aria-busy', 'true');
-      await expect(workspace.getByRole('status')).toBeVisible();
-      await expect(canvas).toHaveCount(0);
-      expect((await workspace.boundingBox())!.height).toBeCloseTo(initialHeight, 0);
-      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-      release();
-      await expect(workspace).toHaveAttribute('aria-busy', 'false');
-      await expect(page.locator('[data-comparison-handoff]')).toHaveCount(0);
-      await settled(page);
-      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-    } finally {
-      release(); await page.unroute('**/comunidad/entre-nosotros**', reloadHandler);
-      await handoff.evaluate(probe => probe.stop());
-    }
-    const loadingSamples = await handoff.evaluate(probe => probe.samples);
-    expect(loadingSamples.some(sample => sample.loading && sample.reveal === null)).toBe(true);
-    const blended = loadingSamples.filter(sample => sample.reveal !== null && sample.overlay !== null && sample.reveal > .05 && sample.reveal < .95 && sample.overlay > .05 && sample.overlay < .95);
-    expect(blended.length, 'real frames must show both loader fading out and map fading in').toBeGreaterThan(1);
-    expect(blended.at(-1)!.reveal!).toBeGreaterThan(blended[0].reveal!);
-    expect(blended.at(-1)!.overlay!).toBeLessThan(blended[0].overlay!);
-    expect(loadingSamples.at(-1)!.reveal).toBe(1);
-    for (const sample of loadingSamples) expect(Math.abs(sample.height - initialHeight), 'no frame expands during loading handoff').toBeLessThanOrEqual(1);
-    await measureFrame('group-after-loading');
-    await page.locator('[data-map-pair]').first().click(); await settled(page);
-    await measureFrame('venn');
-    const region = page.getByRole('button', { name: 'Abrir región: Tú, Beatriz QA; 32 obras', exact: true });
-    const wheel = await page.evaluateHandle(() => {
-      const events: { prevented: boolean; delta: number }[] = [];
-      const listen = (event: WheelEvent) => events.push({ prevented: event.defaultPrevented, delta: event.deltaY });
-      window.addEventListener('wheel', listen, { passive: true });
-      return { events, stop: () => window.removeEventListener('wheel', listen) };
-    });
-    try {
-      await region.hover(); await page.mouse.wheel(0, -160);
-      await expect.poll(() => wheel.evaluate(probe => probe.events.length)).toBe(1);
-      await expect(canvas).toHaveAttribute('data-view', 'venn');
-      await region.hover(); await page.mouse.wheel(0, 160);
-      await expect.poll(() => wheel.evaluate(probe => probe.events.length)).toBe(2);
-      await expect(canvas).toHaveAttribute('data-view', 'venn');
-      await region.click(); await settled(page);
-      const regionHeight = await measureFrame('region-first-page');
-      const covers = canvas.locator('button[data-work-key][data-background="false"][data-inactive="false"]');
-      await expect(covers).toHaveCount(24);
-      await covers.first().hover(); await page.mouse.wheel(0, -160);
-      await expect.poll(() => wheel.evaluate(probe => probe.events.length)).toBe(3);
-      await expect(canvas).toHaveAttribute('data-view', 'region');
-      await page.getByRole('button', { name: 'Cargar más', exact: true }).click();
-      await expect(covers).toHaveCount(32);
-      expect(await measureFrame('region-all-inclusions')).toBeCloseTo(regionHeight, 0);
-
-      // Native chaining at the upper edge must scroll the surrounding page,
-      // rather than consume the wheel or change the selected diagram level.
-      await canvas.evaluate(node => { node.scrollTop = 0; window.scrollTo({ top: node.getBoundingClientRect().top + scrollY - 120, behavior: 'instant' }); });
-      const beforePageScroll = await page.evaluate(() => scrollY);
-      expect(beforePageScroll).toBeGreaterThan(0);
-      const position = await canvas.evaluate(node => {
-        const box = node.getBoundingClientRect(), toolbar = node.querySelector('[data-canvas-toolbar]')!.getBoundingClientRect();
-        return { x: box.left + box.width / 2, y: toolbar.bottom + 16 };
-      });
-      await page.mouse.move(position.x, position.y); await page.mouse.wheel(0, -320);
-      await expect.poll(() => page.evaluate(() => scrollY)).toBeLessThan(beforePageScroll);
-      await expect.poll(() => wheel.evaluate(probe => probe.events.length)).toBe(4);
-      expect(await canvas.evaluate(node => node.scrollTop)).toBe(0);
-      await expect(canvas).toHaveAttribute('data-view', 'region');
-      expect(await wheel.evaluate(probe => probe.events.every(event => !event.prevented))).toBe(true);
-
-      // Traverse upward through every real inclusion: the sticky toolbar must
-      // never cover the focused cover, even after extending the region grid.
-      const keys = await covers.evaluateAll(nodes => nodes.map(node => node.getAttribute('data-work-key')!));
-      await covers.last().focus();
-      const focused: unknown[] = [];
-      for (let index = keys.length - 2; index >= 0; index--) {
-        await page.keyboard.press('Shift+Tab');
-        await expect(canvas.locator(`[data-work-key="${keys[index]}"]`)).toBeFocused();
-        const bounds = await canvas.evaluate(node => ({
-          control: document.activeElement!.getBoundingClientRect().toJSON(),
-          frame: node.getBoundingClientRect().toJSON(), toolbar: node.querySelector('[data-canvas-toolbar]')!.getBoundingClientRect().toJSON(),
-          scrollPadding: parseFloat(getComputedStyle(node).scrollPaddingTop), scrollTop: node.scrollTop,
-        }));
-        expect(bounds.scrollPadding).toBeGreaterThanOrEqual(bounds.toolbar.height);
-        expect(bounds.control.top, 'focused cover must remain below sticky toolbar').toBeGreaterThanOrEqual(bounds.toolbar.bottom - 1);
-        expect(bounds.control.bottom).toBeLessThanOrEqual(bounds.frame.bottom + 1);
-        focused.push({ key: keys[index], ...bounds });
-      }
-      const savedCanvasScroll = await canvas.evaluate(node => node.scrollTop);
-      await page.keyboard.press('Enter'); await settled(page);
-      await expect(page.getByRole('link', { name: 'Ver ficha', exact: true })).toBeVisible();
-      expect(await measureFrame('work')).toBeCloseTo(regionHeight, 0);
-      await page.keyboard.press('Escape'); await settled(page);
-      await expect(canvas.locator(`[data-work-key="${keys[0]}"]`)).toBeFocused();
-      expect(await canvas.evaluate(node => node.scrollTop)).toBeCloseTo(savedCanvasScroll, 0);
-      expect(await measureFrame('region-return')).toBeCloseTo(regionHeight, 0);
-      await page.keyboard.press('Escape'); await settled(page); await measureFrame('venn-return');
-      await page.keyboard.press('Escape'); await settled(page); await measureFrame('group-return');
-      await expect(canvas).toHaveAttribute('data-view', 'group');
-      await attachJson(info, 'stable-canvas-native-navigation', { width, frames, focused, beforePageScroll, wheel: await wheel.evaluate(probe => probe.events), loadingSamples });
-    } finally { await wheel.evaluate(probe => probe.stop()); }
-  }, { integrated: true });
-});
-
-test('final fix M3 bounded allow/block fixture-cover ownership diagnosis', async ({ browser }, info) => {
-  await withComparisonFixture(async fixture => {
-    const runs: unknown[] = [];
-    for (const serviceWorkers of ['allow', 'block'] as const) {
-      const context = await browser.newContext({ baseURL: info.project.use.baseURL, serviceWorkers });
-      const page = await context.newPage(); const covers: unknown[] = [], initiators: unknown[] = [], errors: string[] = [];
-      const cdp = await context.newCDPSession(page); await cdp.send('Network.enable');
-      cdp.on('Network.requestWillBeSent', event => {
-        if (new URL(event.request.url).hostname !== 'comparison-fixture.invalid') return;
-        const url = new URL(event.request.url);
-        initiators.push({ url: url.origin + url.pathname, type: event.type, initiator: event.initiator.type,
-          stack: event.initiator.stack?.callFrames.map(frame => ({ functionName: frame.functionName, url: frame.url ? new URL(frame.url, info.project.use.baseURL).origin + new URL(frame.url, info.project.use.baseURL).pathname : '', line: frame.lineNumber })) });
-      });
-      context.on('request', request => { const cover = coverOwnership(request); if (cover) covers.push({ ...cover, event: 'request' }); });
-      context.on('requestfailed', request => { const cover = coverOwnership(request); if (cover) covers.push({ ...cover, event: 'failed', error: request.failure()?.errorText }); });
-      context.on('response', response => { const cover = coverOwnership(response.request()); if (cover) covers.push({ ...cover, event: 'response', status: response.status(), fromServiceWorker: response.fromServiceWorker() }); });
-      page.on('pageerror', error => errors.push(error.message));
-      try {
-        await loginComparisonActor(page, fixture.actors[0]);
-        if (serviceWorkers === 'allow') await page.evaluate(async () => { await navigator.serviceWorker.ready; });
-        await page.goto('/comunidad/entre-nosotros');
-        if (serviceWorkers === 'allow') await page.reload();
-        await createGroup(page, fixture.actors.slice(0, 3), `M3 ${serviceWorkers}`);
-        await page.locator('[data-map-pair]').first().click(); await settled(page);
-        await page.getByRole('button', { name: 'Abrir región: Tú, Beatriz QA; 32 obras', exact: true }).click(); await settled(page);
-        await page.keyboard.press('Escape'); await settled(page);
-        await page.getByRole('button', { name: 'Abrir región: Tú, Beatriz QA; 32 obras', exact: true }).click(); await settled(page);
-        await expect(page.locator('[data-comparison-stage] img').first()).toBeVisible();
-        const workers = context.serviceWorkers().map(worker => worker.url());
-        const controller = await page.evaluate(() => navigator.serviceWorker.controller?.scriptURL ?? null);
-        runs.push({ serviceWorkers, workers, controller, covers, initiators, errors });
-      } finally { await context.close(); }
-    }
-    await attachJson(info, 'M3-cover-ownership', runs);
-  }, { integrated: true });
-});

@@ -26,4 +26,10 @@ describe("rutas que se comen el marco de la app", () => {
     expect(isFullscreenRoute("/")).toBe(false);
     expect(isFullscreenRoute("/post/123")).toBe(false);
   });
+
+  it("Entre nosotros es un atlas a pantalla completa, pero no el resto de Comunidad", () => {
+    expect(isFullscreenRoute("/comunidad/entre-nosotros")).toBe(true);
+    expect(isFullscreenRoute("/comunidad")).toBe(false);
+    expect(isFullscreenRoute("/comunidad/entre-nosotros-x")).toBe(false);
+  });
 });

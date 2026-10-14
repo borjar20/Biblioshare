@@ -1,0 +1,24 @@
+{
+  "build": "h2QPPzSuMTZo3PSJxKcph",
+  "unique_browser_cases_passed": 7,
+  "batches": [
+    { "project": "chromium", "passed": 3, "failed": 1, "failure": "Locator del harness Otros; snapshot contenía explicación correcta" },
+    { "project": "chromium", "passed": 1, "failed": 0, "scope": "Repetición focal de Otros tras corregir locator" },
+    { "project": "mobile", "passed": 3, "failed": 0 }
+  ],
+  "quien": { "groups": [1, 2, 2, 3], "owner_threads": 9, "checked_in": ["chromium", "mobile"] },
+  "selection": {
+    "membership": "AB:1, AC:2, BC:2, ABC:3",
+    "opinion_ABC": 2,
+    "opinion_AB": 4,
+    "tiempo_ABC": { "visible_works": 3, "fully_dated": 2, "undated": 1 },
+    "tiempo_AB": { "visible_works": 4, "fully_dated": 4, "undated": 0 },
+    "islas_ABC": 3,
+    "islas_AB": 4,
+    "map_list_summary_match": true
+  },
+  "others": { "outside_top_ten": 1, "creator_missing": 20, "unsupported_series": 1, "works_in_other": 22, "mobile_css_width": 360, "overlay_to_dock_gap_greater_than_40px": true },
+  "ten_people": { "all_selected_common_books": 3, "islands": 4, "rating_means": 40, "long_name_wrap": true },
+  "network": "Se registran peticiones ERR_ABORTED; no acredita red global limpia",
+  "preview_mcp": "No disponible; navegador real Playwright contra build/start local"
+}

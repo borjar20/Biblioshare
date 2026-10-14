@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root { --ground:#1d1713; --panel:#2a221d; --line:#3d322b; --fg:#f1e7dd; --muted:#b2a293; --faint:#7d6e62;
+    --glow:#f2c27b; --clash:#e2735f; --cream:#e9dccf; --book:#cf8a54; --movie:#6bb0b4; --series:#b592bd;
+    --p1:#e08a5a; --p2:#5aa7a6; --p3:#b48ac0; --p4:#7fa2d6; }
+  * { box-sizing:border-box; margin:0; }
+  html, body { width:1254px; height:1254px; background:var(--ground); }
+  body { font-family:'Geist', system-ui, sans-serif; color:var(--fg); position:relative; overflow:hidden; }
+  .bg { position:absolute; inset:0; background:
+    radial-gradient(620px 420px at 50% 34%, rgba(242,194,123,.13), transparent 70%),
+    radial-gradient(500px 360px at 12% 92%, rgba(90,167,166,.10), transparent 70%),
+    radial-gradient(520px 380px at 92% 88%, rgba(180,138,192,.10), transparent 70%); }
+  .stars { position:absolute; inset:0; opacity:.55; }
+  header { position:absolute; top:70px; left:0; right:0; text-align:center; }
+  .brand { display:inline-flex; align-items:center; gap:12px; font-family:'Fraunces', serif; font-weight:700; font-size:30px; color:var(--fg); letter-spacing:-.01em; }
+  .brand i { display:inline-block; width:9px; border-radius:3px; }
+  h1 { font-family:'Fraunces', serif; font-weight:700; font-size:132px; line-height:.95; letter-spacing:-.03em; margin-top:34px; color:#e8956a; }
+  .sub { margin-top:22px; font-size:34px; color:var(--fg); font-weight:500; }
+  .sub b { color:var(--glow); font-weight:600; }
+  .grid { position:absolute; left:70px; right:70px; top:420px; display:grid; grid-template-columns:1fr 1fr; gap:26px; }
+  .card { background:linear-gradient(180deg, rgba(42,34,29,.92), rgba(33,26,22,.92)); border:1px solid var(--line); border-radius:28px; height:340px; position:relative; overflow:hidden; }
+  .card svg { position:absolute; inset:0; width:100%; height:100%; }
+  .label { position:absolute; left:26px; top:22px; display:flex; align-items:center; gap:10px; font-weight:600; font-size:24px; }
+  .label span { display:inline-grid; place-items:center; width:36px; height:36px; border-radius:50%; background:var(--fg); color:var(--ground); font-size:16px; font-weight:700; }
+  .hint { position:absolute; left:26px; bottom:20px; font-size:17px; color:var(--muted); }
+  footer { position:absolute; bottom:52px; left:0; right:0; text-align:center; font-size:24px; color:var(--muted); letter-spacing:.02em; }
+  footer b { color:var(--fg); font-weight:500; }
+</style></head>
+<body>
+<div class="bg"></div>
+<svg class="stars" viewBox="0 0 1254 1254" aria-hidden="true">
+  <g fill="#e9dccf">
+    <circle cx="90" cy="120" r="1.6"/><circle cx="210" cy="310" r="1.2"/><circle cx="1120" cy="150" r="1.8"/><circle cx="1010" cy="330" r="1.2"/>
+    <circle cx="150" cy="420" r="1"/><circle cx="1180" cy="420" r="1.4"/><circle cx="60" cy="250" r="1.1"/><circle cx="1200" cy="260" r="1"/>
+    <circle cx="330" cy="70" r="1.2"/><circle cx="930" cy="80" r="1.3"/>
+  </g>
+</svg>
+
+<header>
+  <div class="brand"><i style="height:30px;background:#c8673f"></i><i style="height:38px;background:#3f8786;margin-left:-5px"></i><i style="height:24px;background:#8a5a92;margin-left:-5px"></i>Biblioshare</div>
+  <h1>Entre nosotros</h1>
+  <p class="sub">Ahora, <b>un mapa</b> de todo lo que os une.</p>
+</header>
+
+<div class="grid">
+  <!-- Quién -->
+  <div class="card">
+    <svg viewBox="0 0 543 340"><g transform="translate(-28,-8)">
+      <defs><radialGradient id="g1"><stop offset="0" stop-color="#f2c27b" stop-opacity=".45"/><stop offset="1" stop-color="#f2c27b" stop-opacity="0"/></radialGradient></defs>
+      <g stroke-width="3" fill="none" opacity=".7">
+        <path d="M272 92 Q 300 140 300 178" stroke="#e08a5a"/><path d="M162 248 Q 230 210 300 178" stroke="#5aa7a6"/><path d="M438 248 Q 370 205 300 178" stroke="#b48ac0"/>
+      </g>
+      <circle cx="300" cy="178" r="58" fill="url(#g1)"/>
+      <g fill="#f2c27b">
+        <circle cx="300" cy="178" r="4"/><circle cx="312" cy="170" r="4"/><circle cx="290" cy="166" r="4"/><circle cx="288" cy="186" r="4"/><circle cx="308" cy="190" r="4"/>
+        <circle cx="322" cy="182" r="4"/><circle cx="278" cy="176" r="4"/><circle cx="300" cy="160" r="4"/><circle cx="300" cy="198" r="4"/><circle cx="318" cy="158" r="4"/>
+      </g>
+      <text x="336" y="140" text-anchor="start" font-family="Fraunces" font-weight="700" font-size="30" fill="#f2c27b">10</text>
+      <g fill="#e9dccf" opacity=".9"><circle cx="216" cy="216" r="3"/><circle cx="224" cy="206" r="3"/><circle cx="380" cy="214" r="3"/></g>
+      <g font-family="Geist" font-weight="700" font-size="17" text-anchor="middle" fill="#fff">
+        <circle cx="272" cy="78" r="24" fill="#e08a5a" stroke="#f1e7dd" stroke-width="3"/><text x="272" y="84">T</text>
+        <circle cx="150" cy="252" r="24" fill="#5aa7a6" stroke="#f1e7dd" stroke-width="3"/><text x="150" y="258">A</text>
+        <circle cx="450" cy="252" r="24" fill="#b48ac0" stroke="#f1e7dd" stroke-width="3"/><text x="450" y="258">L</text>
+      </g></g>
+    </svg>
+    <div class="label"><span>1</span>Quién</div>
+    <div class="hint">Lo que tenéis en común, en el centro</div>
+  </div>
+
+  <!-- Opinión -->
+  <div class="card">
+    <svg viewBox="0 0 543 340"><g transform="translate(-100,14)">
+      <rect x="250" y="62" width="240" height="190" fill="none" stroke="#3d322b" stroke-width="2"/>
+      <path d="M250 252 L250 214 L490 62 L490 100 Z" fill="#f2c27b" opacity=".08"/>
+      <path d="M250 252 L490 62" stroke="#f2c27b" stroke-opacity=".45" stroke-dasharray="6 8" stroke-width="2"/>
+      <g>
+        <circle cx="452" cy="96" r="7" fill="#f2c27b"/><circle cx="430" cy="110" r="7" fill="#f2c27b"/><circle cx="400" cy="128" r="7" fill="#f2c27b"/>
+        <circle cx="360" cy="165" r="7" fill="#f2c27b"/><circle cx="318" cy="200" r="7" fill="#f0a96f"/><circle cx="468" cy="220" r="7" fill="#e2735f"/>
+        <circle cx="452" cy="186" r="7" fill="#e2735f"/><circle cx="276" cy="86" r="7" fill="#e2735f"/><circle cx="380" cy="208" r="7" fill="#ea8c66"/>
+      </g>
+      <text x="484" y="86" text-anchor="end" font-family="Geist" font-weight="700" font-size="16" fill="#f2c27b" opacity=".8">Os encantó</text>
+      <text x="484" y="244" text-anchor="end" font-family="Geist" font-weight="700" font-size="16" fill="#e2735f" opacity=".8">Tú sí, ellos no</text></g>
+    </svg>
+    <div class="label"><span>2</span>Opinión</div>
+    <div class="hint">Dónde coincidís y dónde chocáis</div>
+  </div>
+
+  <!-- Tiempo -->
+  <div class="card">
+    <svg viewBox="0 0 543 340"><g transform="translate(-40,10)">
+      <g stroke="#3d322b" stroke-width="1.5"><path d="M190 70 V256"/><path d="M270 70 V256"/><path d="M350 70 V256"/><path d="M430 70 V256"/></g>
+      <g font-family="Geist" font-size="14" fill="#7d6e62"><text x="196" y="82">2023</text><text x="276" y="82">2024</text><text x="356" y="82">2025</text><text x="436" y="82">2026</text></g>
+      <rect x="140" y="104" width="380" height="44" fill="#e08a5a" opacity=".07"/>
+      <rect x="140" y="160" width="380" height="44" fill="#5aa7a6" opacity=".07"/>
+      <rect x="140" y="216" width="380" height="44" fill="#b48ac0" opacity=".07"/>
+      <g fill="none" stroke-width="2">
+        <path d="M232 126 C 232 154, 300 154, 300 182" stroke="#f2c27b" stroke-opacity=".75"/>
+        <path d="M300 182 C 300 210, 384 210, 384 238" stroke="#f2c27b" stroke-opacity=".75"/>
+        <path d="M402 126 C 402 154, 352 154, 352 182" stroke="#e9dccf" stroke-opacity=".3"/>
+        <path d="M290 126 C 290 182, 458 182, 458 238" stroke="#e9dccf" stroke-opacity=".3"/>
+      </g>
+      <g fill="#f2c27b"><circle cx="232" cy="126" r="5"/><circle cx="300" cy="182" r="5"/><circle cx="384" cy="238" r="5"/></g>
+      <g fill="#e9dccf"><circle cx="402" cy="126" r="4"/><circle cx="352" cy="182" r="4"/><circle cx="290" cy="126" r="4"/><circle cx="458" cy="238" r="4"/><circle cx="214" cy="238" r="4"/><circle cx="470" cy="182" r="4"/></g>
+      <g font-family="Geist" font-weight="700" font-size="13" text-anchor="middle" fill="#fff">
+        <circle cx="160" cy="126" r="15" fill="#e08a5a"/><text x="160" y="131">T</text>
+        <circle cx="160" cy="182" r="15" fill="#5aa7a6"/><text x="160" y="187">A</text>
+        <circle cx="160" cy="238" r="15" fill="#b48ac0"/><text x="160" y="243">L</text>
+      </g></g>
+    </svg>
+    <div class="label"><span>3</span>Tiempo</div>
+    <div class="hint">Quién llegó primero a cada historia</div>
+  </div>
+
+  <!-- Islas -->
+  <div class="card">
+    <svg viewBox="0 0 543 340"><g transform="translate(-50,14)">
+      <circle cx="250" cy="182" r="62" fill="#cf8a54" opacity=".14"/><circle cx="250" cy="182" r="30" fill="none" stroke="#f2c27b" stroke-width="2" stroke-dasharray="4 6"/>
+      <circle cx="395" cy="190" r="48" fill="#6bb0b4" opacity=".14"/><circle cx="395" cy="190" r="20" fill="none" stroke="#f2c27b" stroke-width="2" stroke-dasharray="4 6"/>
+      <circle cx="490" cy="132" r="30" fill="#b592bd" opacity=".16"/>
+      <g fill="#cf8a54">
+        <rect x="236" y="166" width="10" height="14" rx="2"/><rect x="252" y="172" width="10" height="14" rx="2"/><rect x="242" y="186" width="10" height="14" rx="2"/>
+        <rect x="222" y="196" width="10" height="14" rx="2" opacity=".8"/><rect x="270" y="150" width="10" height="14" rx="2" opacity=".8"/><rect x="214" y="160" width="10" height="14" rx="2" opacity=".8"/><rect x="276" y="200" width="10" height="14" rx="2" opacity=".8"/>
+      </g>
+      <g fill="#6bb0b4"><rect x="388" y="180" width="10" height="14" rx="2"/><rect x="402" y="190" width="10" height="14" rx="2"/><rect x="368" y="200" width="10" height="14" rx="2" opacity=".8"/><rect x="414" y="166" width="10" height="14" rx="2" opacity=".8"/></g>
+      <g fill="#b592bd"><rect x="482" y="124" width="10" height="14" rx="2"/><rect x="494" y="134" width="10" height="14" rx="2" opacity=".8"/></g>
+      <path d="M250 182 C 300 120, 360 120, 395 190" fill="none" stroke="#e9dccf" stroke-opacity=".3" stroke-width="1.5"/>
+      <g font-family="Fraunces" font-weight="700" font-size="20" fill="#f1e7dd" text-anchor="middle"><text x="250" y="100">Libros</text><text x="395" y="126">Drama</text></g>
+      <g font-family="Geist" font-size="14" fill="#f2c27b" text-anchor="middle"><text x="250" y="117">12 en común</text></g></g>
+    </svg>
+    <div class="label"><span>4</span>Islas</div>
+    <div class="hint">Por tipo, género o autor</div>
+  </div>
+</div>
+
+<footer><b>Libros · Películas · Series</b> &nbsp;·&nbsp; Comunidad → Entre nosotros</footer>
+</body></html>

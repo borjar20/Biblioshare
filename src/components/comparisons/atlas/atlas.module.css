@@ -1,0 +1,101 @@
+.canvasWrap { position: absolute; inset: 0; overflow: hidden; }
+.canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+.canvas[data-dragging='true'] { cursor: grabbing; }
+/* The canvas takes the atlas shortcuts: ring for keyboard focus only (a click or the sheet closing by pointer shows none). Inset: the canvas is full-bleed.
+   The host draws it, above the overlays: Chrome paints a canvas's own inset outline under its composited bitmap, so it never showed. */
+.canvas:focus { outline: none; }
+.canvasWrap:has(> .canvas:focus-visible)::after { content: ''; position: absolute; inset: 1px; border: 2px solid var(--atlas-glow); pointer-events: none; z-index: 3; }
+/* The scrim keeps canvas threads from running through the summary and the faces; the container never takes pointers. */
+.overlayTop { position: absolute; left: 0; right: 0; top: 0; --scrim: 32px; padding: 12px 16px var(--scrim); background: linear-gradient(to bottom, var(--atlas-ground) calc(100% - var(--scrim)), transparent); display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-start; justify-content: space-between; pointer-events: none; z-index: 2; }
+.overlayTop > * { pointer-events: auto; }
+.summary { font-size: 14px; color: var(--atlas-muted); max-width: 46ch; line-height: 1.4; margin: 0; }
+.summary b { color: var(--atlas-glow); font-weight: 700; font-variant-numeric: tabular-nums; }
+.faces { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.face { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 5px 12px 5px 5px; border-radius: 999px; background: color-mix(in srgb, var(--atlas-panel) 85%, transparent); backdrop-filter: blur(8px); font-size: 13px; font-weight: 600; color: var(--atlas-fg); transition: opacity .2s, box-shadow .2s; }
+.face[aria-pressed='false'] { opacity: .42; }
+.face[aria-pressed='true'] { box-shadow: 0 0 0 2px var(--person); }
+.face:disabled { opacity: .3; box-shadow: none; }
+.faceDot { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 800; color: #fff; background: color-mix(in srgb, var(--person) 70%, #000); }
+.dock { position: absolute; left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; z-index: 2; }
+.lens { pointer-events: auto; display: flex; gap: 4px; padding: 5px; border-radius: 999px; background: color-mix(in srgb, var(--atlas-panel) 90%, transparent); backdrop-filter: blur(8px); box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+.lens button { display: flex; align-items: center; gap: 7px; padding: 9px 16px; min-height: 40px; border-radius: 999px; font-size: 14px; font-weight: 600; color: var(--atlas-muted); background: transparent; }
+.lens button[aria-pressed='true'] { background: var(--atlas-fg); color: var(--atlas-ground); }
+.lens svg { width: 16px; height: 16px; flex: none; }
+/* Islas grouping: same pill as the lenses, one size down. */
+.modes { gap: 2px; padding: 4px; }
+.modes button { padding: 6px 12px; min-height: 32px; font-size: 12.5px; }
+.caption { font-size: 12.5px; color: var(--atlas-faint); text-align: center; max-width: 56ch; line-height: 1.4; text-wrap: balance; margin: 0; }
+.legend { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.legendToggle { display: none; }
+.zoom { display: flex; flex-direction: column; gap: 6px; }
+.zoom button { width: 40px; height: 40px; border-radius: 12px; background: var(--atlas-panel); display: grid; place-items: center; color: var(--atlas-fg); font-size: 18px; font-weight: 600; }
+.tip { position: absolute; z-index: 3; pointer-events: none; display: flex; gap: 10px; align-items: center; padding: 8px 12px 8px 8px; border-radius: 12px; background: var(--atlas-panel); box-shadow: 0 12px 30px rgba(0,0,0,.5); font-size: 13px; max-width: 280px; color: var(--atlas-fg); }
+.cover { width: 38px; height: 56px; border-radius: 4px; flex: none; object-fit: cover; display: block; align-self: flex-start; }
+.workTitle { display: block; font-size: 14px; font-weight: 700; line-height: 1.15; margin-bottom: 5px; overflow-wrap: anywhere; }
+.owners { display: grid; grid-template-columns: auto 1fr; gap: 3px 6px; align-items: center; color: var(--atlas-muted); font-size: 12px; margin: 0; padding: 0; list-style: none; }
+.owners li { display: contents; }
+.ownerDot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.scale { display: grid; gap: 4px; min-width: 180px; margin-top: 6px; }
+.scaleTrack { position: relative; height: 40px; border-bottom: 1px solid var(--atlas-line); }
+.scaleDot { position: absolute; transform: translateX(-50%); width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 9px; font-weight: 800; color: #fff; box-shadow: 0 0 0 2px var(--atlas-panel); }
+.scaleTicks { position: relative; height: 14px; font-size: 11px; color: var(--atlas-faint); }
+.scaleTicks span { position: absolute; transform: translateX(-50%); }
+.scaleValues { display: flex; flex-wrap: wrap; gap: 2px 10px; margin: 2px 0 0; padding: 0; list-style: none; font-size: 12px; color: var(--atlas-muted); }
+.scaleValues li { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.islandRatings li { min-width: 0; max-width: 100%; white-space: normal; }
+.islandRatings li > span:last-child { overflow-wrap: anywhere; }
+.islandRatings .ownerDot { flex-shrink: 0; }
+.scaleValues b { color: var(--atlas-fg); font-weight: 800; }
+.sheet { position: absolute; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 4; display: flex; gap: 12px; align-items: flex-start; padding: 14px; border-radius: 18px; background: var(--atlas-panel); box-shadow: 0 -8px 30px rgba(0,0,0,.5); color: var(--atlas-fg); }
+.sheetBody { flex: 1; min-width: 0; display: grid; gap: 10px; }
+.sheetActions { display: flex; gap: 8px; }
+.open { white-space: nowrap; display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 999px; background: var(--atlas-glow); color: var(--atlas-ground); font-weight: 700; font-size: 14px; }
+.close { white-space: nowrap; min-height: 44px; padding: 0 14px; border-radius: 999px; background: transparent; color: var(--atlas-muted); font-size: 14px; }
+/* Right-hand column, anchored to the dock's right edge: 80px over the dock's bottom = 96px over the stage, where zoom always sat.
+   The list toggle sits on top; with the list open the zoom buttons go away and it drops to the bottom. Nothing else floats over the list. */
+.side { position: absolute; right: 0; bottom: 80px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; pointer-events: auto; }
+.listToggle { display: flex; align-items: center; gap: 7px; min-height: 40px; padding: 0 14px; border-radius: 12px; background: var(--atlas-panel); color: var(--atlas-fg); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.listToggle[aria-pressed='true'] { background: var(--atlas-fg); color: var(--atlas-ground); }
+.listToggle svg { width: 16px; height: 16px; flex: none; }
+/* The list takes the canvas place: same band as the camera (insets come inline), scrolling under the overlays. */
+.list { position: absolute; inset: 0; overflow: auto; overscroll-behavior: contain; padding: 120px 16px 160px; color: var(--atlas-fg); }
+.listSection { max-width: 720px; margin: 0 auto 20px; }
+.listHeading { font-size: 13px; font-weight: 700; color: var(--atlas-muted); margin: 0 0 8px; overflow-wrap: anywhere; }
+.listItems { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.listItem { display: flex; gap: 12px; align-items: center; padding: 6px; border-radius: 10px; color: inherit; text-decoration: none; }
+a.listItem:hover { background: color-mix(in srgb, var(--atlas-panel) 80%, transparent); }
+.listCover { width: 48px; height: 70px; border-radius: 4px; flex: none; object-fit: cover; display: block; }
+.listText { min-width: 0; }
+.listText .workTitle { margin-bottom: 3px; }
+.listDetail { display: block; font-size: 12px; color: var(--atlas-muted); overflow-wrap: anywhere; }
+.listEmpty { max-width: 720px; margin: 0 auto; color: var(--atlas-muted); font-size: 14px; }
+.face:focus-visible, .lens button:focus-visible, .zoom button:focus-visible, .open:focus-visible, .close:focus-visible, .listToggle:focus-visible, a.listItem:focus-visible, .list:focus-visible { outline: 2px solid var(--atlas-glow); outline-offset: 2px; }
+.list:focus-visible { outline-offset: -2px; }
+@media (max-width: 640px) {
+  .lens button span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .lens button { padding: 10px 14px; }
+  .modes button { padding: 6px 12px; }
+  .zoom { display: none; }
+  /* Phones: zoom is hidden and the toggle goes, icon only, on the lens row (right of the pill): no extra row, the canvas band keeps its height. */
+  .dock { display: grid; grid-template-columns: 1fr auto 1fr; column-gap: 8px; justify-items: center; }
+  .modes { grid-row: 1; grid-column: 2; }
+  .lens:not(.modes) { grid-row: 2; grid-column: 2; }
+  .side { position: static; grid-row: 2; grid-column: 3; justify-self: start; }
+  .legend { grid-row: 3; grid-column: 1 / -1; }
+  .legendToggle { display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 12px; font-size: 12px; color: var(--atlas-muted); pointer-events: auto; border-radius: 999px; }
+  .legendToggle svg { width: 14px; height: 14px; }
+  .legendToggle[aria-expanded='true'] svg { transform: rotate(180deg); }
+  .legend .caption { display: none; }
+  .legend[data-open='true'] .caption { display: block; }
+  .listToggle { width: 44px; height: 44px; padding: 0; justify-content: center; border-radius: 50%; background: color-mix(in srgb, var(--atlas-panel) 90%, transparent); backdrop-filter: blur(8px); }
+  .listToggle span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  /* Inner padding so the 2px active ring is not clipped by the scroller; the negative margin keeps the alignment. */
+  .faces { flex-wrap: nowrap; overflow-x: auto; justify-content: flex-start; width: calc(100% + 8px); margin: -4px; padding: 4px; scrollbar-width: none; }
+  .faces::-webkit-scrollbar { display: none; }
+  /* Actions go under the title and owners so «Abrir ficha» stays on one line. */
+  .sheet { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 12px; row-gap: 10px; }
+  .sheetBody { grid-column: 2; }
+  .sheetActions { justify-content: flex-start; }
+  .face { flex: none; }
+}
+@media (prefers-reduced-motion: reduce) { .face { transition: none; } }

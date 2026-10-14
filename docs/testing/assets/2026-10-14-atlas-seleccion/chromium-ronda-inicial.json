@@ -1,0 +1,68 @@
+{
+  "batch": "chromium inicial",
+  "build": "h2QPPzSuMTZo3PSJxKcph",
+  "passed": 3,
+  "journals": [
+    {
+      "journal": {
+        "errors": [],
+        "failures": [
+          "GET /: net::ERR_ABORTED",
+          "GET /u/qa_comp_motion_a: net::ERR_ABORTED",
+          "POST /login: net::ERR_ABORTED",
+          "POST /: net::ERR_ABORTED",
+          "GET /comunidad: net::ERR_ABORTED",
+          "GET /: net::ERR_ABORTED",
+          "GET /: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "POST /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /libro/0cc8c930-80ad-4e51-a25b-e1cc83f540ef: net::ERR_ABORTED"
+        ]
+      },
+      "case": "entre-nosotros-atlas-Islas-13063-a-una-nota-con-nombre-largo-chromium"
+    },
+    {
+      "journal": {
+        "errors": [],
+        "failures": [
+          "GET /comunidad: net::ERR_ABORTED",
+          "GET /buscar: net::ERR_ABORTED",
+          "GET /: net::ERR_ABORTED",
+          "GET /u/qa_comp_motion_a: net::ERR_ABORTED",
+          "POST /login: net::ERR_ABORTED",
+          "POST /: net::ERR_ABORTED",
+          "GET /comunidad: net::ERR_ABORTED",
+          "POST /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED"
+        ]
+      },
+      "case": "entre-nosotros-atlas-Otros-9aa3d-ar-y-series-en-mapa-y-lista-chromium"
+    },
+    {
+      "journal": {
+        "errors": [],
+        "failures": [
+          "GET /comunidad: net::ERR_ABORTED",
+          "GET /: net::ERR_ABORTED",
+          "GET /: net::ERR_ABORTED",
+          "POST /: net::ERR_ABORTED",
+          "GET /comunidad: net::ERR_ABORTED",
+          "GET /u/qa_comp_motion_a: net::ERR_ABORTED",
+          "GET /: net::ERR_ABORTED",
+          "POST /login: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /libro/7818b1ed-2c6e-45f7-92a6-666fc21fd246: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED"
+        ]
+      },
+      "case": "entre-nosotros-atlas-Selec-8dba9-ABC-desmarcar-C-recupera-AB-chromium"
+    }
+  ],
+  "failed": 1,
+  "failure": "Locator del harness Otros buscaba una región descendiente de la sección; el snapshot incluía la explicación correcta. Cambiado al padre directo del heading."
+}

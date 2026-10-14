@@ -107,7 +107,8 @@ export async function withComparisonFixture<T>(body: (fixture: ComparisonFixture
   return value as T;
 }
 export async function loginComparisonActor(page: Page, actor: ComparisonActor) {
-  await page.context().route('https://comparison-fixture.invalid/catalog-cover.jpg', route => route.fulfill({ path: 'e2e/fixtures/comparisons/catalog-cover.jpg', contentType: 'image/jpeg' }));
+  // The atlas asks the cover through the CDN loader, which appends `?width=96`: match the query too.
+  await page.context().route('https://comparison-fixture.invalid/catalog-cover.jpg*', route => route.fulfill({ path: 'e2e/fixtures/comparisons/catalog-cover.jpg', contentType: 'image/jpeg' }));
   await page.goto('/login');
   const form = visibleFormContaining(page, 'input[name="email"]');
   await form.locator('input[name="email"]:visible').fill(actor.email);
@@ -122,20 +123,6 @@ export async function chooseComparisonParticipants(form: Locator, owner: Compari
 }
 /** The signed-in owner (actors[0]) reads as «Tú» in the comparison; the editor keeps real names. */
 export function shownName(fixture: ComparisonFixture, actor: ComparisonActor) { return actor.id === fixture.actors[0].id ? 'Tú' : actor.name; }
-export async function openComparisonFixture(page: Page, fixture: ComparisonFixture) {
-  await loginComparisonActor(page, fixture.actors[0]);
-  await page.goto('/comunidad/entre-nosotros');
-  await page.getByRole('button', { name: 'Crear grupo', exact: true }).click();
-  const form = page.getByRole('form', { name: 'Crear grupo' });
-  await form.getByLabel('Nombre del grupo').fill('qa_comp_motion');
-  await chooseComparisonParticipants(form, fixture.actors[0], fixture.actors);
-  await form.getByRole('button', { name: 'Guardar grupo', exact: true }).click();
-  await expect(page.locator('[data-camera-moving][data-view="group"]')).toBeVisible();
-  return page.locator('[data-camera-moving]');
-}
-
-
-
 export async function deleteComparisonActor(actor: ComparisonActor) {
   if (!usernames.includes(actor.username) || actor.email !== `${actor.username}@example.invalid`) throw new Error('Not an owned disposable actor');
   await request(`auth/v1/admin/users/${actor.id}`, { method: 'DELETE' });
