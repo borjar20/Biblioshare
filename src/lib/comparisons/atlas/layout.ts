@@ -10,8 +10,8 @@ const LABEL_MIN = 3;
 export const POLE_CLEARANCE = 300;
 /** Gap (world units) between a pole and its own single-owner group, which sits outward: avatar plus name/count. */
 export const POLE_LABEL = 120;
-/** Air between two groups after the separation pass. */
-const CLUSTER_GAP = 40;
+/** Air between two groups after the separation pass: room for the count drawn over a group (screen px at map zoom). */
+const CLUSTER_GAP = 120;
 const SEPARATION_PASSES = 80;
 
 export type Pole = Point & { userId: string; count: number };
