@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { WorkKey } from '../types';
 import type { AtlasPerson, AtlasWork } from './types';
-import { LANE_GAP, YEAR_STEP, laneY, layoutTiempo, summarizeTiempo, yearOf } from './tiempo';
+import { LANE_GAP, YEAR_STEP, laneGap, laneY, layoutTiempo, summarizeTiempo, yearOf } from './tiempo';
 
 const person = (id: string, isMe = false): AtlasPerson => ({ id, name: isMe ? 'Tú' : id.toUpperCase(), avatarUrl: null, color: '#000000', isMe });
 const people = [person('me', true), person('b'), person('c')];
@@ -25,6 +25,18 @@ describe('yearOf / laneY', () => {
     expect([0, 1, 2].map(i => laneY(i, 3))).toEqual([-LANE_GAP, 0, LANE_GAP]);
     expect(laneY(0, 1)).toBe(0);
   });
+  it('con más de 4 vías el hueco se comprime, hasta 110', () => {
+    expect([1, 4].map(n => laneGap(n))).toEqual([LANE_GAP, LANE_GAP]);
+    expect(laneGap(5)).toBeCloseTo(184);
+    expect(laneGap(8)).toBe(115);
+    expect(laneGap(10)).toBe(110);
+    expect(laneGap(20)).toBe(110);
+    expect(laneY(0, 10)).toBeCloseTo(-4.5 * 110);
+    expect(laneY(9, 10) - laneY(8, 10)).toBeCloseTo(110);
+    // A tall screen (fit limited by width) keeps the full gap.
+    expect(laneGap(10, false)).toBe(LANE_GAP);
+    expect(laneY(0, 10, false)).toBeCloseTo(-4.5 * LANE_GAP);
+  });
 });
 
 describe('layoutTiempo', () => {
@@ -46,6 +58,20 @@ describe('layoutTiempo', () => {
     expect(one.x).toBeCloseTo((yearOf('2021-03-01') - mid) * YEAR_STEP);
     expect(layout.extent.minX).toBeCloseTo((2021 - mid) * YEAR_STEP - 260);
     expect(layout.extent.maxX).toBeCloseTo((2025 - mid) * YEAR_STEP + 60);
+  });
+  it('con 10 vías: hueco comprimido, dispersión proporcional y extensión ajustada', () => {
+    const ids = 'abcdefghij'.split('');
+    const many = ids.map((id, i) => person(id, i === 0));
+    const all = Array.from({ length: 40 }, (_, i) => work(`book:${i}`, Object.fromEntries(ids.map((id, j) => [id, `20${10 + (i + j) % 10}-0${1 + i % 9}-15`]))));
+    const layout = layoutTiempo(many, all, ids);
+    expect(layout.gap).toBe(110);
+    expect(layout.lanes[1].y - layout.lanes[0].y).toBeCloseTo(110);
+    for (const instance of layout.instances) {
+      const lane = layout.lanes.find(l => l.userId === instance.userId)!.y;
+      expect(Math.abs(instance.y - lane)).toBeLessThanOrEqual(110 * 75 / 230 + 1e-9);
+    }
+    expect(layout.extent.maxY - layout.extent.minY).toBeCloseTo(9 * 110 + 300);
+    expect(layoutTiempo(many, all, ids, false).gap).toBe(LANE_GAP);
   });
   it('sin fechas, un año por defecto y sin apariciones', () => {
     const layout = layoutTiempo(people, [works[4]], ['me', 'b']);

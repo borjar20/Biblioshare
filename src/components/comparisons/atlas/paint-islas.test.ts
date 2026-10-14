@@ -6,16 +6,16 @@ import { paintIslasBack, type IslandText } from './paint-islas';
 
 const palette: Palette = { fg: 'FG', muted: 'MUTED', line: 'LINE', glow: 'GLOW', cream: 'CREAM', faint: 'FAINT', clash: 'CLASH', font: 'sans',
   type: { book: 'BOOK', movie: 'MOVIE', series: 'SERIES' } };
-const people = [{ id: 'a', name: 'Ana Ruiz', color: '#111111' }, { id: 'b', name: 'Beto', color: '#222222' }] as AtlasPerson[];
+const people = [{ id: 'a', name: 'Ana Ruiz', color: '#111111' }, { id: 'b', name: 'Beto', color: '#222222' }, { id: 'c', name: 'Cora', color: '#333333' }] as AtlasPerson[];
 const island = (over: Partial<Island>): Island => ({ id: 'book', label: null, x: 0, y: 0, r: 100, core: 0, keys: [], common: 0, shared: 0, means: [], ...over });
 const words: IslandText = { title: i => `T:${i.id}`, common: n => `${n} en común` };
 
 function paint(islands: Island[], text?: IslandText) {
-  const arcs: { r: number; fill: string; stroke: string; dash: number[] }[] = [], dashes: number[][] = [];
+  const arcs: { x: number; y: number; r: number; fill: string; stroke: string; dash: number[] }[] = [], dashes: number[][] = [];
   let dash: number[] = [];
   const ctx: Record<string, unknown> & { fillStyle: string; strokeStyle: string } = { fillStyle: '', strokeStyle: '', lineWidth: 1, globalAlpha: 1, beginPath: () => {}, moveTo: () => {}, lineTo: () => {}, fill: () => {},
     setLineDash: (d: number[]) => { dash = d; dashes.push(d); },
-    arc(_x: number, _y: number, r: number) { arcs.push({ r, fill: ctx.fillStyle, stroke: ctx.strokeStyle, dash }); },
+    arc(x: number, y: number, r: number) { arcs.push({ x, y, r, fill: ctx.fillStyle, stroke: ctx.strokeStyle, dash }); },
     stroke: () => {} };
   const spy = vi.fn<PaintView['text']>();
   const layout: IslandsLayout = { mode: 'type', islands, instances: [], extent: { minX: 0, maxX: 0, minY: 0, maxY: 0 } };
@@ -50,5 +50,38 @@ describe('paintIslasBack', () => {
   it('without texts draws only the discs', () => {
     const { text } = paint([island({ core: 10, means: [{ userId: 'a', mean: 5 }] })]);
     expect(text).not.toHaveBeenCalled();
+  });
+  it('stacks faces with the same mean upwards and lifts the texts above the stack', () => {
+    const { arcs, text } = paint([island({ means: [{ userId: 'a', mean: 9 }, { userId: 'b', mean: 9.04 }, { userId: 'c', mean: 9 }] })], words);
+    const dots = arcs.slice(1);
+    expect(new Set(dots.map(d => d.x)).size).toBe(1);
+    expect(dots.map(d => d.y)).toEqual([dots[0].y, dots[0].y - 14, dots[0].y - 28]);
+    const top = Math.min(...dots.map(d => d.y)) - 7;
+    const common = text.mock.calls.find(([v]) => v === '0 en común')!, title = text.mock.calls.find(([v]) => v === 'T:book')!;
+    expect(common[2]).toBeLessThanOrEqual(top - 4);
+    expect(title[2]).toBeLessThan(common[2] - 13);
+  });
+  it('also stacks close means whose dots would touch (8.9 and 9)', () => {
+    const { arcs } = paint([island({ means: [{ userId: 'a', mean: 8.875 }, { userId: 'b', mean: 9 }] })], words);
+    expect(arcs[2].y).toBe(arcs[1].y - 14);
+  });
+  it('a stack is at most 4 high: the 4th dot and up fold into «+n»', () => {
+    const many = Array.from({ length: 10 }, (_, i) => ({ id: `p${i}`, name: `P${i} Q`, color: `#00000${i}` })) as AtlasPerson[];
+    const means = many.map(p => ({ userId: p.id, mean: 9 }));
+    const arcs: { y: number; fill: string }[] = [];
+    const ctx = { fillStyle: '', strokeStyle: '', lineWidth: 1, globalAlpha: 1, beginPath() {}, moveTo() {}, lineTo() {}, fill() {}, stroke() {}, setLineDash() {},
+      arc(_x: number, y: number) { arcs.push({ y, fill: ctx.fillStyle }); } };
+    const spy = vi.fn<PaintView['text']>();
+    const layout: IslandsLayout = { mode: 'type', islands: [island({ means })], instances: [], extent: { minX: 0, maxX: 0, minY: 0, maxY: 0 } };
+    paintIslasBack({ ctx: ctx as unknown as CanvasRenderingContext2D, cam: { x: 0, y: 0, k: 1 }, vp: { width: 800, height: 800 }, palette, text: spy }, { layout, people: many, text: words });
+    const dots = arcs.slice(1);
+    expect(dots).toHaveLength(4);
+    expect(dots.at(-1)!.fill).toBe('MUTED');
+    expect(spy.mock.calls.some(([v]) => v === '+7')).toBe(true);
+    expect(Math.max(...dots.map(d => d.y)) - Math.min(...dots.map(d => d.y))).toBe(42);
+  });
+  it('keeps different means on the strip line', () => {
+    const { arcs } = paint([island({ means: [{ userId: 'a', mean: 2 }, { userId: 'b', mean: 9 }] })], words);
+    expect(arcs[1].y).toBe(arcs[2].y);
   });
 });

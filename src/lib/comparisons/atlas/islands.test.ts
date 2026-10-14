@@ -86,4 +86,9 @@ describe('summarizeIslands', () => {
     expect(summarizeIslands(people, layoutIslands(people, works, ['b'], 'genre'), ['b'])).toEqual({ kind: 'solo', name: 'B' });
     expect(summarizeIslands(people, layoutIslands(people, [work('9', ['me'])], ['me', 'b'], 'genre'), ['me', 'b'])).toEqual({ kind: 'none' });
   });
+  it('si lo común solo está en «Otros», lo dice en vez de «nada en común»', () => {
+    const works = [work('1', ['me', 'b']), work('2', ['me', 'b']), work('3', ['me'], { genres: ['Drama'] })];
+    expect(summarizeIslands(people, layoutIslands(people, works, ['me', 'b'], 'genre'), ['me', 'b'])).toEqual({ kind: 'onlyOther', count: 2 });
+    expect(summarizeIslands(people, layoutIslands(people, works, ['me', 'b'], 'creator'), ['me', 'b'])).toEqual({ kind: 'onlyOther', count: 2 });
+  });
 });

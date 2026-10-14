@@ -37,6 +37,7 @@
         "mode": { "type": "Tipo", "genre": "Género", "creator": "Autor/Director" },
         "best": "Donde más os parecéis: <b>{label}</b>, con <b>{count}</b> en común",
         "none": "Aún no tenéis obras en común en ninguna isla",
+        "onlyOther": "Lo que tenéis en común (<b>{count}</b>) está en Otros: {mode, select, creator {no tiene autor ni director} other {no tiene género}} en el catálogo",
         "solo": "Las islas de {name}. Suma a alguien para ver el cruce.",
         "other": "Otros",
         "common": "{count} en común"

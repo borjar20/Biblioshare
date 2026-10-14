@@ -1,5 +1,5 @@
 'use client';
-import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
@@ -67,7 +67,9 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange, 
     return kept.length ? kept : ids;
   }, [people, chosen]);
   const opinion = useMemo(() => layoutOpinion(people, works, active), [people, works, active]);
-  const tiempo = useMemo(() => layoutTiempo(people, works, active), [people, works, active]);
+  // Tiempo brings many lanes closer only on a wide stage, where the fit is limited by height (see `laneGap`).
+  const [wide, setWide] = useState(false);
+  const tiempo = useMemo(() => layoutTiempo(people, works, active, wide), [people, works, active, wide]);
   // Type islands only make sense across formats: with a single format, Islas groups by genre.
   const typeless = snapshot.format !== 'all';
   const effectiveMode: IslandMode = typeless && islandMode === 'type' ? 'genre' : islandMode;
@@ -99,7 +101,7 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange, 
       const host = stage.current, top = overlay.current, bottom = dock.current; if (!host || !top || !bottom) return;
       const next = { top: Math.round(top.offsetHeight - parseFloat(getComputedStyle(top).paddingBottom || '0')), bottom: Math.round(host.clientHeight - bottom.offsetTop) };
       setInsets(current => current && current.top === next.top && current.bottom === next.bottom ? current : next);
-      setStageHeight(host.clientHeight);
+      setStageHeight(host.clientHeight); setWide(host.clientWidth > host.clientHeight);
     };
     measure();
     if (typeof ResizeObserver !== 'function') return;
@@ -130,6 +132,17 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange, 
   }
   const hovered = hover && byKey.get(hover.key);
   const sheet = picked && byKey.get(picked);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  // Closing on purpose (Escape or «Cerrar») hands focus back to the canvas; a lens change or a tap elsewhere does not.
+  function closeSheet() { setPicked(null); camera.current?.focus(); }
+  // On open, focus goes to «Abrir ficha» (or «Cerrar» without a link); Escape closes it.
+  useEffect(() => {
+    if (!picked) return;
+    sheetRef.current?.querySelector<HTMLElement>('a, button')?.focus();
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') { setPicked(null); camera.current?.focus(); } };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [picked]);
   const unavailable = snapshot.group.members.filter(member => !member.available);
 
   return <div ref={stage} className={styles.canvasWrap} data-comparison-stage>
@@ -169,11 +182,11 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange, 
         // Lower half: open upwards so the taller Opinión card is never cut by the bottom edge.
         ? { bottom: `calc(100% - ${hover.y - 16}px)` } : { top: `min(${hover.y + 16}px, calc(100% - 110px))` }) }}>
       <WorkCard work={hovered} people={people} title={titleOf(hovered)} lens={lens}/></div>}
-    {sheet && <div className={styles.sheet} role="dialog" aria-label={titleOf(sheet)}>
+    {sheet && <div ref={sheetRef} className={styles.sheet} role="dialog" aria-label={titleOf(sheet)}>
       <WorkCard work={sheet} people={people} title={titleOf(sheet)} lens={lens}/>
       <div className={styles.sheetBody}><div className={styles.sheetActions}>
         {!sheet.metadataMissing && <Link className={styles.open} href={itemHref(sheet.itemType, sheet.itemId)}>{t('atlas.openWork')}</Link>}
-        <button type="button" className={styles.close} onClick={() => setPicked(null)}>{t('atlas.closeWork')}</button>
+        <button type="button" className={styles.close} onClick={closeSheet}>{t('atlas.closeWork')}</button>
       </div></div>
     </div>}
   </div>;

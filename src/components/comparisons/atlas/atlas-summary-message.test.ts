@@ -52,6 +52,9 @@ describe('summaryMessage', () => {
     expect(message('islas', [shared, mine], ['me', 'b'])).toEqual({ key: 'atlas.islas.best', values: { label: 'Libros', count: 1 } });
     expect(message('islas', [shared, mine], ['me', 'b'], 'genre')).toEqual({ key: 'atlas.islas.best', values: { label: 'Drama', count: 1 } });
     expect(message('islas', [mine], ['me', 'b'])).toEqual({ key: 'atlas.islas.none', values: {} });
+    // Shared works without genre or creator all fall in «Otros».
+    expect(message('islas', [shared, mine], ['me', 'b'], 'creator')).toEqual({ key: 'atlas.islas.onlyOther', values: { count: 1, mode: 'creator' } });
+    expect(message('islas', [work('book:7', { me: 9, b: 9 })], ['me', 'b'], 'genre')).toEqual({ key: 'atlas.islas.onlyOther', values: { count: 1, mode: 'genre' } });
     expect(message('islas', [shared, mine], ['b'])).toEqual({ key: 'atlas.islas.solo', values: { name: 'Bea' } });
   });
 });

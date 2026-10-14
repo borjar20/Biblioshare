@@ -3,7 +3,7 @@ import { useEffect, useImperativeHandle, useLayoutEffect, useRef, type Ref } fro
 import { createAtlasEngine, type AtlasEngine, type EngineProps } from './atlas-engine';
 import styles from './atlas.module.css';
 
-export type AtlasCanvasHandle = { zoomBy(factor: number): void; fit(): void };
+export type AtlasCanvasHandle = { zoomBy(factor: number): void; fit(): void; focus(): void };
 type Props = EngineProps & { label: string; ref?: Ref<AtlasCanvasHandle> };
 
 export function AtlasCanvas({ ref, label, ...props }: Props) {
@@ -16,8 +16,10 @@ export function AtlasCanvas({ ref, label, ...props }: Props) {
     return () => { created.dispose(); engine.current = null; };
   }, []);
   useEffect(() => { engine.current?.sync(); }, [props.scene, props.active, props.works, props.insets?.top, props.insets?.bottom]);
-  useImperativeHandle(ref, () => ({ zoomBy: factor => engine.current?.zoomBy(factor), fit: () => engine.current?.fitAll() }), []);
+  useImperativeHandle(ref, () => ({ zoomBy: factor => engine.current?.zoomBy(factor), fit: () => engine.current?.fitAll(),
+    focus: () => canvas.current?.focus({ preventScroll: true }) }), []);
   return <div ref={host} className={styles.canvasWrap} data-atlas-moving="false">
-    <canvas ref={canvas} className={styles.canvas} role="img" aria-label={label}/>
+    {/* tabIndex -1: not in the tab order, but the mobile sheet can hand focus back to it when it closes. */}
+    <canvas ref={canvas} className={styles.canvas} role="img" aria-label={label} tabIndex={-1}/>
   </div>;
 }

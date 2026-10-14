@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, act, within } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
-import { useState, type ReactNode } from 'react';
+import { useState, type ReactNode, type Ref } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import messages from '../../../../messages/es.json';
 import type { Snapshot, WorkKey } from '@/lib/comparisons/types';
@@ -12,7 +12,15 @@ const push = vi.fn();
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
 type CanvasProps = { islandText?: { title: (island: Island) => string; common: (count: number) => string }; opinionLabels?: Record<string, string>; onActivate: (hit: { key: WorkKey; x: number; y: number } | null, type: string) => void; onHover: (hit: { key: WorkKey; x: number; y: number } | null) => void; active: string[]; label: string };
 let canvas: CanvasProps;
-vi.mock('./atlas-canvas', () => ({ AtlasCanvas: (props: CanvasProps) => { canvas = props; return <div data-testid="canvas"/>; } }));
+const canvasFocus = vi.fn();
+vi.mock('./atlas-canvas', async () => {
+  const { useImperativeHandle } = await vi.importActual<typeof import('react')>('react');
+  return { AtlasCanvas: (props: CanvasProps & { ref?: Ref<unknown> }) => {
+    canvas = props;
+    useImperativeHandle(props.ref, () => ({ zoomBy() {}, fit() {}, focus: canvasFocus }), []);
+    return <div data-testid="canvas"/>;
+  } };
+});
 import { AtlasView } from './atlas-view';
 
 const member = (id: string, name: string, available = true) => ({ slotId: id, userId: available ? id : null, name: available ? name : null, avatarUrl: null, available });
@@ -38,7 +46,7 @@ const view = (notice?: ReactNode) => render(<NextIntlClientProvider locale="es" 
 const viewRated = (ratings: Record<string, number>) => render(<NextIntlClientProvider locale="es" messages={messages}>
   <Harness data={{ ...snapshot, works: snapshot.works.map(work => work.key === 'book:1' ? { ...work, rating: ratings[work.userId] ?? null } : work) }}/>
 </NextIntlClientProvider>);
-afterEach(() => { cleanup(); push.mockReset(); });
+afterEach(() => { cleanup(); push.mockReset(); canvasFocus.mockReset(); });
 const summary = () => screen.getByRole('status').textContent;
 
 describe('AtlasView', () => {
@@ -126,6 +134,25 @@ describe('AtlasView', () => {
     act(() => canvas.onActivate({ key: 'book:2', x: 10, y: 10 }, 'touch'));
     const sheet = screen.getByRole('dialog', { name: 'Obra sin información de catálogo' });
     expect(sheet.querySelector('a')).toBeNull();
+    // Without a link, focus goes to «Cerrar».
+    expect(document.activeElement).toBe(within(sheet).getByRole('button', { name: 'Cerrar' }));
+  });
+  it('la hoja lleva el foco a «Abrir ficha», se cierra con Escape y devuelve el foco al lienzo', () => {
+    view();
+    act(() => canvas.onActivate({ key: 'book:1', x: 10, y: 10 }, 'touch'));
+    const sheet = screen.getByRole('dialog', { name: 'Proyecto Salvación' });
+    expect(document.activeElement).toBe(within(sheet).getByRole('link', { name: 'Abrir ficha' }));
+    expect(canvasFocus).not.toHaveBeenCalled();
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(canvasFocus).toHaveBeenCalledTimes(1);
+  });
+  it('«Cerrar» también devuelve el foco al lienzo', () => {
+    view();
+    act(() => canvas.onActivate({ key: 'book:1', x: 10, y: 10 }, 'touch'));
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(canvasFocus).toHaveBeenCalledTimes(1);
   });
   it('Opinión: el dock la activa, el resumen cuenta coincidencias y la mini-ficha pone a cada cual en su nota', () => {
     // me 9, Bea 9, Carla 4 → mean of others 6.5, diff 2.5 → neither agree nor clash
@@ -225,7 +252,7 @@ describe('AtlasView', () => {
     expect(within(modes).getByRole('button', { name: 'Género' }).getAttribute('aria-pressed')).toBe('true');
     expect(summary()).toBe('Donde más os parecéis: Ciencia ficción, con 1 en común');
     fireEvent.click(within(modes).getByRole('button', { name: 'Autor/Director' }));
-    expect(summary()).toBe('Aún no tenéis obras en común en ninguna isla');
+    expect(summary()).toBe('Lo que tenéis en común (1) está en Otros: no tiene autor ni director en el catálogo');
   });
   it('Islas: cambiar de modo cierra la hoja táctil abierta', () => {
     viewWith(withGenre, 'islas');

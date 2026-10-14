@@ -32,6 +32,7 @@ export function summaryMessage(lens: Lens, people: AtlasPerson[], works: AtlasWo
     const summary = summarizeIslands(people, layouts.islas, active);
     if (summary.kind === 'solo') return { key: 'atlas.islas.solo', values: { name: summary.name } };
     if (summary.kind === 'none') return { key: 'atlas.islas.none', values: {} };
+    if (summary.kind === 'onlyOther') return { key: 'atlas.islas.onlyOther', values: { count: summary.count, mode: layouts.islas.mode } };
     return { key: 'atlas.islas.best', values: { label: islandTitle(summary.island), count: summary.count } };
   }
   const summary = summarizeQuien(people, works, active);

@@ -21,16 +21,28 @@ export function paintTiempoBack({ ctx, cam, vp, palette, text }: PaintView, { la
   }
   const left = toScreen(cam, vp, { x: (layout.startYear - mid) * YEAR_STEP - 150, y: 0 }).x;
   const right = toScreen(cam, vp, { x: (layout.endYear - mid) * YEAR_STEP, y: 0 }).x;
-  for (const lane of layout.lanes) {
-    const person = people.find(item => item.id === lane.userId); if (!person) continue;
-    const y = toScreen(cam, vp, { x: 0, y: lane.y }).y, band = 170 * k;
+  // Lanes get closer with many people (`laneGap`): band, avatar and name are sized from the screen distance
+  // between lanes so none of them reaches the next lane. One placement for every lane, so names read as a column:
+  // under the avatar when it fits; else on its left if the screen has room (wide screens); else under a smaller
+  // avatar; and as a last resort on its right (behind the works, which are painted on top).
+  const pitch = layout.gap * k, band = 170 * k * layout.gap / 230, base = Math.max(14, Math.min(26, 44 * k));
+  const font = `600 12px ${palette.font}`;
+  const shown = layout.lanes.flatMap(lane => { const person = people.find(item => item.id === lane.userId); return person ? [{ lane, person }] : []; });
+  const widest = Math.max(0, ...shown.map(({ person }) => measure(ctx, person.name, font)));
+  const fitsUnder = (radius: number) => 2 * radius + 22 <= pitch;
+  const smaller = (pitch - 22) / 2;
+  const [r, place]: [number, 'under' | 'left' | 'right'] = fitsUnder(base) ? [base, 'under']
+    : left - base - 6 - widest >= 4 ? [Math.min(base, pitch * 0.45 - 1), 'left']
+    : smaller >= 10 ? [smaller, 'under'] : [Math.max(8, Math.min(base, pitch * 0.45 - 1)), 'right'];
+  for (const { lane, person } of shown) {
+    const y = toScreen(cam, vp, { x: 0, y: lane.y }).y;
     ctx.globalAlpha = 0.06; ctx.fillStyle = person.color; ctx.fillRect(left + 40, y - band / 2, right - left - 40, band); ctx.globalAlpha = 1;
-    const r = Math.max(14, Math.min(26, 44 * k));
     ctx.fillStyle = person.color; ctx.beginPath(); ctx.arc(left, y, r, 0, Math.PI * 2); ctx.fill();
-    text(initials(person.name), left, y + r * 0.2, `800 ${Math.round(r * 0.58)}px ${palette.font}`, '#fff', 'center');
-    // Same with a long name centred under the avatar: it is nudged right so it never leaves the screen.
-    const font = `600 12px ${palette.font}`;
-    text(person.name, Math.max(left, measure(ctx, person.name, font) / 2 + 4), y + r + 16, font, palette.fg, 'center');
+    text(initials(person.name), left, y + r * 0.2, `800 ${Math.max(7, Math.round(r * 0.58))}px ${palette.font}`, '#fff', 'center');
+    // Under the avatar a long name is nudged right so it never leaves the screen.
+    if (place === 'under') text(person.name, Math.max(left, measure(ctx, person.name, font) / 2 + 4), y + r + 16, font, palette.fg, 'center');
+    else if (place === 'left') text(person.name, left - r - 6, y + 4, font, palette.fg, 'right');
+    else text(person.name, left + r + 6, y + 4, font, palette.fg, 'left');
   }
 }
 

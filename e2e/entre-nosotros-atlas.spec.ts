@@ -128,7 +128,8 @@ test('escritorio: Tiempo e Islas resumen lo dibujado y el modo de Islas cambia l
     await modes.getByRole('button', { name: 'Género', exact: true }).click(); await lensSettled(page);
     await expect(summary(page)).toHaveText('Donde más os parecéis: Drama, con 30 en común');
     await modes.getByRole('button', { name: 'Autor/Director', exact: true }).click(); await lensSettled(page);
-    await expect(summary(page)).toHaveText('Aún no tenéis obras en común en ninguna isla');
+    // The fixture's authors are free text (not in `credits`): everything in common falls in «Otros».
+    await expect(summary(page)).toHaveText('Lo que tenéis en común (30) está en Otros: no tiene autor ni director en el catálogo');
     await page.getByRole('group', { name: 'Filtrar por tipo de obra', exact: true }).getByRole('button', { name: 'Libros', exact: true }).click(); await lensSettled(page);
     await expect(modes.getByRole('button', { name: 'Tipo', exact: true })).toHaveCount(0);
   });

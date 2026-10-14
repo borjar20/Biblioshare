@@ -13,7 +13,7 @@ const LABEL_ROOM = 110;   // title + «n en común» + means strip above each di
 export type Island = Point & { id: string; label: string | null; r: number; core: number; keys: WorkKey[]; common: number; shared: number; means: { userId: string; mean: number }[] };
 export type IslandInstance = Point & { key: WorkKey; island: string };
 export type IslandsLayout = { mode: IslandMode; islands: Island[]; instances: IslandInstance[]; extent: Extent };
-export type IslandsSummary = { kind: 'solo'; name: string } | { kind: 'none' } | { kind: 'best'; island: Island; count: number };
+export type IslandsSummary = { kind: 'solo'; name: string } | { kind: 'none' } | { kind: 'onlyOther'; count: number } | { kind: 'best'; island: Island; count: number };
 
 export function categoriesOf(work: AtlasWork, mode: IslandMode): { id: string; label: string | null }[] {
   if (mode === 'type') return [{ id: work.itemType, label: null }];
@@ -88,5 +88,8 @@ export function summarizeIslands(people: AtlasPerson[], layout: IslandsLayout, a
   if (active.length < 2) return { kind: 'solo', name: people.find(person => active.includes(person.id))?.name ?? '' };
   const best = layout.islands.filter(island => island.id !== OTHER_ISLAND && island.common > 0)
     .toSorted((a, b) => b.common - a.common || b.shared - a.shared || (a.label ?? a.id).localeCompare(b.label ?? b.id))[0];
-  return best ? { kind: 'best', island: best, count: best.common } : { kind: 'none' };
+  if (best) return { kind: 'best', island: best, count: best.common };
+  // «Otros» is never the best island, but when it holds everything in common, «nothing in common» would contradict it.
+  const other = layout.islands.find(island => island.id === OTHER_ISLAND)?.common ?? 0;
+  return other > 0 ? { kind: 'onlyOther', count: other } : { kind: 'none' };
 }
