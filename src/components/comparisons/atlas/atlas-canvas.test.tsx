@@ -12,6 +12,8 @@ import { buildScene, type Lens } from '@/lib/comparisons/atlas/scene';
 import { fit } from '@/lib/comparisons/atlas/camera';
 import { createRef } from 'react';
 import { AtlasCanvas, type AtlasCanvasHandle } from './atlas-canvas';
+import { paintIslasBack } from './paint-islas';
+import type { PaintView, Palette } from './atlas-palette';
 
 const snapshot: Snapshot = { group: { id: 'g', name: 'G', revision: 1, members: ['a', 'b'].map(id => ({ slotId: id, userId: id, name: id, avatarUrl: null, available: true })) },
   format: 'all', excludedSeriesWithoutEpisodes: 0, catalog: [],
@@ -372,6 +374,38 @@ describe('AtlasCanvas', () => {
       flush();
       expect(host.dataset.atlasZoom).toBe(fitZoom(800, 600, 200, 120));
     });
+  });
+
+  it('Islas en un móvil estrecho: el encaje deja los títulos de las islas bajo la fila de caras, no debajo', () => {
+    // Like the QA fixture: 10 people, 30 books rated alike by all (a 4-high stack of faces), a film and a series.
+    const ids = 'abcdefghij'.split('');
+    const keys = [...Array.from({ length: 30 }, (_, i) => `book:${i + 1}`), 'movie:1', 'series:1'] as WorkKey[];
+    const wide: Snapshot = { ...snapshot, group: { ...snapshot.group, members: ids.map(id => ({ slotId: id, userId: id, name: id, avatarUrl: null, available: true })) },
+      works: ids.flatMap(userId => keys.map(key => ({ userId, key, rating: key.startsWith('book') ? 9 : null, date: null, orderUnknown: false, progress: null }))) };
+    const model = atlasModel(wide, 'a', 'Tú');
+    const islas = layoutIslands(model.people, model.works, ids, 'type');
+    const islasScene = buildScene('islas', model.works, ids, { quien: layoutQuien(model.people, model.works),
+      opinion: layoutOpinion(model.people, model.works, ids), tiempo: layoutTiempo(model.people, model.works, ids), islas });
+    const width = 360, height = 740, insets = { top: 176, bottom: 175 };
+    vi.spyOn(Element.prototype, 'clientWidth', 'get').mockReturnValue(width);
+    vi.spyOn(Element.prototype, 'clientHeight', 'get').mockReturnValue(height);
+    const islandText = { title: () => 'Libros', common: (n: number) => `${n} en común` };
+    const onSettled = vi.fn();
+    render(<AtlasCanvas {...props} people={model.people} works={model.works} active={ids} scene={islasScene} islas={islas}
+      islandText={islandText} insets={insets} onSettled={onSettled}/>);
+    flush();
+    const cam = pick(onSettled.mock.lastCall![0]);
+    // Paint with the settled camera and read where the titles land (y is the baseline; the font size is in the font).
+    const text = vi.fn<PaintView['text']>();
+    const ctx = new Proxy({}, { get: () => () => {}, set: () => true }) as unknown as CanvasRenderingContext2D;
+    paintIslasBack({ ctx, cam, vp: { width, height }, palette: { font: 'sans', type: {} } as Palette, text }, { layout: islas, people: model.people, text: islandText });
+    const titles = text.mock.calls.filter(([value]) => value === 'Libros');
+    expect(titles).toHaveLength(islas.islands.length);
+    const top = Math.min(...titles.map(([, , y, font]) => y - Number(/(\d+(?:\.\d+)?)px/.exec(font)![1])));
+    expect(top).toBeGreaterThanOrEqual(insets.top);
+    // And the discs still fit above the dock.
+    const bottom = Math.max(...islas.islands.map(island => (island.y + island.r - cam.y) * cam.k + height / 2));
+    expect(bottom).toBeLessThanOrEqual(height - insets.bottom);
   });
 });
 const pick = ({ x, y, k }: { x: number; y: number; k: number }) => ({ x, y, k });

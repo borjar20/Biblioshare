@@ -14,7 +14,7 @@ import { paintLinks } from './paint-links';
 import { paintTiempoBack } from './paint-tiempo';
 import cdnLoader from '@/lib/images/cdn-loader';
 import { createImageCache, type ImageLike } from '@/lib/comparisons/atlas/image-cache';
-import { paintIslasBack, type IslandText } from './paint-islas';
+import { islandLabelRoom, paintIslasBack, type IslandText } from './paint-islas';
 import { nearestSprite, probeOf, stepSprites, syncSprites, type Sprite } from './atlas-sprites';
 
 export { COVER_ZOOM, TITLE_ZOOM } from './atlas-palette';
@@ -52,7 +52,18 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
   const insets = () => props().insets ?? { top: 75, bottom: 75 };
   /** Shifts a camera so that its focus lands in the middle of the band between the overlays. */
   const framed = (c: Camera): Camera => { const { top, bottom } = insets(); return { ...c, y: c.y - (top - bottom) / 2 / c.k }; };
-  const fitCamera = () => { const { top, bottom } = insets(); return framed(fit(props().scene.extent, vp, { x: 32, y: top + bottom + 24 })); };
+  /** Screen px the lens paints above its extent (Islas titles), reserved on top of the overlays when fitting. */
+  const labelRoom = () => { const p = props(); return p.scene.lens === 'islas' && p.islandText ? islandLabelRoom(p.islas, p.people) : 0; };
+  const fitCamera = () => {
+    const { top, bottom } = insets(), extent = props().scene.extent, room = labelRoom();
+    const c = fit(extent, vp, { x: 32, y: top + bottom + 24 });
+    if (!room) return framed(c);
+    // The labels only cap the zoom: folding them into `fit`'s pad would trip its «band under 40 %» fallback on a
+    // phone and drop the vertical constraint altogether.
+    const band = vp.height - top - bottom - 24 - room;
+    const k = band > 0 ? clamp(Math.min(c.k, band / (extent.maxY - extent.minY)), MIN_ZOOM, MAX_ZOOM) : c.k;
+    return { ...c, k, y: c.y - (top + room - bottom) / 2 / k };
+  };
   let lastFit: Camera | null = null; let insetsKey = ''; let touched = false; let restored = false;
   const refit = () => { lastFit = fitCamera(); target = lastFit; };
   /** Jump straight to the fit, no glide (the user has not seen the previous framing as theirs). */
@@ -92,7 +103,7 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
     }
     // Overlays measured after the first fit: reframe only while the camera still rests on (or heads to) that fit;
     // before any interaction (initial load) jump there instead of gliding.
-    const nextInsets = JSON.stringify(insets());
+    const nextInsets = JSON.stringify([insets(), labelRoom()]);
     if (nextInsets !== insetsKey) {
       insetsKey = nextInsets;
       if (fitted && atFit()) { if (touched) refit(); else snapFit(); }

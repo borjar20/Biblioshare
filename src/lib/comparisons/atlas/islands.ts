@@ -8,7 +8,7 @@ export const ISLAND_STEP = 11;
 export const OTHER_ISLAND = 'other';
 const TYPE_ORDER = ['book', 'movie', 'series'] as const;
 const GAP = 160;          // between island discs
-const LABEL_ROOM = 110;   // title + «n en común» + means strip above each disc
+const LABEL_ROOM = 110;   // world gap between rows for the next row's title + «n en común» + means strip
 
 export type Island = Point & { id: string; label: string | null; r: number; core: number; keys: WorkKey[]; common: number; shared: number; means: { userId: string; mean: number }[] };
 export type IslandInstance = Point & { key: WorkKey; island: string };
@@ -79,7 +79,9 @@ export function layoutIslands(people: AtlasPerson[], works: AtlasWork[], active:
   }));
   const extent = islands.length
     ? { minX: Math.min(...islands.map(i => i.x - i.r)) - 60, maxX: Math.max(...islands.map(i => i.x + i.r)) + 60,
-        minY: Math.min(...islands.map(i => i.y - i.r - LABEL_ROOM)) - 20, maxY: Math.max(...islands.map(i => i.y + i.r)) + 60 }
+        // The texts above the top row are screen px (they do not scale with the zoom): the engine reserves them
+        // as a top inset (islandLabelRoom), so the extent stops at the discs.
+        minY: Math.min(...islands.map(i => i.y - i.r)) - 20, maxY: Math.max(...islands.map(i => i.y + i.r)) + 60 }
     : { minX: -300, maxX: 300, minY: -300, maxY: 300 };
   return { mode, islands, instances, extent };
 }

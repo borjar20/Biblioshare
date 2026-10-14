@@ -69,7 +69,7 @@ Escritorio 1280×800:
 
 Móvil:
 - [mobile-list.png](assets/2026-10-14-entre-nosotros-atlas-f4/mobile-list.png) (Pixel 7).
-- [mobile-islas-dock-pixel7.png](assets/2026-10-14-entre-nosotros-atlas-f4/mobile-islas-dock-pixel7.png), [mobile-islas-dock-375.png](assets/2026-10-14-entre-nosotros-atlas-f4/mobile-islas-dock-375.png), [mobile-islas-dock-360.png](assets/2026-10-14-entre-nosotros-atlas-f4/mobile-islas-dock-360.png): dock con Islas pulsada. A 360 px: modos 51–292, lentes 73–271, «Ver como lista» 300–344; sin solapes y sin scroll horizontal.
+- [mobile-islas-dock-pixel7.png](assets/2026-10-14-entre-nosotros-atlas-f4/mobile-islas-dock-pixel7.png), [mobile-islas-dock-375.png](assets/2026-10-14-entre-nosotros-atlas-f4/mobile-islas-dock-375.png), [mobile-islas-dock-360.png](assets/2026-10-14-entre-nosotros-atlas-f4/mobile-islas-dock-360.png): dock con Islas pulsada (las de 360 y 375 rehechas tras el arreglo del título de Islas). A 360 px: modos 51–292, lentes 73–271, «Ver como lista» 300–344; sin solapes y sin scroll horizontal.
 
 Sin scroll horizontal en ninguna (`scrollWidth ≤ innerWidth`).
 
@@ -77,7 +77,7 @@ Sin scroll horizontal en ninguna (`scrollWidth ≤ innerWidth`).
 
 - *(Arreglado.)* Sin anillo de foco en el lienzo.
 - *(Arreglado.)* Primer encabezado de la lista difuminado bajo el resumen; pie de la lente encima de las filas.
-- **Islas a 360 y 375 px: el título «Libros» queda tapado por la fila de caras.** A 412 px (Pixel 7) se lee entero. El encaje no reserva la altura del título de la isla en píxeles de pantalla. No se arregla aquí: toca el encaje del motor.
+- *(Arreglado.)* **Islas a 360 y 375 px: el título «Libros» quedaba tapado por la fila de caras** (a 412 px se leía entero). Causa: el extent de Islas reservaba el hueco de los textos de arriba (título, «n en común», tira de medias y su pila de caras) como 110 unidades de **mundo**, pero el pintor los dibuja a tamaño fijo en **píxeles de pantalla** (hasta 52 + 42 + 30 px sobre el disco). En un móvil estrecho el encaje aleja la cámara (k menor) y ese margen de mundo encoge por debajo de los textos. Arreglo: el extent de Islas se detiene en los discos y el motor suma `islandLabelRoom()` (píxeles, calculado con la misma colocación de caras que el pintor) al inset superior al encajar, solo con la lente Islas; ese hueco solo limita el zoom, para no disparar el respaldo de `fit` cuando la banda libre baja del 40 %. Prueba en `atlas-canvas.test.tsx` (360×740, insets 176/175, 10 caras con la misma media): el borde superior del título queda bajo el inset y los discos sobre el dock; antes del arreglo el título empezaba en y = 144 < 176. Capturas rehechas a 360×780 y 375×780 con el fixture integrado: «Libros» y «3 en común» se leen enteros bajo la fila de caras.
 - **Las portadas a zoom 2,8 son pequeñas** (~24 px de ancho) y sin título: es el umbral `TITLE_ZOOM`, sin cambios.
 - **El anillo de foco sigue tras clicar en el lienzo** si el foco llegó antes por teclado (`desktop-covers.png`): es como funciona `:focus-visible`.
 - La lista de Opinión no tiene encabezados y, con todas las notas iguales, el orden por |dif| no se aprecia.
