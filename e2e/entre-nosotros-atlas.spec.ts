@@ -714,3 +714,174 @@ test('leyenda del mapa: móvil plegable, escritorio visible y lista sin leyenda'
     await saveAtlasJournal(info, journal);
   }
 });
+
+type ItemDrawing = { images: { x: number; y: number; width: number; height: number }[]; dots: { x: number; y: number; radius: number }[] };
+
+/** Observe rendered CSS pixels without replacing the engine, scene, coordinates or image bytes. */
+async function observeItems(page: Page) {
+  await page.addInitScript(() => {
+    const observed = globalThis as unknown as { __atlasItems: ItemDrawing };
+    observed.__atlasItems = { images: [], dots: [] };
+    const clear = CanvasRenderingContext2D.prototype.clearRect;
+    CanvasRenderingContext2D.prototype.clearRect = function (this: CanvasRenderingContext2D, ...args: Parameters<typeof clear>) {
+      if (this.canvas.closest('[data-atlas-moving]')) observed.__atlasItems = { images: [], dots: [] };
+      clear.apply(this, args);
+    };
+    const draw = CanvasRenderingContext2D.prototype.drawImage;
+    CanvasRenderingContext2D.prototype.drawImage = function (this: CanvasRenderingContext2D, image: CanvasImageSource, ...args: number[]) {
+      if (this.canvas.closest('[data-atlas-moving]') && args.length === 4) {
+        const [x, y, width, height] = args;
+        observed.__atlasItems.images.push({ x, y, width, height });
+      }
+      Reflect.apply(draw, this, [image, ...args]);
+    };
+    const arc = CanvasRenderingContext2D.prototype.arc;
+    CanvasRenderingContext2D.prototype.arc = function (this: CanvasRenderingContext2D, ...args: Parameters<typeof arc>) {
+      const [x, y, radius] = args;
+      if (this.canvas.closest('[data-atlas-moving]') && radius < 10) observed.__atlasItems.dots.push({ x, y, radius });
+      arc.apply(this, args);
+    };
+  });
+}
+
+const itemDrawing = (page: Page) => page.evaluate(() => (globalThis as unknown as { __atlasItems: ItemDrawing }).__atlasItems);
+
+/** Use an actual wheel gesture, keeping a real item at its existing screen position. */
+async function itemZoom(page: Page, value: number) {
+  const canvas = page.locator('[data-atlas-moving] canvas');
+  const box = (await canvas.boundingBox())!;
+  const points = await probe(page);
+  const point = points.find(point => point.x > 60 && point.x < box.width - 60 && point.y > 180 && point.y < box.height - 150) ?? points[0];
+  expect(point, 'una obra real disponible para anclar el zoom').toBeDefined();
+  await page.mouse.move(box.x + point.x, box.y + point.y);
+  // Chromium's mobile emulation reports wheel deltas divided by the emulated DPR.
+  const wheelScale = await page.evaluate(() => devicePixelRatio);
+  await page.mouse.wheel(0, -Math.log(value / await zoom(page)) / 0.0018 * wheelScale);
+  await expect.poll(() => zoom(page)).toBeCloseTo(value, 2);
+  await lensSettled(page);
+}
+
+test('portadas tempranas y mayores: Opinión y Tiempo a 0,7; cada lente conserva sus límites', async ({ page }, info) => {
+  await setAtlasViewport(page, info);
+  await observeItems(page);
+  const journal = atlasJournal(page), measurements: Record<string, unknown> = {};
+  try {
+    await withComparisonFixture(async fixture => {
+      // Spread real notes and dates: the visual gate must not depend on thirty coincident items.
+      const ids = fixture.books.map(book => book.id).join(',');
+      const rows = await (await comparisonRest(`passes?item_id=in.(${ids})&select=id,user_id,item_id`)).json() as { id: string; user_id: string; item_id: string }[];
+      await comparisonRest('passes', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: JSON.stringify(rows.map(row => {
+        const index = fixture.books.findIndex(book => book.id === row.item_id);
+        const actor = fixture.actors.findIndex(actor => actor.id === row.user_id);
+        return { ...row, item_type: 'book', status: 'completed', is_active: false, is_public: true,
+          rating: actor === 0 ? index % 10 + 1 : Math.floor(index / 3) + 1,
+          finished_on: `2026-${String(index % 12 + 1).padStart(2, '0')}-${String(actor + 1).padStart(2, '0')}` };
+      })) });
+      await openAtlas(page, fixture);
+      const lenses = page.getByRole('group', { name: 'Lente', exact: true });
+      for (const lens of ['Quién', 'Opinión', 'Tiempo', 'Islas']) {
+        await lenses.getByRole('button', { name: lens, exact: true }).click(); await lensSettled(page);
+        await itemZoom(page, 0.5);
+        const dotsZoom = await zoom(page);
+        const dots = await itemDrawing(page);
+        expect(dots.images, `${lens}: bajo 0,6 mantiene puntos`).toHaveLength(0);
+        expect(dots.dots.length, `${lens}: puntos reales dibujados`).toBeGreaterThan(0);
+        await itemZoom(page, 0.7);
+        if (['Opinión', 'Tiempo'].includes(lens)) await expect.poll(async () => (await itemDrawing(page)).images.length).toBeGreaterThan(0);
+        const low = await itemDrawing(page);
+        measurements[lens] = { dotsZoom, dotRadiiAt05: dots.dots.map(dot => dot.radius), coverZoom: await zoom(page), coversAt07: low.images };
+        if (['Opinión', 'Tiempo'].includes(lens)) {
+          expect(Math.min(...low.images.map(image => image.width)), 'portadas tempranas con al menos 12 px de ancho').toBeGreaterThanOrEqual(12);
+          if (info.project.name === 'mobile') await atlasEvidence(page, info, `despues-${lens === 'Opinión' ? 'opinion' : 'tiempo'}-07`);
+        } else expect(low.images, `${lens}: conserva el umbral de 1,1`).toHaveLength(0);
+        await itemZoom(page, 1.4);
+        await expect.poll(async () => (await itemDrawing(page)).images.length).toBeGreaterThan(0);
+        const high = await itemDrawing(page);
+        (measurements[lens] as Record<string, unknown>).coversAt14 = high.images;
+        expect(Math.min(...high.images.map(image => image.width)), `${lens}: portadas mayores también por encima del umbral anterior`).toBeGreaterThanOrEqual(lens === 'Opinión' ? 19 : 16);
+        expect(Number(await page.locator('[data-atlas-moving]').getAttribute('data-atlas-covers'))).toBeLessThanOrEqual(300);
+        if (['Opinión', 'Tiempo'].includes(lens)) {
+          await itemZoom(page, 3.4);
+          const drawing = await itemDrawing(page), points = await probe(page);
+          const box = (await page.locator('[data-atlas-moving] canvas').boundingBox())!;
+          const item = drawing.images.find(image => {
+            const x = image.x + image.width / 2, y = image.y + image.height / 2;
+            return image.x > 35 && image.x + image.width < box.width - 35 && image.y > 210 && image.y + image.height < box.height - 160
+              && drawing.images.every(other => other === image || Math.hypot(other.x + other.width / 2 - x, other.y + other.height / 2 - y) > image.height);
+          });
+          expect(item, `${lens}: una portada aislada para tocar su esquina`).toBeDefined();
+          const point = points.find(point => Math.hypot(point.x - item!.x - item!.width / 2, point.y - item!.y - item!.height / 2) < 2);
+          expect(point, 'la portada pertenece a una obra real publicada por la sonda').toBeDefined();
+          const book = fixture.books.find(book => `book:${book.id}` === point!.key)!;
+          const x = box.x + item!.x + item!.width - 2, y = box.y + item!.y + 2;
+          if (info.project.name === 'mobile') {
+            await page.touchscreen.tap(x, y);
+            const sheet = page.getByRole('dialog', { name: book.title, exact: true });
+            await expect(sheet).toBeVisible();
+            await sheet.getByRole('button', { name: 'Cerrar', exact: true }).tap();
+          } else {
+            await page.mouse.move(x, y);
+            await expect(page.getByText(book.title, { exact: true }).first()).toBeVisible();
+            await page.mouse.click(x, y);
+            await expect(page).toHaveURL(new RegExp(`/libro/${book.id}$`));
+            await page.goBack(); await lensSettled(page);
+          }
+          (measurements[lens] as Record<string, unknown>).cornerHit = { key: point!.key, width: item!.width, height: item!.height };
+        }
+      }
+      if (info.project.name === 'mobile') {
+        await page.setViewportSize({ width: 360, height: 844 });
+        await lenses.getByRole('button', { name: 'Tiempo', exact: true }).click(); await lensSettled(page);
+        await itemZoom(page, 0.7);
+        await expect.poll(async () => (await itemDrawing(page)).images.length).toBeGreaterThan(0);
+        const images = (await itemDrawing(page)).images, minCoverWidth = Math.min(...images.map(image => image.width));
+        expect(minCoverWidth, 'también a 360 px las portadas tempranas conservan 12 px de ancho').toBeGreaterThanOrEqual(12);
+        await expect(summary(page)).toHaveText('Llegaste tú primero a 30 de 30 obras compartidas');
+        (measurements.Tiempo as Record<string, unknown>).viewport360 = { zoom: await zoom(page), minCoverWidth, visibleCovers: images.length };
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'sin desplazamiento horizontal').toBe(true);
+    });
+    expect(journal.errors, 'sin errores de consola ni excepciones del navegador').toEqual([]);
+    expect(journal.failures.filter(failure => !failure.endsWith('net::ERR_ABORTED')), 'sin peticiones fallidas fuera de las canceladas al navegar').toEqual([]);
+  } finally {
+    await info.attach('item-size-measurements', { body: JSON.stringify(measurements, null, 2), contentType: 'application/json' });
+    const directory = process.env.ATLAS_EVIDENCE_DIR;
+    if (directory) {
+      await mkdir(directory, { recursive: true });
+      await writeFile(`${directory}/${info.project.name}-despues-items-metrics.json`, JSON.stringify({ measurements, journal }, null, 2));
+    }
+    await saveAtlasJournal(info, journal);
+  }
+});
+
+test('opiniones densas: treinta notas iguales siguen visibles al bajar el zoom de portada', async ({ page }, info) => {
+  await setAtlasViewport(page, info);
+  await observeItems(page);
+  const journal = atlasJournal(page);
+  let drawing: ItemDrawing | undefined;
+  try {
+    await withComparisonFixture(async fixture => {
+      await openAtlas(page, fixture);
+      await page.getByRole('group', { name: 'Lente', exact: true }).getByRole('button', { name: 'Opinión', exact: true }).click(); await lensSettled(page);
+      await itemZoom(page, 0.7);
+      await expect.poll(async () => (await itemDrawing(page)).images.length).toBe(30);
+      drawing = await itemDrawing(page);
+      await expect(summary(page)).toHaveText('Coincidís en 30 y chocáis en 0 de 30 obras compartidas');
+      expect(await probe(page), 'treinta obras reales presentes incluso con la misma nota').toHaveLength(30);
+      if (info.project.name === 'mobile') await atlasEvidence(page, info, 'despues-opinion-densa-07');
+      await page.getByRole('button', { name: 'Ver como lista', exact: true }).click();
+      await expect(page.getByRole('region', { name: 'Lista de obras', exact: true }).locator('a[href^="/libro/"]')).toHaveCount(30);
+    });
+    expect(journal.errors, 'sin errores de consola ni excepciones del navegador').toEqual([]);
+    expect(journal.failures.filter(failure => !failure.endsWith('net::ERR_ABORTED')), 'sin peticiones fallidas fuera de las canceladas al navegar').toEqual([]);
+  } finally {
+    const data = { drawing, journal };
+    await info.attach('dense-item-measurements', { body: JSON.stringify(data, null, 2), contentType: 'application/json' });
+    const directory = process.env.ATLAS_EVIDENCE_DIR;
+    if (directory) {
+      await mkdir(directory, { recursive: true });
+      await writeFile(`${directory}/${info.project.name}-despues-dense-metrics.json`, JSON.stringify(data, null, 2));
+    }
+    await saveAtlasJournal(info, journal);
+  }
+});

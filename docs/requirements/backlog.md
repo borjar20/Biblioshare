@@ -555,8 +555,8 @@ verificación no afirma su ejecución. El resto sigue rastreable por `area:catal
   en `/comunidad/entre-nosotros`, `src/lib/comparisons/`, `src/components/comparisons/`
   y tablas `comparison_groups`/`comparison_group_members`; primera entrega integrada
   en [PR #1474](https://github.com/borjar20/Biblioshare/pull/1474) y activa en producción
-  desde el 2026-10-10. Atlas implementado y verificado localmente sobre
-  [PR #1529](https://github.com/borjar20/Biblioshare/pull/1529): lienzo oscuro con Quién,
+  desde el 2026-10-10. Atlas integrado en
+  [PR #1529](https://github.com/borjar20/Biblioshare/pull/1529) el 2026-10-14: lienzo oscuro con Quién,
   Opinión, Tiempo, Islas y alternativa accesible «Ver como lista». Quién reagrupa según
   las caras activas y muestra cifra e hilos también en cruces de una o dos obras;
   las otras tres lentes comparan obras de todas las caras seleccionadas. Opinión
@@ -570,7 +570,12 @@ verificación no afirma su ejecución. El resto sigue rastreable por `area:catal
   [evidencia de movimiento y medias](../testing/2026-10-14-entre-nosotros-atlas-vivo.md)
   y [evidencia de selección completa](../testing/2026-10-14-entre-nosotros-atlas-seleccion-completa.md):
   387 unitarios, TypeScript, lint, build y siete casos de navegador PASS.
-  Integración y despliegue del atlas en producción pendientes; seguimiento del atlas en #1520–#1527.
+  Verificación del despliegue del atlas en producción pendiente; seguimiento en #1520–#1527.
+  Mejora local en `codex/entre-nosotros-items-grandes`: puntos y portadas un 40 %
+  mayores y portadas visibles antes en Opinión/Tiempo, en `src/components/comparisons/atlas/`.
+  [Evidencia de legibilidad](../testing/2026-10-14-entre-nosotros-atlas-items-grandes.md):
+  409 unitarios, TypeScript, lint, build, cuatro E2E de escritorio/móvil y repetición a 360 px PASS;
+  integración y verificación del despliegue de esta mejora pendientes.
 - [ ] Pendientes y «Lo que esperamos juntos»: alcance futuro separado de Entre nosotros, registrado en [#1462](https://github.com/borjar20/Biblioshare/issues/1462).
 
 **Social y clubes**

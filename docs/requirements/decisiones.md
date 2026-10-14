@@ -7927,3 +7927,26 @@ vista, sin guardarlo como preferencia persistente.
 55 pruebas de AtlasView, TypeScript, lint, build y dos E2E de escritorio/móvil
 PASS; sin desbordamiento horizontal a 360 y 390 px. Integración y despliegue
 en producción pendientes.
+
+## 2026-10-14 — Entre nosotros: puntos y portadas más legibles
+
+Los puntos y las portadas crecen un 40 % para reconocer las obras al comparar.
+Opinión y Tiempo muestran portadas con zoom mayor que 0,6, con ancho mínimo de 12 px;
+Quién e Islas conservan el umbral 1,1 y los títulos requieren zoom mayor que 3,2.
+La geometría compartida de dibujo, detección y recorte usa el rectángulo
+completo de la portada con mínimo de 10 px para interacción; los puntos
+mantienen detección circular. La caché conserva sus 300 portadas y 24
+peticiones por frame.
+
+La ampliación conserva posiciones, distribución de puntos, notas, fechas,
+esquema y semántica de caché. Las obras con notas iguales pueden seguir
+superpuestas en Opinión; «Ver como lista» conserva todas las obras, incluidas
+las 30 de la muestra verificada. Los límites de la caché con más de 300 obras
+y de las fixtures con portadas repetidas siguen en #1524 y #1527.
+
+El atlas de PR #1529 se integró el 2026-10-14. Esta mejora está implementada
+y verificada localmente en `codex/entre-nosotros-items-grandes`:
+[evidencia de legibilidad](../testing/2026-10-14-entre-nosotros-atlas-items-grandes.md),
+409 pruebas en 37 archivos, TypeScript, lint, build y cuatro E2E únicos de
+escritorio/móvil PASS. Integración de la mejora pendiente;
+despliegue productivo del atlas todavía sin verificar.
