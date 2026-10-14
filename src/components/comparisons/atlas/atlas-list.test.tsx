@@ -52,16 +52,18 @@ describe('AtlasList', () => {
     expect(missing.closest('a')).toBeNull();
     expect(within(region()).getAllByRole('link')).toHaveLength(2);
   });
-  it('apagar una cara quita sus obras', () => {
+  it('apagar una cara quita sus obras y su nombre de encabezados y dueños', () => {
     show('quien', ['me']);
     expect(titles()).toEqual(['Dune', 'Solaris']);
+    expect(within(region()).getAllByRole('heading', { level: 3 }).map(h => h.textContent)).toEqual(['Tú']);
+    expect(within(region()).getByRole('link', { name: /Dune/ }).textContent).not.toContain('Bea');
     expect(screen.queryByText('Obra sin información de catálogo')).toBeNull();
   });
   it('Opinión: por diferencia, con la nota de la referencia y la media del resto', () => {
     show('opinion');
     expect(within(region()).queryByRole('heading')).toBeNull();
     expect(titles()).toEqual(['Dune', 'Solaris']);
-    expect(within(region()).getByRole('link', { name: /Dune/ }).textContent).toContain('9 · media del resto 2.0');
+    expect(within(region()).getByRole('link', { name: /Dune/ }).textContent).toContain('Tú 9 · media del resto 2.0');
   });
   it('Tiempo: el año de la primera aparición', () => {
     show('tiempo');

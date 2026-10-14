@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, type ReactNode, type Ref } from 'react';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { itemHref } from '@/lib/catalog/item-href';
@@ -17,7 +17,9 @@ const TYPE_VAR = { book: 'var(--type-book)', movie: 'var(--type-movie)', series:
  * as the canvas it replaces; each work links to its page. Plain `<img>` with the CDN loader URL: one small request
  * per cover, never `/_next/image`.
  */
-export function AtlasList({ lens, people, works, active, layouts, islandText, insets }: {
+export function AtlasList({ ref, lens, people, works, active, layouts, islandText, insets }: {
+  /** The view focuses the list when it opens. */
+  ref?: Ref<HTMLElement>;
   lens: Lens; people: AtlasPerson[]; works: AtlasWork[]; active: string[]; layouts: SceneLayouts; islandText: IslandText;
   /** Same band the canvas frames: the list scrolls under the summary and the dock, never behind them at rest. */
   insets?: { top: number; bottom: number };
@@ -27,15 +29,18 @@ export function AtlasList({ lens, people, works, active, layouts, islandText, in
   const byKey = useMemo(() => new Map(works.map(work => [work.key, work])), [works]);
   const names = useMemo(() => new Map(people.map(person => [person.id, person.name])), [people]);
   const years = useMemo(() => lens === 'tiempo' ? firstYears(layouts.tiempo.instances) : null, [lens, layouts.tiempo]);
-  const list = new Intl.ListFormat(locale, { type: 'conjunction' });
-  const join = (ids: string[]) => list.format(ids.flatMap(id => names.has(id) ? [names.get(id)!] : []));
-  const islands = new Map(layouts.islas.islands.map(island => [island.id, island]));
+  const format = useMemo(() => new Intl.ListFormat(locale, { type: 'conjunction' }), [locale]);
+  const islands = useMemo(() => new Map(layouts.islas.islands.map(island => [island.id, island])), [layouts.islas]);
+  // Names follow the face filter: only active owners, in people order.
+  const join = (ids: string[]) => format.format(ids.flatMap(id => names.has(id) && active.includes(id) ? [names.get(id)!] : []));
+  const island = (id: string) => islands.get(id);
   const heading = (value: ListHeading): ReactNode => value.kind === 'owners' ? join(value.ids)
-    : value.kind === 'island' ? (islands.has(value.islandId) ? islandText.title(islands.get(value.islandId)!) : t('atlas.list.other')) : null;
+    : value.kind === 'island' ? (island(value.islandId) ? islandText.title(island(value.islandId)!) : null) : null;
+  const reference = layouts.opinion.reference === null ? '' : names.get(layouts.opinion.reference) ?? '';
   function detail(work: AtlasWork): string {
     if (lens === 'opinion') {
       const point = layouts.opinion.positions.get(work.key);
-      return point ? t('atlas.list.diff', { ref: point.ref, others: point.others.toFixed(1) }) : '';
+      return point ? t('atlas.list.diff', { ref: reference, own: point.ref, others: point.others.toFixed(1) }) : '';
     }
     if (lens === 'tiempo') { const year = years?.get(work.key); return year === undefined ? '' : String(Math.floor(year)); }
     return join(work.owners.map(owner => owner.userId));
@@ -53,7 +58,7 @@ export function AtlasList({ lens, people, works, active, layouts, islandText, in
       : <Link className={styles.listItem} href={itemHref(work.itemType, work.itemId)}>{body}</Link>;
   }
 
-  return <section className={styles.list} aria-label={t('atlas.list.label')} tabIndex={0}
+  return <section ref={ref} className={styles.list} aria-label={t('atlas.list.label')} tabIndex={0}
     style={insets ? { paddingTop: insets.top, paddingBottom: insets.bottom } : undefined}>
     {sections.length === 0 ? <p className={styles.listEmpty}>{t('atlas.list.empty')}</p> : sections.map(section => <div key={section.id} className={styles.listSection}>
       {section.heading.kind !== 'plain' && <h3 className={styles.listHeading}>{heading(section.heading)}</h3>}

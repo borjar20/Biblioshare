@@ -126,6 +126,9 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange, 
   function changeLens(next: Lens) { setHover(null); setPicked(null); onLensChange(next); }
   function changeMode(next: IslandMode) { setHover(null); setPicked(null); onIslandModeChange(next); }
   function toggleList() { setHover(null); setPicked(null); onListChange(!list); }
+  // Opening hands focus to the list (the keyboard path); closing leaves it on the toggle that was pressed.
+  const listRef = useRef<HTMLElement>(null);
+  useEffect(() => { if (list) listRef.current?.focus(); }, [list]);
   function open(work: AtlasWork) { if (!work.metadataMissing) router.push(itemHref(work.itemType, work.itemId)); }
   function activate(hit: AtlasHit | null, pointerType: string) {
     if (!hit) { setPicked(null); return; }
@@ -149,7 +152,7 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange, 
   const unavailable = snapshot.group.members.filter(member => !member.available);
 
   return <div ref={stage} className={styles.canvasWrap} data-comparison-stage>
-    {list ? <AtlasList lens={lens} people={people} works={works} active={active} layouts={layouts} islandText={islandText} insets={insets}/>
+    {list ? <AtlasList ref={listRef} lens={lens} people={people} works={works} active={active} layouts={layouts} islandText={islandText} insets={insets}/>
       : <AtlasCanvas ref={camera} label={canvasLabel} people={people} works={works} active={active} scene={scene} quien={layout} tiempo={tiempo} islas={islas} islandText={islandText} opinionLabels={opinionLabels} insets={insets}
       countLabel={count => t('atlas.poleCount', { count })} onTogglePerson={toggle} onHover={setHover} onActivate={activate}/>}
     <div ref={overlay} className={styles.overlayTop}>
@@ -164,16 +167,18 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange, 
           <span className={styles.faceDot} aria-hidden="true">?</span>{t('unavailablePerson')}</button>)}
       </div>
     </div>
-    {!list && <div className={styles.zoom}>
-      <button type="button" aria-label={t('atlas.zoomIn')} onClick={() => camera.current?.zoomBy(1.8)}>+</button>
-      <button type="button" aria-label={t('atlas.zoomOut')} onClick={() => camera.current?.zoomBy(1 / 1.8)}>−</button>
-      <button type="button" aria-label={t('atlas.zoomFit')} onClick={() => camera.current?.fit()}>⤢</button>
-    </div>}
     <div ref={dock} className={styles.dock}>
-      {/* Above the zoom buttons on wide screens (CSS); on phones, where zoom is hidden, above the lenses. */}
-      <button type="button" className={styles.listToggle} aria-pressed={list} onClick={toggleList}>
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">{list ? LENS_ICONS.quien : <path d="M5 4h9M5 8h9M5 12h9M2 4h.5M2 8h.5M2 12h.5"/>}</svg>
-        {t(list ? 'atlas.list.hide' : 'atlas.list.show')}</button>
+      {/* One right-hand column (see CSS): the list toggle, then zoom only over the map. On phones it sits beside the lenses. */}
+      <div className={styles.side}>
+        <button type="button" className={styles.listToggle} aria-pressed={list} onClick={toggleList}>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M5 4h9M5 8h9M5 12h9M2 4h.5M2 8h.5M2 12h.5"/></svg>
+          <span>{t('atlas.list.show')}</span></button>
+        {!list && <div className={styles.zoom}>
+          <button type="button" aria-label={t('atlas.zoomIn')} onClick={() => camera.current?.zoomBy(1.8)}>+</button>
+          <button type="button" aria-label={t('atlas.zoomOut')} onClick={() => camera.current?.zoomBy(1 / 1.8)}>−</button>
+          <button type="button" aria-label={t('atlas.zoomFit')} onClick={() => camera.current?.fit()}>⤢</button>
+        </div>}
+      </div>
       {lens === 'islas' && <div className={`${styles.lens} ${styles.modes}`} role="group" aria-label={t('atlas.islas.modes')}>
         {MODES.filter(mode => !typeless || mode !== 'type').map(mode => <button key={mode} type="button" aria-pressed={effectiveMode === mode}
           onClick={() => changeMode(mode)}>{t(`atlas.islas.mode.${mode}`)}</button>)}

@@ -298,16 +298,23 @@ describe('AtlasView', () => {
     view();
     const toggle = screen.getByRole('button', { name: 'Ver como lista' });
     expect(toggle.getAttribute('aria-pressed')).toBe('false');
+    expect(screen.getByRole('button', { name: 'Acercar' })).toBeTruthy();
     fireEvent.click(toggle);
     expect(screen.queryByTestId('canvas')).toBeNull();
     const list = screen.getByRole('region', { name: 'Lista de obras' });
     expect(within(list).getAllByRole('link').map(link => link.getAttribute('href'))).toEqual(['/libro/1']);
-    const back = screen.getByRole('button', { name: 'Ver como mapa' });
-    expect(back.getAttribute('aria-pressed')).toBe('true');
+    // Same name and text; the state is aria-pressed. Opening moves focus into the list; zoom goes away.
+    expect(toggle.textContent).toBe('Ver como lista');
+    expect(toggle.getAttribute('aria-pressed')).toBe('true');
+    expect(document.activeElement).toBe(list);
+    expect(screen.queryByRole('button', { name: 'Acercar' })).toBeNull();
     // Summary, faces and lenses stay on top of the list.
     expect(summary()).toBe('1 obra en común entre Tú, Bea y Carla');
     expect(screen.getByRole('group', { name: 'Lente' })).toBeTruthy();
-    fireEvent.click(back);
+    toggle.focus();
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute('aria-pressed')).toBe('false');
+    expect(document.activeElement).toBe(toggle);
     expect(screen.getByTestId('canvas')).toBeTruthy();
     expect(screen.queryByRole('region', { name: 'Lista de obras' })).toBeNull();
   });

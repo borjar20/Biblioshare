@@ -44,11 +44,9 @@
       },
       "list": {
         "show": "Ver como lista",
-        "hide": "Ver como mapa",
         "label": "Lista de obras",
         "empty": "No hay obras que mostrar con estas caras.",
-        "diff": "{ref} · media del resto {others}",
-        "other": "Otros"
+        "diff": "{ref} {own} · media del resto {others}"
       },
       "years": "{name}: {year}",
       "noDate": "{name}: sin fecha",

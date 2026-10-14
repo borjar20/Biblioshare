@@ -24,12 +24,12 @@ const works = [work('book:1', { me: 8, b: 3 }), work('book:2', { me: 6, b: 6 }),
   work('book:5', { b: 5 }), work('book:6', { me: 9, b: 8, c: 1 }), work('book:7', { c: 7 })];
 
 describe('listSections', () => {
-  it('Quién: un grupo por conjunto de dueños; primero el común, luego por dueños activos y por tamaño', () => {
+  it('Quién: un grupo por conjunto de dueños activos; primero el común, luego por dueños activos y por tamaño', () => {
     const result = sections('quien', works, ['me', 'b']);
-    expect(result.map(section => section.heading)).toEqual([
-      { kind: 'owners', ids: ['me', 'b'] }, { kind: 'owners', ids: ['me', 'b', 'c'] }, { kind: 'owners', ids: ['b'] }]);
-    expect(result[0].keys).toEqual(['book:1', 'book:2']);
-    expect(result[2].keys).toEqual(['book:3', 'book:4', 'book:5']);
+    // {me, b} and {me, b, c} read the same with c off: one section, exact group first, each in spiral order.
+    expect(result.map(section => section.heading)).toEqual([{ kind: 'owners', ids: ['me', 'b'] }, { kind: 'owners', ids: ['b'] }]);
+    expect(result[0].keys).toEqual(['book:1', 'book:2', 'book:6']);
+    expect(result[1].keys).toEqual(['book:3', 'book:4', 'book:5']);
     expect(result.flatMap(section => section.keys)).not.toContain('book:7');
   });
   it('Quién: con todas las caras, el grupo de todas va primero aunque sea el más pequeño', () => {
