@@ -230,6 +230,8 @@ La lente lleva un mini-selector encima del dock: **Tipo · Género · Autor/Dire
   con `router.replace`). La cámara se guarda en `sessionStorage` por grupo, para que al
   volver atrás desde una ficha el mapa siga donde estaba. Si `sessionStorage` falla, se
   hace `fit`.
+- *(Revisado.)* Las caras ya no van en la URL: pasan a `sessionStorage` por cuenta y grupo
+  junto a la cámara, y `caras=` desaparece (decisiones, 2026-10-14).
 
 ## 6. Composición visual
 

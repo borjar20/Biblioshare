@@ -7814,3 +7814,13 @@ y evidencia en [F1](../testing/2026-10-13-entre-nosotros-atlas-f1.md),
 [F3](../testing/2026-10-14-entre-nosotros-atlas-f3.md) y
 [F4](../testing/2026-10-14-entre-nosotros-atlas-f4.md); lo que quedó pendiente está en
 #1520–#1527.
+
+## 2026-10-14 — Entre nosotros: qué memoria del atlas se guarda y cuándo se borra
+
+Nota a la entrada anterior. De la cámara solo se recuerda la que el usuario movió (rueda,
+pellizco, arrastre, zoom, teclado o un vuelo a un grupo); un encaje automático no se
+guarda y borra la que hubiera, para que la escena siguiente (otro formato, otro modo de
+Islas, otro tamaño de pantalla) encaje la suya. El borrado al cambiar de sesión cubre ahora
+cualquier salida: el botón de Ajustes vacía la memoria del atlas antes del logout, el
+explorador poda al montar la de otras cuentas que quede en la pestaña y, tras invalidar la
+sesión, ninguna escritura tardía la recupera.

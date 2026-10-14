@@ -89,3 +89,24 @@ Sin scroll horizontal en ninguna (`scrollWidth ≤ innerWidth`).
 - Portadas distintas y la expulsión de la LRU con más de 300 portadas fuera de los unitarios.
 - Lector de pantalla real sobre la lista.
 - Test LOCAL ONLY contra Supabase local.
+
+## Corregido tras la revisión final
+
+Código probado en `3746e3f8` (fixes en `904ba0d4` y `3746e3f8`).
+
+- **Cámara sin tocar restaurada como del usuario.** El motor informa en `onSettled` si la cámara es del usuario (rueda, pellizco, arrastre, zoom, teclado, vuelo a un grupo o restaurada de una así); un encaje no se guarda y borra la que hubiera. Cambio de formato, recarga, otro tamaño o Islas Todo→Libros encajan la escena nueva; la vuelta desde la ficha tras mover la cámara la restaura. Pruebas en `atlas-canvas.test.tsx` y `atlas-view.test.tsx`.
+- **Memoria borrada en cualquier logout.** `LogoutButton` vacía la memoria del atlas antes de salir; al montar, el explorador poda la de otras cuentas de la pestaña. Pruebas en `logout-saved.test.tsx`, `explorer.test.tsx` y `atlas-ui-state.test.ts`.
+- **Escrituras tras invalidar.** Al invalidar la sesión la cuenta queda cerrada en `atlas-ui-state` y `writeGroupMemory` no escribe hasta un payload nuevo; el motor no avisa tras desmontarse.
+- **Rejilla de Tiempo acotada.** `paintTiempoBack` recorre solo los años en pantalla; `datedYear` trata como sin fecha los años < 1900 o > año actual + 1 (en el trazado, el resumen y la mini-ficha).
+- **Escape de la hoja.** Se escucha en el escenario, no en `document`: Escape en la hoja de grupos no cierra la de la obra. Un cambio de lente con el foco en la hoja lo lleva al lienzo.
+
+| Comprobación | Resultado |
+|---|---|
+| `vitest run src/components/comparisons src/lib/comparisons src/components/nav src/app/ajustes` | 36 ficheros, 368 tests |
+| `tsc --noEmit` · `npm run lint` | limpio · 0 errores |
+| `entre-nosotros-atlas.spec.ts` (ambos proyectos, `next start`) | 11 passed, 11 skipped (cada proyecto salta los del otro) |
+| `entre-nosotros.spec.ts -g "CRUD\|profile"` | 2 passed |
+| `entre-nosotros.spec.ts -g "transport\|conflict"` | 1.ª tanda 1 failed / 1 passed; repetida 2 passed; `conflict --repeat-each 3`: 2 passed, 1 failed |
+| `entre-nosotros.spec.ts -g "isolation"` | 1 passed |
+
+El fallo intermitente de `conflict` es en la línea 162: el guardado de la primera pestaña devuelve `ok: true` en vez de `conflict`. `settled(other)` solo espera al atlas, no a la respuesta del guardado de la otra pestaña, así que a veces la primera guarda antes. Es temporización del test, anterior a estos cambios (no tocan grupos ni revisiones); queda pendiente de abrir como issue.
