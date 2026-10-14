@@ -576,6 +576,15 @@ verificación no afirma su ejecución. El resto sigue rastreable por `area:catal
   [Evidencia de legibilidad](../testing/2026-10-14-entre-nosotros-atlas-items-grandes.md):
   409 unitarios, TypeScript, lint, build, cuatro E2E de escritorio/móvil y repetición a 360 px PASS;
   integración y verificación del despliegue de esta mejora pendientes.
+- [x] Entre nosotros — notas personales en las mini-fichas de Quién, Tiempo e Islas:
+  `WorkCard` en `src/components/comparisons/atlas/atlas-view.tsx` y columnas en
+  `atlas.module.css` muestran `{nota}/10` o «sin nota» junto a cada dueño activo,
+  con nombres largos ajustados y año/«sin fecha» conservados en Tiempo.
+  Hover de escritorio y hoja táctil comparten la ficha; Opinión conserva su escala.
+  Implementado y verificado localmente en [PR #1530](https://github.com/borjar20/Biblioshare/pull/1530):
+  [evidencia de notas](../testing/2026-10-14-entre-nosotros-atlas-notas-hover.md), 62 unitarios
+  de fichas, TypeScript, lint, build y dos E2E de escritorio/móvil a 1280/360 px PASS.
+  Integración y verificación del despliegue en producción pendientes.
 - [ ] Pendientes y «Lo que esperamos juntos»: alcance futuro separado de Entre nosotros, registrado en [#1462](https://github.com/borjar20/Biblioshare/issues/1462).
 
 **Social y clubes**

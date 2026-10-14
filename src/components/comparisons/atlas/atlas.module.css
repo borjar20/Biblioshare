@@ -31,9 +31,12 @@
 .zoom button { width: 40px; height: 40px; border-radius: 12px; background: var(--atlas-panel); display: grid; place-items: center; color: var(--atlas-fg); font-size: 18px; font-weight: 600; }
 .tip { position: absolute; z-index: 3; pointer-events: none; display: flex; gap: 10px; align-items: center; padding: 8px 12px 8px 8px; border-radius: 12px; background: var(--atlas-panel); box-shadow: 0 12px 30px rgba(0,0,0,.5); font-size: 13px; max-width: 280px; color: var(--atlas-fg); }
 .cover { width: 38px; height: 56px; border-radius: 4px; flex: none; object-fit: cover; display: block; align-self: flex-start; }
+.workInfo { min-width: 0; }
 .workTitle { display: block; font-size: 14px; font-weight: 700; line-height: 1.15; margin-bottom: 5px; overflow-wrap: anywhere; }
-.owners { display: grid; grid-template-columns: auto 1fr; gap: 3px 6px; align-items: center; color: var(--atlas-muted); font-size: 12px; margin: 0; padding: 0; list-style: none; }
+.owners { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 3px 6px; align-items: center; color: var(--atlas-muted); font-size: 12px; margin: 0; padding: 0; list-style: none; }
 .owners li { display: contents; }
+.ownerName { overflow-wrap: anywhere; }
+.ownerRating { color: var(--atlas-fg); white-space: nowrap; }
 .ownerDot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
 .scale { display: grid; gap: 4px; min-width: 180px; margin-top: 6px; }
 .scaleTrack { position: relative; height: 40px; border-bottom: 1px solid var(--atlas-line); }

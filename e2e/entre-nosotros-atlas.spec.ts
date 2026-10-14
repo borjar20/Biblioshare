@@ -885,3 +885,88 @@ test('opiniones densas: treinta notas iguales siguen visibles al bajar el zoom d
     await saveAtlasJournal(info, journal);
   }
 });
+
+test('mini-ficha: cada persona conserva su nota en Quién, Tiempo e Islas; Opinión mantiene su escala', async ({ page }, info) => {
+  const mobile = info.project.name === 'mobile';
+  await page.setViewportSize(mobile ? { width: 360, height: 844 } : { width: 1280, height: 800 });
+  const journal = atlasJournal(page), measurements: Record<string, unknown> = {};
+  const directory = process.env.ATLAS_EVIDENCE_DIR;
+  try {
+    await withComparisonFixture(async fixture => {
+      const longName = 'Beatriz QA con un nombre extraordinariamente largo';
+      fixture.actors[1].name = longName;
+      await comparisonRest(`profiles?user_id=eq.${fixture.actors[1].id}`, { method: 'PATCH', body: JSON.stringify({ display_name: longName }) });
+      const removedIds = fixture.books.slice(2).map(book => book.id).join(',');
+      await comparisonRest(`passes?item_id=in.(${removedIds})`, { method: 'DELETE' });
+      for (const [index, actor] of fixture.actors.entries()) {
+        await comparisonRest(`passes?user_id=eq.${actor.id}&item_id=eq.${fixture.books[0].id}`, { method: 'PATCH', body: JSON.stringify({ rating: [8, 4, null][index], finished_on: index === 2 ? null : `2026-0${index + 1}-01` }) });
+        await comparisonRest(`passes?user_id=eq.${actor.id}&item_id=eq.${fixture.books[1].id}`, { method: 'PATCH', body: JSON.stringify({ rating: [7, 6, 9][index] }) });
+      }
+      await openAtlas(page, fixture);
+      const lenses = page.getByRole('group', { name: 'Lente', exact: true });
+      const work = fixture.books[0];
+      const showCard = async (book = work) => {
+        const sheet = page.getByRole('dialog', { name: book.title, exact: true });
+        if (mobile && await sheet.isVisible()) return sheet;
+        const canvas = page.locator('[data-atlas-moving] canvas');
+        let point = (await probe(page)).find(point => point.key === `book:${book.id}`);
+        if (!point) { await canvas.focus(); await page.keyboard.press('0'); await lensSettled(page); point = (await probe(page)).find(point => point.key === `book:${book.id}`); }
+        expect(point, 'la obra sembrada está visible en su lente').toBeDefined();
+        let box = (await canvas.boundingBox())!;
+        if (await lenses.getByRole('button', { name: 'Quién', exact: true }).getAttribute('aria-pressed') === 'true' && await zoom(page) <= 1.1) {
+          if (mobile) await page.touchscreen.tap(box.x + point!.x, box.y + point!.y);
+          else await page.mouse.click(box.x + point!.x, box.y + point!.y);
+          await expect.poll(() => zoom(page)).toBeGreaterThan(1.1); await lensSettled(page);
+          point = (await probe(page)).find(point => point.key === `book:${book.id}`);
+          expect(point, 'la misma obra sigue visible tras acercarse al grupo').toBeDefined();
+          box = (await canvas.boundingBox())!;
+        }
+        if (mobile) { await page.touchscreen.tap(box.x + point!.x, box.y + point!.y); await expect(sheet).toBeVisible(); return sheet; }
+        await page.mouse.move(box.x + point!.x, box.y + point!.y);
+        const tip = page.locator('[data-comparison-stage] div[aria-hidden="true"]').filter({ has: page.getByText(book.title, { exact: true }) });
+        await expect(tip).toBeVisible(); return tip;
+      };
+      for (const lens of ['Quién', 'Tiempo', 'Islas']) {
+        await lenses.getByRole('button', { name: lens, exact: true }).click(); await lensSettled(page);
+        const card = await showCard();
+        const expected = [['Tú', '8/10'], [longName, '4/10'], ['Carlos QA', 'sin nota']];
+        for (const [name, rating] of expected) {
+          const label = lens === 'Tiempo' ? `${name}: ${name === 'Carlos QA' ? 'sin fecha' : '2026'}` : name;
+          const row = card.locator('li').filter({ has: page.getByText(label, { exact: true }) });
+          await expect(row).toHaveCount(1);
+          await expect(row.getByText(rating, { exact: true })).toBeVisible();
+        }
+        const geometry = await card.evaluate(element => ({ width: element.clientWidth, scrollWidth: element.scrollWidth,
+          rows: [...element.querySelectorAll('li')].map(row => row.textContent),
+          text: [...element.querySelectorAll('li > span')].map(span => ({ width: span.clientWidth, scrollWidth: span.scrollWidth })) }));
+        measurements[lens] = geometry;
+        expect(geometry.scrollWidth, `${lens}: la mini-ficha cabe con el nombre largo`).toBeLessThanOrEqual(geometry.width);
+        expect(geometry.text.every(span => span.scrollWidth <= span.width), `${lens}: las columnas no desbordan con el nombre largo`).toBe(true);
+        if (directory && (mobile || lens === 'Tiempo')) await atlasEvidence(page, info, `notas-${lens === 'Quién' ? 'quien' : lens.toLowerCase()}`);
+        await faceButton(page, 'Carlos QA').click(); await lensSettled(page);
+        const selected = await showCard();
+        await expect(selected.locator('li')).toHaveCount(2);
+        await expect(selected.getByText('sin nota', { exact: true })).toHaveCount(0);
+        await expect(selected.getByText(lens === 'Tiempo' ? 'Carlos QA: sin fecha' : 'Carlos QA', { exact: true })).toHaveCount(0);
+        if (mobile) await selected.getByRole('button', { name: 'Cerrar', exact: true }).tap();
+        else await page.mouse.move(1, 1);
+        await faceButton(page, 'Carlos QA').click(); await lensSettled(page);
+      }
+      await lenses.getByRole('button', { name: 'Opinión', exact: true }).click(); await lensSettled(page);
+      const opinionCard = await showCard(fixture.books[1]);
+      await expect(opinionCard.getByRole('img', { name: `Notas: Tú 7, ${longName} 6, Carlos QA 9`, includeHidden: true })).toBeVisible();
+      await expect(opinionCard.getByText('7/10', { exact: true })).toHaveCount(0);
+      await expect(opinionCard.getByText('6/10', { exact: true })).toHaveCount(0);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'la página no desborda a 360 px ni escritorio').toBe(true);
+    });
+    expect(journal.errors, 'sin errores de consola ni excepciones del navegador').toEqual([]);
+    expect(journal.failures.filter(failure => !failure.endsWith('net::ERR_ABORTED')), 'sin peticiones fallidas fuera de las canceladas al navegar').toEqual([]);
+  } finally {
+    await info.attach('owner-rating-card-measurements', { body: JSON.stringify({ measurements, journal }, null, 2), contentType: 'application/json' });
+    if (directory) {
+      await mkdir(directory, { recursive: true });
+      await writeFile(`${directory}/${info.project.name}-notas-metrics.json`, JSON.stringify({ measurements, journal }, null, 2));
+    }
+    await saveAtlasJournal(info, journal);
+  }
+});

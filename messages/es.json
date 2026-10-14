@@ -57,6 +57,8 @@
       },
       "years": "{name}: {year}",
       "noDate": "{name}: sin fecha",
+      "ownerRating": "{rating}/10",
+      "noRating": "sin nota",
       "summary": {
         "solo": "<b>{count}</b> {count, plural, one {obra} other {obras}} de {name}. Suma a alguien para ver el cruce.",
         "common": "<b>{count}</b> {count, plural, one {obra} other {obras}} en común entre {names}",

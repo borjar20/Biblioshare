@@ -7950,3 +7950,20 @@ y verificada localmente en `codex/entre-nosotros-items-grandes`:
 409 pruebas en 37 archivos, TypeScript, lint, build y cuatro E2E únicos de
 escritorio/móvil PASS. Integración de la mejora pendiente;
 despliegue productivo del atlas todavía sin verificar.
+
+## 2026-10-14 — Entre nosotros: notas personales en las mini-fichas
+
+Quién, Tiempo e Islas muestran `{nota}/10` junto a cada persona activa que
+tiene la obra; un valor nulo aparece como «sin nota». Tiempo conserva el
+año o «sin fecha» y Opinión mantiene su escala. Desmarcar una cara retira
+su fila; las notas proceden del snapshot existente.
+
+`WorkCard` comparte la ficha entre hover de escritorio y hoja táctil.
+Las columnas reservan el punto, un nombre flexible y la nota al ancho de
+su contenido (`auto minmax(0, 1fr) auto`). El nombre puede partir palabras
+y ocupar varias líneas; la nota permanece en una línea, asociada a su dueño.
+
+Verificado localmente en [PR #1530](https://github.com/borjar20/Biblioshare/pull/1530):
+[evidencia de notas](../testing/2026-10-14-entre-nosotros-atlas-notas-hover.md),
+62 pruebas de fichas y dos E2E PASS a 1280/360 px. Integración y verificación
+del despliegue en producción pendientes.

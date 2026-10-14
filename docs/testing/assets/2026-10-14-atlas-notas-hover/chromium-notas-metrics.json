@@ -1,0 +1,127 @@
+{
+  "measurements": {
+    "Quién": {
+      "width": 280,
+      "scrollWidth": 280,
+      "rows": [
+        "Tú 8/10",
+        "Beatriz QA con un nombre extraordinariamente largo 4/10",
+        "Carlos QA sin nota"
+      ],
+      "text": [
+        {
+          "width": 9,
+          "scrollWidth": 9
+        },
+        {
+          "width": 144,
+          "scrollWidth": 144
+        },
+        {
+          "width": 9,
+          "scrollWidth": 9
+        },
+        {
+          "width": 144,
+          "scrollWidth": 144
+        },
+        {
+          "width": 9,
+          "scrollWidth": 9
+        },
+        {
+          "width": 144,
+          "scrollWidth": 144
+        }
+      ]
+    },
+    "Tiempo": {
+      "width": 280,
+      "scrollWidth": 280,
+      "rows": [
+        "Tú: 2026 8/10",
+        "Beatriz QA con un nombre extraordinariamente largo: 2026 4/10",
+        "Carlos QA: sin fecha sin nota"
+      ],
+      "text": [
+        {
+          "width": 9,
+          "scrollWidth": 9
+        },
+        {
+          "width": 144,
+          "scrollWidth": 144
+        },
+        {
+          "width": 9,
+          "scrollWidth": 9
+        },
+        {
+          "width": 144,
+          "scrollWidth": 144
+        },
+        {
+          "width": 9,
+          "scrollWidth": 9
+        },
+        {
+          "width": 144,
+          "scrollWidth": 144
+        }
+      ]
+    },
+    "Islas": {
+      "width": 280,
+      "scrollWidth": 280,
+      "rows": [
+        "Tú 8/10",
+        "Beatriz QA con un nombre extraordinariamente largo 4/10",
+        "Carlos QA sin nota"
+      ],
+      "text": [
+        {
+          "width": 9,
+          "scrollWidth": 9
+        },
+        {
+          "width": 144,
+          "scrollWidth": 144
+        },
+        {
+          "width": 9,
+          "scrollWidth": 9
+        },
+        {
+          "width": 144,
+          "scrollWidth": 144
+        },
+        {
+          "width": 9,
+          "scrollWidth": 9
+        },
+        {
+          "width": 144,
+          "scrollWidth": 144
+        }
+      ]
+    }
+  },
+  "journal": {
+    "errors": [],
+    "failures": [
+      "GET /comunidad: net::ERR_ABORTED",
+      "GET /buscar: net::ERR_ABORTED",
+      "GET /: net::ERR_ABORTED",
+      "GET /comunidad: net::ERR_ABORTED",
+      "GET /buscar: net::ERR_ABORTED",
+      "GET /u/qa_comp_motion_a: net::ERR_ABORTED",
+      "POST /login: net::ERR_ABORTED",
+      "POST /: net::ERR_ABORTED",
+      "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+      "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+      "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+      "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+      "GET /comunidad/entre-nosotros: net::ERR_ABORTED"
+    ]
+  }
+}
