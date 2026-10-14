@@ -10,15 +10,18 @@ import type { Island, IslandMode } from '@/lib/comparisons/atlas/islands';
 
 const push = vi.fn();
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
-type CanvasProps = { islandText?: { title: (island: Island) => string; common: (count: number) => string }; opinionLabels?: Record<string, string>; onActivate: (hit: { key: WorkKey; x: number; y: number } | null, type: string) => void; onHover: (hit: { key: WorkKey; x: number; y: number } | null) => void; active: string[]; label: string };
+type SavedCamera = { lens: Lens; x: number; y: number; k: number };
+type CanvasProps = { islandText?: { title: (island: Island) => string; common: (count: number) => string }; opinionLabels?: Record<string, string>; onActivate: (hit: { key: WorkKey; x: number; y: number } | null, type: string) => void; onHover: (hit: { key: WorkKey; x: number; y: number } | null) => void; active: string[]; label: string;
+  initialCamera?: { x: number; y: number; k: number }; onSettled?: (camera: SavedCamera) => void };
 let canvas: CanvasProps;
 const canvasFocus = vi.fn();
+const handle = { zoomBy: vi.fn(), fit: vi.fn(), panBy: vi.fn() };
 vi.mock('./atlas-canvas', async () => {
   const { useImperativeHandle } = await vi.importActual<typeof import('react')>('react');
   return { AtlasCanvas: (props: CanvasProps & { ref?: Ref<unknown> }) => {
     canvas = props;
-    useImperativeHandle(props.ref, () => ({ zoomBy() {}, fit() {}, focus: canvasFocus }), []);
-    return <div data-testid="canvas"/>;
+    useImperativeHandle(props.ref, () => ({ zoomBy: handle.zoomBy, fit: handle.fit, panBy: handle.panBy, camera: () => ({ lens: 'quien', x: 0, y: 0, k: 1 }), focus: canvasFocus }), []);
+    return <div data-testid="canvas" tabIndex={0}/>;
   } };
 });
 import { AtlasView } from './atlas-view';
@@ -47,7 +50,7 @@ const view = (notice?: ReactNode) => render(<NextIntlClientProvider locale="es" 
 const viewRated = (ratings: Record<string, number>) => render(<NextIntlClientProvider locale="es" messages={messages}>
   <Harness data={{ ...snapshot, works: snapshot.works.map(work => work.key === 'book:1' ? { ...work, rating: ratings[work.userId] ?? null } : work) }}/>
 </NextIntlClientProvider>);
-afterEach(() => { cleanup(); push.mockReset(); canvasFocus.mockReset(); });
+afterEach(() => { cleanup(); push.mockReset(); canvasFocus.mockReset(); Object.values(handle).forEach(fn => fn.mockReset()); sessionStorage.clear(); });
 const summary = () => screen.getByRole('status').textContent;
 
 describe('AtlasView', () => {
@@ -335,5 +338,72 @@ describe('AtlasView', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ver como lista' }));
     const list = screen.getByRole('region', { name: 'Lista de obras' });
     expect(within(list).getAllByRole('link').map(link => link.getAttribute('href'))).toEqual(['/libro/3', '/libro/1']);
+  });
+  it('con la lista ya abierta, montar la vista (cambio de formato) no le roba el foco', () => {
+    const outside = document.createElement('button'); document.body.appendChild(outside); outside.focus();
+    try {
+      render(<NextIntlClientProvider locale="es" messages={messages}><AtlasView snapshot={snapshot} viewerId="me" chosen={null} onChosenChange={vi.fn()} lens="quien" onLensChange={vi.fn()}
+        islandMode="type" onIslandModeChange={vi.fn()} list onListChange={vi.fn()}/></NextIntlClientProvider>);
+      expect(screen.getByRole('region', { name: 'Lista de obras' })).toBeTruthy();
+      expect(document.activeElement).toBe(outside);
+    } finally { outside.remove(); }
+  });
+  it('ida y vuelta mapa → lista → mapa conserva la cámara asentada', () => {
+    view();
+    expect(canvas.initialCamera).toBeUndefined();
+    act(() => canvas.onSettled!({ lens: 'quien', x: 5, y: 6, k: 2 }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ver como lista' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ver como lista' }));
+    expect(canvas.initialCamera).toEqual({ x: 5, y: 6, k: 2 });
+  });
+  it('la cámara guardada solo se usa con la misma lente', () => {
+    view();
+    act(() => canvas.onSettled!({ lens: 'quien', x: 5, y: 6, k: 2 }));
+    fireEvent.click(screen.getByRole('button', { name: 'Opinión' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ver como lista' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ver como lista' }));
+    expect(canvas.initialCamera).toBeUndefined();
+  });
+  it('si sessionStorage falla, el lienzo encaja (sin cámara inicial) y nada se rompe', () => {
+    const getItem = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('SecurityError'); });
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('QuotaExceededError'); });
+    try {
+      view();
+      expect(() => act(() => canvas.onSettled!({ lens: 'quien', x: 5, y: 6, k: 2 }))).not.toThrow();
+      expect(canvas.initialCamera).toBeUndefined();
+    } finally { getItem.mockRestore(); setItem.mockRestore(); }
+  });
+  describe('teclado', () => {
+    it('una tecla 2 con el foco en el lienzo pasa a Opinión; en un campo de texto no hace nada', () => {
+      view(<input aria-label="Campo"/>);
+      const field = screen.getByRole('textbox', { name: 'Campo' });
+      expect(fireEvent.keyDown(field, { key: '2' })).toBe(true);
+      expect(screen.getByRole('button', { name: 'Quién' }).getAttribute('aria-pressed')).toBe('true');
+      expect(fireEvent.keyDown(screen.getByTestId('canvas'), { key: '2' })).toBe(false);
+      expect(screen.getByRole('button', { name: 'Opinión' }).getAttribute('aria-pressed')).toBe('true');
+    });
+    it('+, -, 0 y flechas mueven la cámara por el lienzo; con modificadores no', () => {
+      view();
+      const target = screen.getByTestId('canvas');
+      fireEvent.keyDown(target, { key: '+' });
+      expect(handle.zoomBy).toHaveBeenCalledWith(1.4);
+      fireEvent.keyDown(target, { key: '-' });
+      expect(handle.zoomBy).toHaveBeenLastCalledWith(1 / 1.4);
+      fireEvent.keyDown(target, { key: 'F' });
+      expect(handle.fit).toHaveBeenCalledTimes(1);
+      fireEvent.keyDown(target, { key: 'ArrowDown' });
+      expect(handle.panBy).toHaveBeenCalledWith(0, 80);
+      expect(fireEvent.keyDown(target, { key: '+', ctrlKey: true })).toBe(true);
+      expect(handle.zoomBy).toHaveBeenCalledTimes(2);
+    });
+    it('con la lista abierta las flechas desplazan la lista, no la cámara; las lentes siguen', () => {
+      view();
+      fireEvent.click(screen.getByRole('button', { name: 'Ver como lista' }));
+      const list = screen.getByRole('region', { name: 'Lista de obras' });
+      expect(fireEvent.keyDown(list, { key: 'ArrowDown' })).toBe(true);
+      expect(handle.panBy).not.toHaveBeenCalled();
+      fireEvent.keyDown(list, { key: '4' });
+      expect(screen.getByRole('button', { name: 'Islas' }).getAttribute('aria-pressed')).toBe('true');
+    });
   });
 });

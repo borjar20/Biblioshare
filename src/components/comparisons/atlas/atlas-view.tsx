@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
@@ -15,7 +15,9 @@ import { buildScene, type Lens } from '@/lib/comparisons/atlas/scene';
 import { initials } from '../presentation';
 import { AtlasCanvas, type AtlasCanvasHandle } from './atlas-canvas';
 import { AtlasList } from './atlas-list';
-import type { AtlasHit } from './atlas-engine';
+import type { AtlasHit, LensCamera } from './atlas-engine';
+import { atlasKeyAction } from './atlas-keys';
+import { readGroupMemory, sessionStore, writeGroupMemory } from '../atlas-ui-state';
 import type { IslandText } from './paint-islas';
 import { summaryMessage } from './atlas-summary-message';
 import { RatingScale } from './rating-scale';
@@ -51,6 +53,8 @@ function WorkCard({ work, people, title, lens }: { work: AtlasWork; people: Atla
  * `notice` is a coverage note shown right under the summary (e.g. series without episodes).
  * The face selection is controlled by the explorer (`chosen`, null = everyone) so it survives
  * format changes, which remount this view. The lens, the Islas mode and «Ver como lista» are controlled the same way.
+ * The camera is remembered per group in sessionStorage when the scene settles, and restored when the canvas mounts
+ * again in the same lens (list → map, format change); without storage the canvas fits.
  */
 export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange, lens, onLensChange, islandMode, onIslandModeChange, list, onListChange }: {
   snapshot: Snapshot; viewerId: string; notice?: ReactNode; chosen: string[] | null; onChosenChange: (ids: string[]) => void;
@@ -127,8 +131,35 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange, 
   function changeMode(next: IslandMode) { setHover(null); setPicked(null); onIslandModeChange(next); }
   function toggleList() { setHover(null); setPicked(null); onListChange(!list); }
   // Opening hands focus to the list (the keyboard path); closing leaves it on the toggle that was pressed.
-  const listRef = useRef<HTMLElement>(null);
-  useEffect(() => { if (list) listRef.current?.focus(); }, [list]);
+  // Only an opening within this mount: a format change remounts the view with the list open and must not steal focus.
+  const listRef = useRef<HTMLElement>(null); const wasList = useRef(list);
+  useEffect(() => { if (list && !wasList.current) listRef.current?.focus(); wasList.current = list; }, [list]);
+  const groupId = snapshot.group.id;
+  // Read when the canvas (re)mounts; the engine only uses it at its first valid size, so later lens changes do not move it.
+  const initialCamera = useMemo(() => {
+    if (list) return undefined;
+    const saved = readGroupMemory(sessionStore(), groupId).camera;
+    return saved && saved.lens === lens ? { x: saved.x, y: saved.y, k: saved.k } : undefined;
+  }, [list, groupId, lens]);
+  // The probe is republished after hovers too: write only a camera that changed.
+  const savedCamera = useRef('');
+  function rememberCamera(next: LensCamera) {
+    const value = JSON.stringify(next); if (value === savedCamera.current) return;
+    savedCamera.current = value; writeGroupMemory(sessionStore(), groupId, { camera: next });
+  }
+  /** Shortcuts while focus is inside the atlas (spec §5.3); lenses work over the list too, the camera only over the map. */
+  function onKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const target = event.target as HTMLElement;
+    if (target.isContentEditable) return;
+    const action = atlasKeyAction(event.key, { ctrl: event.ctrlKey, meta: event.metaKey, alt: event.altKey }, target.tagName);
+    if (!action) return;
+    if (action.kind === 'lens') { event.preventDefault(); if (action.lens !== lens) changeLens(action.lens); return; }
+    const handle = camera.current; if (list || !handle) return;
+    event.preventDefault();
+    if (action.kind === 'zoom') handle.zoomBy(action.factor);
+    else if (action.kind === 'fit') handle.fit();
+    else handle.panBy(action.dx, action.dy);
+  }
   function open(work: AtlasWork) { if (!work.metadataMissing) router.push(itemHref(work.itemType, work.itemId)); }
   function activate(hit: AtlasHit | null, pointerType: string) {
     if (!hit) { setPicked(null); return; }
@@ -151,9 +182,9 @@ export function AtlasView({ snapshot, viewerId, notice, chosen, onChosenChange, 
   }, [picked]);
   const unavailable = snapshot.group.members.filter(member => !member.available);
 
-  return <div ref={stage} className={styles.canvasWrap} data-comparison-stage>
+  return <div ref={stage} className={styles.canvasWrap} data-comparison-stage onKeyDown={onKeyDown}>
     {list ? <AtlasList ref={listRef} lens={lens} people={people} works={works} active={active} layouts={layouts} islandText={islandText} insets={insets}/>
-      : <AtlasCanvas ref={camera} label={canvasLabel} people={people} works={works} active={active} scene={scene} quien={layout} tiempo={tiempo} islas={islas} islandText={islandText} opinionLabels={opinionLabels} insets={insets}
+      : <AtlasCanvas ref={camera} label={canvasLabel} people={people} works={works} active={active} scene={scene} quien={layout} tiempo={tiempo} islas={islas} islandText={islandText} opinionLabels={opinionLabels} insets={insets} initialCamera={initialCamera} onSettled={rememberCamera}
       countLabel={count => t('atlas.poleCount', { count })} onTogglePerson={toggle} onHover={setHover} onActivate={activate}/>}
     <div ref={overlay} className={styles.overlayTop}>
       <div><p className={styles.summary} role="status" aria-live="polite">{t.rich(summaryKey, { ...summaryValues, b: bold })}</p>

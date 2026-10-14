@@ -28,6 +28,8 @@ beforeEach(() => {
   HTMLDialogElement.prototype.close = function () { this.open = false; this.dispatchEvent(new Event('close')); };
   // The atlas engine draws on a <canvas>; jsdom has no 2D context.
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
+  // Faces and camera are remembered per group for the tab: each test starts with none.
+  sessionStorage.clear();
   document.cookie = 'sb-test-auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'; vi.clearAllMocks(); mocks.query = ''; mocks.load.mockResolvedValue({ ok: true, data: snapshot(first) }); mocks.getUser.mockReset().mockResolvedValue({ data: { user: { id: 'a' } }, error: null }); });
 afterEach(cleanup);
 describe('independent format view retention', () => {
@@ -200,6 +202,56 @@ describe('Explorer request boundaries', () => {
     expect(within(screen.getByRole('group', { name: 'Filtrar por tipo de obra' })).getByRole('button', { name: 'Libros' }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByRole('button', { name: 'Islas' }).getAttribute('aria-pressed')).toBe('true');
     expect(within(screen.getByRole('group', { name: 'Agrupar islas por' })).getByRole('button', { name: 'Autor/Director' }).getAttribute('aria-pressed')).toBe('true');
+  });
+  describe('atlas state in the URL and per group in sessionStorage', () => {
+    const pair = (g: Group): Group => ({ ...g, members: ['Ana', 'Bea', 'Carlos'].map((name, i) => ({ slotId: `${i}`, userId: ['a', 'b', 'c'][i], name, avatarUrl: null, available: true })) });
+    const loadPair = (groups: Group[]) => mocks.load.mockImplementation(async (id: string) => ({ ok: true, data: { ...snapshot(groups.find(g => g.id === id)!),
+      catalog: [{ key: 'book:x' as const, title: 'Libro', coverUrl: null, genres: ['Drama'], creators: [] }],
+      works: ['a', 'b', 'c'].map(userId => ({ userId, key: 'book:x', rating: null, date: null, orderUnknown: false, progress: null })) } }));
+    it('mounts with ?lente=islas&islas=genero showing Islas and Género pressed', async () => {
+      const groups = [pair(first)]; loadPair(groups);
+      mocks.query = `group=${first.id}&lente=islas&islas=genero`;
+      render(ui(groups)); await screen.findByRole('button', { name: 'Tú' });
+      expect(screen.getByRole('button', { name: 'Islas' }).getAttribute('aria-pressed')).toBe('true');
+      expect(within(screen.getByRole('group', { name: 'Agrupar islas por' })).getByRole('button', { name: 'Género' }).getAttribute('aria-pressed')).toBe('true');
+    });
+    it('writes the lens and the islands mode with router.replace, keeping the group, and keeps them when the group changes', async () => {
+      const groups = [pair(first), pair(second)]; loadPair(groups);
+      mocks.query = `group=${first.id}`;
+      render(ui(groups)); await screen.findByRole('button', { name: 'Tú' });
+      fireEvent.click(screen.getByRole('button', { name: 'Opinión' }));
+      expect(mocks.replace).toHaveBeenLastCalledWith(`/comunidad/entre-nosotros?group=${first.id}&lente=opinion`, { scroll: false });
+      fireEvent.click(screen.getByRole('button', { name: 'Islas' }));
+      fireEvent.click(within(screen.getByRole('group', { name: 'Agrupar islas por' })).getByRole('button', { name: 'Autor/Director' }));
+      expect(mocks.replace).toHaveBeenLastCalledWith(`/comunidad/entre-nosotros?group=${first.id}&lente=islas&islas=autor`, { scroll: false });
+      openGroupSheet(); fireEvent.change(screen.getByLabelText('Grupo'), { target: { value: second.id } });
+      expect(mocks.replace).toHaveBeenLastCalledWith(`/comunidad/entre-nosotros?group=${second.id}&lente=islas&islas=autor`, { scroll: false });
+      // No person id ever reaches the URL.
+      for (const [url] of mocks.replace.mock.calls) expect(url).not.toMatch(/[?&](?:caras|faces|people)=/);
+    });
+    it('remembers the faces per group across a remount, and another group still starts with everyone', async () => {
+      const groups = [pair(first), pair(second)]; loadPair(groups);
+      const data = new Map<string, string>();
+      vi.stubGlobal('sessionStorage', { getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => { data.set(key, value); } });
+      try {
+        mocks.query = `group=${first.id}`;
+        const mounted = render(ui(groups)); await screen.findByRole('button', { name: 'Tú' });
+        fireEvent.click(screen.getByRole('button', { name: 'Carlos' }));
+        expect([...data.keys()]).toContain(`biblioshare:atlas:${first.id}`);
+        expect(data.get(`biblioshare:atlas:${first.id}`)).toContain('"faces"');
+        mounted.unmount();
+        render(ui(groups)); await screen.findByRole('button', { name: 'Tú' });
+        expect(screen.getByRole('button', { name: 'Carlos' }).getAttribute('aria-pressed')).toBe('false');
+        expect(screen.getByRole('button', { name: 'Bea' }).getAttribute('aria-pressed')).toBe('true');
+        openGroupSheet(); fireEvent.change(screen.getByLabelText('Grupo'), { target: { value: second.id } });
+        await waitFor(() => expect(mocks.load).toHaveBeenLastCalledWith(second.id, 'all'));
+        await waitFor(() => expect(screen.getByRole('button', { name: 'Carlos' }).getAttribute('aria-pressed')).toBe('true'));
+        // Back to the first group: its faces come back from memory.
+        openGroupSheet(); fireEvent.change(screen.getByLabelText('Grupo'), { target: { value: first.id } });
+        await waitFor(() => expect(mocks.load).toHaveBeenLastCalledWith(first.id, 'all'));
+        await waitFor(() => expect(screen.getByRole('button', { name: 'Carlos' }).getAttribute('aria-pressed')).toBe('false'));
+      } finally { vi.unstubAllGlobals(); }
+    });
   });
   it('starts with no arbitrary selected group and lets keyboard users create one', () => {
     render(ui([])); expect(screen.getByText('Compara con quien sigues')).toBeTruthy();

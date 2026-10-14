@@ -10,7 +10,8 @@ import { layoutIslands } from '@/lib/comparisons/atlas/islands';
 import type { AtlasPerson, AtlasWork } from '@/lib/comparisons/atlas/types';
 import { buildScene, type Lens } from '@/lib/comparisons/atlas/scene';
 import { fit } from '@/lib/comparisons/atlas/camera';
-import { AtlasCanvas } from './atlas-canvas';
+import { createRef } from 'react';
+import { AtlasCanvas, type AtlasCanvasHandle } from './atlas-canvas';
 
 const snapshot: Snapshot = { group: { id: 'g', name: 'G', revision: 1, members: ['a', 'b'].map(id => ({ slotId: id, userId: id, name: id, avatarUrl: null, available: true })) },
   format: 'all', excludedSeriesWithoutEpisodes: 0, catalog: [],
@@ -323,4 +324,54 @@ describe('AtlasCanvas', () => {
       expect(created.length).toBeGreaterThan(24);
     });
   });
+  describe('teclado y cámara recordada', () => {
+    const withHandle = (extra: Partial<Parameters<typeof AtlasCanvas>[0]> = {}) => {
+      const handle = createRef<AtlasCanvasHandle>();
+      const utils = render(<AtlasCanvas {...props} ref={handle} {...extra}/>);
+      flush();
+      return { handle, host: utils.container.querySelector<HTMLElement>('[data-atlas-moving]')!, canvas: utils.container.querySelector('canvas')!, ...utils };
+    };
+    it('el lienzo entra en el orden de tabulación y anuncia sus atajos', () => {
+      const { canvas } = withHandle();
+      expect(canvas.tabIndex).toBe(0);
+      expect(canvas.getAttribute('aria-keyshortcuts')).toBe('+ - 0 F ArrowUp ArrowDown ArrowLeft ArrowRight 1 2 3 4');
+    });
+    it('camera() da la cámara actual con su lente y panBy la mueve hacia donde apunta', () => {
+      const { handle } = withHandle();
+      const before = handle.current!.camera()!;
+      expect(before).toEqual({ lens: 'quien', x: expect.any(Number), y: expect.any(Number), k: expect.any(Number) });
+      act(() => handle.current!.panBy(80, -40));
+      flush();
+      const after = handle.current!.camera()!;
+      expect(after.k).toBeCloseTo(before.k, 6);
+      expect(after.x).toBeCloseTo(before.x + 80 / before.k, 3);
+      expect(after.y).toBeCloseTo(before.y - 40 / before.k, 3);
+    });
+    it('al asentarse avisa con la cámara; un pan es del usuario y un cambio de márgenes no lo deshace', () => {
+      const onSettled = vi.fn();
+      const { handle, rerender } = withHandle({ onSettled, insets: { top: 40, bottom: 40 } });
+      expect(onSettled).toHaveBeenLastCalledWith({ lens: 'quien', ...pick(handle.current!.camera()!) });
+      act(() => handle.current!.panBy(0, 80));
+      flush();
+      const moved = handle.current!.camera();
+      expect(onSettled).toHaveBeenLastCalledWith(moved);
+      rerender(<AtlasCanvas {...props} ref={handle} onSettled={onSettled} insets={{ top: 200, bottom: 120 }}/>);
+      flush();
+      expect(handle.current!.camera()).toEqual(moved);
+    });
+    it('con initialCamera arranca en ella, sin encajar, y los márgenes no la mueven', () => {
+      const initialCamera = { x: 12, y: -7, k: 2.5 };
+      const { handle, host, rerender } = withHandle({ initialCamera, insets: { top: 40, bottom: 40 } });
+      expect(handle.current!.camera()).toEqual({ lens: 'quien', ...initialCamera });
+      expect(host.dataset.atlasZoom).toBe('2.500');
+      rerender(<AtlasCanvas {...props} ref={handle} initialCamera={initialCamera} insets={{ top: 200, bottom: 120 }}/>);
+      flush();
+      expect(handle.current!.camera()).toEqual({ lens: 'quien', ...initialCamera });
+      // «Encajar» still works from there.
+      act(() => handle.current!.fit());
+      flush();
+      expect(host.dataset.atlasZoom).toBe(fitZoom(800, 600, 200, 120));
+    });
+  });
 });
+const pick = ({ x, y, k }: { x: number; y: number; k: number }) => ({ x, y, k });
