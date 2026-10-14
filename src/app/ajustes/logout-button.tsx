@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { logout } from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/button";
 import { getNotificationPlatform } from "@/lib/push/platform";
+import { clearAtlasMemory, sessionStore } from "@/components/comparisons/atlas-ui-state";
 
 // Cerrar sesión, tal cual venía de la hoja de ajustes del perfil. El cuerpo NO
 // se simplifica al mudarse: en nativo hay que bajar el token FCM y revocar la
@@ -58,6 +59,9 @@ export function LogoutButton() {
           } catch {
             // best-effort
           }
+          // Caras y cámaras de «Entre nosotros» viven en sessionStorage por
+          // cuenta: no deben sobrevivir al cierre de sesión en esta pestaña.
+          clearAtlasMemory(sessionStore());
           await logout();
         })
       }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { atlasQuery, clearAtlasMemory, parseAtlasQuery, readGroupMemory, writeGroupMemory } from './atlas-ui-state';
+import { atlasQuery, clearAtlasMemory, closeAtlasMemory, openAtlasMemory, parseAtlasQuery, pruneAtlasMemory, readGroupMemory, writeGroupMemory } from './atlas-ui-state';
 
 function fakeStorage() {
   const data = new Map<string, string>();
@@ -91,5 +91,28 @@ describe('memoria por cuenta', () => {
   it('clearAtlasMemory tolera un storage que lanza o que no existe', () => {
     expect(() => clearAtlasMemory(throwing)).not.toThrow();
     expect(() => clearAtlasMemory(null)).not.toThrow();
+  });
+  it('tras cerrar la memoria de una cuenta, nada vuelve a escribirse para ella hasta reabrirla', () => {
+    const storage = fakeStorage();
+    try {
+      closeAtlasMemory('v1');
+      writeGroupMemory(storage, 'v1', 'g1', { camera: { lens: 'quien', x: 1, y: 2, k: 1 } });
+      writeGroupMemory(storage, 'v2', 'g1', { faces: ['b'] });
+      expect([...storage.data.keys()]).toEqual(['biblioshare:atlas:v2:g1']);
+      openAtlasMemory('v1');
+      writeGroupMemory(storage, 'v1', 'g1', { faces: ['a'] });
+      expect(readGroupMemory(storage, 'v1', 'g1').faces).toEqual(['a']);
+    } finally { openAtlasMemory('v1'); }
+  });
+  it('pruneAtlasMemory borra la memoria de otras cuentas y conserva la de quien mira', () => {
+    const storage = fakeStorage();
+    writeGroupMemory(storage, 'v1', 'g1', { faces: ['a'] });
+    writeGroupMemory(storage, 'v10', 'g1', { faces: ['x'] });
+    writeGroupMemory(storage, 'v2', 'with:p', { faces: ['b'] });
+    storage.setItem('otra:cosa', '1');
+    pruneAtlasMemory(storage, 'v1');
+    expect([...storage.data.keys()].sort()).toEqual(['biblioshare:atlas:v1:g1', 'otra:cosa']);
+    expect(() => pruneAtlasMemory(throwing, 'v1')).not.toThrow();
+    expect(() => pruneAtlasMemory(null, 'v1')).not.toThrow();
   });
 });

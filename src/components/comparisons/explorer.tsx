@@ -14,7 +14,7 @@ import { GroupEditor } from './group-editor';
 import { AtlasView } from './atlas/atlas-view';
 import type { Lens } from '@/lib/comparisons/atlas/scene';
 import type { IslandMode } from '@/lib/comparisons/atlas/islands';
-import { atlasQuery, clearAtlasMemory, parseAtlasQuery, readGroupMemory, sessionStore, writeGroupMemory } from './atlas-ui-state';
+import { atlasQuery, clearAtlasMemory, closeAtlasMemory, openAtlasMemory, parseAtlasQuery, pruneAtlasMemory, readGroupMemory, sessionStore, writeGroupMemory } from './atlas-ui-state';
 import { GroupSheet } from './group-sheet';
 import { ComparisonLoading } from './loading';
 import { forFormat } from '@/lib/comparisons/derive';
@@ -81,12 +81,16 @@ function SessionBoundary(props: Props) {
     // Cookies last confirmed for this viewer. Same cookies: verify without hiding evidence.
     let verifiedCookies = sessionCookies();
     const client = createClient();
+    // A fresh server payload for this viewer: its memory may be written again, and whatever another account left in
+    // the tab (a sign-out from Ajustes, an expired session) goes.
+    openAtlasMemory(props.viewerId); pruneAtlasMemory(sessionStore(), props.viewerId);
     function invalidate() {
       if (invalidated || disposed) return;
       checkSeq += 1;
       invalidated = true; setBlockedGroups(props.initialGroups);
-      // Faces and cameras are this account's: none survives into the next one on this tab.
-      clearAtlasMemory(sessionStore());
+      // Faces and cameras are this account's: none survives into the next one on this tab, and no late settle or
+      // face change writes them back before this subtree unmounts.
+      closeAtlasMemory(props.viewerId); clearAtlasMemory(sessionStore());
       // Keep the auth callback synchronous; refresh outside the auth event stack.
       refreshTimer = setTimeout(() => router.refresh(), 0);
     }

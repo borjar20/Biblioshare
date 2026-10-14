@@ -64,17 +64,30 @@ export function readGroupMemory(storage: MemoryStorage | null | undefined, viewe
   return { faces: validFaces(record.faces), camera: validCamera(record.camera) };
 }
 
+/** Accounts whose memory was cleared in this tab (sign-out or account change): late writes (a settle still in flight) are dropped. */
+const closed = new Set<string>();
+/** No more writes for this account until `openAtlasMemory` (a fresh, verified session of it). */
+export function closeAtlasMemory(viewerId: string): void { closed.add(viewerId); }
+export function openAtlasMemory(viewerId: string): void { closed.delete(viewerId); }
+
 export function writeGroupMemory(storage: MemoryStorage | null | undefined, viewerId: string, groupId: string, patch: Partial<GroupMemory>): void {
-  if (!storage) return;
+  if (!storage || closed.has(viewerId)) return;
   try { storage.setItem(keyOf(viewerId, groupId), JSON.stringify({ ...readGroupMemory(storage, viewerId, groupId), ...patch })); } catch { /* quota or blocked: nothing to remember */ }
 }
 
-/** Forgets every atlas memory in the tab, of any account (sign-out or account change). */
-export function clearAtlasMemory(storage: ClearableStorage | null | undefined): void {
+function removeAtlasKeys(storage: ClearableStorage | null | undefined, keep: (key: string) => boolean): void {
   if (!storage) return;
   try {
     const keys: string[] = [];
-    for (let i = 0; i < storage.length; i++) { const key = storage.key(i); if (key?.startsWith(PREFIX)) keys.push(key); }
+    for (let i = 0; i < storage.length; i++) { const key = storage.key(i); if (key?.startsWith(PREFIX) && !keep(key)) keys.push(key); }
     for (const key of keys) storage.removeItem(key);
   } catch { /* blocked storage: nothing readable was kept either */ }
+}
+
+/** Forgets every atlas memory in the tab, of any account (sign-out or account change). */
+export function clearAtlasMemory(storage: ClearableStorage | null | undefined): void { removeAtlasKeys(storage, () => false); }
+
+/** Forgets the memory of every account but `viewerId`: what a sign-out away from the atlas (or an expired session) left in the tab. */
+export function pruneAtlasMemory(storage: ClearableStorage | null | undefined, viewerId: string): void {
+  removeAtlasKeys(storage, key => key.startsWith(`${PREFIX}${viewerId}:`));
 }

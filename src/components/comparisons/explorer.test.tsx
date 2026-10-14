@@ -10,6 +10,7 @@ vi.mock('@/lib/supabase/client', () => ({ createClient: () => ({ auth: { getUser
 vi.mock('@/lib/comparisons/actions', () => ({ loadComparison: mocks.load, saveGroup: mocks.save, deleteGroup: mocks.remove }));
 vi.mock('next/navigation', () => ({ useRouter: () => mockRouter, useSearchParams: () => new URLSearchParams(mocks.query), usePathname: () => '/comunidad/entre-nosotros' }));
 import { Explorer, explorerReducer } from './explorer';
+import { sessionStore, writeGroupMemory } from './atlas-ui-state';
 import { initialState } from './state';
 import type { ExplorerState } from './state';
 const group = (suffix: string, name: string): Group => ({ id: `${suffix.repeat(8)}-${suffix.repeat(4)}-${suffix.repeat(4)}-${suffix.repeat(4)}-${suffix.repeat(12)}`, name, revision: 1, members: [{ slotId: 'one', userId: 'a', name: 'Ana', avatarUrl: null, available: true }, { slotId: 'two', userId: null, name: null, avatarUrl: null, available: false }] });
@@ -243,6 +244,21 @@ describe('Explorer request boundaries', () => {
       act(() => mocks.auth!('SIGNED_OUT', null));
       expect(sessionStorage.getItem(`biblioshare:atlas:a:${first.id}`)).toBeNull();
       expect(sessionStorage.getItem('biblioshare:atlas:b:with:x')).toBeNull();
+      expect(sessionStorage.getItem('other:key')).toBe('1');
+    });
+    it('after invalidating, nothing more is written to this account’s memory (a late settle or face write)', async () => {
+      render(ui()); await waitFor(() => expect(mocks.auth).not.toBeNull());
+      act(() => mocks.auth!('SIGNED_OUT', null));
+      writeGroupMemory(sessionStore(), 'a', first.id, { camera: { lens: 'quien', x: 1, y: 2, k: 3 } });
+      expect(sessionStorage.getItem(`biblioshare:atlas:a:${first.id}`)).toBeNull();
+    });
+    it('on mount, forgets the atlas memory of any other account left in the tab (a logout elsewhere)', async () => {
+      sessionStorage.setItem(`biblioshare:atlas:a:${first.id}`, JSON.stringify({ faces: ['a'] }));
+      sessionStorage.setItem('biblioshare:atlas:b:with:x', JSON.stringify({ faces: ['b'] }));
+      sessionStorage.setItem('other:key', '1');
+      render(ui()); await waitFor(() => expect(mocks.auth).not.toBeNull());
+      expect(sessionStorage.getItem('biblioshare:atlas:b:with:x')).toBeNull();
+      expect(sessionStorage.getItem(`biblioshare:atlas:a:${first.id}`)).not.toBeNull();
       expect(sessionStorage.getItem('other:key')).toBe('1');
     });
   });

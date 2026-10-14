@@ -75,3 +75,15 @@ it("logout de una sesión A nueva registra su contexto aunque aún no haya abier
   expect(await startSavedSession("uid-A", "session-A-before")).toBeNull();
   expect(await startSavedSession("uid-A", "session-A")).toBeNull();
 });
+
+it("el logout olvida la memoria del atlas de «Entre nosotros» en la pestaña antes de salir", async () => {
+  sessionStorage.setItem("biblioshare:atlas:uid-A:g1", JSON.stringify({ faces: ["uid-A"] }));
+  sessionStorage.setItem("otra:cosa", "1");
+  let atLogout: string | null = "unset";
+  mocks.logout.mockImplementation(async () => { atLogout = sessionStorage.getItem("biblioshare:atlas:uid-A:g1"); });
+  render(<LogoutButton />);
+  fireEvent.click(screen.getByRole("button", { name: "logout" }));
+  await waitFor(() => expect(mocks.logout).toHaveBeenCalledTimes(1));
+  expect(atLogout).toBeNull();
+  expect(sessionStorage.getItem("otra:cosa")).toBe("1");
+});
