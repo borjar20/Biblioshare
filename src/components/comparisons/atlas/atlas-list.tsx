@@ -10,6 +10,8 @@ import type { AtlasPerson, AtlasWork } from '@/lib/comparisons/atlas/types';
 import type { IslandText } from './paint-islas';
 import styles from './atlas.module.css';
 
+/** Height of the summary overlay's fade (`--scrim` in the CSS): the canvas may draw under it, the list's first row may not. */
+const SCRIM = 32;
 const TYPE_VAR = { book: 'var(--type-book)', movie: 'var(--type-movie)', series: 'var(--type-series)' } as const;
 
 /**
@@ -59,7 +61,7 @@ export function AtlasList({ ref, lens, people, works, active, layouts, islandTex
   }
 
   return <section ref={ref} className={styles.list} aria-label={t('atlas.list.label')} tabIndex={0}
-    style={insets ? { paddingTop: insets.top, paddingBottom: insets.bottom } : undefined}>
+    style={insets ? { paddingTop: insets.top + SCRIM, paddingBottom: insets.bottom } : undefined}>
     {sections.length === 0 ? <p className={styles.listEmpty}>{t('atlas.list.empty')}</p> : sections.map(section => <div key={section.id} className={styles.listSection}>
       {section.heading.kind !== 'plain' && <h3 className={styles.listHeading}>{heading(section.heading)}</h3>}
       <ul className={styles.listItems}>{section.keys.map(key => byKey.get(key)).map(work => work && <li key={work.key}>{item(work)}</li>)}</ul>

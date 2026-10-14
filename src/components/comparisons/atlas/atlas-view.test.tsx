@@ -320,12 +320,15 @@ describe('AtlasView', () => {
     // Summary, faces and lenses stay on top of the list.
     expect(summary()).toBe('1 obra en común entre Tú, Bea y Carla');
     expect(screen.getByRole('group', { name: 'Lente' })).toBeTruthy();
+    // The map caption goes away over the list (it overlapped the rows) and comes back with the map.
+    expect(screen.queryByText(messages.comparisons.atlas.caption.quien)).toBeNull();
     toggle.focus();
     fireEvent.click(toggle);
     expect(toggle.getAttribute('aria-pressed')).toBe('false');
     expect(document.activeElement).toBe(toggle);
     expect(screen.getByTestId('canvas')).toBeTruthy();
     expect(screen.queryByRole('region', { name: 'Lista de obras' })).toBeNull();
+    expect(screen.getByText(messages.comparisons.atlas.caption.quien)).toBeTruthy();
   });
   it('la lista sigue a las caras: apagar a Bea quita lo que solo tiene ella', () => {
     view();

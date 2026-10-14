@@ -218,7 +218,8 @@ export function AtlasView({ snapshot, viewerId, groupId, notice, chosen, onChose
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">{LENS_ICONS[item]}</svg>
           <span>{t(`atlas.lens.${item}`)}</span></button>)}
       </div>
-      <p className={styles.caption}>{t(`atlas.caption.${lens}`)}</p>
+      {/* The caption explains the map; over the list it only overlapped the rows scrolling under the dock. */}
+      {!list && <p className={styles.caption}>{t(`atlas.caption.${lens}`)}</p>}
     </div>
     {hovered && !sheet && <div className={styles.tip} aria-hidden="true"
       style={{ left: `min(${hover.x + 16}px, calc(100% - 290px))`, ...(stageHeight && hover.y > stageHeight / 2

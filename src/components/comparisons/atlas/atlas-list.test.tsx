@@ -82,4 +82,14 @@ describe('AtlasList', () => {
     show('quien');
     expect(region().getAttribute('tabindex')).toBe('0');
   });
+  it('empieza por debajo del degradado del resumen y termina sobre el dock', () => {
+    const active = ['me', 'b'];
+    const layouts = { quien: layoutQuien(people, works), opinion: layoutOpinion(people, works, active),
+      tiempo: layoutTiempo(people, works, active), islas: layoutIslands(people, works, active, 'type') };
+    render(<NextIntlClientProvider locale="es" messages={messages}>
+      <AtlasList lens="quien" people={people} works={works} active={active} layouts={layouts} islandText={islandText} insets={{ top: 100, bottom: 150 }}/>
+    </NextIntlClientProvider>);
+    expect(region().style.paddingTop).toBe('132px');
+    expect(region().style.paddingBottom).toBe('150px');
+  });
 });
