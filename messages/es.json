@@ -4,6 +4,7 @@
       "canvasLabel": "Mapa de obras compartidas",
       "faces": "Personas del cruce",
       "lenses": "Lente",
+      "legendToggle": "Leyenda",
       "lens": { "quien": "Quién", "opinion": "Opinión", "tiempo": "Tiempo", "islas": "Islas" },
       "caption": {
         "quien": "Las obras se agrupan entre las personas seleccionadas y se recolocan al cambiar tu selección. Acércate y los puntos se vuelven portadas.",

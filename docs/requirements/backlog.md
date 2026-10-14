@@ -563,6 +563,8 @@ verificación no afirma su ejecución. El resto sigue rastreable por `area:catal
   exige todas sus notas y Tiempo informa de las fechas ausentes. Islas muestra
   medias con escala y tamaño de muestra, resalta copias y conexiones, y explica
   «Otros» por límite de diez categorías, identidad de autor/director ausente o series.
+  La leyenda inferior es plegable en móvil y permanece visible en escritorio;
+  [evidencia de leyenda](../testing/2026-10-14-entre-nosotros-atlas-leyenda.md).
   Dominio y pintura en `src/lib/comparisons/atlas/` y `src/components/comparisons/atlas/`.
   [Especificación del atlas](../superpowers/specs/2026-10-13-entre-nosotros-atlas-design.md),
   [evidencia de movimiento y medias](../testing/2026-10-14-entre-nosotros-atlas-vivo.md)

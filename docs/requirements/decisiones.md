@@ -7912,3 +7912,18 @@ se convierte en identidad de persona.
 Implementación y verificación local en [PR #1529](https://github.com/borjar20/Biblioshare/pull/1529),
 sin cambios de esquema, RLS ni caché. [Evidencia de selección completa](../testing/2026-10-14-entre-nosotros-atlas-seleccion-completa.md);
 integración y despliegue en producción pendientes.
+
+## 2026-10-14 — Entre nosotros: leyenda plegable en móvil
+
+Hasta 640 px, la leyenda inferior del atlas empieza cerrada para dejar más
+espacio al mapa. El botón «Leyenda», con área táctil de 44 px y estado
+accesible de expansión, permite consultarla. En escritorio el texto permanece
+visible; «Ver como lista» no muestra esta leyenda. Al abrirla o cerrarla se
+actualiza la banda disponible y vuelve a encajar el mapa cuando está en
+encaje automático. El estado abierto se conserva entre lentes de la misma
+vista, sin guardarlo como preferencia persistente.
+
+[Verificación local](../testing/2026-10-14-entre-nosotros-atlas-leyenda.md):
+55 pruebas de AtlasView, TypeScript, lint, build y dos E2E de escritorio/móvil
+PASS; sin desbordamiento horizontal a 360 y 390 px. Integración y despliegue
+en producción pendientes.

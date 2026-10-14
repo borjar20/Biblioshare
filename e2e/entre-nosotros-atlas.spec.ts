@@ -618,3 +618,99 @@ test('Otros explica autores fuera del top diez, créditos sin identificar y seri
     expect(journal.errors, 'sin errores de consola ni excepciones del navegador').toEqual([]);
   } finally { await clearAtlasCreators(); await saveAtlasJournal(info, journal); }
 });
+
+test('leyenda del mapa: móvil plegable, escritorio visible y lista sin leyenda', async ({ page }, info) => {
+  const mobile = info.project.name === 'mobile';
+  await page.setViewportSize(mobile ? { width: 390, height: 844 } : { width: 1280, height: 800 });
+  const journal = atlasJournal(page);
+  const measurements: Record<string, unknown> = {};
+  const geometry = () => page.locator('[data-comparison-stage]').evaluate(stage => {
+    const box = stage.getBoundingClientRect();
+    const dock = stage.querySelector('[aria-label="Lente"]')!.parentElement!.getBoundingClientRect();
+    const top = stage.querySelector('[role="status"]')!.parentElement!.parentElement!;
+    const overlay = top.getBoundingClientRect();
+    const points = JSON.parse(stage.querySelector('[data-atlas-probe]')!.getAttribute('data-atlas-probe') ?? '[]') as { x: number; y: number }[];
+    const mapTop = overlay.bottom - parseFloat(getComputedStyle(top).paddingBottom || '0') - box.top;
+    const mapBottom = dock.top - box.top;
+    return { dockHeight: dock.height, mapTop, mapBottom, freeHeight: mapBottom - mapTop,
+      pointY: points.map(point => point.y), scrollWidth: document.documentElement.scrollWidth, width: innerWidth };
+  });
+  try {
+    await withComparisonFixture(async fixture => {
+      await openAtlas(page, fixture);
+      const lenses = page.getByRole('group', { name: 'Lente', exact: true });
+      const toggle = page.getByRole('button', { name: 'Leyenda', exact: true, includeHidden: true });
+      const captionId = await toggle.getAttribute('aria-controls');
+      expect(captionId, 'el control referencia la explicación').toBeTruthy();
+      const caption = page.locator(`[id="${captionId}"]`);
+      await expect(caption).toContainText('Las obras se agrupan entre las personas seleccionadas');
+      if (mobile) {
+        await expect(toggle).toBeVisible();
+        await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        await expect(caption).toBeHidden();
+        const hitbox = (await toggle.boundingBox())!;
+        expect(hitbox.height, 'área táctil de al menos 44 px').toBeGreaterThanOrEqual(44);
+        expect(hitbox.width, 'área táctil de al menos 44 px').toBeGreaterThanOrEqual(44);
+        measurements.quienClosed = await geometry();
+        await atlasEvidence(page, info, 'leyenda-quien-cerrada');
+        await toggle.tap(); await lensSettled(page);
+        await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+        await expect(caption).toBeVisible();
+        const opened = await geometry();
+        measurements.quienOpen = opened;
+        expect(opened.freeHeight, 'abrir la explicación reserva su altura en el mapa').toBeLessThan((measurements.quienClosed as typeof opened).freeHeight - 20);
+        await atlasEvidence(page, info, 'leyenda-quien-abierta');
+      } else {
+        await expect(toggle).toBeHidden();
+        await expect(caption).toBeVisible();
+        await atlasEvidence(page, info, 'leyenda-escritorio');
+      }
+      await lenses.getByRole('button', { name: 'Islas', exact: true }).click(); await lensSettled(page);
+      await expect(caption).toContainText('Obras de todas las personas seleccionadas, por tipo, género o autor.');
+      await expect(caption).toBeVisible();
+      if (mobile) {
+        await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+        const opened = await geometry();
+        measurements.islasOpen = opened;
+        const openProbe = JSON.stringify(await probe(page));
+        await atlasEvidence(page, info, 'leyenda-islas-abierta');
+        await toggle.tap(); await lensSettled(page);
+        await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        await expect(caption).toBeHidden();
+        const closed = await geometry();
+        measurements.islasClosed = closed;
+        expect(closed.freeHeight, 'plegar libera la altura de la leyenda').toBeGreaterThan(opened.freeHeight + 20);
+        await expect.poll(async () => JSON.stringify(await probe(page)), 'la cámara se reencaja en la banda recuperada').not.toBe(openProbe);
+        const framed = await geometry();
+        expect(framed.pointY.length, 'obras reales visibles en el mapa').toBeGreaterThan(0);
+        expect(Math.min(...framed.pointY), 'el mapa deja libre el resumen').toBeGreaterThanOrEqual(framed.mapTop);
+        expect(Math.max(...framed.pointY), 'el mapa deja libre el dock').toBeLessThanOrEqual(framed.mapBottom);
+        await atlasEvidence(page, info, 'leyenda-islas-cerrada');
+        await page.setViewportSize({ width: 360, height: 844 }); await lensSettled(page);
+        await expect(toggle).toBeVisible();
+        await expect(caption).toBeHidden();
+        const narrow = await geometry();
+        measurements.islas360 = narrow;
+        expect(narrow.scrollWidth, 'sin scroll horizontal a 360 px').toBeLessThanOrEqual(narrow.width);
+        await atlasEvidence(page, info, 'leyenda-islas-360-cerrada');
+      }
+      const listToggle = page.getByRole('button', { name: 'Ver como lista', exact: true });
+      await listToggle.click();
+      await expect(page.getByRole('region', { name: 'Lista de obras', exact: true })).toBeVisible();
+      await expect(toggle).toHaveCount(0);
+      await expect(caption).toHaveCount(0);
+      await listToggle.click(); await lensSettled(page);
+      await expect(toggle).toHaveCount(1);
+      await expect(caption)[mobile ? 'toBeHidden' : 'toBeVisible']();
+    });
+    expect(journal.errors, 'sin errores de consola ni excepciones del navegador').toEqual([]);
+  } finally {
+    await info.attach('legend-geometry', { body: JSON.stringify(measurements, null, 2), contentType: 'application/json' });
+    const directory = process.env.ATLAS_EVIDENCE_DIR;
+    if (directory) {
+      await mkdir(directory, { recursive: true });
+      await writeFile(`${directory}/${info.project.name}-leyenda-metrics.json`, JSON.stringify({ measurements, journal }, null, 2));
+    }
+    await saveAtlasJournal(info, journal);
+  }
+});

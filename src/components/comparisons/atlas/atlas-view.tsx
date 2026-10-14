@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
@@ -79,6 +79,8 @@ export function AtlasView({ snapshot, viewerId, groupId, notice, chosen, onChose
 }) {
   const t = useTranslations('comparisons'); const locale = useLocale(); const router = useRouter();
   const you = t('you');
+  const [legendOpen, setLegendOpen] = useState(false);
+  const legendId = useId();
   const { people, works } = useMemo(() => atlasModel(snapshot, viewerId, you), [snapshot, viewerId, you]);
   const byKey = useMemo(() => new Map(works.map(work => [work.key, work])), [works]);
   // People order, and only people that are still in the snapshot; if none of them remains, everyone.
@@ -259,7 +261,14 @@ export function AtlasView({ snapshot, viewerId, groupId, notice, chosen, onChose
           <span>{t(`atlas.lens.${item}`)}</span></button>)}
       </div>
       {/* The caption explains the map; over the list it only overlapped the rows scrolling under the dock. */}
-      {!list && <p className={styles.caption}>{t(`atlas.caption.${lens}`)}</p>}
+      {!list && <div className={styles.legend} data-open={legendOpen}>
+        <button type="button" className={styles.legendToggle} aria-expanded={legendOpen} aria-controls={legendId}
+          onClick={() => setLegendOpen(open => !open)}>
+          {t('atlas.legendToggle')}
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
+        </button>
+        <p id={legendId} className={styles.caption}>{t(`atlas.caption.${lens}`)}</p>
+      </div>}
     </div>
     {hovered && !sheet && <div className={styles.tip} aria-hidden="true"
       style={{ left: `min(${hover.x + 16}px, calc(100% - 290px))`, ...(stageHeight && hover.y > stageHeight / 2

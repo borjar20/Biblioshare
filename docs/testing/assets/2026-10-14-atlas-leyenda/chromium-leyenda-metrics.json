@@ -1,0 +1,28 @@
+{
+  "measurements": {},
+  "journal": {
+    "errors": [],
+    "failures": [
+      "GET /comunidad: net::ERR_ABORTED",
+      "GET /buscar: net::ERR_ABORTED",
+      "GET /: net::ERR_ABORTED",
+      "POST /login: net::ERR_ABORTED",
+      "POST /: net::ERR_ABORTED",
+      "GET /coleccion: net::ERR_ABORTED",
+      "GET /: net::ERR_ABORTED",
+      "GET /experiencias: net::ERR_ABORTED",
+      "GET /u/qa_comp_motion_a: net::ERR_ABORTED",
+      "GET /_next/static/chunks/17b1bnpkje82g.js: net::ERR_ABORTED",
+      "GET /_next/static/chunks/203f8ywxvb7aa.js: net::ERR_ABORTED",
+      "GET /_next/static/chunks/3x261o93uy504.js: net::ERR_ABORTED",
+      "GET /_next/static/chunks/0r-iaxv6-u-u2.js: net::ERR_ABORTED",
+      "GET /_next/static/chunks/289tdhhagej62.js: net::ERR_ABORTED",
+      "POST /comunidad/entre-nosotros: net::ERR_ABORTED",
+      "GET /comunidad: net::ERR_ABORTED",
+      "POST /comunidad/entre-nosotros: net::ERR_ABORTED",
+      "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+      "POST /comunidad/entre-nosotros: net::ERR_ABORTED",
+      "GET /comunidad/entre-nosotros: net::ERR_ABORTED"
+    ]
+  }
+}
