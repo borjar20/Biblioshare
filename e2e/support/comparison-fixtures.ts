@@ -107,7 +107,8 @@ export async function withComparisonFixture<T>(body: (fixture: ComparisonFixture
   return value as T;
 }
 export async function loginComparisonActor(page: Page, actor: ComparisonActor) {
-  await page.context().route('https://comparison-fixture.invalid/catalog-cover.jpg', route => route.fulfill({ path: 'e2e/fixtures/comparisons/catalog-cover.jpg', contentType: 'image/jpeg' }));
+  // The atlas asks the cover through the CDN loader, which appends `?width=96`: match the query too.
+  await page.context().route('https://comparison-fixture.invalid/catalog-cover.jpg*', route => route.fulfill({ path: 'e2e/fixtures/comparisons/catalog-cover.jpg', contentType: 'image/jpeg' }));
   await page.goto('/login');
   const form = visibleFormContaining(page, 'input[name="email"]');
   await form.locator('input[name="email"]:visible').fill(actor.email);
