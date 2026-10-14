@@ -16,11 +16,12 @@ describe('createImageCache', () => {
     made[0].onload!(); expect(onReady).toHaveBeenCalledTimes(1);
     expect(cache.get('a')).toBe(made[0]);
   });
-  it('una portada que falla no se devuelve ni se repide', () => {
-    const { made, create } = fakes();
-    const cache = createImageCache({ create, resolve: s => s, onReady: () => {} });
+  it('una portada que falla no se devuelve ni se repide, pero avisa para redibujar', () => {
+    const { made, create } = fakes(); const onReady = vi.fn();
+    const cache = createImageCache({ create, resolve: s => s, onReady });
     cache.request('x'); made[0].onerror!(); cache.request('x');
     expect(made).toHaveLength(1); expect(cache.get('x')).toBeNull();
+    expect(onReady).toHaveBeenCalledTimes(1);
   });
   it('LRU: por encima de la capacidad desaloja la menos usada y la desengancha', () => {
     const { made, create } = fakes();

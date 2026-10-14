@@ -3,7 +3,9 @@ type Entry = { img: ImageLike; state: 'loading' | 'ready' | 'error' };
 
 /** LRU of cover images for the atlas canvas (spec §5.2): only ever asked for visible covers at cover zoom. */
 export function createImageCache({ capacity = 300, create, resolve, onReady }: {
-  capacity?: number; create: () => ImageLike; resolve: (src: string) => string; onReady: () => void;
+  capacity?: number; create: () => ImageLike; resolve: (src: string) => string;
+  /** Called when an image settles, loaded or failed, so the canvas can redraw. */
+  onReady: () => void;
 }) {
   const entries = new Map<string, Entry>();
   const touch = (src: string, entry: Entry) => { entries.delete(src); entries.set(src, entry); };
@@ -16,7 +18,7 @@ export function createImageCache({ capacity = 300, create, resolve, onReady }: {
       const existing = entries.get(src); if (existing) { touch(src, existing); return; }
       const img = create(); const entry: Entry = { img, state: 'loading' };
       img.onload = () => { entry.state = 'ready'; onReady(); };
-      img.onerror = () => { entry.state = 'error'; };
+      img.onerror = () => { entry.state = 'error'; onReady(); };   // the block stays, but a settled request frees the frame to go on
       entries.set(src, entry); img.src = resolve(src);
       while (entries.size > capacity) {
         const [oldest, old] = entries.entries().next().value as [string, Entry];

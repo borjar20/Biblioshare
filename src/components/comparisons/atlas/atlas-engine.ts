@@ -4,8 +4,7 @@ import type { QuienLayout } from '@/lib/comparisons/atlas/layout';
 import type { TiempoLayout } from '@/lib/comparisons/atlas/tiempo';
 import type { IslandsLayout } from '@/lib/comparisons/atlas/islands';
 import type { Scene } from '@/lib/comparisons/atlas/scene';
-import { approach, clamp, fit, panBy, stepCamera, toScreen, toWorld, zoomAt, zoomToward, MAX_ZOOM, MIN_ZOOM } from '@/lib/comparisons/atlas/camera';
-import { nearest } from '@/lib/comparisons/atlas/hit';
+import { clamp, fit, panBy, stepCamera, toScreen, toWorld, zoomAt, zoomToward, MAX_ZOOM, MIN_ZOOM } from '@/lib/comparisons/atlas/camera';
 import { COVER_ZOOM, readPalette, TITLE_ZOOM, type PaintView } from './atlas-palette';
 import { diffMix } from '@/lib/comparisons/atlas/opinion';
 import { mixHex } from '@/lib/comparisons/atlas/color';
@@ -16,6 +15,7 @@ import { paintTiempoBack } from './paint-tiempo';
 import cdnLoader from '@/lib/images/cdn-loader';
 import { createImageCache, type ImageLike } from '@/lib/comparisons/atlas/image-cache';
 import { paintIslasBack, type IslandText } from './paint-islas';
+import { nearestSprite, probeOf, stepSprites, syncSprites, type Sprite } from './atlas-sprites';
 
 export { COVER_ZOOM, TITLE_ZOOM } from './atlas-palette';
 export type AtlasHit = { key: WorkKey; x: number; y: number };
@@ -28,8 +28,6 @@ export type EngineProps = { people: AtlasPerson[]; works: AtlasWork[]; active: s
   onHover: (hit: AtlasHit | null) => void; onActivate: (hit: AtlasHit | null, pointerType: string) => void;
   /** Screen space covered by the overlays (summary + faces on top, lens dock below); fit and fly-to frame the free band. */
   insets?: { top: number; bottom: number } };
-/** One appearance of a work; `key` is the work, the map id may carry an `@person` / `#island` suffix. `dying` extras fly home and fade. */
-type Sprite = { key: WorkKey; x: number; y: number; tx: number; ty: number; a: number; ta: number; hl: number; thl: number; diff: number | null; dying: boolean };
 const dist = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
 
 export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, props: () => EngineProps) {
@@ -40,6 +38,10 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
   let cam: Camera = { x: 0, y: 0, k: 0.3 }; let target: Camera | null = null; let fitted = false;
   let extentKey = ''; let raf = 0; let disposed = false; let dirtyProbe = true;
   const sprites = new Map<string, Sprite>();
+  /** Built in `sync()`, not per frame: the work behind each sprite and each person's colour. */
+  let byKey = new Map<WorkKey, AtlasWork>(); let colorOf = new Map<string, string>();
+  const linkPoint = (id: string) => sprites.get(id) ?? null;
+  const linkGlow = (id: string) => (sprites.get(id)?.hl ?? 0) > 0.5;
 
   const insets = () => props().insets ?? { top: 75, bottom: 75 };
   /** Shifts a camera so that its focus lands in the middle of the band between the overlays. */
@@ -52,7 +54,8 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
   /** The camera still rests on (or heads to) the last fit: nobody has moved it since. */
   const atFit = () => !!lastFit && ((target ?? cam) === lastFit
     || (!target && Math.abs(cam.k / lastFit.k - 1) < 0.002 && Math.hypot(cam.x - lastFit.x, cam.y - lastFit.y) < 0.5));
-  const covers = createImageCache({ create: () => { const img = new Image(); img.decoding = 'async'; return img as unknown as ImageLike; },
+  const COVER_CAPACITY = 300;
+  const covers = createImageCache({ capacity: COVER_CAPACITY, create: () => { const img = new Image(); img.decoding = 'async'; return img as unknown as ImageLike; },
     resolve: src => cdnLoader({ src, width: 96 }), onReady: () => kick() });
   /** New cover requests allowed per frame, so a crowded screen does not fire hundreds of fetches at once. */
   const MAX_REQUESTS = 24; let requests = 0;
@@ -67,24 +70,9 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
     kick();
   }
   function sync() {
-    const { scene } = props();
-    for (const [id, t] of scene.targets) {
-      const glow = t.glow ? 1 : 0;
-      // An extra appearance is born on its main one, invisible, and flies out from there.
-      const main = id !== t.key ? sprites.get(t.key) : undefined;
-      const sprite = sprites.get(id) ?? (main ? { ...main, a: 0 }
-        : { key: t.key, x: t.x, y: t.y, tx: t.x, ty: t.y, a: t.alpha, ta: t.alpha, hl: glow, thl: 0, diff: t.diff, dying: false });
-      sprite.key = t.key; sprite.tx = t.x; sprite.ty = t.y; sprite.ta = t.alpha; sprite.thl = glow; sprite.diff = t.diff; sprite.dying = false;
-      if (reduce) { sprite.x = t.x; sprite.y = t.y; sprite.a = sprite.ta; sprite.hl = sprite.thl; }
-      sprites.set(id, sprite);
-    }
-    for (const [id, sprite] of [...sprites]) {
-      if (scene.targets.has(id)) continue;
-      // An extra whose work is still on stage folds back into its main appearance; anything else goes at once.
-      const home = id !== sprite.key && !reduce ? scene.targets.get(sprite.key) : undefined;
-      if (home) { sprite.dying = true; sprite.tx = home.x; sprite.ty = home.y; sprite.ta = 0; }
-      else sprites.delete(id);
-    }
+    const { scene, works, people } = props();
+    syncSprites(sprites, scene, reduce);
+    byKey = new Map(works.map(work => [work.key, work])); colorOf = new Map(people.map(person => [person.id, person.color]));
     const nextExtent = JSON.stringify(scene.extent);
     if (nextExtent !== extentKey) { extentKey = nextExtent; if (fitted) refit(); }
     // Overlays measured after the first fit: reframe only while the camera still rests on (or heads to) that fit;
@@ -97,28 +85,16 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
     kick();
   }
   function frame() {
-    raf = 0; if (disposed) return; let moving = false;
-    if (target) { const step = stepCamera(cam, target, reduce ? 1 : 0.16); cam = step.camera; if (step.done) target = null; else moving = true; }
-    for (const [id, s] of sprites) {
-      const x = approach(s.x, s.tx, 0.11, 0.15), y = approach(s.y, s.ty, 0.11, 0.15);
-      const a = approach(s.a, s.ta, 0.14, 0.01), h = approach(s.hl, s.thl, 0.14, 0.01);
-      s.x = x.value; s.y = y.value; s.a = a.value; s.hl = h.value;
-      if (s.dying && s.a < 0.02) { sprites.delete(id); continue; }
-      if (!(x.settled && y.settled && a.settled && h.settled)) moving = true;
-    }
-    draw(); host.dataset.atlasCovers = String(covers.size()); if (pointers.size > 0) moving = true;
+    raf = 0; if (disposed) return; let animating = false;
+    if (target) { const step = stepCamera(cam, target, reduce ? 1 : 0.16); cam = step.camera; if (step.done) target = null; else animating = true; }
+    if (stepSprites(sprites)) animating = true;
+    const starved = draw(); host.dataset.atlasCovers = String(covers.size());
+    // A finger on the canvas counts as movement (no probe mid-gesture), but only animations re-schedule the frame:
+    // pointer moves kick their own. Covers left out by the per-frame request cap get another frame.
+    const moving = animating || pointers.size > 0;
     host.dataset.atlasMoving = String(moving); host.dataset.atlasZoom = cam.k.toFixed(3); host.dataset.atlasSprites = String(sprites.size);
-    if (moving) { if (!pointers.size) kick(); } else if (dirtyProbe) { dirtyProbe = false; publishProbe(); }
-  }
-  function visible(p: Point) { return p.x >= -60 && p.y >= -80 && p.x <= vp.width + 60 && p.y <= vp.height + 80; }
-  /** One entry per work: its first visible appearance. */
-  function publishProbe() {
-    const probe: AtlasHit[] = []; const listed = new Set<WorkKey>();
-    for (const s of sprites.values()) {
-      if (s.a < 0.5 || listed.has(s.key)) continue; const p = toScreen(cam, vp, s);
-      if (p.x >= 0 && p.y >= 0 && p.x <= vp.width && p.y <= vp.height) { listed.add(s.key); probe.push({ key: s.key, x: Math.round(p.x), y: Math.round(p.y) }); }
-    }
-    host.dataset.atlasProbe = JSON.stringify(probe.toSorted((a, b) => a.key < b.key ? -1 : 1).slice(0, 60));
+    if (animating || (starved && covers.size() < COVER_CAPACITY)) kick();
+    else if (!moving && dirtyProbe) { dirtyProbe = false; host.dataset.atlasProbe = JSON.stringify(probeOf(sprites, cam, vp)); }
   }
   function text(value: string, x: number, y: number, font: string, color: string, align: CanvasTextAlign = 'left') {
     ctx!.font = font; ctx!.fillStyle = color; ctx!.textAlign = align; ctx!.fillText(value, x, y); ctx!.textAlign = 'left';
@@ -151,12 +127,12 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
   function roundRect(x: number, y: number, w: number, h: number, r: number) {
     ctx!.beginPath(); ctx!.roundRect(x, y, w, h, r);
   }
-  function draw() {
-    if (!ctx) return;
-    const { works, active, scene, quien, people, countLabel } = props();
-    requests = 0;
-    const k = cam.k, coverMode = k > COVER_ZOOM, titles = k > TITLE_ZOOM;
-    const color = new Map(people.map(person => [person.id, person.color]));
+  /** Paints one frame; true when the request cap left visible covers unrequested. */
+  function draw(): boolean {
+    if (!ctx) return false;
+    const { active, scene, quien, people, countLabel } = props();
+    requests = 0; let starved = false;
+    const k = cam.k, coverMode = k > COVER_ZOOM, titles = k > TITLE_ZOOM, hw = vp.width / 2, hh = vp.height / 2;
     const view: PaintView = { ctx, cam, vp, palette, text };
     const tint = (s: Sprite) => s.diff === null ? null : mixHex(palette.glow, palette.clash, diffMix(s.diff));
     const quienPaint = { layout: quien, active, people, countLabel };
@@ -167,24 +143,24 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
       case 'tiempo': paintTiempoBack(view, { layout: props().tiempo, people }); break;
       case 'islas': paintIslasBack(view, { layout: props().islas, people, text: props().islandText }); break;
     }
-    paintLinks(view, scene.links, id => { const s = sprites.get(id); return s ? { x: s.x, y: s.y, a: s.a } : null; },
-      id => (sprites.get(id)?.hl ?? 0) > 0.5);
-    const byKey = new Map(works.map(work => [work.key, work]));
+    paintLinks(view, scene.links, linkPoint, linkGlow);
     for (const s of sprites.values()) {
-      if (s.a < 0.02) continue; const work = byKey.get(s.key); if (!work) continue;
-      const p = toScreen(cam, vp, s); if (!visible(p)) continue;
+      if (s.a < 0.02) continue;
+      const px = (s.x - cam.x) * k + hw, py = (s.y - cam.y) * k + hh;
+      if (px < -60 || py < -80 || px > vp.width + 60 || py > vp.height + 80) continue;
+      const work = byKey.get(s.key); if (!work) continue;
       ctx.globalAlpha = s.a; const shared = work.owners.length > 1;
       const ink = tint(s);
       if (!coverMode) {
         const r = (ink ? Math.max(3, 4.2 * k * 1.4) : Math.max(1.5, (shared ? 3.4 : 2.4) * k * 1.4)) * (1 + s.hl * 0.45);
-        ctx.fillStyle = ink ?? (s.hl > 0.5 ? palette.glow : shared ? palette.cream : color.get(work.owners[0].userId)!);
-        ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill(); continue;
+        ctx.fillStyle = ink ?? (s.hl > 0.5 ? palette.glow : shared ? palette.cream : colorOf.get(work.owners[0].userId)!);
+        ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill(); continue;
       }
-      const cw = (ink ? 10 : 8.4) * k, ch = (ink ? 14.5 : 12.2) * k, x = p.x - cw / 2, y = p.y - ch / 2;
+      const cw = (ink ? 10 : 8.4) * k, ch = (ink ? 14.5 : 12.2) * k, x = px - cw / 2, y = py - ch / 2;
       if (ink || s.hl > 0.3) { ctx.fillStyle = ink ?? palette.glow; roundRect(x - 2, y - 2, cw + 4, ch + 4, 3 + k * 0.3); ctx.fill(); }
       let img: ImageLike | null = null;
       if (work.coverUrl) {
-        if (requests < MAX_REQUESTS && !covers.has(work.coverUrl)) { covers.request(work.coverUrl); requests++; }
+        if (!covers.has(work.coverUrl)) { if (requests < MAX_REQUESTS) { covers.request(work.coverUrl); requests++; } else starved = true; }
         img = covers.get(work.coverUrl);
       }
       if (img) {
@@ -194,10 +170,10 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
         ctx.fillStyle = palette.type[work.itemType]; roundRect(x, y, cw, ch, 1 + k * 0.4); ctx.fill();
         ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.fillRect(x, y + ch * 0.7, cw, ch * 0.3);
       }
-      work.owners.slice(0, 5).forEach((owner, i) => {
-        ctx.fillStyle = color.get(owner.userId)!; ctx.beginPath();
+      for (let i = 0; i < work.owners.length && i < 5; i++) {
+        ctx.fillStyle = colorOf.get(work.owners[i].userId)!; ctx.beginPath();
         ctx.arc(x + cw - (1.6 + i * 1.9) * k, y + 1.6 * k, 0.8 * k, 0, Math.PI * 2); ctx.fill();
-      });
+      }
       if (titles && work.title) {
         // Legible size regardless of zoom, wrapped to the cover with a scrim behind it.
         const size = Math.min(14, Math.max(9, 1.5 * k)), step = size * 1.15, pad = Math.max(2, 0.6 * k);
@@ -213,15 +189,18 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
     }
     ctx.globalAlpha = 1;
     if (scene.lens === 'quien') paintQuienFront(view, quienPaint);
+    return starved;
   }
   function hitWork(s: Point): AtlasHit | null {
-    const world = toWorld(cam, vp, s); const radius = Math.max(6, 10 / cam.k);
-    const candidates = [...sprites.values()].filter(sprite => !sprite.dying && sprite.a >= 0.5).map(sprite => ({ key: sprite.key, x: sprite.x, y: sprite.y }));
-    const hit = nearest(candidates, world, radius);
+    const world = toWorld(cam, vp, s);
+    const hit = nearestSprite(sprites, world.x, world.y, Math.max(6, 10 / cam.k));
     return hit && { key: hit.key, x: s.x, y: s.y };
   }
-  const pointers = new Map<number, Point>(); let pinch: { d: number; k: number } | null = null;
-  let down: Point | null = null; let lastTap: (Point & { t: number }) | null = null;
+  /** `anchor`: the world point under the fingers' midpoint when the pinch began; it stays under the midpoint. */
+  const pointers = new Map<number, Point>(); let pinch: { d: number; k: number; anchor: Point } | null = null;
+  /** `travel`: farthest the pointer went from `down`; a tap needs it under 5 px, not just the ends. */
+  let down: Point | null = null; let travel = 0; let lastTap: (Point & { t: number }) | null = null;
+  const mid = (a: Point, b: Point): Point => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
   const local = (e: { clientX: number; clientY: number }): Point => { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
   const hitPole = (p: Point) => props().scene.lens !== 'quien' ? undefined
     : props().quien.poles.find(item => dist(toScreen(cam, vp, item), p) < 30);
@@ -242,9 +221,9 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
   }
   function onDown(e: PointerEvent) {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
-    touched = true; canvas.style.cursor = ''; canvas.setPointerCapture?.(e.pointerId); const p = local(e); pointers.set(e.pointerId, p); target = null; down = p;
-    if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch = { d: Math.max(dist(a, b), 1), k: cam.k }; down = null; }
-    canvas.dataset.dragging = 'true';
+    touched = true; canvas.style.cursor = ''; canvas.setPointerCapture?.(e.pointerId); const p = local(e); pointers.set(e.pointerId, p); target = null; down = p; travel = 0;
+    if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch = { d: Math.max(dist(a, b), 1), k: cam.k, anchor: toWorld(cam, vp, mid(a, b)) }; down = null; }
+    canvas.dataset.dragging = 'true'; kick();
   }
   function onMove(e: PointerEvent) {
     const p = local(e);
@@ -253,21 +232,27 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
       const hit = hitWork(p); canvas.style.cursor = hit ? 'pointer' : ''; props().onHover(hit); return;
     }
     const prev = pointers.get(e.pointerId)!; pointers.set(e.pointerId, p);
+    if (down) travel = Math.max(travel, dist(p, down));
     if (pointers.size === 2 && pinch) {
-      const [a, b] = [...pointers.values()];
-      cam = zoomAt(cam, vp, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, pinch.k * dist(a, b) / pinch.d / cam.k);
+      // Zoom by the fingers' spread and pan by their midpoint: the anchor stays under the midpoint.
+      const [a, b] = [...pointers.values()]; const m = mid(a, b); const k = clamp(pinch.k * dist(a, b) / pinch.d, MIN_ZOOM, MAX_ZOOM);
+      cam = { k, x: pinch.anchor.x - (m.x - vp.width / 2) / k, y: pinch.anchor.y - (m.y - vp.height / 2) / k };
     } else cam = panBy(cam, p.x - prev.x, p.y - prev.y);
     props().onHover(null); kick();
   }
   function onUp(e: PointerEvent) {
     const p = local(e); pointers.delete(e.pointerId); if (pointers.size < 2) pinch = null;
     if (!pointers.size) delete canvas.dataset.dragging;
-    if (down && dist(p, down) < 5) tap(p, e.pointerType, e.timeStamp);
+    if (down && Math.max(travel, dist(p, down)) < 5) tap(p, e.pointerType, e.timeStamp);
     down = null; kick();
   }
   function onCancel(e: PointerEvent) { pointers.delete(e.pointerId); pinch = null; down = null; delete canvas.dataset.dragging; kick(); }
   function onLeave(e: PointerEvent) { if (e.pointerType === 'mouse') props().onHover(null); }
-  function onWheel(e: WheelEvent) { e.preventDefault(); touched = true; target = null; cam = zoomAt(cam, vp, local(e), Math.exp(-e.deltaY * 0.0018)); props().onHover(null); kick(); }
+  function onWheel(e: WheelEvent) {
+    e.preventDefault(); touched = true; target = null;
+    const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? vp.height : 1;   // lines / pages to pixels
+    cam = zoomAt(cam, vp, local(e), Math.exp(-e.deltaY * unit * 0.0018)); props().onHover(null); kick();
+  }
   /** Same hit order as `tap`: the click already toggled a pole or flew to a group, so only empty space zooms. */
   function onDoubleClick(e: MouseEvent) {
     const p = local(e); touched = true;

@@ -213,4 +213,114 @@ describe('AtlasCanvas', () => {
     expect(created.length).toBeGreaterThan(0);
     expect(created[0].src).toContain('1-S.jpg');
   });
+  describe('gestos', () => {
+    const poleScreen = (host: HTMLElement) => {
+      const k = Number(host.dataset.atlasZoom);
+      return { x: (layout.poles[0].x - (layout.extent.minX + layout.extent.maxX) / 2) * k + 400,
+        y: (layout.poles[0].y - (layout.extent.minY + layout.extent.maxY) / 2) * k + 300 };
+    };
+
+    it('la rueda respeta deltaMode: líneas × 16 px y páginas × alto del viewport', () => {
+      const { host, canvas } = setup();
+      const k0 = Number(host.dataset.atlasZoom);
+      fireEvent.wheel(canvas, { deltaY: 5, deltaMode: 1, clientX: 400, clientY: 300 });
+      flush();
+      const k1 = Number(host.dataset.atlasZoom);
+      expect(k1 / k0).toBeCloseTo(Math.exp(-5 * 16 * 0.0018), 2);
+      fireEvent.wheel(canvas, { deltaY: -0.5, deltaMode: 2, clientX: 400, clientY: 300 });
+      flush();
+      expect(Number(host.dataset.atlasZoom) / k1).toBeCloseTo(Math.exp(0.5 * 600 * 0.0018), 2);
+    });
+
+    it('un toque exige que el recorrido máximo sea < 5 px, aunque vuelva al punto de partida', () => {
+      const { toggle, host, canvas } = setup();
+      const { x, y } = poleScreen(host);
+      fireEvent.pointerDown(canvas, { pointerId: 1, clientX: x, clientY: y, pointerType: 'touch' });
+      fireEvent.pointerMove(canvas, { pointerId: 1, clientX: x + 20, clientY: y, pointerType: 'touch' });
+      fireEvent.pointerMove(canvas, { pointerId: 1, clientX: x, clientY: y, pointerType: 'touch' });
+      fireEvent.pointerUp(canvas, { pointerId: 1, clientX: x, clientY: y, pointerType: 'touch' });
+      expect(toggle).not.toHaveBeenCalled();
+      // A small wobble is still a tap.
+      fireEvent.pointerDown(canvas, { pointerId: 2, clientX: x, clientY: y, pointerType: 'touch' });
+      fireEvent.pointerMove(canvas, { pointerId: 2, clientX: x + 3, clientY: y, pointerType: 'touch' });
+      fireEvent.pointerUp(canvas, { pointerId: 2, clientX: x + 3, clientY: y, pointerType: 'touch' });
+      expect(toggle).toHaveBeenCalledWith('a');
+    });
+
+    it('durante el pellizco el punto medio también desplaza', () => {
+      const { host, canvas } = setup();
+      const before = JSON.parse(host.dataset.atlasProbe!)[0];
+      const k = host.dataset.atlasZoom;
+      fireEvent.pointerDown(canvas, { pointerId: 1, clientX: 300, clientY: 300, pointerType: 'touch' });
+      fireEvent.pointerDown(canvas, { pointerId: 2, clientX: 500, clientY: 300, pointerType: 'touch' });
+      fireEvent.pointerMove(canvas, { pointerId: 1, clientX: 350, clientY: 340, pointerType: 'touch' });
+      fireEvent.pointerMove(canvas, { pointerId: 2, clientX: 550, clientY: 340, pointerType: 'touch' });
+      fireEvent.pointerUp(canvas, { pointerId: 1, clientX: 350, clientY: 340, pointerType: 'touch' });
+      fireEvent.pointerUp(canvas, { pointerId: 2, clientX: 550, clientY: 340, pointerType: 'touch' });
+      flush();
+      expect(host.dataset.atlasZoom).toBe(k);
+      expect(JSON.parse(host.dataset.atlasProbe!)[0]).toEqual({ key: before.key, x: before.x + 50, y: before.y + 40 });
+    });
+
+    it('apoyar el dedo pide un frame', () => {
+      const { host, canvas } = setup();
+      expect(frames).toHaveLength(0);
+      fireEvent.pointerDown(canvas, { pointerId: 1, clientX: 10, clientY: 10, pointerType: 'touch' });
+      expect(frames).toHaveLength(1);
+      flush();
+      expect(host.dataset.atlasMoving).toBe('true');
+    });
+
+    it('las obras siguen volando aunque haya un dedo quieto en el lienzo', () => {
+      const dated: Snapshot = { ...snapshot, works: snapshot.works.map((w, i) => ({ ...w, date: i ? '2025-06-10' : '2024-03-01' })) };
+      const model = atlasModel(dated, 'a', 'Tú'); const quien = layoutQuien(model.people, model.works);
+      const base = { ...props, people: model.people, works: model.works, quien, tiempo: layoutTiempo(model.people, model.works, ['a', 'b']) };
+      const { container, rerender } = render(<AtlasCanvas {...base} scene={sceneFor('quien', model.people, model.works, ['a', 'b'])}/>);
+      flush();
+      const canvas = container.querySelector('canvas')!;
+      vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue({ left: 0, top: 0 } as DOMRect);
+      fireEvent.pointerDown(canvas, { pointerId: 1, clientX: 10, clientY: 10, pointerType: 'touch' });
+      flush();
+      expect(frames).toHaveLength(0);
+      rerender(<AtlasCanvas {...base} scene={sceneFor('tiempo', model.people, model.works, ['a', 'b'])}/>);
+      oneFrame();
+      expect(frames).toHaveLength(1);   // the works are still flying: the frame re-schedules itself
+      flush();
+      expect(frames).toHaveLength(0);   // and stops once they settle, finger or not
+    });
+
+    it('cambiar las personas redibuja', () => {
+      const { container, rerender } = render(<AtlasCanvas {...props}/>);
+      flush();
+      expect(container.querySelector('canvas')).not.toBeNull();
+      rerender(<AtlasCanvas {...props} people={people.map(person => ({ ...person, color: '#000000' }))}/>);
+      expect(frames.length).toBeGreaterThan(0);
+    });
+
+    it('si el tope de peticiones por frame recorta portadas visibles, pide otro frame para el resto', () => {
+      const noop = () => {};
+      const fakeCtx = new Proxy({} as Record<string, unknown>, {
+        get: (target, prop: string) => prop === 'measureText' ? () => ({ width: 1 }) : prop === 'createRadialGradient' ? () => ({ addColorStop: noop })
+          : prop in target ? target[prop] : noop,
+        set: (target, prop: string, value) => { target[prop] = value; return true; },
+      });
+      vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(fakeCtx as unknown as CanvasRenderingContext2D);
+      const created: { src: string }[] = [];
+      vi.stubGlobal('Image', class { src = ''; onload = null; onerror = null; decoding = ''; constructor() { created.push(this); } });
+      const many: AtlasWork[] = Array.from({ length: 80 }, (_, i) => ({ ...works[0], key: `book:${100 + i}` as WorkKey, itemId: String(100 + i),
+        coverUrl: `https://covers.openlibrary.org/b/id/${i}-M.jpg` }));
+      const quien = layoutQuien(people, many);
+      const { container } = render(<AtlasCanvas {...props} works={many} quien={quien} scene={sceneFor('quien', people, many, ['a', 'b'])}/>);
+      flush();
+      const host = container.querySelector<HTMLElement>('[data-atlas-moving]')!;
+      const canvas = container.querySelector('canvas')!;
+      vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue({ left: 0, top: 0 } as DOMRect);
+      const k0 = Number(host.dataset.atlasZoom);
+      // One wheel step straight to cover zoom: a single frame follows it, which may request only 24 covers.
+      fireEvent.wheel(canvas, { deltaY: -Math.log(1.3 / k0) / 0.0018, clientX: 400, clientY: 300 });
+      flush();
+      expect(Number(host.dataset.atlasZoom)).toBeGreaterThan(1.1);
+      expect(created.length).toBeGreaterThan(24);
+    });
+  });
 });
