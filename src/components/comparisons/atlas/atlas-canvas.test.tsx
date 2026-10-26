@@ -10,7 +10,7 @@ import { layoutIslands } from '@/lib/comparisons/atlas/islands';
 import type { AtlasPerson, AtlasWork } from '@/lib/comparisons/atlas/types';
 import { buildScene, type Lens, type SceneTarget } from '@/lib/comparisons/atlas/scene';
 import { fit } from '@/lib/comparisons/atlas/camera';
-import { createRef } from 'react';
+import { Activity, createRef } from 'react';
 import { AtlasCanvas, type AtlasCanvasHandle } from './atlas-canvas';
 import { paintIslasBack } from './paint-islas';
 import type { PaintView, Palette } from './atlas-palette';
@@ -437,6 +437,20 @@ describe('AtlasCanvas', () => {
       expect(own(onSettled)).toBe(true);
       act(() => handle.current!.fit()); flush();
       expect(own(onSettled)).toBe(false);
+    });
+    it('al volver atrás, <Activity> recrea el motor y la cámara inicial se lee entonces, no al renderizar', () => {
+      // Back from a ficha the page is revealed, not re-rendered: the getter must see the camera saved while it was visible.
+      const stored: { camera?: { x: number; y: number; k: number } } = {};
+      const onSettled = vi.fn();
+      const handle = createRef<AtlasCanvasHandle>();
+      const at = (mode: 'visible' | 'hidden') => <Activity mode={mode}><AtlasCanvas {...props} ref={handle} onSettled={onSettled} initialCamera={() => stored.camera}/></Activity>;
+      const { rerender } = render(at('visible')); flush();
+      expect(own(onSettled)).toBe(false);
+      const saved = stored.camera = { x: 12, y: -7, k: 2.5 };
+      rerender(at('hidden')); flush();
+      rerender(at('visible')); flush();
+      expect(handle.current!.camera()).toEqual({ lens: 'quien', ...saved });
+      expect(onSettled).toHaveBeenLastCalledWith({ lens: 'quien', ...saved }, true);
     });
     it('rueda, zoom y desplazamiento la hacen del usuario; una escena nueva reencaja y deja de serlo', () => {
       const onSettled = vi.fn();

@@ -180,12 +180,14 @@ export function AtlasView({ snapshot, viewerId, groupId, notice, chosen, onChose
   // Only an opening within this mount: a format change remounts the view with the list open and must not steal focus.
   const listRef = useRef<HTMLElement>(null); const wasList = useRef(list);
   useEffect(() => { if (list && !wasList.current) listRef.current?.focus(); wasList.current = list; }, [list]);
-  // Read when the canvas (re)mounts; the engine only uses it at its first valid size, so later lens changes do not move it.
-  const initialCamera = useMemo(() => {
+  // Read when the engine is created, not at render: back from a ficha, <Activity> recreates the engine without a render,
+  // and a camera computed at mount would fit and then overwrite the saved one with null. The engine only reads it at its
+  // first valid size, so later lens changes do not move it.
+  const initialCamera = () => {
     if (list) return undefined;
     const saved = readGroupMemory(sessionStore(), viewerId, groupId).camera;
     return saved && saved.lens === lens ? { x: saved.x, y: saved.y, k: saved.k } : undefined;
-  }, [list, viewerId, groupId, lens]);
+  };
   // The probe is republished after hovers too: write only a camera that changed. A fit is not remembered (and
   // forgets the one moved before): restored, it would keep the next scene (another format, Islas mode) off its fit.
   const savedCamera = useRef('');
