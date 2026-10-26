@@ -21,8 +21,11 @@ export async function SectionTabs({
   const t = await getTranslations("profile.tabs");
   const tabs = isOwner ? OWNER_TABS : VISITOR_TABS;
 
+  // La línea base es una sombra interior y no un border-b: con overflow-x-auto
+  // el eje Y también recorta, y el -mb-px que usaban las pestañas para pisar
+  // el borde creaba un scroll vertical de 1px.
   return (
-    <div className="flex gap-4 overflow-x-auto border-b border-border sm:gap-6">
+    <div className="flex gap-4 overflow-x-auto overflow-y-hidden shadow-[inset_0_-1px_0_var(--color-border)] sm:gap-6">
       {tabs.map((tab) => {
         const isActive = tab === active;
         return (
@@ -30,7 +33,7 @@ export async function SectionTabs({
             key={tab}
             href={`${basePath}?tab=${tab}`}
             aria-current={isActive ? "page" : undefined}
-            className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-1 pt-2 pb-3 font-serif text-[15.5px] font-semibold transition-colors ${
+            className={`inline-flex items-center gap-1.5 border-b-2 px-1 pt-2 pb-3 font-serif text-[15.5px] font-semibold transition-colors ${
               isActive
                 ? "border-accent text-foreground"
                 : "border-transparent text-muted-foreground hover:text-foreground"

@@ -13,7 +13,7 @@ const push = vi.fn();
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
 type SavedCamera = { lens: Lens; x: number; y: number; k: number };
 type CanvasProps = { quien: QuienLayout; scene: Scene; islandText?: { title: (island: Island) => string; common: (count: number) => string }; opinionLabels?: Record<string, string>; onActivate: (hit: { key: WorkKey; x: number; y: number } | null, type: string) => void; onHover: (hit: { key: WorkKey; x: number; y: number } | null) => void; active: string[]; label: string;
-  initialCamera?: { x: number; y: number; k: number }; onSettled?: (camera: SavedCamera, own: boolean) => void };
+  initialCamera?: () => { x: number; y: number; k: number } | undefined; onSettled?: (camera: SavedCamera, own: boolean) => void };
 let canvas: CanvasProps;
 const canvasFocus = vi.fn();
 const handle = { zoomBy: vi.fn(), fit: vi.fn(), panBy: vi.fn() };
@@ -513,28 +513,35 @@ describe('AtlasView', () => {
   });
   it('ida y vuelta mapa → lista → mapa conserva la cámara asentada', () => {
     view();
-    expect(canvas.initialCamera).toBeUndefined();
+    expect(canvas.initialCamera?.()).toBeUndefined();
     act(() => canvas.onSettled!({ lens: 'quien', x: 5, y: 6, k: 2 }, true));
     fireEvent.click(screen.getByRole('button', { name: 'Ver como lista' }));
     fireEvent.click(screen.getByRole('button', { name: 'Ver como lista' }));
-    expect(canvas.initialCamera).toEqual({ x: 5, y: 6, k: 2 });
+    expect(canvas.initialCamera?.()).toEqual({ x: 5, y: 6, k: 2 });
   });
   it('una cámara que nadie movió no se recuerda: al volver a montar (cambio de formato) el lienzo encaja', () => {
     const first = view();
     act(() => canvas.onSettled!({ lens: 'quien', x: 5, y: 6, k: 2 }, false));
     expect(readCamera()).toBeNull();
     first.unmount(); view();
-    expect(canvas.initialCamera).toBeUndefined();
+    expect(canvas.initialCamera?.()).toBeUndefined();
   });
   it('la cámara movida se restaura al volver a montar (vuelta desde la ficha); «Encajar» la olvida', () => {
     const first = view();
     act(() => canvas.onSettled!({ lens: 'quien', x: 5, y: 6, k: 2 }, true));
     first.unmount(); const second = view();
-    expect(canvas.initialCamera).toEqual({ x: 5, y: 6, k: 2 });
+    expect(canvas.initialCamera?.()).toEqual({ x: 5, y: 6, k: 2 });
     act(() => canvas.onSettled!({ lens: 'quien', x: 0, y: 0, k: 1 }, false));
     expect(readCamera()).toBeNull();
     second.unmount(); view();
-    expect(canvas.initialCamera).toBeUndefined();
+    expect(canvas.initialCamera?.()).toBeUndefined();
+  });
+  it('la cámara inicial se lee al crear el lienzo, no al renderizar (vuelta atrás con <Activity>)', () => {
+    // Back from a ficha the view is revealed without a render: a camera fixed at render would be the one from mount.
+    view();
+    expect(canvas.initialCamera?.()).toBeUndefined();
+    act(() => canvas.onSettled!({ lens: 'quien', x: 5, y: 6, k: 2 }, true));
+    expect(canvas.initialCamera?.()).toEqual({ x: 5, y: 6, k: 2 });
   });
   it('la cámara guardada solo se usa con la misma lente', () => {
     view();
@@ -542,7 +549,7 @@ describe('AtlasView', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Opinión' }));
     fireEvent.click(screen.getByRole('button', { name: 'Ver como lista' }));
     fireEvent.click(screen.getByRole('button', { name: 'Ver como lista' }));
-    expect(canvas.initialCamera).toBeUndefined();
+    expect(canvas.initialCamera?.()).toBeUndefined();
   });
   it('si sessionStorage falla, el lienzo encaja (sin cámara inicial) y nada se rompe', () => {
     const getItem = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('SecurityError'); });
@@ -550,7 +557,7 @@ describe('AtlasView', () => {
     try {
       view();
       expect(() => act(() => canvas.onSettled!({ lens: 'quien', x: 5, y: 6, k: 2 }, true))).not.toThrow();
-      expect(canvas.initialCamera).toBeUndefined();
+      expect(canvas.initialCamera?.()).toBeUndefined();
     } finally { getItem.mockRestore(); setItem.mockRestore(); }
   });
   it('guarda la cámara bajo la cuenta y el grupo que le da el explorer, no el del snapshot', () => {

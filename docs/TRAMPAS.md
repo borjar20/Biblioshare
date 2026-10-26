@@ -475,3 +475,26 @@ el selector pasa a algo que llevan todas las tarjetas, el mismo código empieza 
 lo haya tocado. Salió así en `club-reactivity.spec.ts` (#750).
 
 Ver también §3 (la regla de los dos árboles) y §20 (un test que pasa no prueba lo que dice).
+
+---
+
+## 26. Volver atrás no vuelve a montar la página: `<Activity>` re-ejecuta los efectos sin renderizar
+
+**Síntoma:** al volver de una ficha con el botón atrás, algo que se restauraba «al montar» sale con
+su valor por defecto unas veces sí y otras no. En e2e, un test que falla de forma intermitente
+siempre con el mismo valor (#1538: el zoom del atlas volvía al encuadre, 2.288 por debajo).
+
+Con `cacheComponents`, Next no desmonta la página al navegar: la oculta con `<Activity>`. Al
+ocultarla corren las limpiezas de los efectos, y al volver los efectos se ejecutan **otra vez sin
+un render nuevo**. Lo que un efecto crea (un motor de canvas, una suscripción) se recrea con los
+props y los `useMemo` del último render, que pueden ser de antes de navegar.
+
+En el atlas, `initialCamera` era un `useMemo` del primer montaje (sin cámara guardada). El motor
+recreado se encuadraba solo y, al asentarse, escribía `camera: null` en sessionStorage, con lo
+que borraba el zoom bueno. La recarga del explorador remontaba la vista y a veces llegaba antes,
+y de ahí lo intermitente.
+
+**Regla:** lo que un efecto lee para inicializarse (sessionStorage, la URL, el DOM) se lee **dentro
+del efecto** o con un getter que el efecto llama, nunca con un valor calculado al renderizar. Para
+probarlo: `<Activity mode="hidden">` y luego `"visible"` en el test (ver `atlas-canvas.test.tsx`).
+Guía de Next: `node_modules/next/dist/docs/01-app/02-guides/preserving-ui-state.md`.

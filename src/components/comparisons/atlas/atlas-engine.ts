@@ -33,8 +33,11 @@ export type EngineProps = { people: AtlasPerson[]; works: AtlasWork[]; active: s
   onHover: (hit: AtlasHit | null) => void; onActivate: (hit: AtlasHit | null, pointerType: string) => void;
   /** Screen space covered by the overlays (summary + faces on top, lens dock below); fit and fly-to frame the free band. */
   insets?: { top: number; bottom: number };
-  /** Camera to start from instead of the initial fit (read once, at the first valid size). */
-  initialCamera?: Camera;
+  /**
+   * Camera to start from instead of the initial fit (read once, at the first valid size). A function is called right then:
+   * on back navigation <Activity> recreates the engine without re-rendering, so a value computed at render would be stale.
+   */
+  initialCamera?: Camera | (() => Camera | undefined);
   /**
    * Called whenever the scene settles (when the probe is published) with the camera at rest. `own` says whether it is
    * the user's framing (moved by wheel, pinch, drag, zoom, keys or a fly-to, or restored from one) rather than a fit:
@@ -103,7 +106,7 @@ export function createAtlasEngine(canvas: HTMLCanvasElement, host: HTMLElement, 
     palette = readPalette(host);
     if (vp.width > 0 && vp.height > 0 && !fitted) {
       // A remembered camera is the user's own framing: no fit under it, and resizes or overlays do not reframe it.
-      const initial = props().initialCamera;
+      const option = props().initialCamera, initial = typeof option === 'function' ? option() : option;
       if (initial) { cam = { x: initial.x, y: initial.y, k: clamp(initial.k, MIN_ZOOM, MAX_ZOOM) }; target = null; touched = restored = own = true; } else snapFit();
       fitted = true;
     } else if (vp.width > 0 && vp.height > 0 && wasAtFit) snapFit();
