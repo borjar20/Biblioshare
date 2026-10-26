@@ -1,0 +1,14 @@
+{
+  "project": "biblioshare-dev",
+  "build": "HrO67grVP68imezfuMAPi",
+  "qa_auth_users": 0,
+  "qa_profiles": 0,
+  "qa_books": 0,
+  "qa_passes": 0,
+  "devtest_public": true,
+  "method": "REST exacto antes y después de cada fixture; SQL de solo lectura tras tres repeticiones de perfil y dos casos de portadas",
+  "finalProfile": { "passed": 3, "failed": 0, "automaticRetries": 0 },
+  "finalCovers": { "passed": 2, "failed": 0, "automaticRetries": 0 },
+  "initialHarnessFailure": "Expectativa nueva incorrecta de una navegación frente a dos; ronda interrumpida y conservada por separado, sin atribuirlo al producto",
+  "rawArtifacts": "Sólo en test-results, excluido de Git; evidencia native-* sanitizada sin cuerpos de acciones ni base64"
+}

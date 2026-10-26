@@ -313,6 +313,19 @@ test('profile «Comparar» opens an unsaved pair and «Guardar como grupo» keep
     await page.getByRole('link', { name: 'Comparar', exact: true }).click();
     await expect(page).toHaveURL(url => url.pathname === '/comunidad/entre-nosotros' && url.searchParams.get('con') === beatriz.id);
     await settled(page);
+    const chromeNav = page.getByRole('navigation', { name: 'Navegación principal', exact: true, includeHidden: true });
+    await expect(page.getByRole('banner')).toHaveCount(0);
+    await expect(chromeNav).toHaveCount(0);
+    // Exercise the persistent layout in both directions, including its streamed SSR gates (#1534).
+    await page.goBack();
+    await expect(page).toHaveURL(url => url.pathname === `/u/${beatriz.username}`);
+    await expect(page.getByRole('banner')).toBeVisible();
+    await expect(chromeNav).toHaveCount(2);
+    await page.goForward();
+    await expect(page).toHaveURL(url => url.pathname === '/comunidad/entre-nosotros' && url.searchParams.get('con') === beatriz.id);
+    await settled(page);
+    await expect(page.getByRole('banner')).toHaveCount(0);
+    await expect(chromeNav).toHaveCount(0);
     const select = (await groups(page)).getByRole('combobox', { name: 'Grupo', exact: true });
     await expect(select).toHaveValue(`with:${beatriz.id}`);
     await expect(select.locator('option:checked')).toHaveText('Tú y Beatriz QA · sin guardar');

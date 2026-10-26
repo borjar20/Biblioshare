@@ -158,6 +158,25 @@ describe('AtlasView', () => {
     act(() => canvas.onActivate({ key: 'book:1', x: 10, y: 10 }, 'mouse'));
     expect(push).toHaveBeenCalledWith('/libro/1');
   });
+  it.each(['quien', 'tiempo', 'islas'] as const)('%s: hover y hoja muestran la nota de cada persona activa, también sin nota', lens => {
+    const ratings: Record<string, number | null> = { me: 9, b: 4, c: null };
+    const dates: Record<string, string | null> = { me: '2024-05-01', b: null, c: '2025-06-01' };
+    viewWith({ ...snapshot, works: snapshot.works.map(work => work.key === 'book:1'
+      ? { ...work, rating: ratings[work.userId], date: dates[work.userId] } : work) }, lens);
+    act(() => canvas.onHover({ key: 'book:1', x: 10, y: 10 }));
+    const card = within(screen.getByText('Proyecto Salvación').parentElement!);
+    expect(card.getByText('9/10').closest('li')?.textContent).toContain(lens === 'tiempo' ? 'Tú: 2024' : 'Tú');
+    expect(card.getByText('4/10').closest('li')?.textContent).toContain(lens === 'tiempo' ? 'Bea: sin fecha' : 'Bea');
+    expect(card.getByText('sin nota').closest('li')?.textContent).toContain(lens === 'tiempo' ? 'Carla: 2025' : 'Carla');
+    expect(card.queryByText('0/10')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Carla' }));
+    act(() => canvas.onActivate({ key: 'book:1', x: 10, y: 10 }, 'touch'));
+    const sheet = within(screen.getByRole('dialog', { name: 'Proyecto Salvación' }));
+    expect(sheet.getByText('9/10').closest('li')?.textContent).toContain(lens === 'tiempo' ? 'Tú: 2024' : 'Tú');
+    expect(sheet.getByText('4/10').closest('li')?.textContent).toContain(lens === 'tiempo' ? 'Bea: sin fecha' : 'Bea');
+    expect(sheet.queryByText('sin nota')).toBeNull();
+    expect(sheet.queryByText(/Carla/)).toBeNull();
+  });
   it('táctil: primer toque abre la hoja, segundo navega; tocar vacío la cierra', () => {
     view();
     act(() => canvas.onActivate({ key: 'book:1', x: 10, y: 10 }, 'touch'));
@@ -272,7 +291,7 @@ describe('AtlasView', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Carla' }));
     act(() => canvas.onHover({ key: 'book:1', x: 10, y: 10 }));
     const tip = screen.getByText('Proyecto Salvación').closest('[aria-hidden="true"]')!;
-    expect([...tip.querySelectorAll('li')].map(li => li.textContent)).toEqual(['Tú', 'Bea']);
+    expect([...tip.querySelectorAll('li')].map(li => li.textContent)).toEqual(['Tú 9/10', 'Bea 9/10']);
     fireEvent.click(screen.getByRole('button', { name: 'Opinión' }));
     act(() => canvas.onActivate({ key: 'book:1', x: 10, y: 10 }, 'touch'));
     expect(screen.getByRole('img', { name: 'Notas: Tú 9, Bea 9' })).toBeTruthy();
@@ -346,7 +365,7 @@ describe('AtlasView', () => {
     act(() => canvas.onHover({ key: 'book:1', x: 10, y: 10 }));
     expect(screen.queryByRole('img', { hidden: true })).toBeNull();
     const tip = screen.getByText('Proyecto Salvación').closest('[aria-hidden="true"]')!;
-    expect([...tip.querySelectorAll('li')].map(li => li.textContent)).toEqual(['Tú', 'Bea', 'Carla']);
+    expect([...tip.querySelectorAll('li')].map(li => li.textContent)).toEqual(['Tú 9/10', 'Bea 9/10', 'Carla 4/10']);
   });
   it('el dock ofrece las cuatro lentes', () => {
     view();
@@ -417,7 +436,7 @@ describe('AtlasView', () => {
     expect(summary()).toBe('Ninguna obra compartida tiene fecha para todas las personas (1 sin fecha)');
     act(() => canvas.onHover({ key: 'book:1', x: 10, y: 10 }));
     const tip = screen.getByText('Proyecto Salvación').closest('[aria-hidden="true"]')!;
-    expect([...tip.querySelectorAll('li')].map(li => li.textContent)).toEqual(['Tú: 2021', 'Bea: sin fecha', 'Carla: sin fecha']);
+    expect([...tip.querySelectorAll('li')].map(li => li.textContent)).toEqual(['Tú: 2021 sin nota', 'Bea: sin fecha sin nota', 'Carla: sin fecha sin nota']);
     expect(screen.getByText('Tú: 2021')).toBeTruthy();
   });
   it('Tiempo: una fecha ilegible sale como sin fecha en la mini-ficha', () => {
@@ -425,7 +444,7 @@ describe('AtlasView', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Tiempo' }));
     act(() => canvas.onHover({ key: 'book:1', x: 10, y: 10 }));
     const tip = screen.getByText('Proyecto Salvación').closest('[aria-hidden="true"]')!;
-    expect([...tip.querySelectorAll('li')].map(li => li.textContent)[0]).toBe('Tú: sin fecha');
+    expect([...tip.querySelectorAll('li')].map(li => li.textContent)[0]).toBe('Tú: sin fecha sin nota');
   });
   it('el lienzo recibe los textos de las islas', () => {
     view();

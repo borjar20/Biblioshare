@@ -4,6 +4,8 @@ import { ChromeGate } from "./chrome-gate";
 // La ruta puede suspender con Cache Components y necesita su límite externo.
 // La sesión espera DENTRO del gate: así este se hidrata antes que las barras y
 // puede retirarlas al navegar sin intentar hidratar su HTML con otra ruta (#1385).
+// ChromeGate conserva además su visibilidad SSR si la propia ruta hidrata tarde
+// y ya cambió mientras el contenido principal era interactivo (#1534).
 export function ChromeBoundary({
   children,
   fallback,

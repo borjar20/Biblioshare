@@ -1,0 +1,71 @@
+{
+  "build": "lC6hCPgn3mzY1Vt5aWBWu",
+  "phase": "Fechas trimestrales + pan real, misma key en banda útil",
+  "cases": [
+    {
+      "project": "chromium",
+      "status": "passed",
+      "duration_ms": 25354,
+      "retry": 0,
+      "measurements": {
+        "Quién": {
+          "zoom": 0.699,
+          "coversAt07": 0,
+          "minWidthAt07": null,
+          "cornerHit": null
+        },
+        "Opinión": {
+          "zoom": 0.699,
+          "coversAt07": 16,
+          "minWidthAt07": 12,
+          "cornerHit": {
+            "key": "book:011da467-18f2-4957-9de5-420adee5a010",
+            "width": 47.593842340898426,
+            "height": 69.01107139430272
+          }
+        },
+        "Tiempo": {
+          "zoom": 0.7,
+          "coversAt07": 81,
+          "minWidthAt07": 12,
+          "cornerHit": {
+            "key": "book:011da467-18f2-4957-9de5-420adee5a010",
+            "width": 39.97339571151797,
+            "height": 58.056598533395146
+          }
+        },
+        "Islas": {
+          "zoom": 0.7,
+          "coversAt07": 0,
+          "minWidthAt07": null,
+          "cornerHit": null
+        }
+      },
+      "journal": {
+        "errors": [],
+        "failures": [
+          "GET /comunidad: net::ERR_ABORTED",
+          "GET /buscar: net::ERR_ABORTED",
+          "GET /: net::ERR_ABORTED",
+          "GET /buscar: net::ERR_ABORTED",
+          "POST /login: net::ERR_ABORTED",
+          "GET /u/qa_comp_motion_a: net::ERR_ABORTED",
+          "GET /coleccion: net::ERR_ABORTED",
+          "POST /: net::ERR_ABORTED",
+          "GET /comunidad: net::ERR_ABORTED",
+          "POST /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /: net::ERR_ABORTED",
+          "GET /libro/011da467-18f2-4957-9de5-420adee5a010: net::ERR_ABORTED",
+          "GET /buscar: net::ERR_ABORTED",
+          "GET /u/qa_comp_motion_a: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED",
+          "GET /libro/011da467-18f2-4957-9de5-420adee5a010: net::ERR_ABORTED",
+          "GET /comunidad/entre-nosotros: net::ERR_ABORTED"
+        ]
+      }
+    }
+  ]
+}

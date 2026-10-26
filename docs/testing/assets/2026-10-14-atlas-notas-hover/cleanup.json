@@ -1,0 +1,11 @@
+{
+  "project": "biblioshare-dev",
+  "build": "lC6hCPgn3mzY1Vt5aWBWu",
+  "qa_auth_users": 0,
+  "qa_profiles": 0,
+  "qa_books": 0,
+  "qa_passes": 0,
+  "devtest_public": true,
+  "method": "REST exacto antes y después de ambas fixtures; SQL de solo lectura tras los dos casos",
+  "fixture_users": ["qa_comp_motion_a", "qa_comp_motion_b", "qa_comp_motion_c"]
+}

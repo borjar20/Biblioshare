@@ -46,21 +46,24 @@ function WorkCover({ work }: { work: AtlasWork }) {
 }
 
 /**
- * Quién and Islas list who has the work; Tiempo adds each owner's year; Opinión puts each owner on the 1–10 scale.
+ * Every lens shows each owner's rating. Tiempo adds the year; Opinión also places owners on the 1–10 scale.
  * Only the active faces: a face turned off is out of the comparison, also in the card.
  */
 function WorkCard({ work, people, active, title, lens }: { work: AtlasWork; people: AtlasPerson[]; active: string[]; title: string; lens: Lens }) {
   const t = useTranslations('comparisons.atlas');
+  const locale = useLocale();
+  const ratingFormat = new Intl.NumberFormat(locale);
   const names = new Map(people.map(person => [person.id, person]));
   const owners = work.owners.filter(owner => active.includes(owner.userId));
   const line = (name: string, date: string | null) => lens !== 'tiempo' ? name
     : date && datedYear(date) !== null ? t('years', { name, year: date.slice(0, 4) }) : t('noDate', { name });
   return <>
     <WorkCover key={work.key} work={work}/>
-    <span><span className={styles.workTitle}>{title}</span>
+    <span className={styles.workInfo}><span className={styles.workTitle}>{title}</span>
       {lens === 'opinion' ? <RatingScale owners={owners} people={people}/> : <ul className={styles.owners}>{owners.map(owner => names.get(owner.userId) && <li key={owner.userId}>
         <span className={styles.ownerDot} style={{ background: names.get(owner.userId)!.color }} aria-hidden="true"/>
-        <span>{line(names.get(owner.userId)!.name, owner.date)}</span></li>)}</ul>}</span>
+        <span className={styles.ownerName}>{line(names.get(owner.userId)!.name, owner.date)}</span>{' '}
+        <b className={styles.ownerRating}>{owner.rating === null ? t('noRating') : t('ownerRating', { rating: ratingFormat.format(owner.rating) })}</b></li>)}</ul>}</span>
   </>;
 }
 

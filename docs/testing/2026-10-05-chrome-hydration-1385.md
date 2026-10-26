@@ -1,14 +1,19 @@
 # #1385: ruta y sesión del chrome tienen límites de hidratación independientes
 
-> **[Canónico · verificado contra código, revisión independiente, build/start local y entrega a main el 2026-10-05; MTG 2/2 y retorno 2/2 PASS; CI integrada PASS; auditoría global y gate FULL históricos FAIL]**
+> **[Canónico · contrato actual verificado contra código, unitarios y build/start local el 2026-10-14 (#1534); entrega de #1385 a main verificada el 2026-10-05: MTG 2/2, retorno 2/2 y CI integrada PASS; auditoría global y gate FULL históricos FAIL]**
 
-El candidato separa la espera de `usePathname` de la espera de sesión de
-Header, BottomNav y la compañera. La regresión discrimina las dos topologías:
-el límite compartido recupera dos discrepancias de HTML al navegar a una
-pantalla completa con sesión pendiente; el límite separado retira las barras
-sin recuperación. Una compilación nueva del pin `e5fdb395` pasa después los
-dos casos originales de MTG y los dos controles de retorno. La auditoría
-global conserva sus fallos; la entrega posterior pasa la CI integrada y se fusiona en main8424.
+El shell separa la espera de `usePathname` de la espera de sesión de
+Header, BottomNav y la compañera. `ChromeGate` conserva además su visibilidad
+SSR durante la hidratación aunque la ruta haya cambiado antes de hidratarlo;
+después aplica la ruta vigente. Este contrato añadido por #1534 conserva la
+topología de #1385; su evidencia está en [el informe de Entre nosotros](2026-10-14-entre-nosotros-ci-1533-1534.md).
+
+La regresión original discrimina las dos topologías: el límite compartido
+recupera dos discrepancias de HTML al navegar a una pantalla completa con
+sesión pendiente; el límite separado retira las barras sin recuperación. Una
+compilación nueva del pin `e5fdb395` pasó los dos casos originales de MTG y los
+dos controles de retorno. La auditoría global conserva sus fallos; la entrega
+de aquel corte pasó la CI integrada y se fusionó en main8424.
 
 ## Evidencia que motivó el cambio
 
@@ -55,6 +60,15 @@ El `Suspense` externo sigue siendo necesario: la guía instalada de Next
 con parámetros que no se conocen al prerenderizar. El límite interno deja
 que el gate se hidrate aunque el payload de sesión aún no se haya entregado.
 Así puede desmontar esa frontera al entrar en una pantalla completa.
+
+Si es la propia ruta la que sigue pendiente y cambia mientras `main` ya
+responde, la separación de límites no basta. El gate publica su visibilidad
+SSR en un `template` identificado por `useId`; `useSyncExternalStore` lee ese
+valor durante su hidratación y sólo después calcula la visibilidad de la ruta
+vigente. La marca no añade contenido visible ni modifica la espera de sesión.
+El caso de ruta retenida con navegación, incluido su retorno y sesión pendiente,
+se registra con sus propias rondas y límites en [#1534](2026-10-14-entre-nosotros-ci-1533-1534.md);
+los resultados históricos de #1385 que siguen no se atribuyen a ese cambio.
 
 Los dos límites reciben el fallback que ya tenía cada pieza. Se mantienen
 `HeaderSkeleton`, `BottomNavSkeleton` y el fallback `null` de la compañera;

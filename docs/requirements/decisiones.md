@@ -7927,3 +7927,62 @@ vista, sin guardarlo como preferencia persistente.
 55 pruebas de AtlasView, TypeScript, lint, build y dos E2E de escritorio/móvil
 PASS; sin desbordamiento horizontal a 360 y 390 px. Integración y despliegue
 en producción pendientes.
+
+## 2026-10-14 — Entre nosotros: puntos y portadas más legibles
+
+Los puntos y las portadas crecen un 40 % para reconocer las obras al comparar.
+Opinión y Tiempo muestran portadas con zoom mayor que 0,6, con ancho mínimo de 12 px;
+Quién e Islas conservan el umbral 1,1 y los títulos requieren zoom mayor que 3,2.
+La geometría compartida de dibujo, detección y recorte usa el rectángulo
+completo de la portada con mínimo de 10 px para interacción; los puntos
+mantienen detección circular. La caché conserva sus 300 portadas y 24
+peticiones por frame.
+
+La ampliación conserva posiciones, distribución de puntos, notas, fechas,
+esquema y semántica de caché. Las obras con notas iguales pueden seguir
+superpuestas en Opinión; «Ver como lista» conserva todas las obras, incluidas
+las 30 de la muestra verificada. Los límites de la caché con más de 300 obras
+y de las fixtures con portadas repetidas siguen en #1524 y #1527.
+
+El atlas de PR #1529 se integró el 2026-10-14. Esta mejora está implementada
+y verificada localmente en `codex/entre-nosotros-items-grandes`:
+[evidencia de legibilidad](../testing/2026-10-14-entre-nosotros-atlas-items-grandes.md),
+409 pruebas en 37 archivos, TypeScript, lint, build y cuatro E2E únicos de
+escritorio/móvil PASS. Integración de la mejora pendiente;
+despliegue productivo del atlas todavía sin verificar.
+
+## 2026-10-14 — Entre nosotros: notas personales en las mini-fichas
+
+Quién, Tiempo e Islas muestran `{nota}/10` junto a cada persona activa que
+tiene la obra; un valor nulo aparece como «sin nota». Tiempo conserva el
+año o «sin fecha» y Opinión mantiene su escala. Desmarcar una cara retira
+su fila; las notas proceden del snapshot existente.
+
+`WorkCard` comparte la ficha entre hover de escritorio y hoja táctil.
+Las columnas reservan el punto, un nombre flexible y la nota al ancho de
+su contenido (`auto minmax(0, 1fr) auto`). El nombre puede partir palabras
+y ocupar varias líneas; la nota permanece en una línea, asociada a su dueño.
+
+Verificado localmente en [PR #1530](https://github.com/borjar20/Biblioshare/pull/1530):
+[evidencia de notas](../testing/2026-10-14-entre-nosotros-atlas-notas-hover.md),
+62 pruebas de fichas y dos E2E PASS a 1280/360 px. Integración y verificación
+del despliegue en producción pendientes.
+
+## 2026-10-14 — Hidratación tardía del chrome: conservar la visibilidad SSR (#1534)
+
+Header, BottomNav y la compañera pueden seguir sin hidratar cuando el contenido
+principal ya permite navegar. En ese orden, calcular su visibilidad inicial con
+la ruta vigente puede contradecir el HTML que entregó el servidor y provocar
+recuperación de hidratación al entrar o salir de una pantalla completa.
+
+`ChromeGate` serializa su visibilidad SSR en un `template` con `useId`.
+`useSyncExternalStore` usa ese valor como snapshot de hidratación y aplica la
+ruta vigente después. Se conserva la topología de #1385: Suspense externo para
+la ruta e interno para el payload de sesión, sin retrasar la navegación ni
+suprimir errores de hidratación. La marca sólo expresa visibilidad; no guarda
+la ruta, la identidad ni datos de sesión.
+
+El contrato cubre ambos sentidos de navegación con ruta retenida, con sesión
+resuelta o pendiente, además de los controles originales. Las pruebas de React
+DOM controlan el orden de entrega; el streaming y la navegación reales de Next
+mantienen su gate separado. [Evidencia y límites de verificación](../testing/2026-10-14-entre-nosotros-ci-1533-1534.md).
