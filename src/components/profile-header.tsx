@@ -78,7 +78,7 @@ export async function ProfileHeader({
               <Counts basePath={basePath} counts={counts} tSocial={tSocial} />
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 lg:shrink-0 lg:flex-nowrap">
             {followButton}
             {safetyActions}
             {isOwner && (

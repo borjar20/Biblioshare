@@ -195,7 +195,7 @@ async function ProfileContent({ params, searchParams }: PublicProfileProps) {
         counts={counts}
         followButton={
           !isOwner && blockState === "none" ? (
-            <div className="flex items-start gap-2">
+            <div className="flex flex-wrap items-start gap-2">
               <FollowButton
                 targetUserId={profile.userId}
                 targetIsPublic={profile.isPublic}
