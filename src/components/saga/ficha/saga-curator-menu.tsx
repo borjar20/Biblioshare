@@ -53,11 +53,11 @@ export function SagaCuratorMenu({ sagaId, hasParent }: { sagaId: string; hasPare
         onClick={(e) => e.target === dialogRef.current && close()}
         className="m-auto w-[min(92vw,320px)] rounded-card border border-border bg-surface p-2 text-foreground shadow-card backdrop:bg-scrim"
       >
-        <Link href={`/saga/${sagaId}/editar`} onClick={close} className={item}>✎ {t("editSheet")}</Link>
+        <Link href={`/saga/${sagaId}/editar`} onClick={close} className={item}><span aria-hidden>✎</span> {t("editSheet")}</Link>
         {!hasParent && (
-          <Link href={`/saga/${sagaId}/editar#universo`} onClick={close} className={item}>⌂ {t("nestInUniverse")}</Link>
+          <Link href={`/saga/${sagaId}/editar#universo`} onClick={close} className={item}><span aria-hidden>⌂</span> {t("nestInUniverse")}</Link>
         )}
-        <Link href={`/saga/${sagaId}/rutas`} onClick={close} className={item}>✎ {t("routesManage")}</Link>
+        <Link href={`/saga/${sagaId}/rutas`} onClick={close} className={item}><span aria-hidden>✎</span> {t("routesManage")}</Link>
       </dialog>
     </>
   );

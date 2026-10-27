@@ -46,10 +46,16 @@ export function SagaShelf({
     setPrevOpenKey(shelf.openGroupKey);
     setOpen(shelf.openGroupKey);
   }
+  // Red: la resincronización de arriba solo salta cuando cambia openGroupKey.
+  // Si llega otra balda con el mismo openGroupKey pero sin el grupo que el
+  // lector había abierto (p. ej. «s1#2» al cambiar de itinerario), `open`
+  // apuntaría a una clave inexistente y todo quedaría apilado: se pinta el
+  // grupo abierto por defecto.
+  const shown = shelf.groups.some((g) => g.key === open) ? open : shelf.openGroupKey;
   const titleId = useId();
   const rowRef = useRef<HTMLDivElement>(null);
   function openGroup(key: string) {
-    if (key === open) return;
+    if (key === shown) return;
     focusAfterOpen.current = true;
     setOpen(key);
   }
@@ -64,7 +70,7 @@ export function SagaShelf({
       focusAfterOpen.current = false;
       (row?.querySelector<HTMLElement>("[data-testid='shelf-now']") ?? row?.querySelector<HTMLElement>("[data-shelf-link]"))?.focus();
     }
-  }, [open]);
+  }, [shown]);
 
   function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
     if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
@@ -117,7 +123,7 @@ export function SagaShelf({
       ) : (
         <div ref={rowRef} onKeyDown={onKeyDown} className="flex snap-x items-end gap-4 overflow-x-auto pt-8 pb-2">
           {shelf.groups.map((g) =>
-            g.key === open || shelf.groups.length === 1 ? (
+            g.key === shown || shelf.groups.length === 1 ? (
               <OpenGroup key={g.key} group={g} label={groupName(g)} showLabel={shelf.groups.length > 1} />
             ) : (
               <Pile key={g.key} group={g} label={groupName(g)} onOpen={() => openGroup(g.key)} />
@@ -137,10 +143,10 @@ export function SagaShelf({
                 type="button"
                 data-testid={`shelf-segment-${s.groupKey}`}
                 aria-label={t("shelfSegment", { name: g ? groupName(g) : "", done: s.done, total: s.weight })}
-                aria-pressed={s.groupKey === open}
+                aria-pressed={s.groupKey === shown}
                 onClick={() => openGroup(s.groupKey)}
                 style={{ flexGrow: s.weight }}
-                className={`relative h-full basis-0 overflow-hidden rounded-full bg-surface-muted ${s.groupKey === open ? "ring-2 ring-foreground/30" : ""}`}
+                className={`relative h-full basis-0 overflow-hidden rounded-full bg-surface-muted ${s.groupKey === shown ? "ring-2 ring-foreground/30" : ""}`}
               >
                 <span className="absolute inset-y-0 left-0 bg-green" style={{ width: pct }} />
                 {s.hasNow && <span className="absolute inset-y-0 w-1.5 bg-accent" style={{ left: pct }} />}

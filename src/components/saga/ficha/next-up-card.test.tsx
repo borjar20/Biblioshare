@@ -33,4 +33,16 @@ describe("NextUpCard", () => {
   it("modo empty no pinta nada", async () => {
     expect(await NextUpCard({ shelf: { ...base, mode: "empty", nextUp: null } })).toBeNull();
   });
+  it("sin grupo ni número no pinta la línea de metadatos", async () => {
+    render(await NextUpCard({ shelf: { ...base, nextUp: { work: { ...work, no: null }, groupName: null, fitsNow: null } } }));
+    expect(document.querySelector("p.font-mono.text-muted-foreground")).toBeNull();
+    cleanup();
+    render(await NextUpCard({ shelf: base }));
+    expect(document.querySelector("p.font-mono.text-muted-foreground")?.textContent).toBe("Crónicas · orderNo");
+  });
+  it("«encaja ahora» enlaza a la ficha de la ventana", async () => {
+    const win: ShelfWork = { ...work, key: "i:book:w", title: "Ventana", href: "/libro/w", state: "todo", no: null };
+    render(await NextUpCard({ shelf: { ...base, nextUp: { work, groupName: "Crónicas", fitsNow: win } } }));
+    expect(screen.getByRole("link", { name: "nextUpFitsNow" }).getAttribute("href")).toBe("/libro/w");
+  });
 });

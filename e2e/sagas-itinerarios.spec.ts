@@ -194,15 +194,15 @@ test.describe("itinerarios de lectura", () => {
     await loginAsCollaborator(page);
     await page.goto(`/saga/${UNIVERSO_ID}`);
 
-    // Nombre exacto (con el icono "✎"): el título de una de las obras
+    // Nombre exacto y dentro del diálogo: el título de una de las obras
     // sembradas es literalmente "[QA Itinerarios] Ronda de noche", así que
     // una coincidencia parcial (/Itinerarios/) también engancha su portada y
     // el test se vuelve ambiguo (strict mode violation) tanto en verde como
-    // en rojo.
-    // El enlace vive ahora en el menú «Opciones de curación» del hero (antes
-    // era un enlace suelto en la pestaña Info).
+    // en rojo. El icono «✎» va en un <span aria-hidden>: no forma parte del
+    // nombre accesible.
+    // El enlace vive en el menú «Opciones de curación» del hero.
     await page.getByRole("button", { name: "Opciones de curación" }).click();
-    await page.getByRole("link", { name: "✎ Itinerarios", exact: true }).click();
+    await page.getByRole("dialog").getByRole("link", { name: "Itinerarios", exact: true }).click();
 
     await expect(page).toHaveURL(`/saga/${UNIVERSO_ID}/rutas`);
     await expect(page.getByRole("heading", { name: "Itinerarios de lectura" })).toBeVisible();

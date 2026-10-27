@@ -71,4 +71,19 @@ describe("SagaCuratorMenu", () => {
     });
     expect(dialog().open).toBe(false);
   });
+  it("enlaza a editar, anidar e itinerarios; los glifos no forman parte del nombre", () => {
+    render(<SagaCuratorMenu sagaId="s1" hasParent={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "curatorMenu" }));
+    const href = (name: string) => screen.getByRole("link", { name, hidden: true }).getAttribute("href");
+    expect(href("editSheet")).toBe("/saga/s1/editar");
+    expect(href("nestInUniverse")).toBe("/saga/s1/editar#universo");
+    expect(href("routesManage")).toBe("/saga/s1/rutas");
+  });
+
+  it("con padre no ofrece «Anidar en universo»", () => {
+    render(<SagaCuratorMenu sagaId="s1" hasParent />);
+    fireEvent.click(screen.getByRole("button", { name: "curatorMenu" }));
+    expect(screen.queryByText(/nestInUniverse/)).toBeNull();
+    expect(screen.getByRole("link", { name: "editSheet", hidden: true })).toBeTruthy();
+  });
 });

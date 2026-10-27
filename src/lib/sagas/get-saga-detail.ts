@@ -253,7 +253,8 @@ export function resolveWindows(
  *  borra la fila de `saga_placement_windows`, ver el comentario de `windows` en
  *  `SagaDetail`), así que comprueba `placement` ella misma antes de mirar el mapa, en
  *  vez de confiar en que la lista que recibe ya está filtrada. Extraída de
- *  `saga-info.tsx` (revisión Task 6) para poder probarla sin renderizar React
+ *  la antigua `saga-info.tsx` (revisión Task 6; hoy la usa
+ *  `ficha/saga-all-works.tsx`) para poder probarla sin renderizar React
  *  — es la única guarda que sostiene esta colocabilidad, y ningún constraint de BD
  *  puede imponerla. */
 export function freeItemWindow(

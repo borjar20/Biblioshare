@@ -28,6 +28,13 @@ export async function SagaHeroCinematic({
   const bg = pickSagaHeroBackground({ backdropUrl, covers });
   const years = members.map((m) => m.year).filter((y): y is number => y !== null);
   const span = years.length > 0 ? `${Math.min(...years)}–${Math.max(...years)}` : null;
+  // `formatDots`, NO `avgRating` en crudo: `averageSagaRating` devuelve la
+  // escala de guardado (1–10) y se enseña sobre 5 como el resto de la app
+  // (issue #643). `!`: en esta rama `avgRating` ya es `number`. Sin autor, sin
+  // años y sin nota no se pinta el <p> (un párrafo vacío solo deja hueco).
+  const meta = [byline && t("by", { name: byline }), span, avgRating !== null && t("avgRating", { rating: formatDots(avgRating)! })]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <div className="relative" data-testid="saga-hero">
@@ -59,14 +66,7 @@ export async function SagaHeroCinematic({
         <h1 className="[overflow-wrap:anywhere] font-serif text-[30px] leading-[1.03] font-semibold sm:text-[38px] lg:text-[48px]">
           {saga.name}
         </h1>
-        <p className="font-serif text-sm text-foreground-soft italic lg:text-lg">
-          {/* `formatDots`, NO `avgRating` en crudo: `averageSagaRating` devuelve
-              la escala de guardado (1–10) y se enseña sobre 5 como el resto de
-              la app (issue #643). `!`: en esta rama `avgRating` ya es `number`. */}
-          {[byline && t("by", { name: byline }), span, avgRating !== null && t("avgRating", { rating: formatDots(avgRating)! })]
-            .filter(Boolean)
-            .join(" · ")}
-        </p>
+        {meta && <p className="font-serif text-sm text-foreground-soft italic lg:text-lg">{meta}</p>}
         <div className="mt-1 flex flex-wrap items-center gap-2">
           {parent && (
             <Link href={sagaHref(parent.id)} className="rounded-full bg-surface-muted px-3 py-1 font-mono text-[10px] text-muted-foreground">

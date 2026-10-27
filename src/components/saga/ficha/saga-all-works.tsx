@@ -230,8 +230,7 @@ export async function SagaAllWorks({
   // Reparto delegado en `partitionGroups` (fase 3, Task 1): el mapa necesita
   // el MISMO criterio, y dos vistas repartiendo cada una por su cuenta acaban
   // discrepando (issues #91 y #203). `groupMembers` sigue devolviendo todos
-  // los grupos sin filtrar: `computeProgress` los recorre para emitir los
-  // segmentos de color del hero.
+  // los grupos sin filtrar; el reparto ordenado/libre es solo de esta lista.
   const { ordered: orderedGroups, free: freeGroups } = partitionGroups(groups);
   // Fix Task 2 / Finding 1 (review): un grupo se salta cuando su `eligible`
   // queda vacío (todos sus miembros son `libre` sueltos), así que
@@ -262,107 +261,107 @@ export async function SagaAllWorks({
   return (
     <WorksFilter>
       <div className="flex flex-col gap-5">
-      <section>
-        <h2 className="mb-3 label-section">
-          {t("allWorksTitle")}
-        </h2>
-        {hasVisibleOrderedGroup ? (
-          <div className="flex flex-col gap-5">
-            {/* group-members.ts: sagaId null = "Nexo" si hay hijas, único grupo
-                si no. Con un único grupo directo (saga hoja, sin subsagas) la
-                cabecera "Nexo" no tiene sentido — la sección ya dice "Títulos
-                que la componen", así que aquí se omite (sin tick/nombre/contador)
-                y se pinta la grid pelada. Con 2+ grupos, o un único grupo que SÍ
-                es de subsaga, la cabecera se mantiene como siempre. */}
-            {orderedGroupsWithEligible.map(({ group, eligible }) => {
-              const isSoleDirectGroup = orderedGroups.length === 1 && group.sagaId === null;
-              // Fix Task 7 / Finding 1 (review): un único filtrado, reutilizado
-              // por la cabecera Y la grid — ver el comentario de `GroupBody`
-              // para el porqué. Si un grupo se queda sin nada que pintar (p.
-              // ej. todos sus miembros son `libre`), se omite el grupo entero:
-              // una cabecera con un número y una grid vacía debajo no explica
-              // nada al lector.
-              if (eligible.length === 0) return null;
-              return (
-                <div key={group.sagaId ?? "nexus"}>
-                  {!isSoleDirectGroup && (
+        <section>
+          <h2 className="mb-3 label-section">
+            {t("allWorksTitle")}
+          </h2>
+          {hasVisibleOrderedGroup ? (
+            <div className="flex flex-col gap-5">
+              {/* group-members.ts: sagaId null = "Nexo" si hay hijas, único grupo
+                  si no. Con un único grupo directo (saga hoja, sin subsagas) la
+                  cabecera "Nexo" no tiene sentido — la sección ya dice "Todas las
+                  obras", así que aquí se omite (sin tick/nombre/contador)
+                  y se pinta la grid pelada. Con 2+ grupos, o un único grupo que SÍ
+                  es de subsaga, la cabecera se mantiene como siempre. */}
+              {orderedGroupsWithEligible.map(({ group, eligible }) => {
+                const isSoleDirectGroup = orderedGroups.length === 1 && group.sagaId === null;
+                // Fix Task 7 / Finding 1 (review): un único filtrado, reutilizado
+                // por la cabecera Y la grid — ver el comentario de `GroupBody`
+                // para el porqué. Si un grupo se queda sin nada que pintar (p.
+                // ej. todos sus miembros son `libre`), se omite el grupo entero:
+                // una cabecera con un número y una grid vacía debajo no explica
+                // nada al lector.
+                if (eligible.length === 0) return null;
+                return (
+                  <div key={group.sagaId ?? "nexus"}>
+                    {!isSoleDirectGroup && (
+                      <div className="mb-3 flex items-center gap-2">
+                        <span className={`h-[15px] w-1 rounded-full ${SAGA_ACCENT[group.accent].tick}`} />
+                        <h3 className="font-serif text-[15px] font-semibold">
+                          {group.name ?? t("nexusGroup")}
+                        </h3>
+                        <span className="ml-auto font-mono text-[9.5px] text-muted-foreground">
+                          {eligible.length}
+                        </span>
+                      </div>
+                    )}
+                    <GroupBody members={eligible} labels={cellLabels} windows={windows} renderWindow={renderWindow} />
+                  </div>
+                );
+              })}
+            </div>
+          ) : hasVisibleFreeSection ? (
+            // Fix Task 2 / Finding 1 (review): la cabecera «Todas las obras» se
+            // queda siempre; solo se sustituye la rejilla vacía por esta línea,
+            // nunca la sección entera. (Los enlaces de curación — Editar ficha /
+            // Anidar en universo / Itinerarios, issue #181 — ya no viven aquí:
+            // están en el menú «⋯» del hero, SagaCuratorMenu.)
+            //
+            // Fix revisión final #198 (Important 1): esta frase afirma que hay
+            // obras y todas viven en «Cuando quieras» — falso en una saga
+            // GENUINAMENTE vacía (0 miembros, 0 bloques elegibles en absoluto,
+            // caso real "[QA Sagas v2] Era Vacía" en dev). Solo se pinta cuando
+            // `hasVisibleFreeSection` confirma que esa sección va a existir de
+            // verdad más abajo; si no hay nada en ningún sitio, no se dice nada.
+            <p className="text-[13px] text-muted-foreground">{t("allFreeHint")}</p>
+          ) : null}
+        </section>
+
+        {/* Los `libre` salen de la columna del orden y viven aquí: su «dónde» no
+            es un hueco. Ojo, esto NO es lo mismo que `optional` — un libre puede
+            contar perfectamente en el progreso (spec 2026-07-25, «Dos ejes
+            ortogonales»). Desde la #198 la sección acoge dos formas: obras
+            sueltas y bloques-subsaga enteros, que se pintan con su cabecera
+            porque un bloque sin sus obras no dice nada. */}
+        {hasVisibleFreeSection && (
+          <section>
+            <h2 className="mb-3 label-section">
+              {t("freeSection")}
+            </h2>
+            <div className="flex flex-col gap-5">
+              {freeMembers.length > 0 && (
+                <ul className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-7">
+                  {freeMembers.map((m) => (
+                    <li key={`${m.itemType}-${m.itemId}`} data-type={m.itemType} data-status={m.status === "completed" ? "done" : "pending"}>
+                      <MemberCell m={m} labels={cellLabels} windowLine={renderWindow(freeItemWindow(windows, m))} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {freeGroupsWithEligible.map(({ group, eligible }) => {
+                if (eligible.length === 0) return null;
+                return (
+                  <div key={group.sagaId}>
                     <div className="mb-3 flex items-center gap-2">
                       <span className={`h-[15px] w-1 rounded-full ${SAGA_ACCENT[group.accent].tick}`} />
                       <h3 className="font-serif text-[15px] font-semibold">
-                        {group.name ?? t("nexusGroup")}
+                        {group.name}
                       </h3>
+                      <span className="font-mono text-[9px] tracking-[0.08em] text-muted-foreground uppercase">
+                        {t("freeBlockHint")}
+                      </span>
                       <span className="ml-auto font-mono text-[9.5px] text-muted-foreground">
                         {eligible.length}
                       </span>
                     </div>
-                  )}
-                  <GroupBody members={eligible} labels={cellLabels} windows={windows} renderWindow={renderWindow} />
-                </div>
-              );
-            })}
-          </div>
-        ) : hasVisibleFreeSection ? (
-          // Fix Task 2 / Finding 1 (review): la cabecera y la fila de botones
-          // de curación (Editar ficha / Anidar en universo / Itinerarios) se
-          // quedan SIEMPRE — son la vía de entrada a la curación para
-          // collaborator+ (issue #181). Solo se sustituye la rejilla vacía
-          // por esta línea, nunca la sección entera.
-          //
-          // Fix revisión final #198 (Important 1): esta frase afirma que hay
-          // obras y todas viven en «Cuando quieras» — falso en una saga
-          // GENUINAMENTE vacía (0 miembros, 0 bloques elegibles en absoluto,
-          // caso real "[QA Sagas v2] Era Vacía" en dev). Solo se pinta cuando
-          // `hasVisibleFreeSection` confirma que esa sección va a existir de
-          // verdad más abajo; si no hay nada en ningún sitio, no se dice nada.
-          <p className="text-[13px] text-muted-foreground">{t("allFreeHint")}</p>
-        ) : null}
-      </section>
-
-      {/* Los `libre` salen de la columna del orden y viven aquí: su «dónde» no
-          es un hueco. Ojo, esto NO es lo mismo que `optional` — un libre puede
-          contar perfectamente en el progreso (spec 2026-07-25, «Dos ejes
-          ortogonales»). Desde la #198 la sección acoge dos formas: obras
-          sueltas y bloques-subsaga enteros, que se pintan con su cabecera
-          porque un bloque sin sus obras no dice nada. */}
-      {hasVisibleFreeSection && (
-        <section>
-          <h2 className="mb-3 label-section">
-            {t("freeSection")}
-          </h2>
-          <div className="flex flex-col gap-5">
-            {freeMembers.length > 0 && (
-              <ul className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-7">
-                {freeMembers.map((m) => (
-                  <li key={`${m.itemType}-${m.itemId}`} data-type={m.itemType} data-status={m.status === "completed" ? "done" : "pending"}>
-                    <MemberCell m={m} labels={cellLabels} windowLine={renderWindow(freeItemWindow(windows, m))} />
-                  </li>
-                ))}
-              </ul>
-            )}
-            {freeGroupsWithEligible.map(({ group, eligible }) => {
-              if (eligible.length === 0) return null;
-              return (
-                <div key={group.sagaId}>
-                  <div className="mb-3 flex items-center gap-2">
-                    <span className={`h-[15px] w-1 rounded-full ${SAGA_ACCENT[group.accent].tick}`} />
-                    <h3 className="font-serif text-[15px] font-semibold">
-                      {group.name}
-                    </h3>
-                    <span className="font-mono text-[9px] tracking-[0.08em] text-muted-foreground uppercase">
-                      {t("freeBlockHint")}
-                    </span>
-                    <span className="ml-auto font-mono text-[9.5px] text-muted-foreground">
-                      {eligible.length}
-                    </span>
+                    {renderWindow(freeBlockWindow(windows, group))}
+                    <GroupBody members={eligible} labels={cellLabels} windows={windows} renderWindow={renderWindow} />
                   </div>
-                  {renderWindow(freeBlockWindow(windows, group))}
-                  <GroupBody members={eligible} labels={cellLabels} windows={windows} renderWindow={renderWindow} />
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
+                );
+              })}
+            </div>
+          </section>
+        )}
       </div>
     </WorksFilter>
   );

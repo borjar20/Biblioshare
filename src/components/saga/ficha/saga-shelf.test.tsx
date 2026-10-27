@@ -57,6 +57,21 @@ describe("SagaShelf", () => {
     expect(document.activeElement?.getAttribute("href")).toBe("/libro/a");
   });
 
+  it("si el grupo abierto no existe en la balda nueva, despliega el abierto por defecto", () => {
+    const { rerender } = render(<SagaShelf {...props} />);
+    fireEvent.click(screen.getByTestId("shelf-pile-s1"));
+    // Otra balda (otro itinerario) con el MISMO openGroupKey pero sin «s1».
+    const other: Shelf = {
+      ...shelf,
+      groups: [shelf.groups[1], { ...shelf.groups[0], key: "s3", name: "Tres" }],
+      segments: [shelf.segments[1], { ...shelf.segments[0], groupKey: "s3" }],
+    };
+    rerender(<SagaShelf {...props} shelf={other} />);
+    expect(screen.queryByTestId("shelf-pile-s2")).toBeNull();
+    expect(screen.getByTestId("shelf-pile-s3")).toBeTruthy();
+    expect(screen.getByTestId("shelf-segment-s2").getAttribute("aria-pressed")).toBe("true");
+  });
+
   it("chips de itinerario solo con más de una ruta, y enlazan con ?ruta=", () => {
     const { rerender } = render(<SagaShelf {...props} />);
     expect(screen.getByRole("link", { name: "Publicación" }).getAttribute("href")).toBe("/saga/1?ruta=publicacion");

@@ -32,6 +32,8 @@ export async function NextUpCard({ shelf }: { shelf: Shelf }) {
   if (!next) return null;
   const { work } = next;
   const bold = { b: (chunks: ReactNode) => <b>{chunks}</b> };
+  // Sin grupo (saga sin subsagas) ni número (ventana, rama) no hay línea.
+  const meta = [next.groupName, work.no !== null && t("orderNo", { n: work.no })].filter(Boolean).join(" · ");
 
   return (
     <section className={`${card} flex gap-4`} data-testid="next-up">
@@ -43,9 +45,7 @@ export async function NextUpCard({ shelf }: { shelf: Shelf }) {
           {shelf.mode === "start" ? t("nextUpStart") : t("nextUpEyebrow")}
         </p>
         <h2 className="mt-0.5 font-serif text-lg leading-tight font-semibold">{work.title}</h2>
-        <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">
-          {[next.groupName, work.no !== null && t("orderNo", { n: work.no })].filter(Boolean).join(" · ")}
-        </p>
+        {meta && <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">{meta}</p>}
         {next.fitsNow && (
           <p className="mt-1 text-xs text-muted-foreground">
             <Link href={next.fitsNow.href} className="underline-offset-2 hover:underline">

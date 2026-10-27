@@ -30,7 +30,7 @@ const ERA_UNO_ID = "53118dd4-ccd9-4a9d-8241-5899816a9eab"; // [QA Sagas v2] Era 
 // Padre de Era Uno — solo lo usa el Test 5 (abajo): la cabecera de grupo de
 // "Era Uno" (tick + nombre + contador) SOLO se pinta vista desde aquí, nunca
 // en `/saga/${ERA_UNO_ID}` a secas (ahí es `isSoleDirectGroup` y la cabecera
-// se omite, ver comentario en saga-info.tsx).
+// se omite, ver comentario en ficha/saga-all-works.tsx).
 const SAGA_UNIVERSO = "69c07496-9b1a-4203-b3da-15d22a09c039"; // [QA Sagas v2] Universo
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
@@ -351,7 +351,7 @@ test("el contador de la cabecera de un grupo coincide con su grid, incluso con u
   // localizarlo por rol, así que se acota por texto puramente numérico
   // dentro de la MISMA fila que el `<h3>`, el único nodo así en esa fila).
   // La grid es el `<ul>` hermano inmediatamente siguiente a esa fila
-  // (estructura de saga-info.tsx: `GroupBody` se pinta justo después del
+  // (estructura de ficha/saga-all-works.tsx: `GroupBody` se pinta justo después del
   // `<div>` de cabecera dentro del mismo grupo).
   const eraUnoHeading = page.getByRole("heading", {
     level: 3,
@@ -393,7 +393,7 @@ test("el contador de la cabecera de un grupo coincide con su grid, incluso con u
     // A diferencia de `eraUnoGrid` (donde `GroupBody` es el propio `<ul>`,
     // hermano directo de la fila de cabecera), la sección «Cuando quieras»
     // envuelve sus listas en un `<div className="flex flex-col gap-5">`
-    // (saga-info.tsx, fix issue #198: acoge tanto obras sueltas como bloques
+    // (ficha/saga-all-works.tsx, fix issue #198: acoge tanto obras sueltas como bloques
     // libres enteros) — el `<ul>` de los miembros sueltos es DESCENDIENTE de
     // ese div, no hermano directo del `<h2>`. `following-sibling::ul[1]`
     // nunca lo encuentra (hallazgo 2026-07-27, al correr la suite de sagas

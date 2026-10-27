@@ -57,4 +57,13 @@ describe("SagaHeroCinematic", () => {
     await renderHero(detail({ childCount: 0 }), null);
     expect(screen.queryByText(/eyebrowUniverse/)).toBeNull();
   });
+  it("sin autor, años ni nota no pinta la línea de metadatos", async () => {
+    const d = detail();
+    (d.groups[0].members as Array<{ year: number | null }>).forEach((m) => (m.year = null));
+    await renderHero(d, null);
+    expect(document.querySelector("header p.italic")).toBeNull();
+    cleanup();
+    await renderHero(detail(), null);
+    expect(document.querySelector("header p.italic")?.textContent).toBe("2000–2001");
+  });
 });
