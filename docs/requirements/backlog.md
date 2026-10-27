@@ -7,8 +7,9 @@
   `/saga/[id]/como-leerla` interina y `?tab=mapa` redirige allí. Rama
   `claude/sagas-rework-11497e` (PR pendiente); [spec](superpowers/specs/2026-10-27-sagas-ficha-lector-design.md),
   [evidencia](testing/2026-10-27-sagas-ficha-lector-f1.md), decisiones del 2026-10-27.
-- [ ] **Fase 2:** «Tu paso», «Subsagas», acceso al atlas, nota media en «La terminaste» y cierre
-  de #761 (#1539).
+- [x] **Fase 2:** «Tu paso», «Subsagas», acceso al mapa, nota media en «La terminaste» y cierre
+  de #761 (#1539). Rama `claude/sagas-ficha-fase-2` (PR pendiente, apilada sobre la fase 1);
+  [evidencia](testing/2026-10-28-sagas-ficha-lector-f2.md), decisiones del 2026-10-28.
 - [ ] **Fase 3:** «Entre amigos» (#1540).
 - [ ] «Cómo leerla» no expande pasos-bloque de un itinerario curado (#1541).
 

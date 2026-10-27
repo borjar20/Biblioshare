@@ -8039,3 +8039,30 @@ un itinerario curado o en «Publicación». La ficha antepone ahora «lectura» 
 (`shelfRoutesFor`) cuando hay orden curado y no existe ya una «lectura» ni un itinerario designado.
 `detail.routes` no cambia: «Cómo leerla» y el resto siguen respetando el interruptor, y allí
 `?ruta=lectura` degrada a la primera ruta.
+
+## 2026-10-28 — Ficha de saga para el lector, fase 2: Tu paso, Subsagas y acceso al mapa
+
+Se añade a `/saga/[id]` lo que la spec describía en una línea cada bloque. Concreciones:
+
+1. **«Tu paso por la saga» solo con sesión y con al menos un pase** en las obras de la saga. Muestra
+   desde cuándo (pase más antiguo), obras terminadas y en curso, páginas y minutos (solo tallas
+   conocidas del catálogo, diciendo sobre cuántas; las series no suman tiempo), tu favorita (nota más
+   alta; el empate lo gana la terminada más reciente), tu nota media, la curva de notas y «Te saltaste
+   X de Y opcionales».
+2. **La curva sigue el orden de la balda activa**: un punto por obra terminada con nota; las obras sin
+   nota no se dibujan pero tampoco colapsan el eje (X = posición en la balda).
+3. **«Subsagas» no depende del itinerario**: una puerta por hija directa con miembros, en el orden de
+   `detail.groups`; progreso = no opcionales terminadas sobre el total, igual que la pila de la balda.
+   Sin hijas no se pinta. Sin sesión enseña el recuento de obras, no «0 de N».
+4. **Acceso al mapa** solo si `detail.graph !== null` (mapa encendido y curado); enlaza a
+   `/saga/[id]/mapa` con vista previa SVG de los nodos. Sin grafo no se pinta.
+5. **«La terminaste»** añade «Tu nota media» cuando hay alguna nota en las obras que cuentan.
+6. **#761 se cierra con esta fase**: el progreso de cada saga es el contador de la balda; la
+   proporción de opcionales saltadas va en «Tu paso»; el listado de sagas seguidas con su porcentaje ya
+   existía en `saga-library-card.tsx`.
+7. **Decisión del controlador:** un pase terminado con `finishedOn` nulo (importaciones de historial)
+   cuenta como anterior a cualquier pase con fecha, tanto para la favorita como para la nota «última».
+
+Sin migraciones, sin `use cache` (regla #437: todo depende de la sesión; las lecturas van detrás de
+`<Suspense>`). Evidencia y límites en
+[el informe de la fase 2](../testing/2026-10-28-sagas-ficha-lector-f2.md).
