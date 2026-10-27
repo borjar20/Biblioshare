@@ -142,7 +142,10 @@ export function deriveShelf(sections: TimelineSection[], opts: { authenticated: 
   }
 
   // 4. Ventanas que encajan ahora (necesitan el estado definitivo).
-  for (const w of windows) w.slot.fitsNow = opts.authenticated && w.inside && w.slot.work.state !== "done";
+  //    Solo una ventana PENDIENTE ("todo"): si la ventana ya es «ahora», «Te
+  //    toca» la nombra a ella y no puede decir además «Ahora encaja también»
+  //    la misma obra.
+  for (const w of windows) w.slot.fitsNow = opts.authenticated && w.inside && w.slot.work.state === "todo";
 
   // 5. Grupos con su estado.
   const groups: ShelfGroup[] = drafts.map((draft) => {

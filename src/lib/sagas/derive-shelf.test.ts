@@ -178,6 +178,24 @@ describe("deriveShelf", () => {
     expect(shelf.nextUp?.work.key).toBe("i:book:w");
   });
 
+  it("una ventana en curso y «dentro» es «ahora», no «encaja también»", () => {
+    const a = n("a");
+    const shelf = deriveShelf([sec([entry(a, 1), win(n("w", { status: "in_progress" }), a, null, "dentro")])], auth);
+    expect(shelf.nextUp?.work.key).toBe("i:book:w");
+    expect(shelf.nextUp?.fitsNow).toBeNull();
+    const w = shelf.groups[0].slots[1];
+    expect(w.kind === "window" && w.fitsNow).toBe(false);
+  });
+
+  it("solo quedan ventanas y la ventana está «dentro»: es «ahora», no «encaja también»", () => {
+    const a = n("a", { status: "completed" });
+    const shelf = deriveShelf([sec([entry(a, 1), win(n("w"), a, null, "dentro")])], auth);
+    expect(shelf.nextUp?.work.key).toBe("i:book:w");
+    expect(shelf.nextUp?.fitsNow).toBeNull();
+    const w = shelf.groups[0].slots[1];
+    expect(w.kind === "window" && w.fitsNow).toBe(false);
+  });
+
   it("sin sesión, la ventana no encaja ahora", () => {
     const a = n("a");
     const shelf = deriveShelf([sec([entry(a, 1), win(n("w"), a, null)])], { authenticated: false });
