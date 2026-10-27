@@ -9,11 +9,14 @@ import type { MemberGroup } from "./group-members";
 
 export type SubsagaDoor = {
   sagaId: string;
-  name: string;
+  /** null solo si la hija llega sin nombre; el componente pone una etiqueta. */
+  name: string | null;
   accent: SagaAccentToken;
   href: string;
   /** hasta 3 portadas no nulas */
   covers: string[];
+  /** todos los miembros, opcionales incluidos */
+  total: number;
   /** miembros no opcionales */
   counted: number;
   /** de esos, los terminados */
@@ -36,10 +39,11 @@ export function deriveSubsagaDoors(groups: MemberGroup[]): SubsagaDoor[] {
           : "todo";
     doors.push({
       sagaId: g.sagaId,
-      name: g.name ?? "",
+      name: g.name,
       accent: g.accent,
       href: sagaHref(g.sagaId),
       covers: g.members.flatMap((m) => (m.coverUrl ? [m.coverUrl] : [])).slice(0, 3),
+      total: g.members.length,
       counted: counted.length,
       completed,
       state,

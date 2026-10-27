@@ -2336,6 +2336,8 @@
     "doorsTitle": "Subsagas",
     "doorProgress": "{completed} de {counted}",
     "doorDone": "Terminada",
+    "doorUnnamed": "Subsaga sin nombre",
+    "doorWorksNoun": "obras",
     "doorCount": "{count, plural, =1 {1 obra} other {# obras}}",
     "passageTitle": "Tu paso por {name}",
     "passageSince": "Desde",

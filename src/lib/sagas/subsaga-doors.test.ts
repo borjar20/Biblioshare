@@ -35,6 +35,14 @@ describe("deriveSubsagaDoors", () => {
     ]);
     expect(doors.map((d) => d.state)).toEqual(["done", "started", "todo"]);
   });
+  it("una terminada y una pendiente es started", () => {
+    const [d] = deriveSubsagaDoors([g("a", [m(1, { status: "completed" }), m(2)])]);
+    expect(d.state).toBe("started");
+  });
+  it("todas opcionales: counted 0, todo, nunca done, total con todas", () => {
+    const [d] = deriveSubsagaDoors([g("a", [m(1, { optional: true, status: "completed" }), m(2, { optional: true })])]);
+    expect(d).toMatchObject({ counted: 0, total: 2, state: "todo" });
+  });
   it("covers: hasta 3 y salta las nulas", () => {
     const [d] = deriveSubsagaDoors([
       g("a", [m(1, { coverUrl: null }), m(2), m(3), m(4), m(5)]),

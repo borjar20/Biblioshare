@@ -16,6 +16,7 @@ export async function SubsagaDoors({ doors, authenticated }: { doors: SubsagaDoo
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {doors.map((d) => {
           const accent = SAGA_ACCENT[d.accent];
+          const hasProgress = authenticated && d.counted > 0;
           const pct = d.counted > 0 ? Math.round((d.completed / d.counted) * 100) : 0;
           const covers: Array<string | null> = d.covers.length > 0 ? d.covers : [null];
           return (
@@ -36,15 +37,16 @@ export async function SubsagaDoors({ doors, authenticated }: { doors: SubsagaDoo
                   </span>
                 ))}
               </span>
-              <span className="font-serif text-sm leading-tight font-semibold">{d.name}</span>
+              <span className="font-serif text-sm leading-tight font-semibold">{d.name ?? t("doorUnnamed")}</span>
               <span className={`font-mono text-[10px] ${d.state === "done" ? "text-green" : "text-muted-foreground"}`}>
-                {!authenticated
-                  ? t("doorCount", { count: d.counted })
+                {!hasProgress
+                  ? t("doorCount", { count: d.counted === 0 ? d.total : d.counted })
                   : d.state === "done"
                     ? `${t("doorDone")} ✓`
                     : t("doorProgress", { completed: d.completed, counted: d.counted })}
+                {hasProgress && d.state !== "done" && <span className="sr-only"> {t("doorWorksNoun")}</span>}
               </span>
-              {authenticated && (
+              {hasProgress && (
                 <span aria-hidden className="block h-1 overflow-hidden rounded-full bg-surface-muted">
                   <span className={`block h-full ${accent.bg}`} style={{ width: `${pct}%` }} />
                 </span>
