@@ -36,7 +36,7 @@ describe("SubsagaDoors", () => {
   });
   it("una puerta done dice Terminada", async () => {
     render(await SubsagaDoors({ doors: [door({ state: "done", completed: 4 })], authenticated: true }));
-    expect(screen.getByText("doorDone ✓")).toBeTruthy();
+    expect(screen.getByText("doorDone", { exact: false }).querySelector("span[aria-hidden]")).toBeTruthy();
     expect(screen.queryByText(/doorProgress/)).toBeNull();
   });
   it("sin sesión enseña el recuento y no «x de y»", async () => {

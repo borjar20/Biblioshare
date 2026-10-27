@@ -45,7 +45,7 @@ export async function AtlasTeaser({ href, map }: { href: string; map: MiniMap })
       <span className="flex min-w-0 flex-col gap-1">
         <span className="font-serif text-base leading-tight font-semibold">{t("atlasTitle")}</span>
         <span className="text-xs text-muted-foreground">{t("atlasSubtitle")}</span>
-        <span className="font-mono text-[11px] text-accent">{t("atlasOpen")} →</span>
+        <span className="font-mono text-[11px] text-accent">{t("atlasOpen")} <span aria-hidden>→</span></span>
       </span>
     </Link>
   );

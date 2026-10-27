@@ -10,7 +10,7 @@ type Call = { table: string; eq: Array<[string, unknown]>; in: Array<[string, un
 
 // Supabase de mentira: registra los filtros y devuelve filas por tabla. Para
 // `passes` devuelve las filas indicadas por tipo (columna `item_type` del eq).
-function fakeSupabase(data: Record<string, unknown[]>) {
+function fakeSupabase(data: Record<string, unknown[]>, errors: Record<string, Error> = {}) {
   const calls: Call[] = [];
   const supabase = {
     from(table: string) {
@@ -20,8 +20,9 @@ function fakeSupabase(data: Record<string, unknown[]>) {
         select: () => q,
         eq: (c: string, v: unknown) => (call.eq.push([c, v]), q),
         in: (c: string, v: unknown[]) => (call.in.push([c, v]), q),
-        then: (res: (v: { data: unknown[] }) => unknown) => {
+        then: (res: (v: { data: unknown[]; error?: unknown }) => unknown) => {
           const key = table === "passes" ? `passes:${call.eq.find(([c]) => c === "item_type")?.[1]}` : table;
+          if (errors[key]) return res({ data: [], error: errors[key] });
           return res({ data: data[key] ?? [] });
         },
       };
@@ -31,7 +32,7 @@ function fakeSupabase(data: Record<string, unknown[]>) {
   return { supabase: supabase as never, calls };
 }
 
-const member = (itemType: string, itemId: string) => ({ itemType, itemId });
+const member = (itemType: string, itemId: string, optional = false, skipped = false) => ({ itemType, itemId, optional, skipped });
 const detail = (over: Partial<SagaDetail> = {}) =>
   ({
     isAuthenticated: true,
@@ -91,6 +92,30 @@ describe("getSagaPassage", () => {
     expect(calls.some((c) => c.table === "movies")).toBe(false);
     expect(r?.completed).toBe(1);
     expect(r?.pages).toEqual({ total: 300, known: 1, of: 1 });
+  });
+
+  it("las opcionales saltadas son de la saga entera aunque la balda no las traiga", async () => {
+    mocks.getCurrentUser.mockResolvedValue({ id: "u1" });
+    const { supabase } = fakeSupabase({ "passes:book": [pass("b1")], books: [{ id: "b1", total_pages: 300 }] });
+    const d = detail({
+      groups: [
+        { members: [member("book", "b1"), member("book", "b2", true, true), member("book", "b3", true, false)] },
+      ] as never,
+    });
+    const r = await getSagaPassage(supabase, d, order); // `order` solo trae b1 (opcionales ocultas)
+    expect(r?.optional).toEqual({ skipped: 1, total: 2 });
+  });
+
+  it("un error en la consulta de pases rechaza", async () => {
+    mocks.getCurrentUser.mockResolvedValue({ id: "u1" });
+    const { supabase } = fakeSupabase({}, { "passes:book": new Error("boom") });
+    await expect(getSagaPassage(supabase, detail(), order)).rejects.toThrow("boom");
+  });
+
+  it("un error en la consulta de tallas rechaza", async () => {
+    mocks.getCurrentUser.mockResolvedValue({ id: "u1" });
+    const { supabase } = fakeSupabase({ "passes:book": [pass("b1")] }, { books: new Error("boom-books") });
+    await expect(getSagaPassage(supabase, detail(), order)).rejects.toThrow("boom-books");
   });
 
   it("sin pases devuelve null y no pide tallas", async () => {

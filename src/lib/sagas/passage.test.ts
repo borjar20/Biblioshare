@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { derivePassage, type PassRow, type PassageInput } from "./passage";
+import { derivePassage, sagaOptionalFigure, type PassRow, type PassageInput } from "./passage";
 
 const p = (key: string, extra: Partial<PassRow> = {}): PassRow => {
   const [itemType, itemId] = key.split(":") as [PassRow["itemType"], string];
@@ -96,16 +96,47 @@ describe("derivePassage", () => {
     expect(r?.pages).toBeNull();
   });
 
-  it("opcionales saltadas sobre el total de opcionales del orden", () => {
+  it("las opcionales saltadas vienen de la saga, no del orden de la balda", () => {
+    // La balda no trae las opcionales (preferencia «ocultar»): la cifra no depende de ella.
     const r = derivePassage({
-      passes: [p("book:a")], sizes: new Map(),
-      order: [o("book:a"), o("book:x", { optional: true, skipped: true }), o("book:y", { optional: true })],
+      passes: [p("book:a")], sizes: new Map(), order: [o("book:a")],
+      optional: { skipped: 1, total: 2 },
     });
     expect(r?.optional).toEqual({ skipped: 1, total: 2 });
-    expect(r?.curveLength).toBe(3);
+    expect(r?.curveLength).toBe(1);
   });
 
   it("sin opcionales, optional es null", () => {
     expect(derivePassage({ passes: [p("book:a")], sizes: new Map(), order: [o("book:a")] })?.optional).toBeNull();
+  });
+
+  it("countedAverage excluye las opcionales; average las incluye", () => {
+    const r = derivePassage({
+      passes: [p("book:a", { rating: 8 }), p("book:x", { rating: 2 })], sizes: new Map(),
+      order: [o("book:a")], optionalKeys: new Set(["book:x"]),
+    });
+    expect(r?.average).toBe(5);
+    expect(r?.countedAverage).toBe(8);
+  });
+
+  it("countedAverage es null si solo hay nota en opcionales", () => {
+    const r = derivePassage({
+      passes: [p("book:x", { rating: 2 })], sizes: new Map(), order: [],
+      optionalKeys: new Set(["book:x"]),
+    });
+    expect(r?.average).toBe(2);
+    expect(r?.countedAverage).toBeNull();
+  });
+});
+
+describe("sagaOptionalFigure", () => {
+  const m = (itemId: string, optional: boolean, skipped: boolean) => ({ itemType: "book" as const, itemId, optional, skipped });
+  it("cuenta opcionales distintas y saltadas, deduplicando por tipo:id", () => {
+    const f = sagaOptionalFigure([m("a", false, false), m("x", true, true), m("x", true, false), m("y", true, false)]);
+    expect(f.optional).toEqual({ skipped: 1, total: 2 });
+    expect([...f.optionalKeys].sort()).toEqual(["book:x", "book:y"]);
+  });
+  it("sin opcionales devuelve null", () => {
+    expect(sagaOptionalFigure([m("a", false, false)]).optional).toBeNull();
   });
 });

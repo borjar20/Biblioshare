@@ -25,6 +25,7 @@ const full: Passage = {
   minutes: { total: 330, known: 1, of: 1 },
   favorite: { key: "book:a", title: "Dune", href: "/libro/a", rating: 10 },
   average: 8,
+  countedAverage: 7,
   curve: [
     { x: 0, rating: 10, key: "book:a", title: "Dune" },
     { x: 1, rating: 5, key: "book:b", title: "Mesías" },
@@ -48,6 +49,8 @@ describe("YourPassage", () => {
     for (const k of ["passageSince", "passageCompleted", "passageInProgress", "passagePages", "passageTime", "passageAverage", "passageSkipped"]) {
       expect(screen.getByText(k)).toBeTruthy();
     }
+    expect(root.textContent).toContain('passageAverage');
+    expect(root.textContent).toContain('ratingOutOf|{"rating":"4"}'); // 8/10 en puntos: «Tu media» usa average, no countedAverage
     expect(root.textContent).toContain("marzo de 2025");
     expect(root.textContent).toMatch(/1.?500/);
     expect(root.textContent).toContain("passageOfKnown");
@@ -74,7 +77,7 @@ describe("YourPassage", () => {
     expect(svg.querySelectorAll("path")).toHaveLength(3);
     expect(svg.querySelector("circle")).toBeNull();
     expect(svg.getAttribute("aria-label")).toContain("passageCurveLabel");
-    expect(svg.getAttribute("aria-label")).toContain("Mesías 2,5");
+    expect(svg.getAttribute("aria-label")).toContain(String.raw`Mesías ratingOutOf|{\"rating\":\"2,5\"}`);
   });
 
   it("sin tallas conocidas (known 0) no hay Páginas ni Tiempo; con known < of sí hay «sobre»", async () => {

@@ -6,8 +6,8 @@ import type { Passage } from "@/lib/sagas/passage";
 // dentro de su propio <Suspense>: sin pases o sin notas no pinta nada.
 export async function YourAverage({ passage }: { passage: Promise<Passage | null> }) {
   const p = await passage;
-  if (!p || p.average === null) return null;
-  const rating = formatDots(p.average);
+  if (!p || p.countedAverage === null) return null;
+  const rating = formatDots(p.countedAverage);
   if (rating === null) return null;
   const t = await getTranslations("saga");
   return <p className="mt-2 text-sm font-semibold">{t("nextUpYourAverage", { rating })}</p>;

@@ -17,7 +17,7 @@ export async function NextUpCard({ shelf, finishedExtra }: { shelf: Shelf; finis
       <section className={card} data-testid="next-up">
         <p className="font-mono text-[10px] tracking-[0.14em] text-green uppercase">{t("nextUpFinished")}</p>
         <p className="mt-1 text-sm text-foreground-soft">{t("nextUpFinishedText")}</p>
-      {finishedExtra}
+        {finishedExtra}
       </section>
     );
   }

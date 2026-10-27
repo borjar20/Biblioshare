@@ -49,7 +49,6 @@ export async function YourPassage({ passage, sagaName }: { passage: Promise<Pass
     });
   }
   if (p.minutes && p.minutes.known > 0) {
-    // Con preserveAspectRatio="none" un <circle> se estira; el punto es un trazo de longitud cero con cap redondo.
     // Horas enteras: se redondea el total de minutos al entero más cercano.
     const h = nf.format(Math.round(p.minutes.total / 60));
     facts.push({
@@ -62,7 +61,9 @@ export async function YourPassage({ passage, sagaName }: { passage: Promise<Pass
       ),
     });
   }
-  if (p.average !== null) facts.push({ label: t("passageAverage"), value: formatDots(p.average) });
+  if (p.average !== null) {
+    facts.push({ label: t("passageAverage"), value: t("ratingOutOf", { rating: formatDots(p.average) ?? "" }) });
+  }
   if (p.optional) {
     facts.push({
       label: t("passageSkipped"),
@@ -74,7 +75,7 @@ export async function YourPassage({ passage, sagaName }: { passage: Promise<Pass
   const pts = p.curve.map((c) => ({ x: c.x * STEP, y: 56 - ((c.rating - 1) / 9) * 52 }));
   const points = pts.map((q) => `${q.x},${q.y}`).join(" ");
   const label = t("passageCurveLabel", {
-    list: p.curve.map((c) => `${c.title} ${formatDots(c.rating)}`).join(", "),
+    list: p.curve.map((c) => `${c.title} ${t("ratingOutOf", { rating: formatDots(c.rating) ?? "" })}`).join(", "),
   });
 
   return (
@@ -105,6 +106,7 @@ export async function YourPassage({ passage, sagaName }: { passage: Promise<Pass
           preserveAspectRatio="none"
         >
           <polyline points={points} fill="none" stroke="currentColor" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+          {/* Con preserveAspectRatio="none" un <circle> se estira; el punto es un trazo de longitud cero con cap redondo. */}
           {pts.map((q, i) => (
             <path
               key={i}

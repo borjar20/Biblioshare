@@ -239,13 +239,18 @@ test.describe("ficha de saga · lector", () => {
     expect([...hrefs].sort()).toEqual(esperadas.map((id) => `/saga/${id}`).sort());
   });
 
-  test("el acceso al mapa solo aparece con el mapa encendido y enlaza a /mapa", async ({ page }) => {
-    const [saga] = await rest<Array<{ show_map: boolean }>>(`sagas?id=eq.${UNIVERSO_ID}&select=show_map`);
+  test("el acceso al mapa solo aparece si /mapa tiene grafo y enlaza a /mapa", async ({ page }) => {
     await loginAsDevtest(page);
+    // La tarjeta sale con `detail.graph !== null` (mapa encendido Y algo curado),
+    // y /mapa redirige a la ficha exactamente cuando el grafo es null: esa
+    // redirección es el oráculo, no solo `show_map`.
+    await page.goto(`/saga/${UNIVERSO_ID}/mapa`);
+    await page.waitForLoadState("domcontentloaded");
+    const hayMapa = new URL(page.url()).pathname === `/saga/${UNIVERSO_ID}/mapa`;
     await gotoFicha(page);
 
     const teaser = page.getByTestId("atlas-teaser");
-    if (saga.show_map) {
+    if (hayMapa) {
       await expect(teaser).toBeVisible();
       await expect(teaser).toHaveAttribute("href", `/saga/${UNIVERSO_ID}/mapa`);
     } else {
@@ -267,8 +272,8 @@ test.describe("ficha de saga · lector", () => {
       const n = await cards.count();
       expect(n).toBeGreaterThan(0);
       for (let i = 0; i < n; i++) {
-        await expect(cards.nth(i)).toContainText(/\d+ obras?/);
-        await expect(cards.nth(i)).not.toContainText(" de ");
+        // Solo el recuento («4 obras»): sin sesión no hay «x de y».
+        await expect(cards.nth(i).getByTestId("door-progress")).toHaveText(/^\D*\d+ obras?$/);
       }
     } finally {
       await context.close();

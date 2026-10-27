@@ -22,6 +22,13 @@ export type PassageInput = {
   /** Obras de la saga en el orden de la balda activa: clave `tipo:id`, título,
    *  si es opcional y si está saltada. */
   order: Array<{ key: string; title: string; href: string; optional: boolean; skipped: boolean }>;
+  /** Opcionales saltadas sobre el total de opcionales de la SAGA entera (no de la
+   *  balda: esta oculta opcionales según la preferencia y cambia con el
+   *  itinerario). null si no hay opcionales. Lo calcula `sagaOptionalFigure`. */
+  optional?: { skipped: number; total: number } | null;
+  /** Claves `tipo:id` de las obras opcionales de la saga: no cuentan para
+   *  `countedAverage`. */
+  optionalKeys?: Set<string>;
 };
 export type Passage = {
   since: string | null; // YYYY-MM-DD
@@ -30,7 +37,8 @@ export type Passage = {
   pages: { total: number; known: number; of: number } | null; // null si no hay libros terminados
   minutes: { total: number; known: number; of: number } | null; // null si no hay pelis terminadas
   favorite: { key: string; title: string; href: string; rating: number } | null;
-  average: number | null; // media 1–10 de tu ÚLTIMA nota terminada por obra
+  average: number | null; // media 1–10 de tu ÚLTIMA nota terminada por obra (todas las obras)
+  countedAverage: number | null; // lo mismo, solo en obras que cuentan (no opcionales)
   curve: Array<{ x: number; rating: number; key: string; title: string }>; // x = índice en `order`
   curveLength: number; // order.length
   optional: { skipped: number; total: number } | null; // null si no hay opcionales
@@ -50,7 +58,32 @@ function laterFinish(a: PassRow, b: PassRow): boolean {
   return a.createdAt > b.createdAt;
 }
 
-export function derivePassage({ passes, sizes, order }: PassageInput): Passage | null {
+/** Cifra de opcionales de la saga entera a partir de sus miembros: dedupe por
+ *  `tipo:id` (una obra compartida cuenta una vez; saltada si algún miembro lo
+ *  está) y el conjunto de claves opcionales. */
+export function sagaOptionalFigure(
+  members: Array<{ itemType: ItemType; itemId: string; optional: boolean; skipped: boolean }>,
+): { optional: { skipped: number; total: number } | null; optionalKeys: Set<string> } {
+  const byKey = new Map<string, boolean>();
+  for (const m of members) {
+    if (!m.optional) continue;
+    const k = `${m.itemType}:${m.itemId}`;
+    byKey.set(k, (byKey.get(k) ?? false) || m.skipped);
+  }
+  const skipped = [...byKey.values()].filter(Boolean).length;
+  return {
+    optional: byKey.size === 0 ? null : { skipped, total: byKey.size },
+    optionalKeys: new Set(byKey.keys()),
+  };
+}
+
+export function derivePassage({
+  passes,
+  sizes,
+  order,
+  optional = null,
+  optionalKeys = new Set(),
+}: PassageInput): Passage | null {
   if (passes.length === 0) return null;
 
   const since = passes.map(day).sort()[0] ?? null;
@@ -71,6 +104,10 @@ export function derivePassage({ passes, sizes, order }: PassageInput): Passage |
     [string, PassRow & { rating: number }]
   >;
   const average = rated.length === 0 ? null : rated.reduce((s, [, r]) => s + r.rating, 0) / rated.length;
+
+  const counted = rated.filter(([k]) => !optionalKeys.has(k));
+  const countedAverage =
+    counted.length === 0 ? null : counted.reduce((s, [, r]) => s + r.rating, 0) / counted.length;
 
   const byKey = new Map(order.map((w) => [w.key, w] as const));
   let favorite: Passage["favorite"] = null;
@@ -103,7 +140,6 @@ export function derivePassage({ passes, sizes, order }: PassageInput): Passage |
     return r && r.rating !== null ? [{ x: i, rating: r.rating, key: w.key, title: w.title }] : [];
   });
 
-  const optionals = order.filter((w) => w.optional);
   return {
     since,
     completed: lastDone.size,
@@ -112,11 +148,9 @@ export function derivePassage({ passes, sizes, order }: PassageInput): Passage |
     minutes: sizeSum("movie", (s) => s.minutes),
     favorite,
     average,
+    countedAverage,
     curve,
     curveLength: order.length,
-    optional:
-      optionals.length === 0
-        ? null
-        : { skipped: optionals.filter((w) => w.skipped).length, total: optionals.length },
+    optional,
   };
 }

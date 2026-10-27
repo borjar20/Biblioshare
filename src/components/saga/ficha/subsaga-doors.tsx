@@ -38,11 +38,17 @@ export async function SubsagaDoors({ doors, authenticated }: { doors: SubsagaDoo
                 ))}
               </span>
               <span className="font-serif text-sm leading-tight font-semibold">{d.name ?? t("doorUnnamed")}</span>
-              <span className={`font-mono text-[10px] ${d.state === "done" ? "text-green" : "text-muted-foreground"}`}>
+              <span
+                data-testid="door-progress"
+                className={`font-mono text-[10px] ${d.state === "done" ? "text-green" : "text-muted-foreground"}`}>
                 {!hasProgress
                   ? t("doorCount", { count: d.counted === 0 ? d.total : d.counted })
                   : d.state === "done"
-                    ? `${t("doorDone")} ✓`
+                    ? (
+                      <>
+                        {t("doorDone")} <span aria-hidden>✓</span>
+                      </>
+                    )
                     : t("doorProgress", { completed: d.completed, counted: d.counted })}
                 {hasProgress && d.state !== "done" && <span className="sr-only"> {t("doorWorksNoun")}</span>}
               </span>
