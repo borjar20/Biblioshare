@@ -2353,6 +2353,8 @@
     "shelfState_now": "ahora",
     "shelfState_todo": "pendiente",
     "shelfEmpty": "Este itinerario todavía no tiene obras en la balda.",
+    "shelfScrollLeft": "Ver obras anteriores",
+    "shelfScrollRight": "Ver obras siguientes",
     "eyebrowUniverse": "Universo",
     "curatorMenu": "Opciones de curación",
     "aboutTitle": "Sobre la saga",
