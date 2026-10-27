@@ -63,9 +63,33 @@ export function SagaShelf({
   const completed = shelf.groups.reduce((s, g) => s + g.completed, 0);
   const groupName = (g: ShelfGroup) => g.name ?? sagaName;
 
+  // Difuminados en los bordes: el scroll no se ve (sin barra), se intuye por
+  // las portadas que se desvanecen en el lado hacia el que hay más.
+  const [edges, setEdges] = useState({ left: false, right: false });
+  function updateEdges() {
+    const row = rowRef.current;
+    if (!row) return;
+    const left = row.scrollLeft > 4;
+    const right = row.scrollLeft + row.clientWidth < row.scrollWidth - 4;
+    setEdges((e) => (e.left === left && e.right === right ? e : { left, right }));
+  }
+  useEffect(() => {
+    updateEdges();
+    window.addEventListener("resize", updateEdges);
+    return () => window.removeEventListener("resize", updateEdges);
+  }, []);
+
   useEffect(() => {
     const row = rowRef.current;
-    row?.querySelector("[data-testid='shelf-now']")?.scrollIntoView({ inline: "center", block: "nearest" });
+    const now = row?.querySelector<HTMLElement>("[data-testid='shelf-now']");
+    // Se centra moviendo SOLO la balda: scrollIntoView también desplazaba la
+    // página en vertical al cargar (#1548).
+    if (row && now) {
+      const r = row.getBoundingClientRect();
+      const n = now.getBoundingClientRect();
+      row.scrollTo?.({ left: row.scrollLeft + (n.left - r.left) - (row.clientWidth - n.width) / 2 });
+    }
+    updateEdges();
     if (focusAfterOpen.current) {
       focusAfterOpen.current = false;
       (row?.querySelector<HTMLElement>("[data-testid='shelf-now']") ?? row?.querySelector<HTMLElement>("[data-shelf-link]"))?.focus();
@@ -121,14 +145,34 @@ export function SagaShelf({
           {t("shelfEmpty")}
         </p>
       ) : (
-        <div ref={rowRef} onKeyDown={onKeyDown} className="flex snap-x items-end gap-4 overflow-x-auto pt-8 pb-2">
-          {shelf.groups.map((g) =>
-            g.key === shown || shelf.groups.length === 1 ? (
-              <OpenGroup key={g.key} group={g} label={groupName(g)} showLabel={shelf.groups.length > 1} />
-            ) : (
-              <Pile key={g.key} group={g} label={groupName(g)} onOpen={() => openGroup(g.key)} />
-            ),
-          )}
+        // -mx/px: el contorno y el ✓ de la primera portada quedaban recortados
+        // por el borde del scroll; el margen negativo mantiene la alineación
+        // con el resto de la ficha, y los difuminados caen fuera del contenido.
+        <div className="relative -mx-3">
+          <div
+            ref={rowRef}
+            onKeyDown={onKeyDown}
+            onScroll={updateEdges}
+            className="flex snap-x scroll-px-3 items-end gap-4 overflow-x-auto px-3 pt-8 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {shelf.groups.map((g) =>
+              g.key === shown || shelf.groups.length === 1 ? (
+                <OpenGroup key={g.key} group={g} label={groupName(g)} showLabel={shelf.groups.length > 1} />
+              ) : (
+                <Pile key={g.key} group={g} label={groupName(g)} onOpen={() => openGroup(g.key)} />
+              ),
+            )}
+          </div>
+          <span
+            aria-hidden
+            data-testid="shelf-fade-left"
+            className={`pointer-events-none absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-background to-transparent transition-opacity ${edges.left ? "opacity-100" : "opacity-0"}`}
+          />
+          <span
+            aria-hidden
+            data-testid="shelf-fade-right"
+            className={`pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-background to-transparent transition-opacity ${edges.right ? "opacity-100" : "opacity-0"}`}
+          />
         </div>
       )}
 
