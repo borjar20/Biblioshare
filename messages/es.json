@@ -2333,6 +2333,8 @@
     "backHome": "Ir al inicio",
     "count": "{count, plural, =1 {1 título} other {# títulos}}",
     "eyebrow": "Saga",
+    "eyebrowUniverse": "Universo",
+    "curatorMenu": "Opciones de curación",
     "itemsTitle": "Títulos que la componen",
     "tabInfo": "Info",
     "tabMap": "Mapa de lectura",
