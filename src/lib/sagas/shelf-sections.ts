@@ -6,6 +6,7 @@ import type { SagaDetail } from "./get-saga-detail";
 import { getRouteEntries } from "./get-saga-routes";
 import { keyOfRouteEntry } from "./hydrate-route-draft";
 import type { SagaGraph } from "./map-types";
+import type { SagaRoute } from "./route-types";
 import type { DetailMember } from "./types";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -27,6 +28,30 @@ export function publicationSections(graph: SagaGraph, members: DetailMember[]): 
     .map((node, i) => ({ kind: "entry" as const, no: i + 1, node, branches: [] }));
   if (rows.length === 0) return [];
   return [{ groupSagaId: null, groupName: null, accent: rows[0].node.accent, continuation: false, rows }];
+}
+
+/** Rutas que ofrece la BALDA de la ficha. Igual que `detail.routes` salvo en
+ *  un caso: con el interruptor del mapa apagado (`hasGraph` false) pero con
+ *  orden curado (`shelfGraph` con nodos), `buildRouteList` no ofrece la
+ *  sintética «lectura» — y la balda caía en un itinerario curado o en
+ *  «Publicación» aunque la saga tuviera orden de lectura. Decisión #3 de la
+ *  spec 2026-10-27: el interruptor esconde el MAPA, no el orden. Aquí se
+ *  antepone «lectura» con la misma forma que la de `buildRouteList`.
+ *
+ *  Solo para la ficha: `detail.routes` no cambia porque /como-leerla y el
+ *  resto sí deben respetar el interruptor (sin mapa no hay vista «lectura»
+ *  que enseñar; allí `?ruta=lectura` degrada a la primera ruta). Si ya hay
+ *  «lectura» o un itinerario designado como orden de lectura, no se toca. */
+export function shelfRoutesFor(
+  detail: Pick<SagaDetail, "routes" | "hasGraph" | "shelfGraph">,
+  readingLabel: string,
+): SagaRoute[] {
+  if (detail.hasGraph || detail.shelfGraph.nodes.length === 0) return detail.routes;
+  if (detail.routes.some((r) => r.slug === "lectura" || r.isReadingOrder)) return detail.routes;
+  return [
+    { slug: "lectura", name: readingLabel, summary: null, synthetic: true, isReadingOrder: false },
+    ...detail.routes,
+  ];
 }
 
 /** Elige las secciones del itinerario activo. Sin `use cache` (regla #437):

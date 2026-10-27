@@ -1,12 +1,13 @@
 // src/app/saga/[id]/page.tsx
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { hasMinRole } from "@/lib/auth/roles";
 import { sagaHref, sagaReadingHref } from "@/lib/catalog/item-href";
 import { getSagaDetail } from "@/lib/sagas/get-saga-detail";
 import { deriveShelf } from "@/lib/sagas/derive-shelf";
-import { getShelfSections } from "@/lib/sagas/shelf-sections";
+import { getShelfSections, shelfRoutesFor } from "@/lib/sagas/shelf-sections";
 import { resolveActiveRoute } from "@/lib/sagas/resolve-active-route";
 import { DETAIL_CONTAINER } from "@/components/detail/detail-container";
 import { SagaHeroCinematic } from "@/components/saga/ficha/saga-hero-cinematic";
@@ -50,7 +51,11 @@ export default async function SagaDetailPage({
   const detail = await getSagaDetail(supabase, id);
   if (!detail) notFound();
   const canCurate = hasMinRole(detail.viewerRole, "collaborator");
-  const activeRoute = resolveActiveRoute(detail, { ruta, orden });
+  // La balda ofrece «Orden de lectura» aunque el mapa esté apagado (decisión
+  // #3: el interruptor esconde el mapa, no el orden); ver shelfRoutesFor.
+  const t = await getTranslations("saga");
+  const shelfRoutes = shelfRoutesFor(detail, t("orderReading"));
+  const activeRoute = resolveActiveRoute({ routes: shelfRoutes, routeChoice: detail.routeChoice }, { ruta, orden });
 
   const [sections, backdropUrl] = await Promise.all([
     getShelfSections(supabase, detail, activeRoute),
@@ -69,7 +74,7 @@ export default async function SagaDetailPage({
         <SagaShelf
           shelf={shelf}
           sagaName={detail.saga.name}
-          routes={detail.routes.map((r) => ({ slug: r.slug, name: r.name }))}
+          routes={shelfRoutes.map((r) => ({ slug: r.slug, name: r.name }))}
           activeRoute={activeRoute}
           baseHref={sagaHref(detail.saga.id)}
           readingHref={`${sagaReadingHref(detail.saga.id)}?ruta=${encodeURIComponent(activeRoute)}`}
