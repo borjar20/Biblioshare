@@ -23,9 +23,12 @@ export async function SubsagaDoors({ doors, authenticated }: { doors: SubsagaDoo
             <Link
               key={d.sagaId}
               href={d.href}
-              className="flex flex-col gap-2 rounded-[14px] border border-border bg-surface p-3 transition-colors hover:bg-surface-muted"
+              className="relative flex flex-col gap-2 overflow-hidden rounded-[14px] border border-border bg-surface p-3 pt-4 transition-colors hover:bg-surface-muted"
             >
-              <span aria-hidden className={`-mx-3 -mt-3 mb-1 block h-[3px] rounded-t-[14px] ${accent.bg}`} />
+              {/* Franja del acento dentro de la tarjeta: con overflow-hidden la
+                  recorta el propio radio. Con márgenes negativos se salía del
+                  borde y las esquinas quedaban rotas. */}
+              <span aria-hidden className={`absolute inset-x-0 top-0 block h-[3px] ${accent.bg}`} />
               <span className="relative block h-[62px]">
                 {covers.map((src, i) => (
                   <span
