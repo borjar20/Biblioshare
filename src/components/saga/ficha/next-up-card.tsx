@@ -6,7 +6,7 @@ import type { Shelf } from "@/lib/sagas/derive-shelf";
 
 // «Te toca» (spec 2026-10-27 §3). Lleva a la ficha de la obra: empezar un pase
 // es cosa de su PassCard, aquí no se duplica esa lógica.
-export async function NextUpCard({ shelf }: { shelf: Shelf }) {
+export async function NextUpCard({ shelf, finishedExtra }: { shelf: Shelf; finishedExtra?: ReactNode }) {
   if (shelf.mode === "empty") return null;
 
   const t = await getTranslations("saga");
@@ -17,6 +17,7 @@ export async function NextUpCard({ shelf }: { shelf: Shelf }) {
       <section className={card} data-testid="next-up">
         <p className="font-mono text-[10px] tracking-[0.14em] text-green uppercase">{t("nextUpFinished")}</p>
         <p className="mt-1 text-sm text-foreground-soft">{t("nextUpFinishedText")}</p>
+      {finishedExtra}
       </section>
     );
   }

@@ -2366,6 +2366,7 @@
     "nextUpFitsNow": "Ahora encaja también <b>{title}</b>",
     "nextUpFinished": "La terminaste",
     "nextUpFinishedText": "Has leído todo lo que cuenta de esta saga.",
+    "nextUpYourAverage": "Tu nota media: {rating}",
     "shelfWindowA11y": "ventana: entre {after} y {before}",
     "shelfWindowAfterA11y": "ventana: después de {title}",
     "shelfWindowBeforeA11y": "ventana: antes de {title}",

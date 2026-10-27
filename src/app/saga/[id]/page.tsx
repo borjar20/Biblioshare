@@ -1,5 +1,6 @@
 // src/app/saga/[id]/page.tsx
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
@@ -7,6 +8,10 @@ import { hasMinRole } from "@/lib/auth/roles";
 import { sagaHref, sagaReadingHref } from "@/lib/catalog/item-href";
 import { getSagaDetail } from "@/lib/sagas/get-saga-detail";
 import { deriveShelf } from "@/lib/sagas/derive-shelf";
+import { getSagaPassage } from "@/lib/sagas/get-saga-passage";
+import { parseItemKey } from "@/lib/sagas/derive-map";
+import { deriveSubsagaDoors } from "@/lib/sagas/subsaga-doors";
+import { miniMapPoints } from "@/lib/sagas/mini-map";
 import { getShelfSections, shelfRoutesFor } from "@/lib/sagas/shelf-sections";
 import { resolveActiveRoute } from "@/lib/sagas/resolve-active-route";
 import { DETAIL_CONTAINER } from "@/components/detail/detail-container";
@@ -16,6 +21,10 @@ import { SagaShelf } from "@/components/saga/ficha/saga-shelf";
 import { NextUpCard } from "@/components/saga/ficha/next-up-card";
 import { SagaAbout } from "@/components/saga/ficha/saga-about";
 import { SagaAllWorks } from "@/components/saga/ficha/saga-all-works";
+import { YourAverage } from "@/components/saga/ficha/your-average";
+import { YourPassage, YourPassageSkeleton } from "@/components/saga/ficha/your-passage";
+import { SubsagaDoors } from "@/components/saga/ficha/subsaga-doors";
+import { AtlasTeaser } from "@/components/saga/ficha/atlas-teaser";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
@@ -63,6 +72,26 @@ export default async function SagaDetailPage({
   ]);
   const shelf = deriveShelf(sections, { authenticated: detail.isAuthenticated });
 
+  // Orden de la balda en formato `tipo:id` para «Tu paso». El id de nodo de la
+  // balda es `i:<tipo>:<uuid>` (derive-map.ts, itemKey); parseItemKey lo
+  // deshace. Los extras (opcionales sin número) también cuentan.
+  const order = shelf.groups
+    .flatMap((g) => [...g.slots.flatMap((s) => (s.kind === "tandem" ? s.works : [s.work])), ...g.extras])
+    .flatMap((w) => {
+      const ref = parseItemKey(w.key);
+      return ref
+        ? [{ key: `${ref.itemType}:${ref.itemId}`, title: w.title, href: w.href, optional: w.optional, skipped: w.skipped }]
+        : [];
+    });
+  // Sin await: la promesa la consumen dos islas en <Suspense> y el hero y la
+  // balda no esperan a esta lectura (regla #437: depende de la sesión).
+  // «Tu paso» es accesorio: si la lectura falla, la ficha sigue sin él.
+  const passage = getSagaPassage(supabase, detail, order).catch((e) => {
+    console.error("getSagaPassage", e);
+    return null;
+  });
+  const doors = deriveSubsagaDoors(detail.groups);
+
   return (
     <div className="flex w-full flex-col pb-12">
       <SagaHeroCinematic
@@ -80,10 +109,22 @@ export default async function SagaDetailPage({
           readingHref={`${sagaReadingHref(detail.saga.id)}?ruta=${encodeURIComponent(activeRoute)}`}
         />
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
-          <NextUpCard shelf={shelf} />
+          <NextUpCard
+            shelf={shelf}
+            finishedExtra={
+              <Suspense fallback={null}>
+                <YourAverage passage={passage} />
+              </Suspense>
+            }
+          />
           {/* Columna derecha reservada a «Entre amigos» (fase 3). */}
         </div>
         <SagaAbout detail={detail} canConfigure={canCurate} />
+        <Suspense fallback={detail.isAuthenticated ? <YourPassageSkeleton /> : null}>
+          <YourPassage passage={passage} sagaName={detail.saga.name} />
+        </Suspense>
+        <SubsagaDoors doors={doors} authenticated={detail.isAuthenticated} />
+        {detail.graph && <AtlasTeaser href={`${sagaHref(detail.saga.id)}/mapa`} map={miniMapPoints(detail.graph)} />}
         <section>
           <SagaAllWorks groups={detail.groups} windows={detail.windows} />
         </section>
