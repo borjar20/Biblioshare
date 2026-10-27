@@ -128,15 +128,19 @@ export function deriveShelf(sections: TimelineSection[], opts: { authenticated: 
   const windowKeys = new Set(windows.map((w) => w.slot.work.key));
   let now: ShelfWork | null = null;
   if (opts.authenticated) {
+    // Una ventana en curso sí puede ser «ahora»: la estás leyendo.
     now =
       ordered.find((w) => w.state !== "done" && inProgress.has(w.key)) ??
       ordered.find((w) => w.state !== "done" && !w.optional && !w.skipped && !windowKeys.has(w.key)) ??
+      // Una ventana se ofrece como «encaja ahora» solo mientras haya otra cosa
+      // que leer; si solo quedan ventanas, la ventana es lo siguiente.
+      ordered.find((w) => w.state !== "done" && !w.optional && !w.skipped) ??
       null;
     if (now) now.state = "now";
   }
 
   // 4. Ventanas que encajan ahora (necesitan el estado definitivo).
-  for (const w of windows) w.slot.fitsNow = w.inside && w.slot.work.state !== "done";
+  for (const w of windows) w.slot.fitsNow = opts.authenticated && w.inside && w.slot.work.state !== "done";
 
   // 5. Grupos con su estado.
   const groups: ShelfGroup[] = drafts.map((draft) => {

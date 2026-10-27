@@ -1,4 +1,3 @@
-// src/lib/sagas/derive-shelf.test.ts
 import { describe, expect, it } from "vitest";
 import type { TimelineRow, TimelineSection } from "./derive-timeline";
 import type { SagaGraphNode } from "./map-types";
@@ -148,5 +147,61 @@ describe("deriveShelf", () => {
   it("pila: hasta tres portadas no nulas", () => {
     const shelf = deriveShelf([sec([entry(n("a"), 1), entry(n("b", { coverUrl: null }), 2), entry(n("c"), 3), entry(n("d"), 4), entry(n("e"), 5)])], auth);
     expect(shelf.groups[0].pileCovers).toEqual(["/c/a.jpg", "/c/c.jpg", "/c/d.jpg"]);
+  });
+
+  const win = (node: SagaGraphNode, after: SagaGraphNode | null, before: SagaGraphNode | null, notice: "dentro" | "antes" = "dentro"): TimelineRow => ({
+    kind: "window", no: null, node, after, before, reason: null,
+    track: { fromPct: 0, toPct: 100, youPct: 50, notice },
+  });
+
+  it("solo quedan ventanas por leer: la ventana es «ahora» y mode next implica nextUp", () => {
+    const a = n("a", { status: "completed" });
+    const shelf = deriveShelf([sec([entry(a, 1), win(n("w"), a, null, "antes")])], auth);
+    expect(shelf.mode).toBe("next");
+    expect(shelf.nextUp?.work.key).toBe("i:book:w");
+    expect(shelf.nextUp?.work.state).toBe("now");
+  });
+
+  it("una ventana en curso puede ser «ahora»", () => {
+    const a = n("a");
+    const shelf = deriveShelf([sec([entry(a, 1), win(n("w", { status: "in_progress" }), a, null)])], auth);
+    expect(shelf.nextUp?.work.key).toBe("i:book:w");
+  });
+
+  it("sin sesión, la ventana no encaja ahora", () => {
+    const a = n("a");
+    const shelf = deriveShelf([sec([entry(a, 1), win(n("w"), a, null)])], { authenticated: false });
+    const w = shelf.groups[0].slots[1];
+    expect(w.kind === "window" && w.fitsNow).toBe(false);
+  });
+
+  it("ventana cuyo tramo no es «dentro»: no encaja ahora", () => {
+    const a = n("a");
+    const shelf = deriveShelf([sec([entry(a, 1), win(n("w"), a, null, "antes")])], auth);
+    const w = shelf.groups[0].slots[1];
+    expect(w.kind === "window" && w.fitsNow).toBe(false);
+  });
+
+  it("ventana ya leída: no encaja ahora", () => {
+    const a = n("a");
+    const shelf = deriveShelf([sec([entry(a, 1), win(n("w", { status: "completed" }), a, null)])], auth);
+    const w = shelf.groups[0].slots[1];
+    expect(w.kind === "window" && w.fitsNow).toBe(false);
+  });
+
+  it("ventana con ancla en otro grupo: spanFrom null", () => {
+    const a = n("a");
+    const shelf = deriveShelf([
+      sec([entry(a, 1)], "s1", "Uno"),
+      sec([win(n("w"), a, null)], "s2", "Dos"),
+    ], auth);
+    const w = shelf.groups[1].slots[0];
+    expect(w).toMatchObject({ kind: "window", spanFrom: null });
+  });
+
+  it("puente: slot de obra sin número", () => {
+    const shelf = deriveShelf([sec([{ kind: "bridge", node: n("p") }])], auth);
+    const s = shelf.groups[0].slots[0];
+    expect(s.kind === "work" && s.work.no).toBeNull();
   });
 });
