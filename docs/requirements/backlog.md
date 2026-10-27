@@ -1,5 +1,17 @@
 # Backlog — trabajo pendiente
 
+## Rework de sagas
+
+- [x] **Rework de sagas · subproyecto 1, fase 1 (ficha de saga para el lector).** Hero
+  cinemático, balda de pilas por subsaga, «Te toca», «Sobre la saga» y «Todas las obras»;
+  `/saga/[id]/como-leerla` interina y `?tab=mapa` redirige allí. Rama
+  `claude/sagas-rework-11497e` (PR pendiente); [spec](superpowers/specs/2026-10-27-sagas-ficha-lector-design.md),
+  [evidencia](testing/2026-10-27-sagas-ficha-lector-f1.md), decisiones del 2026-10-27.
+- [ ] **Fase 2:** «Tu paso», «Subsagas», acceso al atlas, nota media en «La terminaste» y cierre
+  de #761 (#1539).
+- [ ] **Fase 3:** «Entre amigos» (#1540).
+- [ ] «Cómo leerla» no expande pasos-bloque de un itinerario curado (#1541).
+
 ## Moderación administrativa — #1183
 
 - [ ] Retirada/restauración/borrado definitivo de clubes, publicaciones y comentarios,
