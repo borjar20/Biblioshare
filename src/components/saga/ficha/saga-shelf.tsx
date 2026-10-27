@@ -5,7 +5,7 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslations } from "next-intl";
 import type { Shelf, ShelfGroup, ShelfSlot, ShelfWork } from "@/lib/sagas/derive-shelf";
 import { ChevronLeftIcon, ChevronRightIcon } from "@/components/ui/icons";
-import { OpenGroup, Pile } from "./saga-shelf-parts";
+import { OpenGroup, Pile, ShelfRatingsContext } from "./saga-shelf-parts";
 
 type A11yItem = { work: ShelfWork; extra: string };
 type T = ReturnType<typeof useTranslations>;
@@ -28,7 +28,7 @@ function slotA11y(s: ShelfSlot, t: T): A11yItem[] {
 // La balda de la ficha de saga (spec 2026-10-27 §2). Solo pinta lo que decide
 // `deriveShelf`; el único estado propio es QUÉ grupo está desplegado.
 export function SagaShelf({
-  shelf, sagaName, routes, activeRoute, baseHref, readingHref,
+  shelf, sagaName, routes, activeRoute, baseHref, readingHref, ratings,
 }: {
   shelf: Shelf;
   sagaName: string;
@@ -36,6 +36,9 @@ export function SagaShelf({
   activeRoute: string;
   baseHref: string;
   readingHref: string;
+  /** Tus notas (1–10) por clave de nodo, para los puntos bajo las portadas
+   *  leídas. Promesa: la balda no espera a la lectura de tus pases. */
+  ratings?: Promise<Record<string, number>>;
 }) {
   const t = useTranslations("saga");
   const [open, setOpen] = useState(shelf.openGroupKey);
@@ -120,6 +123,7 @@ export function SagaShelf({
   ]);
 
   return (
+    <ShelfRatingsContext value={ratings ?? null}>
     <section data-testid="saga-shelf" aria-labelledby={titleId} className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
         <h2 id={titleId} className="mr-1 font-mono text-[10px] tracking-[0.14em] text-accent uppercase">
@@ -238,5 +242,6 @@ export function SagaShelf({
         </ol>
       )}
     </section>
+    </ShelfRatingsContext>
   );
 }

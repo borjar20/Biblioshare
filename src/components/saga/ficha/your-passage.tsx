@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { getTranslations } from "next-intl/server";
@@ -9,8 +10,8 @@ import type { Passage } from "@/lib/sagas/passage";
 // «Tu paso por la saga» (spec 2026-10-27 §1.5). Espera la promesa dentro del
 // <Suspense> de la página: sin pases (o sin sesión) llega null y no se pinta.
 
-const STEP = 24; // px de viewBox entre posiciones consecutivas de la balda
-const HEIGHT = 60;
+/** Portadas que se apilan por nivel antes de resumir el resto en «+N». */
+const MAX_STACK = 8;
 
 const nf = new Intl.NumberFormat("es-ES");
 const sinceFormat = new Intl.DateTimeFormat("es-ES", { month: "long", year: "numeric", timeZone: "UTC" });
@@ -71,13 +72,6 @@ export async function YourPassage({ passage, sagaName }: { passage: Promise<Pass
     });
   }
 
-  const W = Math.max(p.curveLength - 1, 1) * STEP;
-  const pts = p.curve.map((c) => ({ x: c.x * STEP, y: 56 - ((c.rating - 1) / 9) * 52 }));
-  const points = pts.map((q) => `${q.x},${q.y}`).join(" ");
-  const label = t("passageCurveLabel", {
-    list: p.curve.map((c) => `${c.title} ${t("ratingOutOf", { rating: formatDots(c.rating) ?? "" })}`).join(", "),
-  });
-
   return (
     <section className="rounded-[14px] border border-border bg-surface p-4" data-testid="your-passage">
       <h2 className="font-serif text-lg font-semibold">{t("passageTitle", { name: sagaName })}</h2>
@@ -97,28 +91,42 @@ export async function YourPassage({ passage, sagaName }: { passage: Promise<Pass
           <RatingDots value={p.favorite.rating} size="sm" />
         </div>
       )}
+      {/* «Cómo has puntuado esta saga» (sustituye a la curva, que no se
+          entendía): tus obras con nota agrupadas por nivel, de 5 a 1. Qué
+          nota le diste a cada obra ya lo dice la balda, bajo cada portada. */}
       {p.curve.length >= 2 && (
-        <svg
-          viewBox={`0 0 ${W} ${HEIGHT}`}
-          role="img"
-          aria-label={label}
-          className="mt-3 h-[60px] w-full max-w-full overflow-visible text-accent"
-          preserveAspectRatio="none"
-        >
-          <polyline points={points} fill="none" stroke="currentColor" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
-          {/* Con preserveAspectRatio="none" un <circle> se estira; el punto es un trazo de longitud cero con cap redondo. */}
-          {pts.map((q, i) => (
-            <path
-              key={i}
-              d={`M${q.x} ${q.y}h0`}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={6}
-              strokeLinecap="round"
-              vectorEffect="non-scaling-stroke"
-            />
-          ))}
-        </svg>
+        <div className="mt-4" data-testid="passage-distribution">
+          <h3 className="font-mono text-[10px] tracking-[0.14em] text-muted-foreground uppercase">
+            {t("passageDistributionTitle")}
+          </h3>
+          <ul className="mt-2 flex flex-col gap-1.5">
+            {p.distribution.map((d) => (
+              <li key={d.level} className="flex items-center gap-3" aria-label={t("passageDistributionLevel", { level: d.level, count: d.works.length })}>
+                <span aria-hidden className="flex w-[52px] shrink-0 gap-1">
+                  {[1, 2, 3, 4, 5].map((k) => (
+                    <span key={k} className={`block h-1.5 w-1.5 rounded-full ${k <= d.level ? "bg-gold" : "bg-surface-muted"}`} />
+                  ))}
+                </span>
+                <span className="flex min-h-[42px] items-center">
+                  {d.works.slice(0, MAX_STACK).map((w, i) => (
+                    <Link
+                      key={w.key}
+                      href={w.href}
+                      title={w.title}
+                      className={`relative block h-[42px] w-[28px] shrink-0 overflow-hidden rounded-[3px] border border-background bg-surface-muted shadow-cover ${i > 0 ? "-ml-2.5" : ""}`}
+                    >
+                      {w.coverUrl && <Image src={w.coverUrl} alt={w.title} fill sizes="28px" className="object-cover" />}
+                    </Link>
+                  ))}
+                  {d.works.length > MAX_STACK && (
+                    <span className="ml-2 font-mono text-[10px] text-muted-foreground">+{d.works.length - MAX_STACK}</span>
+                  )}
+                </span>
+                <span aria-hidden className="font-mono text-[11px] text-muted-foreground">{d.works.length > 0 ? d.works.length : ""}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </section>
   );

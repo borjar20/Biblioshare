@@ -80,7 +80,7 @@ export default async function SagaDetailPage({
     .flatMap((w) => {
       const ref = parseItemKey(w.key);
       return ref
-        ? [{ key: `${ref.itemType}:${ref.itemId}`, title: w.title, href: w.href, optional: w.optional, skipped: w.skipped }]
+        ? [{ key: `${ref.itemType}:${ref.itemId}`, title: w.title, href: w.href, coverUrl: w.coverUrl, optional: w.optional, skipped: w.skipped }]
         : [];
     });
   // Sin await: la promesa la consumen dos islas en <Suspense> y el hero y la
@@ -90,6 +90,12 @@ export default async function SagaDetailPage({
     console.error("getSagaPassage", e);
     return null;
   });
+  // Tus notas por obra para los puntos bajo las portadas de la balda, con la
+  // clave de nodo de la balda (`i:<tipo>:<uuid>`). Misma promesa: la balda se
+  // pinta ya y los puntos llegan cuando termina la lectura.
+  const ratings = passage.then((p) =>
+    Object.fromEntries((p?.curve ?? []).map((c) => [`i:${c.key}`, c.rating] as const)),
+  );
   const doors = deriveSubsagaDoors(detail.groups);
 
   return (
@@ -107,6 +113,7 @@ export default async function SagaDetailPage({
           activeRoute={activeRoute}
           baseHref={sagaHref(detail.saga.id)}
           readingHref={`${sagaReadingHref(detail.saga.id)}?ruta=${encodeURIComponent(activeRoute)}`}
+          ratings={detail.isAuthenticated ? ratings : undefined}
         />
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
           <NextUpCard

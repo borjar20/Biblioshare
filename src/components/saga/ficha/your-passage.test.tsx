@@ -32,6 +32,13 @@ const full: Passage = {
     { x: 4, rating: 1, key: "book:c", title: "Herejes" },
   ],
   curveLength: 5,
+  distribution: [
+    { level: 5, works: [{ key: "book:a", title: "Dune", href: "/libro/a", coverUrl: "/c/a.jpg" }] },
+    { level: 4, works: [] },
+    { level: 3, works: [{ key: "book:b", title: "Mesías", href: "/libro/b", coverUrl: null }] },
+    { level: 2, works: [] },
+    { level: 1, works: [{ key: "book:c", title: "Herejes", href: "/libro/c", coverUrl: "/c/c.jpg" }] },
+  ],
   optional: { skipped: 1, total: 2 },
 };
 
@@ -55,7 +62,7 @@ describe("YourPassage", () => {
     expect(root.textContent).toMatch(/1.?500/);
     expect(root.textContent).toContain("passageOfKnown");
     expect(root.textContent).toContain('"h":"6"'); // 330 min = 5,5 h → 6
-    expect(screen.getByRole("link", { name: /Dune/ }).getAttribute("href")).toBe("/libro/a");
+    expect(screen.getByRole("link", { name: /passageFavorite/ }).getAttribute("href")).toBe("/libro/a");
   });
 
   it("En curso se oculta con 0; Páginas sin «sobre» si known === of", async () => {
@@ -64,20 +71,24 @@ describe("YourPassage", () => {
     expect(screen.getByTestId("your-passage").textContent).not.toContain("passageOfKnown");
   });
 
-  it("con 3 puntos hay svg y polyline de 3 pares; saltando huecos", async () => {
+  it("reparto: cinco niveles de 5 a 1, cada uno con sus portadas enlazadas y su recuento", async () => {
     render((await run(full))!);
-    const svg = document.querySelector("svg[role=img]")!;
-    expect(svg.getAttribute("viewBox")).toBe("0 0 96 60");
-    const pts = svg.querySelector("polyline")!.getAttribute("points")!.trim().split(/\s+/);
-    expect(pts).toHaveLength(3);
-    expect(pts[1].startsWith("24,")).toBe(true); // salta los huecos
-    expect(pts[2].startsWith("96,")).toBe(true);
-    expect(pts[0].endsWith(",4")).toBe(true); // nota 10
-    expect(pts[2].endsWith(",56")).toBe(true); // nota 1
-    expect(svg.querySelectorAll("path")).toHaveLength(3);
-    expect(svg.querySelector("circle")).toBeNull();
-    expect(svg.getAttribute("aria-label")).toContain("passageCurveLabel");
-    expect(svg.getAttribute("aria-label")).toContain(String.raw`Mesías ratingOutOf|{\"rating\":\"2,5\"}`);
+    const rows = screen.getByTestId("passage-distribution").querySelectorAll("li");
+    expect(rows).toHaveLength(5);
+    expect(rows[0].getAttribute("aria-label")).toBe('passageDistributionLevel|{"level":5,"count":1}');
+    expect(rows[1].getAttribute("aria-label")).toBe('passageDistributionLevel|{"level":4,"count":0}');
+    expect(rows[0].querySelector("a")?.getAttribute("href")).toBe("/libro/a");
+    expect(rows[2].querySelector("a")?.getAttribute("title")).toBe("Mesías");
+    expect(rows[1].querySelector("a")).toBeNull();
+    expect(document.querySelector("svg")).toBeNull();
+  });
+
+  it("más de 8 obras en un nivel: se apilan 8 y el resto se resume", async () => {
+    const many = Array.from({ length: 11 }, (_, i) => ({ key: `book:${i}`, title: `T${i}`, href: `/libro/${i}`, coverUrl: null }));
+    render((await run({ ...full, distribution: [{ level: 5, works: many }, ...full.distribution.slice(1)] }))!);
+    const row = screen.getByTestId("passage-distribution").querySelectorAll("li")[0];
+    expect(row.querySelectorAll("a")).toHaveLength(8);
+    expect(row.textContent).toContain("+3");
   });
 
   it("sin tallas conocidas (known 0) no hay Páginas ni Tiempo; con known < of sí hay «sobre»", async () => {
@@ -90,9 +101,9 @@ describe("YourPassage", () => {
     expect(screen.getByTestId("your-passage").textContent).toContain("passageOfKnown");
   });
 
-  it("con 1 punto no hay svg", async () => {
+  it("con una sola obra puntuada no hay reparto", async () => {
     render((await run({ ...full, curve: full.curve.slice(0, 1) }))!);
-    expect(document.querySelector("svg")).toBeNull();
+    expect(screen.queryByTestId("passage-distribution")).toBeNull();
   });
 
   it("optional null oculta «Opcionales saltadas»", async () => {

@@ -21,7 +21,7 @@ export type PassageInput = {
   sizes: Map<string, CatalogSize>;
   /** Obras de la saga en el orden de la balda activa: clave `tipo:id`, título,
    *  si es opcional y si está saltada. */
-  order: Array<{ key: string; title: string; href: string; optional: boolean; skipped: boolean }>;
+  order: Array<{ key: string; title: string; href: string; coverUrl: string | null; optional: boolean; skipped: boolean }>;
   /** Opcionales saltadas sobre el total de opcionales de la SAGA entera (no de la
    *  balda: esta oculta opcionales según la preferencia y cambia con el
    *  itinerario). null si no hay opcionales. Lo calcula `sagaOptionalFigure`. */
@@ -39,8 +39,13 @@ export type Passage = {
   favorite: { key: string; title: string; href: string; rating: number } | null;
   average: number | null; // media 1–10 de tu ÚLTIMA nota terminada por obra (todas las obras)
   countedAverage: number | null; // lo mismo, solo en obras que cuentan (no opcionales)
-  curve: Array<{ x: number; rating: number; key: string; title: string }>; // x = índice en `order`
+  /** Tus notas por obra, en el orden de la balda: alimenta los puntos bajo
+   *  cada portada leída de la balda. x = índice en `order`. */
+  curve: Array<{ x: number; rating: number; key: string; title: string }>;
   curveLength: number; // order.length
+  /** «Cómo has puntuado esta saga»: niveles 5→1 (escala de puntos), cada uno
+   *  con sus obras en el orden de la balda. Siempre los cinco niveles. */
+  distribution: Array<{ level: number; works: Array<{ key: string; title: string; href: string; coverUrl: string | null }> }>;
   optional: { skipped: number; total: number } | null; // null si no hay opcionales
 };
 
@@ -140,6 +145,20 @@ export function derivePassage({
     return r && r.rating !== null ? [{ x: i, rating: r.rating, key: w.key, title: w.title }] : [];
   });
 
+  // Nivel en la escala de puntos (1–5) de una nota 1–10: el medio punto sube
+  // (7 → 3,5 → 4), igual que el redondeo visible de formatDots a entero.
+  const levelOf = (rating: number) => Math.min(5, Math.max(1, Math.ceil(rating / 2)));
+  const byKeyOrder = new Map(order.map((w) => [w.key, w] as const));
+  const distribution = [5, 4, 3, 2, 1].map((level) => ({
+    level,
+    works: curve
+      .filter((c) => levelOf(c.rating) === level)
+      .map((c) => {
+        const w = byKeyOrder.get(c.key)!;
+        return { key: c.key, title: w.title, href: w.href, coverUrl: w.coverUrl };
+      }),
+  }));
+
   return {
     since,
     completed: lastDone.size,
@@ -151,6 +170,7 @@ export function derivePassage({
     countedAverage,
     curve,
     curveLength: order.length,
+    distribution,
     optional,
   };
 }

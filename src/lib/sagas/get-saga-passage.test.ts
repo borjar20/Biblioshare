@@ -39,7 +39,7 @@ const detail = (over: Partial<SagaDetail> = {}) =>
     groups: [{ members: [member("book", "b1"), member("book", "b2"), member("movie", "m1")] }],
     ...over,
   }) as unknown as SagaDetail;
-const order = [{ key: "book:b1", title: "B1", href: "/b1", optional: false, skipped: false }];
+const order = [{ key: "book:b1", title: "B1", href: "/b1", coverUrl: null, optional: false, skipped: false }];
 const pass = (id: string) => ({
   item_id: id,
   status: "completed",

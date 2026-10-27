@@ -5,7 +5,7 @@ const p = (key: string, extra: Partial<PassRow> = {}): PassRow => {
   const [itemType, itemId] = key.split(":") as [PassRow["itemType"], string];
   return { itemType, itemId, status: "completed", rating: null, startedOn: null, finishedOn: null, createdAt: "2026-01-01T00:00:00Z", ...extra };
 };
-const o = (key: string, extra: Partial<PassageInput["order"][number]> = {}) => ({ key, title: key.toUpperCase(), href: `/x/${key}`, optional: false, skipped: false, ...extra });
+const o = (key: string, extra: Partial<PassageInput["order"][number]> = {}) => ({ key, title: key.toUpperCase(), href: `/x/${key}`, coverUrl: `/c/${key}.jpg`, optional: false, skipped: false, ...extra });
 
 describe("derivePassage", () => {
   it("sin pases devuelve null", () => {
@@ -138,5 +138,19 @@ describe("sagaOptionalFigure", () => {
   });
   it("sin opcionales devuelve null", () => {
     expect(sagaOptionalFigure([m("a", false, false)]).optional).toBeNull();
+  });
+
+  it("reparto: cinco niveles de 5 a 1; el medio punto sube y cada nivel guarda sus obras en el orden de la balda", () => {
+    const r = derivePassage({
+      passes: [
+        p("book:a", { rating: 10 }), p("book:b", { rating: 7 }), p("book:c", { rating: 8 }),
+        p("book:d", { rating: 1 }), p("book:e", { rating: null }),
+      ],
+      sizes: new Map(), order: [o("book:a"), o("book:b"), o("book:c"), o("book:d"), o("book:e")],
+    });
+    expect(r?.distribution.map((d) => [d.level, d.works.map((w) => w.key)])).toEqual([
+      [5, ["book:a"]], [4, ["book:b", "book:c"]], [3, []], [2, []], [1, ["book:d"]],
+    ]);
+    expect(r?.distribution[0].works[0]).toEqual({ key: "book:a", title: "BOOK:A", href: "/x/book:a", coverUrl: "/c/book:a.jpg" });
   });
 });
