@@ -152,4 +152,26 @@ describe("SagaShelf", () => {
     const links = [...document.querySelectorAll<HTMLElement>("a[data-shelf-link]")];
     expect(document.activeElement).toBe(links[links.indexOf(now) + 1]);
   });
+
+  it("al abrir un grupo donde «ahora» no es la primera obra, el foco va a «ahora»", () => {
+    const g2 = { ...shelf.groups[1], slots: [{ kind: "work" as const, work: w("p", "done") }, { kind: "work" as const, work: w("b", "now") }] };
+    render(<SagaShelf {...props} shelf={{ ...shelf, openGroupKey: "s1", groups: [shelf.groups[0], g2] }} />);
+    fireEvent.click(screen.getByTestId("shelf-pile-s2"));
+    expect(document.activeElement).toBe(screen.getByTestId("shelf-now"));
+  });
+
+  it("pulsar el segmento del grupo ya abierto no deja un foco pendiente que se dispare tras un resync", () => {
+    const { rerender } = render(<SagaShelf {...props} />);
+    fireEvent.click(screen.getByTestId("shelf-segment-s2"));
+    rerender(<SagaShelf {...props} shelf={{ ...shelf, openGroupKey: "s1" }} />);
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it("un rerender con la misma clave conserva la pila que el usuario abrió", () => {
+    const { rerender } = render(<SagaShelf {...props} />);
+    fireEvent.click(screen.getByTestId("shelf-pile-s1"));
+    rerender(<SagaShelf {...props} shelf={{ ...shelf }} />);
+    expect(screen.queryByTestId("shelf-pile-s1")).toBeNull();
+    expect(screen.getByTestId("shelf-pile-s2")).toBeTruthy();
+  });
 });

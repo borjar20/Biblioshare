@@ -38,6 +38,8 @@ export function SagaShelf({
 }) {
   const t = useTranslations("saga");
   const [open, setOpen] = useState(shelf.openGroupKey);
+  // Abrir una pila desmonta el botón enfocado: el foco se devuelve a la balda.
+  const focusAfterOpen = useRef(false);
   // Si llega otra balda (cambio de ruta con la misma instancia), se resincroniza.
   const [prevOpenKey, setPrevOpenKey] = useState(shelf.openGroupKey);
   if (shelf.openGroupKey !== prevOpenKey) {
@@ -46,9 +48,8 @@ export function SagaShelf({
   }
   const titleId = useId();
   const rowRef = useRef<HTMLDivElement>(null);
-  // Abrir una pila desmonta el botón enfocado: el foco se devuelve a la balda.
-  const focusAfterOpen = useRef(false);
   function openGroup(key: string) {
+    if (key === open) return;
     focusAfterOpen.current = true;
     setOpen(key);
   }
@@ -61,7 +62,7 @@ export function SagaShelf({
     row?.querySelector("[data-testid='shelf-now']")?.scrollIntoView({ inline: "center", block: "nearest" });
     if (focusAfterOpen.current) {
       focusAfterOpen.current = false;
-      row?.querySelector<HTMLElement>("[data-testid='shelf-now'], [data-shelf-link]")?.focus();
+      (row?.querySelector<HTMLElement>("[data-testid='shelf-now']") ?? row?.querySelector<HTMLElement>("[data-shelf-link]"))?.focus();
     }
   }, [open]);
 
