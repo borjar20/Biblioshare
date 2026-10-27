@@ -200,4 +200,23 @@ describe("SagaShelf", () => {
     expect(screen.queryByTestId("shelf-count")).toBeNull();
     expect(screen.queryByTestId("shelf-a11y-list")).toBeNull();
   });
+
+  it("con más balda a la derecha pinta la flecha derecha, que desplaza la balda", () => {
+    const scrollBy = vi.fn();
+    const proto = HTMLElement.prototype as unknown as Record<string, unknown>;
+    const saved = { cw: Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientWidth"), sw: Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollWidth") };
+    Object.defineProperty(HTMLElement.prototype, "clientWidth", { configurable: true, get: () => 300 });
+    Object.defineProperty(HTMLElement.prototype, "scrollWidth", { configurable: true, get: () => 900 });
+    proto.scrollBy = scrollBy;
+    try {
+      render(<SagaShelf {...props} />);
+      expect(screen.queryByTestId("shelf-scroll-left")).toBeNull();
+      fireEvent.click(screen.getByTestId("shelf-scroll-right"));
+      expect(scrollBy).toHaveBeenCalledWith({ left: 240, behavior: "smooth" });
+    } finally {
+      if (saved.cw) Object.defineProperty(HTMLElement.prototype, "clientWidth", saved.cw); else delete proto.clientWidth;
+      if (saved.sw) Object.defineProperty(HTMLElement.prototype, "scrollWidth", saved.sw); else delete proto.scrollWidth;
+      delete proto.scrollBy;
+    }
+  });
 });

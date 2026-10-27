@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslations } from "next-intl";
 import type { Shelf, ShelfGroup, ShelfSlot, ShelfWork } from "@/lib/sagas/derive-shelf";
+import { ChevronLeftIcon, ChevronRightIcon } from "@/components/ui/icons";
 import { OpenGroup, Pile } from "./saga-shelf-parts";
 
 type A11yItem = { work: ShelfWork; extra: string };
@@ -72,6 +73,10 @@ export function SagaShelf({
     const left = row.scrollLeft > 4;
     const right = row.scrollLeft + row.clientWidth < row.scrollWidth - 4;
     setEdges((e) => (e.left === left && e.right === right ? e : { left, right }));
+  }
+  function scrollShelf(dir: -1 | 1) {
+    const row = rowRef.current;
+    row?.scrollBy?.({ left: dir * row.clientWidth * 0.8, behavior: "smooth" });
   }
   useEffect(() => {
     updateEdges();
@@ -173,6 +178,23 @@ export function SagaShelf({
             data-testid="shelf-fade-right"
             className={`pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-background to-transparent transition-opacity ${edges.right ? "opacity-100" : "opacity-0"}`}
           />
+          {/* Flechas solo desde sm: en táctil se desliza con el dedo. Avanzan
+              casi una pantalla de balda; el teclado sigue con las flechas del
+              propio teclado sobre las portadas. */}
+          {(["left", "right"] as const).map((side) =>
+            edges[side] ? (
+              <button
+                key={side}
+                type="button"
+                data-testid={`shelf-scroll-${side}`}
+                aria-label={t(side === "left" ? "shelfScrollLeft" : "shelfScrollRight")}
+                onClick={() => scrollShelf(side === "left" ? -1 : 1)}
+                className={`absolute top-1/2 hidden h-10 w-10 -translate-y-1/2 place-items-center rounded-full border border-border bg-surface/90 text-foreground shadow-cover backdrop-blur transition-colors hover:bg-surface-muted sm:grid ${side === "left" ? "left-1" : "right-1"}`}
+              >
+                {side === "left" ? <ChevronLeftIcon className="h-5 w-5" /> : <ChevronRightIcon className="h-5 w-5" />}
+              </button>
+            ) : null,
+          )}
         </div>
       )}
 
