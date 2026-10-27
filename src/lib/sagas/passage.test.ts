@@ -73,7 +73,7 @@ describe("derivePassage", () => {
       ],
       sizes: new Map(), order: [o("book:a"), o("book:b"), o("book:c")],
     });
-    expect(r?.favorite).toEqual({ key: "book:b", title: "BOOK:B", href: "/x/book:b", rating: 9 });
+    expect(r?.favorite).toEqual({ key: "book:b", title: "BOOK:B", href: "/x/book:b", coverUrl: "/c/book:b.jpg", rating: 9 });
     expect(r?.average).toBeCloseTo(25 / 3);
   });
 

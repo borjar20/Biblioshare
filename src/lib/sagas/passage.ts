@@ -36,7 +36,7 @@ export type Passage = {
   inProgress: number; // obras con pase in_progress y ninguno completed
   pages: { total: number; known: number; of: number } | null; // null si no hay libros terminados
   minutes: { total: number; known: number; of: number } | null; // null si no hay pelis terminadas
-  favorite: { key: string; title: string; href: string; rating: number } | null;
+  favorite: { key: string; title: string; href: string; coverUrl: string | null; rating: number } | null;
   average: number | null; // media 1–10 de tu ÚLTIMA nota terminada por obra (todas las obras)
   countedAverage: number | null; // lo mismo, solo en obras que cuentan (no opcionales)
   /** Tus notas por obra, en el orden de la balda: alimenta los puntos bajo
@@ -125,7 +125,7 @@ export function derivePassage({
       r.rating > favorite.rating ||
       (r.rating === favorite.rating && favRow && laterFinish(r, favRow))
     ) {
-      favorite = { key: k, title: w.title, href: w.href, rating: r.rating };
+      favorite = { key: k, title: w.title, href: w.href, coverUrl: w.coverUrl, rating: r.rating };
       favRow = r;
     }
   }

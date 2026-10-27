@@ -29,9 +29,9 @@ function RatingDotsRow({ promise, workKey }: { promise: Promise<Record<string, n
   if (rating === undefined) return null;
   const filled = Math.round(rating / 2);
   return (
-    <span data-testid="shelf-rating" className="flex gap-0.5" title={t("shelfYourRating", { rating: (rating / 2).toLocaleString("es-ES", { maximumFractionDigits: 1 }) })}>
+    <span data-testid="shelf-rating" className="flex gap-1" title={t("shelfYourRating", { rating: (rating / 2).toLocaleString("es-ES", { maximumFractionDigits: 1 }) })}>
       {[1, 2, 3, 4, 5].map((k) => (
-        <span key={k} aria-hidden className={`block h-1 w-1 rounded-full ${k <= filled ? "bg-gold" : "bg-surface-muted"}`} />
+        <span key={k} aria-hidden className={`block h-2 w-2 rounded-full ${k <= filled ? "bg-gold" : "bg-surface-3"}`} />
       ))}
       <span className="sr-only">{t("shelfYourRating", { rating: (rating / 2).toLocaleString("es-ES", { maximumFractionDigits: 1 }) })}</span>
     </span>
@@ -199,7 +199,7 @@ function Cover({ work, ring, small, accent }: { work: ShelfWork; ring?: string; 
         </span>
       )}
     </Link>
-      <span className="flex h-1 items-center">{work.state === "done" && <CoverRating workKey={work.key} />}</span>
+      <span className="flex h-2 items-center">{work.state === "done" && <CoverRating workKey={work.key} />}</span>
     </div>
   );
 }

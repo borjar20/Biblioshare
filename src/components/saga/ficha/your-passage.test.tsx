@@ -23,7 +23,7 @@ const full: Passage = {
   inProgress: 1,
   pages: { total: 1500, known: 2, of: 3 },
   minutes: { total: 330, known: 1, of: 1 },
-  favorite: { key: "book:a", title: "Dune", href: "/libro/a", rating: 10 },
+  favorite: { key: "book:a", title: "Dune", href: "/libro/a", coverUrl: "/c/a.jpg", rating: 10 },
   average: 8,
   countedAverage: 7,
   curve: [
@@ -62,7 +62,7 @@ describe("YourPassage", () => {
     expect(root.textContent).toMatch(/1.?500/);
     expect(root.textContent).toContain("passageOfKnown");
     expect(root.textContent).toContain('"h":"6"'); // 330 min = 5,5 h → 6
-    expect(screen.getByRole("link", { name: /passageFavorite/ }).getAttribute("href")).toBe("/libro/a");
+    expect(screen.getByRole("link", { name: /passageFavoriteLabel/ }).getAttribute("href")).toBe("/libro/a");
   });
 
   it("En curso se oculta con 0; Páginas sin «sobre» si known === of", async () => {
@@ -81,6 +81,9 @@ describe("YourPassage", () => {
     expect(rows[2].querySelector("a")?.getAttribute("title")).toBe("Mesías");
     expect(rows[1].querySelector("a")).toBeNull();
     expect(document.querySelector("svg")).toBeNull();
+    const dist = screen.getByTestId("passage-distribution");
+    expect(dist.textContent).toContain('passageRated|{"count":3}');
+    expect(dist.textContent).toContain('passageMostly|{"level":5}'); // empate a 1: gana el nivel más alto
   });
 
   it("más de 8 obras en un nivel: se apilan 8 y el resto se resume", async () => {
