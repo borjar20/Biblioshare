@@ -1,4 +1,5 @@
 import type { createClient } from "@/lib/supabase/server";
+import { createCuratedOrder } from "./curated-order";
 import { deriveSagaMap, type MapLookup } from "./derive-map";
 import { deriveTimeline, sortByPublication, type TimelineSection } from "./derive-timeline";
 import type { SagaDetail } from "./get-saga-detail";
@@ -44,13 +45,46 @@ export async function getShelfSections(
   }
   const row = detail.routes.find((r) => r.slug === activeRoute);
   if (row?.id === undefined) return deriveTimeline(detail.shelfGraph, opts);
-  // Misma construcción que SagaMapTab para una ruta curada: el grafo derivado
-  // con los pasos del itinerario, y la columna por PASOS (spine "route").
   const entries = await getRouteEntries(supabase, row.id);
+  return curatedRouteSections(detail, entries.map(keyOfRouteEntry), opts);
+}
+
+/** Sustituye cada paso-bloque (`s:<uuid>`) por las obras de esa subsaga en su
+ *  orden principal (`i:<tipo>:<uuid>`), quedándose con la primera aparición de
+ *  cada obra. `mainOrderOf` es el de `createCuratedOrder`: la MISMA expansión
+ *  que hace RouteView vía `resolveRoute`, no un orden nuevo. */
+export function expandRouteKeys(routeKeys: string[], mainOrderOf: (sagaId: string) => string[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const key of routeKeys) {
+    const expanded = key.startsWith("s:") ? mainOrderOf(key.slice(2)).map((k) => `i:${k}`) : [key];
+    for (const k of expanded) {
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(k);
+    }
+  }
+  return out;
+}
+
+/** Secciones de un itinerario curado. Misma construcción que SagaMapTab (el
+ *  grafo derivado con los pasos del itinerario y la columna por PASOS, spine
+ *  "route") con una diferencia: los pasos-bloque se expanden ANTES de derivar.
+ *  `deriveSagaMap` ignora a propósito una clave `s:<uuid>` (un bloque nunca es
+ *  nodo del mapa), así que un itinerario hecho solo de bloques dejaba la balda
+ *  sin una obra y en modo `empty`. Consecuencia: aquí el `step` cuenta obras,
+ *  no pasos del itinerario — la balda no pinta ese número. */
+export function curatedRouteSections(
+  detail: Pick<SagaDetail, "groups" | "windows" | "orderSagas" | "orderMemberships">,
+  routeKeys: string[],
+  opts: { authenticated: boolean; showOptional: boolean },
+): TimelineSection[] {
+  const titles = new Map<string, string>(detail.groups.flatMap((g) => g.members).map((m) => [`${m.itemType}:${m.itemId}`, m.title]));
+  const mainOrder = createCuratedOrder(detail.orderSagas, detail.orderMemberships, (k) => titles.get(k) ?? "", detail.windows);
   const lookup: MapLookup = {
     groupAccent: new Map(detail.groups.map((g) => [g.sagaId, g.accent] as const)),
     groupName: new Map(detail.groups.map((g) => [g.sagaId, g.name] as const)),
   };
-  const routeGraph = deriveSagaMap(detail.groups, detail.windows, lookup, entries.map(keyOfRouteEntry));
+  const routeGraph = deriveSagaMap(detail.groups, detail.windows, lookup, expandRouteKeys(routeKeys, mainOrder));
   return deriveTimeline(routeGraph, { ...opts, spine: "route" });
 }
