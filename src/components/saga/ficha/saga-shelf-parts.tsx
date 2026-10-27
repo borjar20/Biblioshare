@@ -17,18 +17,18 @@ export function Pile({ group, label, onOpen }: { group: ShelfGroup; label: strin
       onClick={onOpen}
       className={`flex shrink-0 snap-center flex-col items-center gap-1 ${group.state === "future" ? "opacity-60" : ""}`}
     >
-      <span className="relative block h-[62px] w-[58px]">
+      <span className="relative block h-[84px] w-[80px] sm:h-[102px] sm:w-[94px]">
         {covers.map((src, i) => (
           <span
             key={i}
-            style={{ left: i * 7, bottom: i * 3 }}
-            className={`absolute block h-[54px] w-[36px] overflow-hidden rounded-[3px] shadow-cover ${group.state === "done" ? "outline-2 outline-green" : ""} ${src ? "" : SAGA_ACCENT[group.accent].bg}`}
+            style={{ left: i * 9, bottom: i * 4 }}
+            className={`absolute block h-[75px] w-[50px] overflow-hidden rounded-[3px] shadow-cover sm:h-[93px] sm:w-[62px] ${group.state === "done" ? "outline-2 outline-green" : ""} ${src ? "" : SAGA_ACCENT[group.accent].bg}`}
           >
-            {src && <Image src={src} alt="" fill sizes="36px" className="object-cover" />}
+            {src && <Image src={src} alt="" fill sizes="62px" className="object-cover" />}
           </span>
         ))}
       </span>
-      <span className="max-w-[90px] truncate font-mono text-[10px] text-muted-foreground">
+      <span className="max-w-[110px] truncate font-mono text-[10px] text-muted-foreground">
         {label} · {count}
         {tick}
       </span>
@@ -115,10 +115,10 @@ function Cover({ work, ring, small, accent }: { work: ShelfWork; ring?: string; 
   const t = useTranslations("saga");
   const size =
     work.state === "now"
-      ? "h-[96px] w-[64px] sm:h-[120px] sm:w-[80px]"
+      ? "h-[126px] w-[84px] sm:h-[156px] sm:w-[104px]"
       : small
-        ? "h-[48px] w-[32px]"
-        : "h-[66px] w-[44px] sm:h-[84px] sm:w-[56px]";
+        ? "h-[66px] w-[44px] sm:h-[78px] sm:w-[52px]"
+        : "h-[90px] w-[60px] sm:h-[114px] sm:w-[76px]";
   const state =
     work.state === "now" ? "outline-[3px] outline-accent" : work.state === "done" ? "outline-2 outline-green" : "opacity-55";
   // Tándem y ventana mandan sobre el contorno de estado; «ahora» y «leída»
@@ -132,7 +132,7 @@ function Cover({ work, ring, small, accent }: { work: ShelfWork; ring?: string; 
       className={`relative block shrink-0 overflow-hidden rounded-[4px] shadow-cover outline-offset-1 ${size} ${ring ?? state} ${work.state === "todo" && ring ? "opacity-55" : ""} ${work.skipped ? "grayscale" : ""}`}
     >
       {work.coverUrl ? (
-        <Image src={work.coverUrl} alt={work.title} fill sizes="80px" className="object-cover" />
+        <Image src={work.coverUrl} alt={work.title} fill sizes="104px" className="object-cover" />
       ) : (
         <span
           className={`flex h-full items-center justify-center p-1 text-center text-[9px] leading-tight text-background [writing-mode:vertical-rl] ${SAGA_ACCENT[accent].bg}`}
