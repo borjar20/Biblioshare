@@ -1,0 +1,126 @@
+<style>
+  .p{--bg:#f3ece1;--sf:#fffdf8;--mu:#ece3d4;--fg:#2c2620;--mf:#6b6255;--ac:#b0542f;--gr:#5c7052;--go:#c98a2b;--bd:rgba(44,20,32,.14);--win:#5b989c;--tan:#7a5676;--iti:#5b8dbf;
+     background:var(--bg);color:var(--fg);font-family:Georgia,serif;border-radius:10px;overflow:hidden;font-size:12px}
+  .mono{font-family:ui-monospace,monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--mf)}
+  .hero{height:84px;background:linear-gradient(180deg,#5b4636 0%,#8a6a4e 55%,var(--bg) 100%);display:flex;align-items:flex-end;padding:10px 18px}
+  .hero h1{margin:0;font-size:22px;color:#fff5ef}
+  .cv{border-radius:3px;box-shadow:0 2px 6px rgba(0,0,0,.25);flex:none;position:relative;width:38px;height:57px}
+  .done{outline:2px solid var(--gr)}
+  .now{outline:3px solid var(--ac);width:52px;height:78px}
+  .fut{opacity:.55}
+  .shelf{display:flex;align-items:flex-end;gap:6px;padding:0 0 6px;border-bottom:3px solid var(--mu);position:relative}
+  .chip{display:inline-block;border-radius:99px;border:1px solid var(--bd);padding:3px 9px;font-family:system-ui;font-size:10px;background:var(--sf)}
+  .chip.on{background:var(--fg);color:var(--sf);border-color:var(--fg)}
+  .tag{position:absolute;top:-7px;left:50%;transform:translateX(-50%);font-family:ui-monospace,monospace;font-size:7px;background:var(--sf);border:1px solid var(--bd);border-radius:99px;padding:0 4px;white-space:nowrap;color:var(--mf)}
+  .gap{width:1px;height:57px;background:var(--bd);margin:0 4px}
+  .lbl{position:absolute;top:-14px;font-family:ui-monospace,monospace;font-size:8px;color:var(--mf);letter-spacing:.1em;text-transform:uppercase}
+  .btn{background:var(--ac);color:#fff5ef;border-radius:8px;padding:5px 9px;font-family:system-ui;font-size:10px;display:inline-block}
+  .card{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:10px}
+  .note{font-family:system-ui;font-size:10px;color:var(--mf)}
+  .tl{display:flex;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--bd);font-size:11px}
+</style>
+
+<h2>Cómo quedaría la complejidad en la estantería</h2>
+<p class="subtitle">La misma saga en las tres versiones: dos itinerarios (Publicación · Cronológico), una <span style="color:#5b989c">ventana</span> («léela entre la 3 y la 5»), un <span style="color:#7a5676">tándem</span> (dos obras que se intercalan), una obra con rol «spin-off» y dos opcionales.</p>
+
+<div class="cards" style="grid-template-columns:1fr">
+
+<!-- A -->
+<div class="card" data-choice="a" onclick="toggleSelect(this)" style="padding:0">
+ <div class="card-image"><div class="p">
+  <div class="hero"><div style="flex:1"><div class="mono" style="color:#f3e4d4">Universo · 11 obras</div><h1>Dune</h1></div></div>
+  <div style="padding:10px 18px 6px;display:flex;gap:6px;align-items:center"><span class="mono" style="color:var(--ac);margin-right:6px">Orden</span><span class="chip on">Publicación</span><span class="chip">Cronológico</span><span class="note" style="margin-left:auto">3 de 9 · 33%</span></div>
+  <div style="padding:30px 18px 4px">
+   <div class="shelf">
+     <span class="lbl" style="left:0">Crónicas</span>
+     <div class="cv done" style="background:#c69a5b"></div>
+     <div class="cv done" style="background:#a5713f"></div>
+     <div class="cv done" style="background:#93623a"></div>
+     <!-- ventana flotante -->
+     <div style="position:relative;display:flex;gap:6px;align-items:flex-end">
+       <div style="position:absolute;bottom:84px;left:-2px;right:-2px;height:22px;border:1.5px dashed var(--win);border-bottom:none;border-radius:8px 8px 0 0"></div>
+       <div class="cv" style="position:absolute;bottom:92px;left:50%;transform:translateX(-50%) rotate(-4deg);background:var(--win);width:32px;height:48px;outline:2px dashed var(--win);outline-offset:2px"><span class="tag" style="top:auto;bottom:-14px;color:var(--win)">ventana</span></div>
+       <div class="cv now" style="background:#7d5a3a"></div>
+       <div class="cv fut" style="background:#6c4b33"></div>
+     </div>
+     <div class="cv fut" style="background:#5a3f2c"><span class="tag">spin-off</span></div>
+     <!-- tandem -->
+     <div style="position:relative;width:58px;height:57px;flex:none">
+       <div class="cv fut" style="position:absolute;left:0;bottom:0;background:var(--tan)"></div>
+       <div class="cv fut" style="position:absolute;left:18px;bottom:4px;background:#5e3f5b;outline:2px solid var(--tan)"></div>
+       <span class="tag" style="color:var(--tan);left:60%">tándem</span>
+     </div>
+     <div class="gap"></div>
+     <div class="cv fut" style="background:#3f6b6e;width:30px;height:45px"></div>
+     <div class="cv fut" style="background:#365c5f;width:30px;height:45px"></div>
+     <span class="lbl" style="right:0">Opcionales</span>
+   </div>
+   <div class="note" style="margin:6px 0 0 140px;color:var(--ac)">▲ estás aquí</div>
+  </div>
+  <div style="padding:8px 18px 14px;display:flex;gap:12px">
+    <div class="card" style="flex:1;display:flex;gap:10px"><div class="cv" style="background:#7d5a3a;width:40px;height:60px"></div><div><div class="mono">Te toca</div><b style="font-size:14px">Hijos de Dune</b><div class="note" style="margin:2px 0 6px">Y si quieres, ahora encaja <span style="color:var(--win)">La casa Atreides</span></div><div class="btn">Empezar</div></div></div>
+    <div class="card" style="width:170px"><div class="mono">¿Por qué este orden?</div><div class="note" style="margin-top:4px">Ventanas, tándems y alternativas, explicadas en el atlas →</div></div>
+  </div>
+ </div></div>
+ <div class="card-body"><h3>A · La balda las expresa y el detalle va al atlas (recomendada)</h3><p>Los itinerarios son chips encima de la balda. La ventana es una portada flotante sobre el tramo donde encaja, con un arco discontinuo que abarca de la 3 a la 5. El tándem son dos portadas solapadas. El rol es una etiqueta pequeña. «Te toca» avisa si en ese momento encaja una ventana. El <i>porqué</i> está a un clic, en el atlas.</p></div>
+</div>
+
+<!-- B -->
+<div class="card" data-choice="b" onclick="toggleSelect(this)" style="padding:0">
+ <div class="card-image"><div class="p">
+  <div class="hero"><div style="flex:1"><div class="mono" style="color:#f3e4d4">Universo · 11 obras</div><h1>Dune</h1></div></div>
+  <div style="padding:26px 18px 4px">
+   <div class="shelf">
+     <span class="lbl" style="left:0">El orden</span>
+     <div class="cv done" style="background:#c69a5b"></div>
+     <div class="cv done" style="background:#a5713f"></div>
+     <div class="cv done" style="background:#93623a"></div>
+     <div class="cv now" style="background:#7d5a3a"></div>
+     <div class="cv fut" style="background:#6c4b33"></div>
+     <div class="cv fut" style="background:#5a3f2c"></div>
+     <div class="cv fut" style="background:var(--tan)"></div>
+     <div class="cv fut" style="background:#5e3f5b"></div>
+     <div class="cv fut" style="background:var(--win)"></div>
+   </div>
+   <div class="note" style="margin:6px 0 0 132px;color:var(--ac)">▲ estás aquí</div>
+  </div>
+  <div style="padding:10px 18px 4px">
+   <div class="mono">Extras · cuando quieras</div>
+   <div style="display:flex;gap:6px;margin-top:6px"><div class="cv fut" style="background:#3f6b6e;width:30px;height:45px"></div><div class="cv fut" style="background:#365c5f;width:30px;height:45px"></div></div>
+  </div>
+  <div style="padding:8px 18px 14px;display:flex;gap:12px">
+    <div class="card" style="flex:1;display:flex;gap:10px"><div class="cv" style="background:#7d5a3a;width:40px;height:60px"></div><div><div class="mono">Te toca</div><b style="font-size:14px">Hijos de Dune</b><div class="btn" style="margin-top:6px">Empezar</div></div></div>
+    <div class="card" style="width:170px"><div class="mono">Otros órdenes</div><div class="note" style="margin-top:4px">Cronológico, ventanas y tándems en el atlas →</div></div>
+  </div>
+ </div></div>
+ <div class="card-body"><h3>B · Ficha mínima</h3><p>Una sola balda lineal con el orden principal y las opcionales en un estante aparte. La ventana y el tándem quedan aplanados en su posición, sin ninguna marca. Es la más limpia, pero quien quiera otro itinerario, o saber que una obra es flexible, tiene que ir al atlas.</p></div>
+</div>
+
+<!-- C -->
+<div class="card" data-choice="c" onclick="toggleSelect(this)" style="padding:0">
+ <div class="card-image"><div class="p">
+  <div class="hero"><div style="flex:1"><div class="mono" style="color:#f3e4d4">Universo · 11 obras</div><h1>Dune</h1></div></div>
+  <div style="padding:10px 18px 4px;display:flex;gap:6px"><span class="chip on">Publicación</span><span class="chip">Cronológico</span></div>
+  <div style="padding:22px 18px 4px">
+   <div class="shelf">
+     <div class="cv done" style="background:#c69a5b"></div><div class="cv done" style="background:#a5713f"></div><div class="cv done" style="background:#93623a"></div>
+     <div class="cv now" style="background:#7d5a3a"></div><div class="cv fut" style="background:#6c4b33"></div><div class="cv fut" style="background:#5a3f2c"></div>
+     <div class="cv fut" style="background:var(--tan)"></div><div class="cv fut" style="background:#5e3f5b"></div>
+   </div>
+  </div>
+  <div style="padding:8px 18px 4px;display:flex;gap:12px">
+    <div class="card" style="flex:1;display:flex;gap:10px"><div class="cv" style="background:#7d5a3a;width:40px;height:60px"></div><div><div class="mono">Te toca</div><b style="font-size:14px">Hijos de Dune</b><div class="btn" style="margin-top:6px">Empezar</div></div></div>
+  </div>
+  <div style="padding:10px 18px 14px">
+   <div class="mono" style="color:var(--ac)">Cómo leerla</div>
+   <div class="tl"><span class="note">1–3</span> Dune · Mesías · Hijos <span class="note" style="margin-left:auto">leídos</span></div>
+   <div class="tl" style="border-left:3px solid var(--win);padding-left:6px"><span class="note" style="color:var(--win)">ventana</span> La casa Atreides — entre la 3 y la 5</div>
+   <div class="tl"><span class="note">4</span> Dios emperador · <span class="note">spin-off</span> Herejes</div>
+   <div class="tl" style="border-left:3px solid var(--tan);padding-left:6px"><span class="note" style="color:var(--tan)">tándem</span> Casa capitular ⇄ Cazadores — alterna capítulos</div>
+   <div class="tl"><span class="note">opcional</span> La Yihad Butleriana · La cruzada</div>
+  </div>
+ </div></div>
+ <div class="card-body"><h3>C · Todo en la ficha</h3><p>Balda y «Te toca» arriba. Debajo, la sección «Cómo leerla» con el timeline detallado de hoy, reestilizado: cada ventana y cada tándem en su fila, con su explicación. Todo queda en una página, aunque la ficha crece y repite el orden dos veces.</p></div>
+</div>
+
+</div>

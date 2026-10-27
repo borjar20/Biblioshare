@@ -1,0 +1,122 @@
+<style>
+  .p{--bg:#f3ece1;--sf:#fffdf8;--mu:#ece3d4;--fg:#2c2620;--mf:#6b6255;--ac:#b0542f;--gr:#5c7052;--go:#c98a2b;--bd:rgba(44,20,32,.14);--win:#5b989c;--tan:#7a5676;
+     background:var(--bg);color:var(--fg);font-family:Georgia,serif;border-radius:10px;overflow:hidden;font-size:12px}
+  .mono{font-family:ui-monospace,monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--mf)}
+  .h3{font-size:15px;font-weight:600;margin:0 0 6px}
+  .cv{border-radius:3px;box-shadow:0 2px 5px rgba(0,0,0,.22);flex:none;width:30px;height:45px;position:relative}
+  .done{outline:2px solid var(--gr)} .now{outline:3px solid var(--ac);width:44px;height:66px} .fut{opacity:.5}
+  .shelf{display:flex;align-items:flex-end;gap:5px;padding-bottom:5px;border-bottom:3px solid var(--mu)}
+  .card{background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:12px}
+  .note{font-family:system-ui;font-size:10px;color:var(--mf)}
+  .btn{background:var(--ac);color:#fff5ef;border-radius:8px;padding:5px 10px;font-family:system-ui;font-size:10px;display:inline-block}
+  .btn2{border:1px solid var(--bd);border-radius:8px;padding:5px 10px;font-family:system-ui;font-size:10px;display:inline-block;background:var(--sf)}
+  .chip{display:inline-block;border-radius:99px;border:1px solid var(--bd);padding:2px 8px;font-family:system-ui;font-size:9px;background:var(--sf)}
+  .chip.on{background:var(--fg);color:var(--sf)}
+  .pile{position:relative;width:44px;height:50px} .pile .cv{position:absolute;bottom:0}
+  .av{width:18px;height:18px;border-radius:99px;display:inline-block;border:2px solid var(--sf);margin-left:-5px}
+  .sec{padding:16px 22px;border-top:1px solid var(--bd)}
+  .hero{position:relative;height:190px;overflow:hidden}
+  .mosaic{position:absolute;inset:-20px;display:grid;grid-template-columns:repeat(10,1fr);gap:4px;filter:blur(3px) saturate(.9);opacity:.9}
+  .mosaic i{display:block;height:80px;border-radius:3px}
+  .scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(44,38,32,.35),rgba(44,38,32,.55) 60%,var(--bg))}
+</style>
+
+<h2>La ficha entera: propuesta de orden</h2>
+<p class="subtitle">Escritorio a la izquierda y móvil a la derecha. Arriba lo que contesta «cómo está montada» y «qué toca». Debajo, de lo más tuyo a lo más de referencia.</p>
+
+<div style="display:grid;grid-template-columns:1fr 290px;gap:18px;align-items:start">
+
+<!-- DESKTOP -->
+<div class="p">
+  <div class="hero">
+    <div class="mosaic"><i style="background:#c69a5b"></i><i style="background:#3f6b6e"></i><i style="background:#a5713f"></i><i style="background:#7a5676"></i><i style="background:#7d5a3a"></i><i style="background:#93623a"></i><i style="background:#365c5f"></i><i style="background:#5a3f2c"></i><i style="background:#c69a5b"></i><i style="background:#6c4b33"></i><i style="background:#2c4d50"></i><i style="background:#a5713f"></i><i style="background:#6a4766"></i><i style="background:#93623a"></i><i style="background:#c69a5b"></i><i style="background:#3f6b6e"></i><i style="background:#7d5a3a"></i><i style="background:#5a3a57"></i><i style="background:#6c4b33"></i><i style="background:#a5713f"></i></div>
+    <div class="scrim"></div>
+    <div style="position:absolute;left:22px;bottom:18px;right:22px;display:flex;align-items:flex-end;gap:16px">
+      <div style="flex:1">
+        <div class="mono" style="color:#f3e4d4">Universo · 41 obras · 5 subsagas</div>
+        <div style="font-size:30px;font-weight:600;color:#fff5ef;line-height:1.05">Dune</div>
+        <div style="color:#f3e4d4;font-style:italic;font-size:11px">de Frank Herbert y Brian Herbert · 1965–2023 · ●●●●○ 4,1</div>
+      </div>
+      <span class="btn2">✓ Siguiendo</span>
+    </div>
+  </div>
+
+  <!-- 1. Orden -->
+  <div style="padding:6px 22px 14px">
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:14px"><span class="mono" style="color:var(--ac);margin-right:4px">El orden</span><span class="chip on">Publicación</span><span class="chip">Cronológico</span><span class="note" style="margin-left:auto"><b style="color:var(--fg)">14</b> de 41</span></div>
+    <div style="display:flex;gap:14px;align-items:flex-end">
+      <div style="text-align:center"><div class="pile"><div class="cv done" style="left:0;background:#b88a55"></div><div class="cv done" style="left:6px;bottom:2px;background:#a57a4a"></div><div class="cv done" style="left:12px;bottom:4px;background:#93683c"></div></div><div class="note">I · 6/6 ✓</div></div>
+      <div style="text-align:center"><div class="pile"><div class="cv done" style="left:0;background:#8a6036"></div><div class="cv done" style="left:6px;bottom:2px;background:#7c5530"></div><div class="cv done" style="left:12px;bottom:4px;background:#6e4b2b"></div></div><div class="note">II · 5/5 ✓</div></div>
+      <div style="flex:1"><div class="mono" style="margin-bottom:4px">III · Crónicas · 3 de 9</div>
+        <div class="shelf"><div class="cv done" style="background:#93623a"></div><div class="cv done" style="background:#86593a"></div><div class="cv done" style="background:#7c5530"></div><div class="cv now" style="background:#7d5a3a"></div><div class="cv fut" style="background:#6c4b33"></div><div class="cv fut" style="background:#5a3f2c"><span style="position:absolute;top:-8px;left:2px;font:7px ui-monospace;background:var(--sf);border:1px solid var(--bd);border-radius:9px;padding:0 3px;color:var(--mf)">spin-off</span></div><div style="position:relative;width:48px;height:45px;flex:none"><div class="cv fut" style="position:absolute;left:0;background:var(--tan)"></div><div class="cv fut" style="position:absolute;left:14px;bottom:3px;background:#5e3f5b;outline:2px solid var(--tan)"></div></div><div class="cv fut" style="background:#3a291c"></div></div></div>
+      <div style="text-align:center;opacity:.6"><div class="pile"><div class="cv" style="left:0;background:#3f6b6e"></div><div class="cv" style="left:6px;bottom:2px;background:#365c5f"></div><div class="cv" style="left:12px;bottom:4px;background:#2c4d50"></div></div><div class="note">IV · 12</div></div>
+      <div style="text-align:center;opacity:.6"><div class="pile"><div class="cv" style="left:0;background:#7a5676"></div><div class="cv" style="left:6px;bottom:2px;background:#6a4766"></div><div class="cv" style="left:12px;bottom:4px;background:#5a3a57"></div></div><div class="note">V · 9</div></div>
+    </div>
+    <div style="display:flex;gap:2px;margin-top:10px;height:5px"><i style="flex:6;background:var(--gr);border-radius:3px"></i><i style="flex:5;background:var(--gr);border-radius:3px"></i><i style="flex:9;background:linear-gradient(90deg,var(--gr) 33%,var(--ac) 33% 44%,var(--mu) 44%);border-radius:3px"></i><i style="flex:12;background:var(--mu);border-radius:3px"></i><i style="flex:9;background:var(--mu);border-radius:3px"></i></div>
+  </div>
+
+  <!-- 2. Te toca + amigos -->
+  <div style="padding:0 22px 16px;display:grid;grid-template-columns:1.3fr 1fr;gap:12px">
+    <div class="card" style="display:flex;gap:12px"><div class="cv" style="background:#7d5a3a;width:52px;height:78px"></div><div><div class="mono" style="color:var(--ac)">Te toca</div><b style="font-size:16px">Hijos de Dune</b><div class="note" style="margin:2px 0 8px">Crónicas · nº 3 · 1976 · ahora encaja también <span style="color:var(--win)">La casa Atreides</span></div><span class="btn">Empezar</span> <span class="btn2">Saltar</span></div></div>
+    <div class="card"><div class="mono">Entre amigos</div>
+      <div style="margin-top:6px;font-size:11px"><span class="av" style="background:#c98a2b;margin-left:0"></span><span class="av" style="background:#5c7052"></span><span class="av" style="background:#7a5676"></span> <span class="note">3 la siguen</span></div>
+      <div class="note" style="margin-top:6px">Lucía va por <b>Herejes</b> (nº 6) · Marcos la terminó ●●●●●<br>Ana empezó ayer</div></div>
+  </div>
+
+  <!-- 3. Sobre -->
+  <div class="sec" style="display:grid;grid-template-columns:1fr 200px;gap:18px">
+    <div><div class="h3">Sobre la saga</div><div class="note" style="font-size:11px;line-height:1.5">En un futuro lejano, el planeta desértico Arrakis es la única fuente de la especia… <u>Leer más</u></div></div>
+    <div class="card" style="padding:10px"><div class="note" style="line-height:1.8">Obras <b>41</b><br>Tipos 📖 32 · 🎬 6 · 📺 3<br>Años 1965–2023<br>Media ●●●●○ 4,1<br>Curada por <u>borja</u></div></div>
+  </div>
+
+  <!-- 4. Tu paso -->
+  <div class="sec"><div class="h3">Tu paso por Dune</div>
+    <div style="display:flex;gap:18px;align-items:flex-end">
+      <svg width="320" height="60" viewBox="0 0 320 60"><polyline fill="none" stroke="#b0542f" stroke-width="2" points="0,30 25,18 50,22 75,10 100,26 125,14 150,20 175,8 200,16 225,24 250,12 275,18 300,14"/><g fill="#b0542f"><circle cx="0" cy="30" r="3"/><circle cx="75" cy="10" r="3"/><circle cx="175" cy="8" r="3"/><circle cx="300" cy="14" r="3"/></g></svg>
+      <div class="note" style="line-height:1.7">Empezaste en <b>marzo 2024</b><br>14 obras · 5.320 páginas<br>Tu favorita: <b>Dune</b> ●●●●●</div>
+    </div>
+  </div>
+
+  <!-- 5. Subsagas -->
+  <div class="sec"><div class="h3">Subsagas</div>
+    <div style="display:flex;gap:10px"><div class="card" style="flex:1;padding:8px"><div class="note"><b>I · Leyendas</b><br>6 · terminada ✓</div></div><div class="card" style="flex:1;padding:8px"><div class="note"><b>II · Preludio</b><br>5 · terminada ✓</div></div><div class="card" style="flex:1;padding:8px;border-color:var(--ac)"><div class="note"><b>III · Crónicas</b><br>3 de 9</div></div><div class="card" style="flex:1;padding:8px"><div class="note"><b>IV · Héroes</b><br>12</div></div></div>
+  </div>
+
+  <!-- 6. Atlas -->
+  <div class="sec"><div class="card" style="display:flex;gap:14px;align-items:center;background:linear-gradient(90deg,#e9e0d0,#f6efe3)">
+    <svg width="110" height="50"><g stroke="#b0542f" stroke-width="1.5" fill="none" opacity=".7"><path d="M8 25 L40 12 L72 30 L102 18"/><path d="M40 12 L60 42"/><path d="M72 30 L90 44" stroke-dasharray="3 3" stroke="#5b989c"/></g><g fill="#2c2620"><circle cx="8" cy="25" r="4"/><circle cx="40" cy="12" r="4"/><circle cx="72" cy="30" r="4"/><circle cx="102" cy="18" r="4"/><circle cx="60" cy="42" r="3"/><circle cx="90" cy="44" r="3"/></g></svg>
+    <div style="flex:1"><b>Explora el atlas de Dune</b><div class="note">Por qué este orden, ventanas, tándems y órdenes alternativos</div></div><span class="btn2">Abrir →</span></div></div>
+
+  <!-- 7. Todas -->
+  <div class="sec"><div style="display:flex;align-items:center"><div class="h3">Todas las obras</div><span class="note" style="margin-left:auto">41 · filtrar ▾</span></div>
+    <div style="display:grid;grid-template-columns:repeat(9,1fr);gap:8px;margin-top:6px"><div class="cv done" style="width:auto;height:60px;background:#b88a55"></div><div class="cv done" style="width:auto;height:60px;background:#a57a4a"></div><div class="cv done" style="width:auto;height:60px;background:#93683c"></div><div class="cv done" style="width:auto;height:60px;background:#8a6036"></div><div class="cv" style="width:auto;height:60px;background:#7c5530"></div><div class="cv" style="width:auto;height:60px;background:#3f6b6e"></div><div class="cv" style="width:auto;height:60px;background:#365c5f"></div><div class="cv" style="width:auto;height:60px;background:#7a5676"></div><div class="cv" style="width:auto;height:60px;background:#6a4766"></div></div></div>
+</div>
+
+<!-- MOBILE -->
+<div class="p" style="border:6px solid #2c2620;border-radius:26px">
+  <div class="hero" style="height:150px">
+    <div class="mosaic" style="grid-template-columns:repeat(5,1fr)"><i style="background:#c69a5b"></i><i style="background:#3f6b6e"></i><i style="background:#a5713f"></i><i style="background:#7a5676"></i><i style="background:#7d5a3a"></i><i style="background:#93623a"></i><i style="background:#365c5f"></i><i style="background:#5a3f2c"></i><i style="background:#c69a5b"></i><i style="background:#6c4b33"></i></div>
+    <div class="scrim"></div>
+    <div style="position:absolute;left:14px;bottom:12px;right:14px"><div class="mono" style="color:#f3e4d4">Universo · 41 obras</div><div style="font-size:24px;font-weight:600;color:#fff5ef">Dune</div><div style="color:#f3e4d4;font-style:italic;font-size:10px">Frank Herbert · ●●●●○ 4,1</div></div>
+  </div>
+  <div style="padding:4px 14px 10px">
+    <div style="display:flex;gap:5px;margin-bottom:12px"><span class="chip on">Publicación</span><span class="chip">Cronológico</span><span class="note" style="margin-left:auto">14/41</span></div>
+    <div style="display:flex;gap:8px;align-items:flex-end;overflow:hidden">
+      <div class="pile" style="width:34px"><div class="cv done" style="left:0;background:#b88a55;width:24px;height:36px"></div><div class="cv done" style="left:6px;bottom:2px;background:#93683c;width:24px;height:36px"></div></div>
+      <div class="pile" style="width:34px"><div class="cv done" style="left:0;background:#8a6036;width:24px;height:36px"></div><div class="cv done" style="left:6px;bottom:2px;background:#6e4b2b;width:24px;height:36px"></div></div>
+      <div class="shelf" style="gap:4px"><div class="cv done" style="background:#7c5530;width:24px;height:36px"></div><div class="cv now" style="background:#7d5a3a;width:36px;height:54px"></div><div class="cv fut" style="background:#6c4b33;width:24px;height:36px"></div><div class="cv fut" style="background:#5a3f2c;width:24px;height:36px"></div><div class="cv fut" style="background:#4e3726;width:24px;height:36px"></div></div>
+    </div>
+    <div style="display:flex;gap:2px;margin-top:8px;height:4px"><i style="flex:6;background:var(--gr)"></i><i style="flex:5;background:var(--gr)"></i><i style="flex:9;background:linear-gradient(90deg,var(--gr) 33%,var(--ac) 33% 44%,var(--mu) 44%)"></i><i style="flex:12;background:var(--mu)"></i><i style="flex:9;background:var(--mu)"></i></div>
+  </div>
+  <div style="padding:0 14px 10px"><div class="card" style="display:flex;gap:10px;padding:10px"><div class="cv" style="background:#7d5a3a;width:40px;height:60px"></div><div><div class="mono" style="color:var(--ac)">Te toca</div><b>Hijos de Dune</b><div style="margin-top:6px"><span class="btn">Empezar</span></div></div></div></div>
+  <div style="padding:0 14px 10px"><div class="card" style="padding:8px"><span class="av" style="background:#c98a2b;margin-left:0"></span><span class="av" style="background:#5c7052"></span><span class="av" style="background:#7a5676"></span> <span class="note">Lucía va por Herejes · +2</span></div></div>
+  <div class="sec" style="padding:10px 14px"><div class="h3" style="font-size:13px">Sobre la saga</div><div class="note">En un futuro lejano, el planeta… <u>más</u></div></div>
+  <div class="sec" style="padding:10px 14px"><div class="h3" style="font-size:13px">Tu paso por Dune</div><div class="note">14 obras · desde marzo 2024</div></div>
+  <div class="sec" style="padding:10px 14px"><div class="note">Subsagas · Atlas · Todas las obras ↓</div></div>
+</div>
+
+</div>
+
+<div class="section" style="margin-top:16px">
+<p class="subtitle"><b>Decisiones de esta maqueta:</b> 1) Las sagas no tienen backdrop, así que el hero usa un mosaico difuminado de portadas de sus obras (si es una saga de TMDB con películas, el backdrop real de la primera). 2) «Entre amigos» va al lado de «Te toca» porque responde a la misma pregunta: «¿por dónde voy?». 3) La rejilla «Todas las obras» queda al final como catálogo de referencia, con filtro por tipo y estado. 4) Las acciones de curador se mueven a un menú «⋯» del hero, en lugar de los enlaces sueltos de hoy.</p>
+</div>
