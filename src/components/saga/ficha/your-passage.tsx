@@ -13,7 +13,7 @@ const STEP = 24; // px de viewBox entre posiciones consecutivas de la balda
 const HEIGHT = 60;
 
 const nf = new Intl.NumberFormat("es-ES");
-const sinceFormat = new Intl.DateTimeFormat("es-ES", { month: "long", year: "numeric" });
+const sinceFormat = new Intl.DateTimeFormat("es-ES", { month: "long", year: "numeric", timeZone: "UTC" });
 
 export async function YourPassage({ passage, sagaName }: { passage: Promise<Passage | null>; sagaName: string }) {
   const p = await passage;
@@ -37,7 +37,7 @@ export async function YourPassage({ passage, sagaName }: { passage: Promise<Pass
   }
   facts.push({ label: t("passageCompleted"), value: p.completed });
   if (p.inProgress > 0) facts.push({ label: t("passageInProgress"), value: p.inProgress });
-  if (p.pages) {
+  if (p.pages && p.pages.known > 0) {
     facts.push({
       label: t("passagePages"),
       value: (
@@ -48,7 +48,8 @@ export async function YourPassage({ passage, sagaName }: { passage: Promise<Pass
       ),
     });
   }
-  if (p.minutes) {
+  if (p.minutes && p.minutes.known > 0) {
+    // Con preserveAspectRatio="none" un <circle> se estira; el punto es un trazo de longitud cero con cap redondo.
     // Horas enteras: se redondea el total de minutos al entero más cercano.
     const h = nf.format(Math.round(p.minutes.total / 60));
     facts.push({
@@ -105,7 +106,15 @@ export async function YourPassage({ passage, sagaName }: { passage: Promise<Pass
         >
           <polyline points={points} fill="none" stroke="currentColor" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
           {pts.map((q, i) => (
-            <circle key={i} cx={q.x} cy={q.y} r={2.5} fill="currentColor" />
+            <path
+              key={i}
+              d={`M${q.x} ${q.y}h0`}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={6}
+              strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
+            />
           ))}
         </svg>
       )}

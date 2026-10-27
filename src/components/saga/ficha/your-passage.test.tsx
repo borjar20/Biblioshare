@@ -28,7 +28,7 @@ const full: Passage = {
   curve: [
     { x: 0, rating: 10, key: "book:a", title: "Dune" },
     { x: 1, rating: 5, key: "book:b", title: "Mesías" },
-    { x: 4, rating: 7, key: "book:c", title: "Herejes" },
+    { x: 4, rating: 1, key: "book:c", title: "Herejes" },
   ],
   curveLength: 5,
   optional: { skipped: 1, total: 2 },
@@ -67,9 +67,24 @@ describe("YourPassage", () => {
     expect(svg.getAttribute("viewBox")).toBe("0 0 96 60");
     const pts = svg.querySelector("polyline")!.getAttribute("points")!.trim().split(/\s+/);
     expect(pts).toHaveLength(3);
+    expect(pts[1].startsWith("24,")).toBe(true); // salta los huecos
     expect(pts[2].startsWith("96,")).toBe(true);
+    expect(pts[0].endsWith(",4")).toBe(true); // nota 10
+    expect(pts[2].endsWith(",56")).toBe(true); // nota 1
+    expect(svg.querySelectorAll("path")).toHaveLength(3);
+    expect(svg.querySelector("circle")).toBeNull();
     expect(svg.getAttribute("aria-label")).toContain("passageCurveLabel");
-    expect(svg.getAttribute("aria-label")).toContain("Dune 5");
+    expect(svg.getAttribute("aria-label")).toContain("Mesías 2,5");
+  });
+
+  it("sin tallas conocidas (known 0) no hay Páginas ni Tiempo; con known < of sí hay «sobre»", async () => {
+    render((await run({ ...full, pages: { total: 0, known: 0, of: 2 }, minutes: { total: 0, known: 0, of: 1 } }))!);
+    expect(screen.queryByText("passagePages")).toBeNull();
+    expect(screen.queryByText("passageTime")).toBeNull();
+    cleanup();
+    render((await run(full))!);
+    expect(screen.getByText("passagePages")).toBeTruthy();
+    expect(screen.getByTestId("your-passage").textContent).toContain("passageOfKnown");
   });
 
   it("con 1 punto no hay svg", async () => {
