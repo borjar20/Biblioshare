@@ -1,5 +1,3 @@
-"use client";
-
 import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -153,6 +151,11 @@ function Cover({ work, ring, small, accent }: { work: ShelfWork; ring?: string; 
           className="absolute inset-x-0 bottom-0 bg-accent py-0.5 text-center font-mono text-[8px] tracking-wider text-accent-foreground uppercase"
         >
           {t("shelfNowTag")}
+        </span>
+      )}
+      {work.skipped && (
+        <span aria-hidden className="absolute right-0.5 bottom-0.5 rounded-full bg-surface/90 px-1 font-mono text-[7px] text-muted-foreground">
+          {t("shelfSkipped")}
         </span>
       )}
       {work.role && (

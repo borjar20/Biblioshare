@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslations } from "next-intl";
 import type { Shelf, ShelfGroup, ShelfSlot, ShelfWork } from "@/lib/sagas/derive-shelf";
 import { OpenGroup, Pile } from "./saga-shelf-parts";
@@ -9,10 +9,18 @@ import { OpenGroup, Pile } from "./saga-shelf-parts";
 type A11yItem = { work: ShelfWork; extra: string };
 type T = ReturnType<typeof useTranslations>;
 
+// Solo dice la mitad que existe: «entre — y —» no informa de nada.
+function windowText(s: Extract<ShelfSlot, { kind: "window" }>, t: T): string {
+  if (s.afterTitle && s.beforeTitle) return t("shelfWindowA11y", { after: s.afterTitle, before: s.beforeTitle });
+  if (s.afterTitle) return t("shelfWindowAfterA11y", { title: s.afterTitle });
+  if (s.beforeTitle) return t("shelfWindowBeforeA11y", { title: s.beforeTitle });
+  return t("shelfWindow");
+}
+
 function slotA11y(s: ShelfSlot, t: T): A11yItem[] {
   if (s.kind === "tandem") return s.works.map((work) => ({ work, extra: `, ${t("shelfTandem")}` }));
   if (s.kind === "window")
-    return [{ work: s.work, extra: `, ${t("shelfWindowA11y", { after: s.afterTitle ?? "—", before: s.beforeTitle ?? "—" })}` }];
+    return [{ work: s.work, extra: `, ${windowText(s, t)}` }];
   return [{ work: s.work, extra: "" }];
 }
 
@@ -30,13 +38,31 @@ export function SagaShelf({
 }) {
   const t = useTranslations("saga");
   const [open, setOpen] = useState(shelf.openGroupKey);
+  // Si llega otra balda (cambio de ruta con la misma instancia), se resincroniza.
+  const [prevOpenKey, setPrevOpenKey] = useState(shelf.openGroupKey);
+  if (shelf.openGroupKey !== prevOpenKey) {
+    setPrevOpenKey(shelf.openGroupKey);
+    setOpen(shelf.openGroupKey);
+  }
+  const titleId = useId();
   const rowRef = useRef<HTMLDivElement>(null);
+  // Abrir una pila desmonta el botón enfocado: el foco se devuelve a la balda.
+  const focusAfterOpen = useRef(false);
+  function openGroup(key: string) {
+    focusAfterOpen.current = true;
+    setOpen(key);
+  }
   const counted = shelf.groups.reduce((s, g) => s + g.counted, 0);
   const completed = shelf.groups.reduce((s, g) => s + g.completed, 0);
   const groupName = (g: ShelfGroup) => g.name ?? sagaName;
 
   useEffect(() => {
-    rowRef.current?.querySelector("[data-testid='shelf-now']")?.scrollIntoView({ inline: "center", block: "nearest" });
+    const row = rowRef.current;
+    row?.querySelector("[data-testid='shelf-now']")?.scrollIntoView({ inline: "center", block: "nearest" });
+    if (focusAfterOpen.current) {
+      focusAfterOpen.current = false;
+      row?.querySelector<HTMLElement>("[data-testid='shelf-now'], [data-shelf-link]")?.focus();
+    }
   }, [open]);
 
   function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
@@ -56,9 +82,9 @@ export function SagaShelf({
   ]);
 
   return (
-    <section data-testid="saga-shelf" aria-labelledby="shelf-title" className="flex flex-col gap-3">
+    <section data-testid="saga-shelf" aria-labelledby={titleId} className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 id="shelf-title" className="mr-1 font-mono text-[10px] tracking-[0.14em] text-accent uppercase">
+        <h2 id={titleId} className="mr-1 font-mono text-[10px] tracking-[0.14em] text-accent uppercase">
           {t("shelfTitle")}
         </h2>
         {routes.length > 1 &&
@@ -86,7 +112,7 @@ export function SagaShelf({
           g.key === open || shelf.groups.length === 1 ? (
             <OpenGroup key={g.key} group={g} label={groupName(g)} showLabel={shelf.groups.length > 1} />
           ) : (
-            <Pile key={g.key} group={g} label={groupName(g)} onOpen={() => setOpen(g.key)} />
+            <Pile key={g.key} group={g} label={groupName(g)} onOpen={() => openGroup(g.key)} />
           ),
         )}
       </div>
@@ -102,7 +128,8 @@ export function SagaShelf({
                 type="button"
                 data-testid={`shelf-segment-${s.groupKey}`}
                 aria-label={t("shelfSegment", { name: g ? groupName(g) : "", done: s.done, total: s.weight })}
-                onClick={() => setOpen(s.groupKey)}
+                aria-pressed={s.groupKey === open}
+                onClick={() => openGroup(s.groupKey)}
                 style={{ flexGrow: s.weight }}
                 className={`relative h-full basis-0 overflow-hidden rounded-full bg-surface-muted ${s.groupKey === open ? "ring-2 ring-foreground/30" : ""}`}
               >
@@ -117,9 +144,10 @@ export function SagaShelf({
       <ol data-testid="shelf-a11y-list" className="sr-only">
         {items.map(({ work, extra }) => (
           <li key={work.key}>
-            <a href={work.href}>
+            <a href={work.href} tabIndex={-1}>
               {work.title} — {t(`shelfState_${work.state}`)}
               {work.role ? `, ${t(`roleLabel.${work.role}`)}` : ""}
+              {work.skipped ? `, ${t("shelfSkipped")}` : ""}
               {work.optional ? `, ${t("optionalChip")}` : ""}
               {extra}
             </a>
