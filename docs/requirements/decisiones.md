@@ -8066,3 +8066,19 @@ Se añade a `/saga/[id]` lo que la spec describía en una línea cada bloque. Co
 Sin migraciones, sin `use cache` (regla #437: todo depende de la sesión; las lecturas van detrás de
 `<Suspense>`). Evidencia y límites en
 [el informe de la fase 2](../testing/2026-10-28-sagas-ficha-lector-f2.md).
+
+## 2026-10-28 — Ficha de saga, fase 2: «opcionales saltadas» de toda la saga y «La terminaste» sobre obras que cuentan
+
+Dos correcciones de la revisión final de la fase 2 (matizan las decisiones 1 y 5 de la entrada anterior):
+
+1. **«Te saltaste X de Y opcionales» es una cifra de la saga entera**, calculada desde los miembros de
+   `detail.groups` (dedupe por `tipo:id`; saltada si algún miembro lo está), no desde la balda. La balda
+   oculta las opcionales con `profiles.show_optional_readings = false` y cambia con el itinerario; una
+   cifra derivada de ella desaparecería justo en quien las esconde, y #761 pide ese contraste («las
+   esconde y además las salta»). Es independiente de la preferencia y del itinerario.
+2. **«Tu nota media» de «La terminaste» usa solo obras que cuentan** (no opcionales), como el resto del
+   estado «terminada» (`Passage.countedAverage`). «Tu media» dentro de «Tu paso» sigue siendo sobre todas
+   las obras con nota (`Passage.average`).
+
+Además, `getSagaPassage` propaga los errores de cada consulta (la página ya degrada a «sin Tu paso») y
+las notas se pintan con su escala («4,5/5»).

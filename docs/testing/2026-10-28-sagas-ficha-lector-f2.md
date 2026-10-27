@@ -52,3 +52,12 @@ Total 24/24 en una sola pasada (1,4 min). Ningún fallo, así que no hubo que co
 - «Tu nota media» en «La terminaste» no tiene e2e (exige una saga entera terminada con notas).
 - Comprobación visual de las tres piezas en navegador y a 375 px: no repetida en esta tarea.
 - El seed no tiene opcionales, así que «Te saltaste X de Y» no se ejercita en e2e.
+
+## Correcciones de la revisión final
+
+- «Opcionales saltadas» sale de los miembros de la saga (no de la balda): unitarios en `passage.test.ts`
+  (`sagaOptionalFigure`) y `get-saga-passage.test.ts` (escenario con opcionales ocultas en la balda).
+- «La terminaste» usa `countedAverage` (sin opcionales); `getSagaPassage` rechaza si falla una consulta.
+- e2e: `sagas-ficha-lector.spec.ts` 12/12 contra `next build --webpack` + `next start -p 3000`; el recuento de
+  puertas se comprueba en `data-testid="door-progress"` y el acceso al mapa se decide por la redirección de `/mapa`.
+- Unitarios `src/lib/sagas` y `src/components/saga`: 679/679; eslint y `tsc --noEmit` limpios.
