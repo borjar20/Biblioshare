@@ -39,11 +39,12 @@ export type Passage = {
 const keyOf = (r: PassRow) => `${r.itemType}:${r.itemId}`;
 const day = (r: PassRow) => r.startedOn ?? r.finishedOn ?? r.createdAt.slice(0, 10);
 
-/** true si `a` terminó después que `b` (fin nulo = después de cualquier fecha). */
+/** true si `a` terminó después que `b` (fin nulo = anterior a cualquier fecha:
+ *  importaciones de historial sin fecha). */
 function laterFinish(a: PassRow, b: PassRow): boolean {
   if (a.finishedOn !== b.finishedOn) {
-    if (a.finishedOn === null) return true;
-    if (b.finishedOn === null) return false;
+    if (a.finishedOn === null) return false;
+    if (b.finishedOn === null) return true;
     return a.finishedOn > b.finishedOn;
   }
   return a.createdAt > b.createdAt;

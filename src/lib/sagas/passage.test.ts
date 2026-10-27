@@ -51,6 +51,19 @@ describe("derivePassage", () => {
     expect(r?.curve).toEqual([{ x: 1, rating: 6, key: "book:b", title: "BOOK:B" }]);
   });
 
+  it("un pase terminado sin fecha es anterior a cualquiera con fecha; entre sin fecha decide el alta", () => {
+    const r = derivePassage({
+      passes: [
+        p("book:a", { rating: 8, finishedOn: "2020-01-01" }),
+        p("book:a", { rating: 5, finishedOn: null }),
+        p("book:b", { rating: 3, createdAt: "2026-01-01T00:00:00Z" }),
+        p("book:b", { rating: 9, createdAt: "2026-03-01T00:00:00Z" }),
+      ],
+      sizes: new Map(), order: [o("book:a"), o("book:b")],
+    });
+    expect(r?.curve.map((c) => [c.key, c.rating])).toEqual([["book:a", 8], ["book:b", 9]]);
+  });
+
   it("favorita: la nota más alta; el empate lo gana la terminada más reciente", () => {
     const r = derivePassage({
       passes: [
