@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 
@@ -8,18 +8,32 @@ import { useTranslations } from "next-intl";
 // enlaces sueltos de la antigua pestaña Info: Editar ficha, Anidar en universo
 // (solo sin padre) e Itinerarios. Solo se monta para collaborator+.
 // Mismo <dialog> nativo que `HeroMenu` de la ficha de obra.
+//
+// OJO (TRAMPAS §26): con cacheComponents la ficha NO se desmonta al seguir uno
+// de estos enlaces, se oculta con <Activity> (display: none). Un <dialog>
+// abierto con showModal() sigue entonces en la top layer aunque no se vea, y
+// deja inerte todo lo demás: en /editar «Guardar cambios» no recibía el clic.
+// Por eso el diálogo se cierra al pulsar un enlace y, como red, en la limpieza
+// de un layout effect, que corre síncrona cuando Activity oculta el árbol.
 export function SagaCuratorMenu({ sagaId, hasParent }: { sagaId: string; hasParent: boolean }) {
   const t = useTranslations("saga");
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const dialog = dialogRef.current;
-    if (!dialog) return;
-    if (open && !dialog.open) dialog.showModal();
-    if (!open && dialog.open) dialog.close();
+    if (!dialog || !open) return;
+    if (!dialog.open) dialog.showModal();
+    return () => {
+      if (dialog.open) dialog.close();
+    };
   }, [open]);
 
+  // Al volver a la ficha (Activity la vuelve visible) el menú debe estar
+  // cerrado: es una interacción de paso, no estado de vista que conservar.
+  useLayoutEffect(() => () => setOpen(false), []);
+
+  const close = () => setOpen(false);
   const item = "block rounded-lg px-3 py-2.5 text-sm font-semibold hover:bg-surface-muted";
   return (
     <>
@@ -34,14 +48,16 @@ export function SagaCuratorMenu({ sagaId, hasParent }: { sagaId: string; hasPare
       </button>
       <dialog
         ref={dialogRef}
-        onClose={() => setOpen(false)}
+        onClose={close}
         aria-label={t("curatorMenu")}
-        onClick={(e) => e.target === dialogRef.current && setOpen(false)}
+        onClick={(e) => e.target === dialogRef.current && close()}
         className="m-auto w-[min(92vw,320px)] rounded-card border border-border bg-surface p-2 text-foreground shadow-card backdrop:bg-scrim"
       >
-        <Link href={`/saga/${sagaId}/editar`} className={item}>✎ {t("editSheet")}</Link>
-        {!hasParent && <Link href={`/saga/${sagaId}/editar#universo`} className={item}>⌂ {t("nestInUniverse")}</Link>}
-        <Link href={`/saga/${sagaId}/rutas`} className={item}>✎ {t("routesManage")}</Link>
+        <Link href={`/saga/${sagaId}/editar`} onClick={close} className={item}>✎ {t("editSheet")}</Link>
+        {!hasParent && (
+          <Link href={`/saga/${sagaId}/editar#universo`} onClick={close} className={item}>⌂ {t("nestInUniverse")}</Link>
+        )}
+        <Link href={`/saga/${sagaId}/rutas`} onClick={close} className={item}>✎ {t("routesManage")}</Link>
       </dialog>
     </>
   );
