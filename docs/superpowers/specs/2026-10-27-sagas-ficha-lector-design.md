@@ -137,9 +137,17 @@ desplegar pilas, saltar con la minibarra y el teclado), `NextUpCard`, `FriendsOn
 `SagaAbout`, `YourPassage`, `SubsagaDoors`, `AtlasTeaser` y `SagaAllWorks`.
 `src/app/saga/[id]/page.tsx` pasa a ser una composición plana de estos bloques.
 
-**Se retiran de la ficha** `SagaTabs`, `SagaInfo`, `SagaMapTab` y el hero actual.
-`ReadingTimeline` y `RouteView` **siguen vivos** mientras los use el camino del mapa, y se
-retiran con el subproyecto 2. `?tab=mapa` de enlaces viejos redirige a `/saga/[id]/mapa`.
+**Se retiran de la ficha** `SagaTabs`, `SagaInfo` (su rejilla pasa a `SagaAllWorks`),
+`SagaMapTab` y el hero actual.
+
+El timeline detallado, el grafo embebido, adoptar un itinerario, saltar opcionales y la lente
+`?rol=` solo vivían en la pestaña Mapa. `/saga/[id]/mapa` no los tiene. Por eso se mudan sin
+cambios a una página **interina**, `/saga/[id]/como-leerla`, que el atlas (subproyecto 2)
+sustituirá. `?tab=mapa` de enlaces viejos redirige allí conservando `ruta`, `orden` y `rol`, y
+la balda enlaza a ella como «Cómo leerla →». (Ajuste hecho al escribir el plan, 2026-10-27.)
+
+La balda usa el grafo derivado aunque el curador haya apagado `show_map`
+(`SagaDetail.shelfGraph`): el interruptor esconde el mapa, no el orden.
 
 ### 6. Móvil y accesibilidad
 
