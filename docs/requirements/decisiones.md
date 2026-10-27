@@ -8030,3 +8030,12 @@ límites de verificación en
 [el informe de la fase 1](../testing/2026-10-27-sagas-ficha-lector-f1.md). Fallos e2e
 preexistentes hallados de paso: #1543, #1544, #1545, #1546; sagas «[QA Curación]» huérfanas
 en dev: #1547.
+
+## 2026-10-27 — La balda ofrece «Orden de lectura» con el mapa apagado
+
+Complementa el punto 3 de la entrada anterior. Usar `shelfGraph` no bastaba: con `show_map=false`
+`buildRouteList` no incluye la ruta sintética «lectura», así que la balda nunca la elegía y caía en
+un itinerario curado o en «Publicación». La ficha antepone ahora «lectura» a sus rutas
+(`shelfRoutesFor`) cuando hay orden curado y no existe ya una «lectura» ni un itinerario designado.
+`detail.routes` no cambia: «Cómo leerla» y el resto siguen respetando el interruptor, y allí
+`?ruta=lectura` degrada a la primera ruta.

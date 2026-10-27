@@ -108,3 +108,19 @@ Sin sesión, contra la base de dev:
 | #1545 | e2e orden designado: «desdesignar» |
 | #1546 | e2e flaky «saltar tacha la fila» |
 | #1547 | 18 sagas «[QA Curación]» huérfanas en dev |
+| #1548 | Pasada visual en tema claro y móvil (sospecha) |
+| #1549 | Objetivos táctiles por debajo de 44 px |
+| #1550 | Filtro de «Todas las obras»: contadores, vacío y orden |
+| #1551 | `SagaDetail.progress` sin consumidor |
+| #1552 | `loading.tsx` de la ficha también en las subrutas |
+
+## Revisión final de la rama
+
+- **I1:** con `show_map=false` la balda no ofrecía «Orden de lectura» y caía en un itinerario o en
+  «Publicación». Ahora `shelfRoutesFor` (`src/lib/sagas/shelf-sections.ts`) antepone la sintética
+  «lectura» solo en la ficha. Comprobado con `next start` contra dev: «[QA Sagas v2] Era Uno»
+  (`/mapa` redirige a la ficha) pinta el chip «Orden de lectura» activo. `/como-leerla?ruta=lectura`
+  degrada a la primera ruta de `detail.routes` (200, sin error).
+- **I2:** una ventana que ya es «ahora» ya no se ofrece también como «Ahora encaja también».
+- e2e `sagas-ficha-lector`, `sagas-itinerarios`, `sagas-v2` y `sagas-v2-curacion` contra el build de
+  producción: 20/20.
