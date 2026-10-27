@@ -7,7 +7,8 @@ import { getSagaDetail } from "@/lib/sagas/get-saga-detail";
 import { resolveActiveRoute } from "@/lib/sagas/resolve-active-route";
 import { SAGA_ITEM_ROLES, type SagaItemRole } from "@/lib/sagas/types";
 import { SagaHero } from "@/components/saga/saga-hero";
-import { SagaInfo } from "@/components/saga/saga-info";
+import { SagaAbout } from "@/components/saga/ficha/saga-about";
+import { SagaAllWorks } from "@/components/saga/ficha/saga-all-works";
 import { SagaMapTab } from "@/components/saga/saga-map-tab";
 import { SagaTabs } from "@/components/saga/saga-tabs";
 
@@ -64,14 +65,10 @@ export default async function SagaDetailPage({
       <SagaTabs
         labels={{ info: t("tabInfo"), map: t("tabMap") }}
         info={
-          <SagaInfo
-            overview={detail.saga.overview}
-            groups={detail.groups}
-            canConfigure={canCurate}
-            sagaId={detail.saga.id}
-            hasParent={detail.parent !== null}
-            windows={detail.windows}
-          />
+          <div className="flex flex-col gap-8 px-4 pb-10">
+            <SagaAbout detail={detail} canConfigure={canCurate} />
+            <SagaAllWorks groups={detail.groups} windows={detail.windows} />
+          </div>
         }
         map={
           detail.hasGraph || detail.routes.some((r) => !r.synthetic) ? (

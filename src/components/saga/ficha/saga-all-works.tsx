@@ -7,7 +7,8 @@ import { freeBlockWindow, freeItemWindow } from "@/lib/sagas/get-saga-detail";
 import { partitionGroups, type MemberGroup } from "@/lib/sagas/group-members";
 import { esColocable } from "@/lib/sagas/placement";
 import type { DetailMember, ResolvedWindow } from "@/lib/sagas/types";
-import { RoleChip } from "./role-chip";
+import { RoleChip } from "../role-chip";
+import { WorksFilter } from "./works-filter";
 
 // `freeItemWindow`/`freeBlockWindow` (la guarda «solo lo libre tiene
 // ventana») viven en get-saga-detail.ts junto a `resolveWindows` — extraídas
@@ -15,7 +16,7 @@ import { RoleChip } from "./role-chip";
 // Ver su comentario ahí para el porqué de la comprobación de `placement`/
 // `placementInParent`.
 
-// Pestaña Info (frames A/D): sinopsis + títulos agrupados por subsaga. La
+// Todas las obras (spec 2026-10-27 §1.8), antes la pestaña Info: títulos agrupados por subsaga. La
 // celda replica el icell del mockup: portada, badge de orden, estado ✓/◉.
 //
 // Issue #167 introdujo la sección "Fuera del orden principal" para los
@@ -144,11 +145,11 @@ function MemberCell({
 // La grid de un grupo (2026-07-26, fusión de secciones): una sola lista, sin
 // separar "sin número" en su propia sección — ese hecho ya lo dice el
 // contorno punteado de MemberCell y, para collaborator+, el aviso de deuda
-// de curación de SagaInfo.
+// de curación de SagaAllWorks.
 //
 // Fix Task 7 / Finding 1 (review): `members` aquí es SIEMPRE la lista ya
 // filtrada de "lo que toca pintar en esta grid" — decidida una única vez por
-// `SagaInfo` (ver `eligible` en `groups.map`) y reutilizada tanto para el
+// `SagaAllWorks` (ver `eligible` en `groups.map`) y reutilizada tanto para el
 // contador de la cabecera como para esto. Antes GroupBody filtraba los
 // `libre` por su cuenta mientras la cabecera pintaba `group.members.length`
 // sin filtrar: con un `libre` en el grupo, el número no bajaba aunque la
@@ -176,7 +177,7 @@ function GroupBody({
   return (
     <ul className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-7">
       {members.map((m) => (
-        <li key={`${m.itemType}-${m.itemId}`}>
+        <li key={`${m.itemType}-${m.itemId}`} data-type={m.itemType} data-status={m.status === "completed" ? "done" : "pending"}>
           <MemberCell
             m={m}
             labels={labels}
@@ -188,19 +189,11 @@ function GroupBody({
   );
 }
 
-export async function SagaInfo({
-  overview,
+export async function SagaAllWorks({
   groups,
-  canConfigure,
-  sagaId,
-  hasParent,
   windows,
 }: {
-  overview: string | null;
   groups: MemberGroup[];
-  canConfigure?: boolean;
-  sagaId: string;
-  hasParent: boolean;
   /** Ventana de cada entrada `libre`, resuelta a texto en `getSagaDetail`
    *  (fase 2b, Task 6). Clave = `i:<tipo>:<uuid>` / `s:<uuid>`, ver
    *  `SagaDetail.windows`. */
@@ -232,7 +225,6 @@ export async function SagaInfo({
     return <p className="mt-0.5 text-[10.5px] leading-tight text-muted-foreground">{body}</p>;
   };
   const freeMembers = groups.flatMap((g) => g.members.filter((m) => m.placement === "libre"));
-  const unclassified = groups.flatMap((g) => g.members).filter((m) => m.placement === null).length;
   // Issue #198: un bloque `libre` es una entrada sin hueco, igual que una obra
   // `libre`, así que vive en «Cuando quieras» y no en la lista ordenada.
   // Reparto delegado en `partitionGroups` (fase 3, Task 1): el mapa necesita
@@ -268,76 +260,12 @@ export async function SagaInfo({
   const hasVisibleFreeSection =
     freeMembers.length > 0 || freeGroupsWithEligible.some(({ eligible }) => eligible.length > 0);
   return (
-    <div className="flex flex-col gap-5 px-4 pb-10">
+    <WorksFilter>
+      <div className="flex flex-col gap-5">
       <section>
-        <h2 className="mb-2 label-section">
-          {t("synopsis")}
+        <h2 className="mb-3 label-section">
+          {t("allWorksTitle")}
         </h2>
-        <p className="text-[13.5px] leading-relaxed text-foreground sm:columns-2 sm:gap-11">
-          {overview ?? t("noSynopsis")}
-        </p>
-      </section>
-
-      {/* Aviso de deuda de curación (Task 7): solo collaborator+ — un lector
-          normal no puede resolverlo, así que no debe verlo — y solo si queda
-          algo sin clasificar (`placement === null`). Los `libre` NO cuentan
-          aquí: están declarados, no son deuda. */}
-      {canConfigure && unclassified > 0 && (
-        <aside className="flex items-start gap-2.5 rounded-xl border border-border px-3.5 py-3">
-          <span className="text-[15px] text-muted-foreground">◇</span>
-          <p className="text-xs leading-relaxed text-foreground">
-            {t("unclassifiedNotice", { count: unclassified })}{" "}
-            <Link href={`/saga/${sagaId}/editar`} className="font-semibold underline">
-              {t("unclassifiedCta")}
-            </Link>
-          </p>
-        </aside>
-      )}
-
-      <section>
-        {/* flex-wrap en AMBOS niveles: con 3 botones de curación a 390px la
-            fila no cabe; el shrink-0 del bloque de botones impedía encoger y
-            desbordaba la página entera en horizontal. */}
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="label-section">
-            {t("itemsTitle")}
-          </h2>
-          <div className="flex flex-wrap items-center gap-2">
-            {canConfigure && (
-              <Link
-                href={`/saga/${sagaId}/editar`}
-                className="shrink-0 rounded-lg border border-border px-3 py-1.5 text-[11px] font-semibold text-muted-foreground"
-              >
-                ✎ {t("editSheet")}
-              </Link>
-            )}
-            {canConfigure && !hasParent && (
-              <Link
-                href={`/saga/${sagaId}/editar#universo`}
-                className="shrink-0 rounded-lg border border-border px-3 py-1.5 text-[11px] font-semibold text-muted-foreground"
-              >
-                ⌂ {t("nestInUniverse")}
-              </Link>
-            )}
-            {/* Punto de entrada a la curación de itinerarios, SIEMPRE visible
-                para collaborator+ (haya o no grafo, haya o no itinerarios ya
-                creados). Antes el único enlace a /rutas vivía en RouteView, y
-                RouteView solo se monta cuando la ruta activa YA es una
-                curada: en una saga sin itinerarios era inalcanzable desde la
-                interfaz — el mismo agujero que mató las colas (backlog §7.22,
-                "quedó inalcanzable, sin ningún enlace"). Se llega solo
-                tecleando la URL, así que aquí queda un enlace que no depende
-                de que ya exista nada. */}
-            {canConfigure && (
-              <Link
-                href={`/saga/${sagaId}/rutas`}
-                className="shrink-0 rounded-lg border border-border px-3 py-1.5 text-[11px] font-semibold text-muted-foreground"
-              >
-                ✎ {t("routesManage")}
-              </Link>
-            )}
-          </div>
-        </div>
         {hasVisibleOrderedGroup ? (
           <div className="flex flex-col gap-5">
             {/* group-members.ts: sagaId null = "Nexo" si hay hijas, único grupo
@@ -405,7 +333,7 @@ export async function SagaInfo({
             {freeMembers.length > 0 && (
               <ul className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-7">
                 {freeMembers.map((m) => (
-                  <li key={`${m.itemType}-${m.itemId}`}>
+                  <li key={`${m.itemType}-${m.itemId}`} data-type={m.itemType} data-status={m.status === "completed" ? "done" : "pending"}>
                     <MemberCell m={m} labels={cellLabels} windowLine={renderWindow(freeItemWindow(windows, m))} />
                   </li>
                 ))}
@@ -435,6 +363,7 @@ export async function SagaInfo({
           </div>
         </section>
       )}
-    </div>
+      </div>
+    </WorksFilter>
   );
 }
