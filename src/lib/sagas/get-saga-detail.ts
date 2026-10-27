@@ -72,6 +72,11 @@ export type SagaDetail = {
    *  `lectura` del selector — la intención de esos tres sitios es "¿esta saga
    *  ENSEÑA su mapa?", no "¿hay un `SagaGraph`?", aunque hoy respondan igual. */
   hasGraph: boolean;
+  /** El grafo derivado SIN el interruptor `show_map` (spec 2026-10-27 §4): la
+   *  balda de la ficha pinta el orden aunque el curador haya escondido el
+   *  MAPA. Puede llegar con 0 nodos (saga vacía). Para «¿se enseña el mapa?»
+   *  sigue mandando `graph`. */
+  shelfGraph: SagaGraph;
   /** Rol del usuario que visita, o null sin sesión (botones de edición del grafo). */
   viewerRole: UserRole | null;
   /** Itinerarios disponibles: sintéticas (lectura/publicación) + curadas. */
@@ -748,6 +753,7 @@ export async function getSagaDetail(
     isAuthenticated: Boolean(user),
     graph,
     hasGraph,
+    shelfGraph: derivedGraph,
     viewerRole: (roleRow as { data: { role: UserRole } | null }).data?.role ?? null,
     routes,
     routeChoice,
