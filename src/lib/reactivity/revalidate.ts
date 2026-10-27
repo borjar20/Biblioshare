@@ -1,6 +1,6 @@
 import "server-only";
 import { revalidatePath, revalidateTag, updateTag } from "next/cache";
-import { itemHref, sagaHref } from "@/lib/catalog/item-href";
+import { itemHref, sagaHref, sagaReadingHref } from "@/lib/catalog/item-href";
 import type { ItemType } from "@/lib/catalog/types";
 import type { WrapUpKind } from "@/lib/wrap-ups/windows";
 
@@ -125,9 +125,12 @@ export function revalidateCollectionPages(): void {
   revalidatePath("/coleccion/c/[id]", "page");
 }
 
-/** La ficha de una saga concreta. */
+/** La ficha de una saga concreta y su página «Cómo leerla» (spec 2026-10-27),
+ *  que pinta los mismos estados: adoptar un itinerario o saltar una opcional
+ *  se hace desde allí y tiene que verse en las dos. */
 export function revalidateSagaPage(id: string): void {
   revalidatePath(sagaHref(id));
+  revalidatePath(sagaReadingHref(id));
 }
 
 /** La pantalla de curación de miembros de una saga (/saga/[id]/editar, Task 8).

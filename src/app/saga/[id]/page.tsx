@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { hasMinRole } from "@/lib/auth/roles";
 import { getSagaDetail } from "@/lib/sagas/get-saga-detail";
+import { resolveActiveRoute } from "@/lib/sagas/resolve-active-route";
 import { SAGA_ITEM_ROLES, type SagaItemRole } from "@/lib/sagas/types";
 import { SagaHero } from "@/components/saga/saga-hero";
 import { SagaInfo } from "@/components/saga/saga-info";
@@ -46,17 +47,7 @@ export default async function SagaDetailPage({
   // getSagaDetail — sin segundo auth.getUser().
   const canCurate = hasMinRole(detail.viewerRole, "collaborator");
 
-  // Ruta activa. Precedencia: ?ruta= explícito → compatibilidad con el viejo
-  // ?orden=publicacion (enlaces ya compartidos) → la adoptada → la primera.
-  // Un slug desconocido (ruta borrada, enlace viejo) degrada a la primera en
-  // vez de dar 404: por eso la adopción guarda el slug y no un route_id.
-  const known = new Set(detail.routes.map((r) => r.slug));
-  const activeRoute =
-    (ruta && known.has(ruta) && ruta) ||
-    (orden === "publicacion" && known.has("publicacion") && "publicacion") ||
-    (detail.routeChoice && known.has(detail.routeChoice) && detail.routeChoice) ||
-    detail.routes[0]?.slug ||
-    "publicacion";
+  const activeRoute = resolveActiveRoute(detail, { ruta, orden });
 
   // Lente por rol (fase 5). Un valor desconocido —enlace viejo, el `paralela`
   // de antes de la retirada, o algo escrito a mano— degrada a «todos» en vez de

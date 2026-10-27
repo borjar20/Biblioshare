@@ -89,7 +89,7 @@ async function clearRouteChoice(sagaId: string) {
 
 test.describe("itinerarios de lectura", () => {
   test("el selector lista las rutas y la elegida muestra su cabecera", async ({ page }) => {
-    await page.goto(`/saga/${UNIVERSO_ID}?tab=mapa`);
+    await page.goto(`/saga/${UNIVERSO_ID}/como-leerla`);
 
     await page.getByRole("link", { name: "La Guardia" }).click();
 
@@ -107,37 +107,41 @@ test.describe("itinerarios de lectura", () => {
   // numérica — ver comentario de cabecera.
   test("el progreso del hero NO cambia al cambiar de ruta", async ({ page }) => {
     await loginAsCollaborator(page);
-    await page.goto(`/saga/${UNIVERSO_ID}?tab=mapa&orden=publicacion`);
-
+    // El hero vive en la ficha, no en /como-leerla: se fija el baseline allí,
+    // se cambia de ruta en /como-leerla y se vuelve a la ficha con esa ruta.
+    await page.goto(`/saga/${UNIVERSO_ID}?ruta=publicacion`);
     const hero = page.getByTestId("saga-hero-progress");
     await expect(hero).toBeVisible();
     const before = await hero.innerText();
     expect(before).toBe("33%"); // 1 de 3 (Ronda de noche completada) — fija el baseline, no solo la igualdad
 
+    await page.goto(`/saga/${UNIVERSO_ID}/como-leerla?orden=publicacion`);
     await page.getByRole("link", { name: "La Guardia" }).click();
     await expect(page.getByRole("heading", { name: "La Guardia" })).toBeVisible();
     // La ruta SÍ tiene un denominador distinto (0 de 2 = 0%) — si el hero
-    // hubiera copiado ese número, esta comparación fallaría.
+    // hubiera copiado ese número, la comparación de abajo fallaría.
     await expect(page.getByText("Llevas 0 de 2 de esta ruta")).toBeVisible();
 
+    await page.goto(`/saga/${UNIVERSO_ID}?ruta=la-guardia`);
+    await expect(hero).toBeVisible();
     expect(await hero.innerText()).toBe(before);
   });
 
   test("adoptar una ruta hace que la ficha abra por ella", async ({ page }) => {
     await clearRouteChoice(UNIVERSO_ID);
     await loginAsCollaborator(page);
-    await page.goto(`/saga/${UNIVERSO_ID}?tab=mapa&ruta=la-guardia`);
+    await page.goto(`/saga/${UNIVERSO_ID}/como-leerla?ruta=la-guardia`);
 
     await page.getByRole("button", { name: "Leer por aquí" }).click();
     await expect(page.getByRole("button", { name: "Leyendo por aquí" })).toBeVisible();
 
     // Sin searchParams: debe abrir por la adoptada.
-    await page.goto(`/saga/${UNIVERSO_ID}?tab=mapa`);
+    await page.goto(`/saga/${UNIVERSO_ID}/como-leerla`);
     await expect(page.getByRole("heading", { name: "La Guardia" })).toBeVisible();
   });
 
   test("los enlaces viejos con ?orden=publicacion siguen funcionando", async ({ page }) => {
-    await page.goto(`/saga/${UNIVERSO_ID}?tab=mapa&orden=publicacion`);
+    await page.goto(`/saga/${UNIVERSO_ID}/como-leerla?orden=publicacion`);
 
     // La lista por año se reconoce por su numeración 01, 02…
     await expect(page.getByText("01", { exact: true })).toBeVisible();

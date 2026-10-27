@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
-import { sagaHref } from "@/lib/catalog/item-href";
+import { sagaHref, sagaReadingHref } from "@/lib/catalog/item-href";
 import { createCuratedOrder } from "@/lib/sagas/curated-order";
 import { countRoles } from "@/lib/sagas/count-roles";
 import { deriveTimeline } from "@/lib/sagas/derive-timeline";
@@ -126,7 +126,7 @@ export async function RouteView({
   const optionalCount = graph === null ? 0 : graph.nodes.filter((n) => n.kind === "item" && n.optional).length;
   // Misma regla para los roles, y por lo mismo: contados sobre el grafo entero.
   const roleCounts = graph === null ? [] : countRoles(graph);
-  const baseHref = `${sagaHref(detail.saga.id)}?tab=mapa&ruta=${encodeURIComponent(slug)}`;
+  const baseHref = `${sagaReadingHref(detail.saga.id)}?ruta=${encodeURIComponent(slug)}`;
 
   return (
     <div className="flex flex-col gap-3">

@@ -114,7 +114,7 @@ test.describe("timeline · fase 1", () => {
   test("móvil, con itinerario activo: la columna son SUS pasos, en su orden", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await loginAsDevtest(page);
-    await page.goto(`/saga/${UNIVERSO_ID}?tab=mapa&ruta=${ROUTE_SLUG}`);
+    await page.goto(`/saga/${UNIVERSO_ID}/como-leerla?ruta=${ROUTE_SLUG}`);
 
     const tl = timeline(page);
     await expect(tl).toBeVisible();
@@ -129,7 +129,7 @@ test.describe("timeline · fase 1", () => {
   test("móvil, ruta «lectura»: el timeline numera desde 1 y ya no hay «Como lista lineal»", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await loginAsDevtest(page);
-    await page.goto(`/saga/${UNIVERSO_ID}?tab=mapa&ruta=lectura`);
+    await page.goto(`/saga/${UNIVERSO_ID}/como-leerla?ruta=lectura`);
 
     await expect(timeline(page)).toBeVisible();
     // El PRIMER número de la columna, no «que exista un Nº 1»: con la
@@ -143,7 +143,7 @@ test.describe("timeline · fase 1", () => {
   test("PC: el mismo timeline al pie del grafo", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await loginAsDevtest(page);
-    await page.goto(`/saga/${UNIVERSO_ID}?tab=mapa&ruta=lectura`);
+    await page.goto(`/saga/${UNIVERSO_ID}/como-leerla?ruta=lectura`);
 
     await expect(timeline(page)).toBeVisible();
   });
@@ -154,7 +154,7 @@ test.describe("timeline · fase 1", () => {
   test("sin sesión: el timeline se ve igual, con sus filas y su numeración", async ({ browser }) => {
     const page = await browser.newPage({ storageState: { cookies: [], origins: [] } });
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(`/saga/${UNIVERSO_ID}?tab=mapa&ruta=lectura`);
+    await page.goto(`/saga/${UNIVERSO_ID}/como-leerla?ruta=lectura`);
 
     await expect(timeline(page)).toBeVisible();
     // El PRIMER número de la columna, no «que exista un Nº 1»: con la

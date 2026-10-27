@@ -21,7 +21,7 @@ const OPCIONAL_TITLE = "Libro sin valorar";
 const PAREJA_ID = "d6d61eab-6ef4-4691-a8f0-b89068508fd4"; // «Libro raro sin match», hueco 3 → se mueve al 2
 const PAREJA_TITLE = "Libro raro sin match";
 
-const MAPA = `/saga/${UNIVERSO_ID}?tab=mapa&ruta=lectura`;
+const MAPA = `/saga/${UNIVERSO_ID}/como-leerla?ruta=lectura`;
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;

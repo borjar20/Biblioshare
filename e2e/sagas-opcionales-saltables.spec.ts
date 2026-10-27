@@ -29,11 +29,11 @@ const ERA_UNO_ID = "53118dd4-ccd9-4a9d-8241-5899816a9eab";
 const OPCIONAL_ID = "4c076a65-4888-4715-913e-2157374cd227"; // «Libro sin valorar», hueco 2 de Era Uno
 const OPCIONAL_TITLE = "Libro sin valorar";
 
-// La ficha abre en «Info»; el timeline vive en la pestaña «Mapa de lectura»,
-// que se selecciona por `?tab=mapa`. Y `ruta=lectura` fija la columna a la
+// La ficha abre en «Info»; el timeline vive en la página «Cómo leerla»,
+// que es `/como-leerla`. Y `ruta=lectura` fija la columna a la
 // curación: sin ella la ruta activa sería la que el lector tenga adoptada, y
 // el test dependería de un estado que no controla.
-const MAPA = `/saga/${UNIVERSO_ID}?tab=mapa&ruta=lectura`;
+const MAPA = `/saga/${UNIVERSO_ID}/como-leerla?ruta=lectura`;
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
@@ -201,12 +201,15 @@ test("4 · saltar NO mueve el progreso", async ({ page }) => {
   // pide lo contrario en dos sitios («desaparece del cómputo»); se descarta a
   // sabiendas, porque reabrir el denominador es la familia del #91 y el #185.
   await loginAsDevtest(page);
-  await page.goto(MAPA);
+  // El hero vive en la ficha, no en /como-leerla: se lee allí antes y después.
+  await page.goto(`/saga/${UNIVERSO_ID}`);
   const antes = await page.getByTestId("saga-hero-progress").innerText();
 
+  await page.goto(MAPA);
   await filaOpcional(page).getByTestId("skip-optional").click();
   await page.reload();
   await expect(filaOpcional(page).getByTestId("unskip-optional")).toBeVisible();
 
+  await page.goto(`/saga/${UNIVERSO_ID}`);
   expect(await page.getByTestId("saga-hero-progress").innerText()).toBe(antes);
 });

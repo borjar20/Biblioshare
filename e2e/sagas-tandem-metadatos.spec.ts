@@ -168,7 +168,7 @@ test("la ficha pública dice qué clase de tándem es, y su nota", async ({ page
     });
 
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(`/saga/${UNIVERSO_ID}?tab=mapa&ruta=lectura`);
+    await page.goto(`/saga/${UNIVERSO_ID}/como-leerla?ruta=lectura`);
 
     const fila = page.locator('[data-testid="timeline-tandem"]:visible').first();
     await expect(fila).toBeVisible();

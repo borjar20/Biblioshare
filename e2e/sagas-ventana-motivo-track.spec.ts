@@ -182,7 +182,7 @@ test("la ficha pública pinta el tramo, y SIN sesión no marca posición", async
     const anon = await browser.newContext();
     const page = await anon.newPage();
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(`/saga/${UNIVERSO_ID}?tab=mapa&ruta=lectura`);
+    await page.goto(`/saga/${UNIVERSO_ID}/como-leerla?ruta=lectura`);
 
     const fila = page.locator('[data-testid="timeline-window"]:visible').first();
     await expect(fila).toBeVisible();
@@ -220,7 +220,7 @@ test("con sesión, la misma ventana sí marca posición y avisa", async ({ page 
 
     await loginAsDevtest(page);
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(`/saga/${UNIVERSO_ID}?tab=mapa&ruta=lectura`);
+    await page.goto(`/saga/${UNIVERSO_ID}/como-leerla?ruta=lectura`);
 
     const fila = page.locator('[data-testid="timeline-window"]:visible').first();
     await expect(fila).toBeVisible();

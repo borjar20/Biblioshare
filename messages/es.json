@@ -2336,6 +2336,8 @@
     "itemsTitle": "Títulos que la componen",
     "tabInfo": "Info",
     "tabMap": "Mapa de lectura",
+    "readingEyebrow": "Cómo leerla",
+    "readingLink": "Cómo leerla",
     "by": "de {name}",
     "partOf": "Parte de {name}",
     "subsagas": "{count, plural, =1 {1 subsaga} other {# subsagas}}",

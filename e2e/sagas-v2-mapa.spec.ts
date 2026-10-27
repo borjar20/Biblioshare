@@ -39,16 +39,13 @@ test("la ficha del universo muestra la pestaña Mapa y el timeline derivado del 
   // CTA/timeline, confirmado en el informe de navegador, paso 5). Este test
   // verifica precisamente esas piezas móviles, así que fija un viewport móvil.
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto(`/saga/${UNIVERSE_ID}`);
-  const mapTab = page.getByRole("button", { name: /Mapa de lectura/ });
-  await expect(mapTab).toBeVisible();
+  await page.goto(`/saga/${UNIVERSE_ID}/como-leerla`);
   // La infonote dorada en Info («Orden de lectura disponible. Un moderador
   // configuró el recorrido») se retiró en la fase 3 (Task 4-bis): la pestaña
   // Mapa es ya la única señal de que hay un recorrido que enseñar, así que no
   // hay nada equivalente que comprobar aquí.
 
-  await mapTab.click();
-  await expect(page).toHaveURL(new RegExp(`tab=mapa`));
+  await expect(page).toHaveURL(new RegExp(`/como-leerla`));
   // Toggle + leyenda + CTA. GraphLegend se monta DOS veces en el DOM (la
   // versión móvil `lg:hidden` y la de escritorio `hidden lg:block`, ambas
   // presentes a la vez — solo una visible por CSS), así que filtramos por el
@@ -71,7 +68,7 @@ test("la ficha del universo muestra la pestaña Mapa y el timeline derivado del 
 });
 
 test("el toggle Publicación muestra la lista lineal por año", async ({ page }) => {
-  await page.goto(`/saga/${UNIVERSE_ID}?tab=mapa&orden=publicacion`);
+  await page.goto(`/saga/${UNIVERSE_ID}/como-leerla?orden=publicacion`);
   // La lista numerada sustituye al timeline. `exact: true` es necesario: sin
   // él, "01" hace substring-match también dentro del año "2019" del segundo
   // ítem (mismo dígito "01" en medio de la cadena) y el locator sale en modo
@@ -95,9 +92,9 @@ test("el mapa a pantalla completa renderiza el grafo y navega al tocar un nodo",
   await expect(page).toHaveURL(/\/(libro|pelicula|serie|saga)\//);
 });
 
-test("una saga sin grafo no tiene pestaña Mapa y /mapa redirige a su ficha", async ({ page }) => {
-  await page.goto(`/saga/${ERA_UNO_ID}`);
-  await expect(page.getByRole("button", { name: /Mapa de lectura/ })).toHaveCount(0);
+test("una saga sin grafo no muestra timeline en /como-leerla y /mapa redirige a su ficha", async ({ page }) => {
+  await page.goto(`/saga/${ERA_UNO_ID}/como-leerla`);
+  await expect(page.getByTestId("reading-timeline")).toHaveCount(0);
   await page.goto(`/saga/${ERA_UNO_ID}/mapa`);
   await expect(page).toHaveURL(new RegExp(`/saga/${ERA_UNO_ID}$`));
 });
