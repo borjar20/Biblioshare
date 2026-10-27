@@ -59,7 +59,9 @@ test.describe("ficha de saga · lector", () => {
     await loginAsDevtest(page);
     await gotoFicha(page, "?ruta=lectura");
 
-    // Con dos subsagas hay un grupo abierto y el otro plegado en pila.
+    // Con dos subsagas hay un grupo abierto y el otro plegado en pila. Acepta
+    // cualquiera de las dos: cuál se pliega depende de los pases de devtest
+    // (el abierto es el del «ahora»), que otros specs mueven.
     const antes = await pileIds(page);
     expect(antes).toHaveLength(1);
     expect([ERA_UNO_ID, ERA_DOS_ID]).toContain(antes[0]);
@@ -129,13 +131,17 @@ test.describe("ficha de saga · lector", () => {
   });
 
   test("sin sesión: no hay «ahora» y «Te toca» dice «Empieza por»", async ({ browser }) => {
-    const page = await browser.newPage({ storageState: { cookies: [], origins: [] } });
-    await page.goto(`/saga/${UNIVERSO_ID}?ruta=lectura`);
-    await expect(page.getByTestId("saga-shelf")).toBeVisible();
+    const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+    try {
+      const page = await context.newPage();
+      await page.goto(`/saga/${UNIVERSO_ID}?ruta=lectura`);
+      await expect(page.getByTestId("saga-shelf")).toBeVisible();
 
-    await expect(page.getByTestId("shelf-now")).toHaveCount(0);
-    await expect(page.getByTestId("next-up")).toContainText("Empieza por");
-    await page.close();
+      await expect(page.getByTestId("shelf-now")).toHaveCount(0);
+      await expect(page.getByTestId("next-up")).toContainText("Empieza por");
+    } finally {
+      await context.close();
+    }
   });
 
   test("la lista accesible tiene una fila por cada obra de la saga sembrada", async ({ page }) => {

@@ -71,7 +71,7 @@ async function devtestId(): Promise<string> {
 // countedKeys + computeProgress (progress.ts / group-members.ts): denominador
 // = miembros directos con `optional=false`; numerador = cuántos de esos
 // tienen, para devtest, un pase con `status='completed'`.
-async function fetchEraUnoProgress(): Promise<{ total: number; completed: number; pct: number }> {
+async function fetchEraUnoProgress(): Promise<{ total: number; completed: number }> {
   const itemsRes = await fetch(
     `${SUPABASE_URL}/rest/v1/saga_items?saga_id=eq.${ERA_UNO_ID}&select=item_type,item_id,optional`,
     { headers: adminHeaders() },
@@ -79,7 +79,7 @@ async function fetchEraUnoProgress(): Promise<{ total: number; completed: number
   const items = (await itemsRes.json()) as { item_type: string; item_id: string; optional: boolean }[];
   const counted = items.filter((i) => !i.optional);
   const total = counted.length;
-  if (total === 0) return { total: 0, completed: 0, pct: 0 };
+  if (total === 0) return { total: 0, completed: 0 };
 
   const userId = await devtestId();
   const byType = new Map<string, string[]>();
@@ -100,7 +100,7 @@ async function fetchEraUnoProgress(): Promise<{ total: number; completed: number
   }
 
   const completed = completedKeys.size;
-  return { total, completed, pct: Math.round((completed / total) * 100) };
+  return { total, completed };
 }
 
 // El contador «N de M» de la balda de la ficha. Cuenta el itinerario activo
@@ -259,10 +259,10 @@ test("el CHECK de BD rechaza «hueco fijo» sin número (placement=fijo, positio
 
 // ─────────────────────────────────────────────────────────────────────────
 // Test 3 (la aserción que de verdad importa): marcar "No cuenta en el
-// progreso" en un miembro baja el DENOMINADOR del hero exactamente en 1, sin
+// progreso" en un miembro baja el DENOMINADOR de la balda exactamente en 1, sin
 // tocar el numerador. Miembro: "Libro sin valorar" — devtest no tiene ningún
 // pase sobre él, así que queda fuera del cálculo de "completado" y el cambio
-// de pct solo puede venir del denominador.
+// del contador solo puede venir del denominador.
 // ─────────────────────────────────────────────────────────────────────────
 test("marcar «No cuenta en el progreso» baja el denominador de la balda en 1", async ({ page }) => {
   await loginAsDevtest(page);

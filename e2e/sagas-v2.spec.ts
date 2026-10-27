@@ -98,6 +98,7 @@ test("ficha de universo sin sesión: jerarquía, sin seguir/progreso, sin duplic
   ).toHaveCount(0);
   // El progreso del lector (antes «Tu progreso» en el hero) es ahora el
   // contador «N de M» de la balda, que solo se pinta con sesión.
+  await expect(page.getByTestId("saga-shelf")).toBeVisible();
   await expect(page.getByTestId("shelf-count")).toHaveCount(0);
 
   // El ítem con doble membresía (Era Uno + directo al Universo) se dedupea a

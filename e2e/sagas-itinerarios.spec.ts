@@ -83,6 +83,37 @@ async function clearRouteChoice(sagaId: string) {
   if (!res.ok) throw new Error(`clearRouteChoice: ${res.status} ${res.statusText} — ${await res.text()}`);
 }
 
+// Cuentas esperadas por REST (service role): obras de «La Guardia» (subsaga
+// del paso curado) frente a todas las del universo, y cuántas tiene leídas el
+// colaborador. Ninguna opcional en este seed.
+async function expectedCounts() {
+  const h = { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` };
+  const get = async (path: string) => {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: h });
+    if (!res.ok) throw new Error(`${path}: ${res.status} ${await res.text()}`);
+    return res.json();
+  };
+  const subs = (await get(`saga_routes?saga_id=eq.${UNIVERSO_ID}&slug=eq.la-guardia&select=saga_route_entries(child_saga_id)`)) as Array<{
+    saga_route_entries: Array<{ child_saga_id: string | null }>;
+  }>;
+  const childId = subs[0]?.saga_route_entries.find((e) => e.child_saga_id)?.child_saga_id;
+  if (!childId) throw new Error("expectedCounts: La Guardia ya no tiene un paso-bloque; ¿cambió el seed?");
+  const universo = (await get(`saga_items?saga_id=in.(${UNIVERSO_ID},${childId})&select=saga_id,item_type,item_id`)) as Array<{
+    saga_id: string; item_type: string; item_id: string;
+  }>;
+  const guardia = universo.filter((r) => r.saga_id === childId);
+  const ids = [...new Set(universo.map((r) => r.item_id))];
+  const pases = (await get(
+    `passes?user_id=eq.${COLLAB_USER_ID}&status=eq.completed&item_id=in.(${ids.join(",")})&select=item_id`,
+  )) as Array<{ item_id: string }>;
+  const leidas = new Set(pases.map((p) => p.item_id));
+  const count = (rows: typeof universo) => ({
+    total: new Set(rows.map((r) => r.item_id)).size,
+    completed: [...new Set(rows.map((r) => r.item_id))].filter((id) => leidas.has(id)).length,
+  });
+  return { guardia: count(guardia), publicacion: count(universo) };
+}
+
 test.describe("itinerarios de lectura", () => {
   test("el selector lista las rutas y la elegida muestra su cabecera", async ({ page }) => {
     await page.goto(`/saga/${UNIVERSO_ID}/como-leerla`);
@@ -97,25 +128,39 @@ test.describe("itinerarios de lectura", () => {
   // Antes era una red contra el #91 («el progreso del hero NO cambia al cambiar
   // de ruta»): el hero viejo contaba el UNIVERSO entero. Ese invariante es
   // falso a propósito con la ficha nueva: el hero ya no enseña progreso y el
-  // «N de M» de la balda cuenta el itinerario ACTIVO (igual que antes contaba
-  // `RouteView`). Aquí se fija lo que la UI promete para «Publicación» (las 3
-  // obras, 1 leída) y que no baila al recargar ni al volver a ella.
-  //
-  // NO se compara con «La Guardia»: su único paso es un bloque-subsaga, y un
-  // paso que nombra un bloque entero no resuelve a ningún nodo
-  // (derive-timeline.ts, spine «route»), así que la balda de esa ruta sale
-  // vacía —sin contador, sin chips— hasta que se decida qué enseñar. El
-  // contraste entre rutas con denominadores distintos se cubre en
-  // sagas-ficha-lector.spec.ts (Universo QA: «2 de 6» frente a «2 de 7»).
-  test("el contador de la balda enseña el de la ruta activa", async ({ page }) => {
+  // «N de M» de la balda cuenta el itinerario ACTIVO. Aquí se prueba justo eso,
+  // comparando dos rutas con denominadores DISTINTOS (La Guardia: 2 obras,
+  // Publicación: las 3), de modo que un contador copiado de la otra ruta no
+  // pase colado por coincidencia numérica. Los números se leen de REST, no se
+  // suponen: el seed puede variar.
+  test("el contador de la balda cuenta la ruta activa, no el universo", async ({ page }) => {
     await loginAsCollaborator(page);
-    await page.goto(`/saga/${UNIVERSO_ID}?ruta=publicacion`);
-    const contador = page.getByTestId("shelf-count");
-    await expect(contador).toBeVisible();
-    await expect(contador).toHaveText("1 de 3"); // Ronda de noche completada — fija el baseline, no solo la igualdad
+    const esperado = await expectedCounts();
+    expect(esperado.guardia.total).not.toBe(esperado.publicacion.total);
 
-    await page.reload();
-    await expect(contador).toHaveText("1 de 3");
+    // La Guardia: su único paso es un bloque-subsaga, que la balda expande a
+    // las obras de la subsaga. Balda y chips tienen que estar.
+    await page.goto(`/saga/${UNIVERSO_ID}?ruta=la-guardia`);
+    const balda = page.getByTestId("saga-shelf");
+    await expect(balda).toBeVisible();
+    await expect(balda.getByRole("link", { name: "La Guardia", exact: true })).toBeVisible();
+    await expect(balda.getByRole("link", { name: "Publicación", exact: true })).toBeVisible();
+    const lista = page.getByTestId("shelf-a11y-list");
+    await expect(lista.locator("li")).toHaveCount(esperado.guardia.total);
+    await expect(lista).toContainText("Guardias! ¡Guardias!");
+    await expect(lista).toContainText("Pies de barro");
+    const contador = page.getByTestId("shelf-count");
+    await expect(contador).toHaveText(`${esperado.guardia.completed} de ${esperado.guardia.total}`);
+
+    // Publicación: las tres obras, con su propia cuenta.
+    await page.goto(`/saga/${UNIVERSO_ID}?ruta=publicacion`);
+    await expect(contador).toHaveText(`${esperado.publicacion.completed} de ${esperado.publicacion.total}`);
+
+    // Y /como-leerla fija el contador propio de la ruta curada.
+    await page.goto(`/saga/${UNIVERSO_ID}/como-leerla?ruta=la-guardia`);
+    await expect(
+      page.getByText(`Llevas ${esperado.guardia.completed} de ${esperado.guardia.total} de esta ruta`),
+    ).toBeVisible();
   });
 
   test("adoptar una ruta hace que la ficha abra por ella", async ({ page }) => {
