@@ -140,6 +140,16 @@ describe("deriveShelf", () => {
     expect(shelf.nextUp?.work.key).toBe("i:book:b");
   });
 
+  it("una obra que cuenta con salto huérfano sigue siendo «ahora» si es la única pendiente", () => {
+    const shelf = deriveShelf([sec([
+      entry(n("a", { status: "completed" }), 1),
+      entry(n("b", { skipped: true }), 2),
+    ])], auth);
+    expect(shelf.mode).toBe("next");
+    expect(shelf.nextUp?.work.key).toBe("i:book:b");
+    expect(shelf.nextUp?.work.state).toBe("now");
+  });
+
   it("sin secciones: modo empty", () => {
     expect(deriveShelf([], auth)).toMatchObject({ mode: "empty", groups: [], nextUp: null, openGroupKey: null });
   });

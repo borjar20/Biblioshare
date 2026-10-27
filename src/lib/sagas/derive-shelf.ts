@@ -135,6 +135,8 @@ export function deriveShelf(sections: TimelineSection[], opts: { authenticated: 
       // Una ventana se ofrece como «encaja ahora» solo mientras haya otra cosa
       // que leer; si solo quedan ventanas, la ventana es lo siguiente.
       ordered.find((w) => w.state !== "done" && !w.optional && !w.skipped) ??
+      // Última red: una obra que cuenta no deja de contar por un salto huérfano; el modo «next» siempre trae «Te toca».
+      ordered.find((w) => w.state !== "done" && !w.optional) ??
       null;
     if (now) now.state = "now";
   }
