@@ -151,22 +151,25 @@ test("la cinta dice el rol sobre la portada de una obra con hueco", async ({ pag
   await expect(cinta).toHaveText(/Precuela/i);
 });
 
-test("filtrar NO mueve el progreso del hero", async ({ page }) => {
+test("filtrar NO mueve el progreso de la balda", async ({ page }) => {
   // El límite duro de la spec, otra vez: `progress.ts` sale de la fase como
   // entró. El mockup pide lo contrario en dos sitios y se descarta a sabiendas
   // — reabrir el denominador es la familia de fallo del #91 y el #185.
   await loginAsDevtest(page);
-  // El hero vive en la ficha, no en /como-leerla: se lee allí, y la lente se
-  // aplica en /como-leerla (la ficha también acepta ?rol= sin cambiar el hero).
+  // El contador «N de M» vive en la balda de la ficha, no en /como-leerla: se
+  // lee allí, y la lente se aplica en /como-leerla (la ficha también acepta
+  // ?rol= sin cambiar el contador). Siempre en la misma ruta (`lectura`).
   await page.goto(`/saga/${UNIVERSO_ID}?ruta=lectura`);
-  const antes = await page.getByTestId("saga-hero-progress").innerText();
+  const count = page.getByTestId("shelf-count");
+  await expect(count).toBeVisible();
+  const antes = (await count.innerText()).trim();
 
   // La lente se aplica de verdad en /como-leerla: una precuela se ve y el relato no.
   await page.goto(`${MAPA}&rol=precuela`);
   await expect(timeline(page).getByText(PRECUELA_A.title)).toBeVisible();
   await expect(timeline(page).getByText(RELATO.title)).toHaveCount(0);
 
-  // Y el hero, en la ficha, sigue igual.
+  // Y el contador de la balda, en la ficha, sigue igual.
   await page.goto(`/saga/${UNIVERSO_ID}?ruta=lectura&rol=precuela`);
-  expect(await page.getByTestId("saga-hero-progress").innerText()).toBe(antes);
+  await expect(page.getByTestId("shelf-count")).toHaveText(antes);
 });

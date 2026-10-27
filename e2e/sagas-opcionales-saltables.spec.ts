@@ -196,20 +196,31 @@ test("3 · el interruptor esconde las opcionales, y la barra sigue estando para 
   await expect(timeline(page).getByText(OPCIONAL_TITLE)).toBeVisible();
 });
 
+// El contador «N de M» de la balda de la ficha (`shelf-count`): el progreso del
+// itinerario ACTIVO. Sustituye a `saga-hero-progress`, que contaba el universo
+// entero; ese invariante («no cambia al cambiar de ruta») ya no existe, así que
+// aquí se compara siempre sobre la MISMA ruta.
+async function shelfCountText(page: Page): Promise<string> {
+  const count = page.getByTestId("shelf-count");
+  await expect(count).toBeVisible();
+  return (await count.innerText()).trim();
+}
+
 test("4 · saltar NO mueve el progreso", async ({ page }) => {
   // El límite duro de la spec, comprobado donde el lector lo vería. El mockup
   // pide lo contrario en dos sitios («desaparece del cómputo»); se descarta a
   // sabiendas, porque reabrir el denominador es la familia del #91 y el #185.
   await loginAsDevtest(page);
-  // El hero vive en la ficha, no en /como-leerla: se lee allí antes y después.
-  await page.goto(`/saga/${UNIVERSO_ID}`);
-  const antes = await page.getByTestId("saga-hero-progress").innerText();
+  // El contador vive en la balda de la ficha, no en /como-leerla: se lee allí
+  // antes y después, en la MISMA ruta (`lectura`, la de MAPA).
+  await page.goto(`/saga/${UNIVERSO_ID}?ruta=lectura`);
+  const antes = await shelfCountText(page);
 
   await page.goto(MAPA);
   await filaOpcional(page).getByTestId("skip-optional").click();
   await page.reload();
   await expect(filaOpcional(page).getByTestId("unskip-optional")).toBeVisible();
 
-  await page.goto(`/saga/${UNIVERSO_ID}`);
-  expect(await page.getByTestId("saga-hero-progress").innerText()).toBe(antes);
+  await page.goto(`/saga/${UNIVERSO_ID}?ruta=lectura`);
+  expect(await shelfCountText(page)).toBe(antes);
 });

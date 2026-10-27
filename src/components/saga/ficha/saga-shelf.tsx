@@ -101,7 +101,7 @@ export function SagaShelf({
             </Link>
           ))}
         <span className="ml-auto flex items-center gap-3 font-mono text-[11px] text-muted-foreground">
-          {shelf.mode !== "start" && counted > 0 && <span>{t("shelfCount", { completed, total: counted })}</span>}
+          {shelf.mode !== "start" && counted > 0 && <span data-testid="shelf-count">{t("shelfCount", { completed, total: counted })}</span>}
           <Link href={readingHref} className="font-semibold text-foreground underline-offset-2 hover:underline">
             {t("readingLink")} →
           </Link>

@@ -113,6 +113,9 @@ test("colaborador: crear saga, editar su ficha y anidar una segunda saga", async
   await expect(page.getByRole("heading", { level: 1, name: UNIVERSO_NAME })).toBeVisible();
 
   // ── Editar ficha: sinopsis ──
+  // «Editar ficha» vive ahora en el menú «Opciones de curación» del hero (antes
+  // era un enlace suelto en la pestaña Info).
+  await page.getByRole("button", { name: "Opciones de curación" }).click();
   await page.getByRole("link", { name: /Editar ficha/ }).click();
   await page.waitForURL(new RegExp(`/saga/${universoId}/editar$`));
   // Efecto de haber navegado a la página correcta: el input de nombre trae

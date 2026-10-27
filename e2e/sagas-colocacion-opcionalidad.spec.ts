@@ -103,13 +103,13 @@ async function fetchEraUnoProgress(): Promise<{ total: number; completed: number
   return { total, completed, pct: Math.round((completed / total) * 100) };
 }
 
-async function heroPct(page: Page): Promise<number> {
-  const hero = page.getByTestId("saga-hero-progress");
-  await expect(hero).toBeVisible();
-  const text = (await hero.textContent()) ?? "";
-  const match = /(\d+)%/.exec(text);
-  if (!match) throw new Error(`hero sin pct reconocible: "${text}"`);
-  return Number(match[1]);
+// El contador «N de M» de la balda de la ficha. Cuenta el itinerario activo
+// (aquí, el de Era Uno), no un porcentaje: sustituye al `saga-hero-progress`
+// del hero viejo.
+async function shelfCount(page: Page): Promise<string> {
+  const count = page.getByTestId("shelf-count");
+  await expect(count).toBeVisible();
+  return (await count.innerText()).trim();
 }
 
 // Localiza la fila por el título del miembro, escopada a la cáscara VISIBLE:
@@ -264,17 +264,17 @@ test("el CHECK de BD rechaza «hueco fijo» sin número (placement=fijo, positio
 // pase sobre él, así que queda fuera del cálculo de "completado" y el cambio
 // de pct solo puede venir del denominador.
 // ─────────────────────────────────────────────────────────────────────────
-test("marcar «No cuenta en el progreso» baja el denominador del hero en 1", async ({ page }) => {
+test("marcar «No cuenta en el progreso» baja el denominador de la balda en 1", async ({ page }) => {
   await loginAsDevtest(page);
 
   const before = await fetchEraUnoProgress();
   expect(before.total).toBeGreaterThan(1); // si esto falla, el seed cambió y el resto del test no es fiable.
 
   await page.goto(`/saga/${ERA_UNO_ID}`);
-  const pctBefore = await heroPct(page);
+  const countBefore = await shelfCount(page);
   // La UI tiene que coincidir con el recálculo por REST: si no coincidiera ya
   // aquí, el resto del test estaría prediciendo sobre un modelo equivocado.
-  expect(pctBefore).toBe(before.pct);
+  expect(countBefore).toBe(`${before.completed} de ${before.total}`);
 
   await page.goto(`/saga/${ERA_UNO_ID}/editar`);
   const itemsBefore = await fetchEraUnoItems();
@@ -295,12 +295,10 @@ test("marcar «No cuenta en el progreso» baja el denominador del hero en 1", as
     expect(after.completed).toBe(before.completed);
 
     await page.goto(`/saga/${ERA_UNO_ID}`);
-    const pctAfter = await heroPct(page);
-    expect(pctAfter).toBe(after.pct);
-    // pct estrictamente distinto de antes: con el mismo numerador y un
-    // denominador menor, no puede quedar igual salvo un empate de redondeo
-    // (que el seed actual no produce).
-    expect(pctAfter).not.toBe(pctBefore);
+    const countAfter = await shelfCount(page);
+    expect(countAfter).toBe(`${after.completed} de ${after.total}`);
+    // Mismo numerador, denominador en 1 menos: el texto cambia sí o sí.
+    expect(countAfter).not.toBe(countBefore);
   } finally {
     await restoreEraUno(itemsBefore, null);
   }
@@ -439,8 +437,11 @@ test("el sr-only del contorno punteado sale sin sesión, solo en la obra sin hue
   // quien mira, no solo "en teoría" sino en esta misma carga de página.
   await expect(page.getByText(/obras? sin clasificar/)).toHaveCount(0);
 
+  // Las celdas de «Todas las obras» llevan `data-type`: sin ese filtro el
+  // locator también engancha la fila de `shelf-a11y-list` (la lista accesible
+  // de la balda), que repite el título de cada obra.
   const unclassifiedItem = page
-    .locator("li")
+    .locator("li[data-type]")
     .filter({ hasText: "Trilogía La casa de los espíritus" });
   await expect(unclassifiedItem).toBeVisible();
   await expect(unclassifiedItem.locator("div").first()).toHaveClass(/outline-dashed/);
@@ -451,7 +452,7 @@ test("el sr-only del contorno punteado sale sin sesión, solo en la obra sin hue
   // Control negativo: un miembro `fijo` normal (Rayuela, en la grid de Era
   // Uno) no lleva ni el contorno ni el sr-only — el hint es condicional, no
   // un texto que se cuela en toda celda.
-  const classifiedItem = page.locator("li").filter({ hasText: "Rayuela" });
+  const classifiedItem = page.locator("li[data-type]").filter({ hasText: "Rayuela" });
   await expect(classifiedItem).toBeVisible();
   await expect(classifiedItem.locator("div").first()).not.toHaveClass(/outline-dashed/);
   await expect(classifiedItem.getByText(NO_SLOT_TEXT, { exact: true })).toHaveCount(0);
