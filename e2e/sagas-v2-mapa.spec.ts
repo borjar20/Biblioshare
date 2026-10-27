@@ -32,7 +32,7 @@ const ERA_UNO_ID = "53118dd4-ccd9-4a9d-8241-5899816a9eab";
 // Dos, no solo la de Era Uno.
 const ERA_DOS_ITEM_ID = "7a88b65f-d757-4cc3-a7b6-ddf2417855ce";
 
-test("la ficha del universo muestra la pestaña Mapa y el timeline derivado del grafo", async ({ page }) => {
+test("«Cómo leerla» del universo muestra el timeline derivado del grafo", async ({ page }) => {
   // SagaMapTab bifurca por breakpoint `lg` (src/components/saga/saga-map-tab.tsx):
   // el CTA "Grafo de lectura" y el ReadingTimeline solo se montan visibles
   // dentro del `<div className="lg:hidden">` (en PC el grafo va embebido sin
@@ -45,7 +45,7 @@ test("la ficha del universo muestra la pestaña Mapa y el timeline derivado del 
   // Mapa es ya la única señal de que hay un recorrido que enseñar, así que no
   // hay nada equivalente que comprobar aquí.
 
-  await expect(page).toHaveURL(new RegExp(`/como-leerla`));
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   // Toggle + leyenda + CTA. GraphLegend se monta DOS veces en el DOM (la
   // versión móvil `lg:hidden` y la de escritorio `hidden lg:block`, ambas
   // presentes a la vez — solo una visible por CSS), así que filtramos por el
@@ -92,8 +92,12 @@ test("el mapa a pantalla completa renderiza el grafo y navega al tocar un nodo",
   await expect(page).toHaveURL(/\/(libro|pelicula|serie|saga)\//);
 });
 
-test("una saga sin grafo no muestra timeline en /como-leerla y /mapa redirige a su ficha", async ({ page }) => {
+test("una saga sin grafo muestra «Cómo leerla» sin timeline y /mapa redirige a su ficha", async ({ page }) => {
   await page.goto(`/saga/${ERA_UNO_ID}/como-leerla`);
+  // Positivo primero: la página existe y pintó (no es un 404 ni una página en
+  // blanco), con la cabecera de la saga y el enlace de vuelta a su ficha.
+  await expect(page.getByRole("heading", { level: 1, name: "[QA Sagas v2] Era Uno" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Volver a la saga" })).toBeVisible();
   await expect(page.getByTestId("reading-timeline")).toHaveCount(0);
   await page.goto(`/saga/${ERA_UNO_ID}/mapa`);
   await expect(page).toHaveURL(new RegExp(`/saga/${ERA_UNO_ID}$`));

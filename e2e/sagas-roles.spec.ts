@@ -161,7 +161,12 @@ test("filtrar NO mueve el progreso del hero", async ({ page }) => {
   await page.goto(`/saga/${UNIVERSO_ID}?ruta=lectura`);
   const antes = await page.getByTestId("saga-hero-progress").innerText();
 
+  // La lente se aplica de verdad en /como-leerla: una precuela se ve y el relato no.
   await page.goto(`${MAPA}&rol=precuela`);
+  await expect(timeline(page).getByText(PRECUELA_A.title)).toBeVisible();
+  await expect(timeline(page).getByText(RELATO.title)).toHaveCount(0);
+
+  // Y el hero, en la ficha, sigue igual.
   await page.goto(`/saga/${UNIVERSO_ID}?ruta=lectura&rol=precuela`);
   expect(await page.getByTestId("saga-hero-progress").innerText()).toBe(antes);
 });

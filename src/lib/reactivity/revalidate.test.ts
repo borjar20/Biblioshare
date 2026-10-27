@@ -30,6 +30,7 @@ import {
   revalidateQuickAdd,
   revalidateQuickAddMany,
   revalidateSagaMembership,
+  revalidateSagaPage,
   expireItemCredits,
   expireSagaMembership,
   revalidateWrapUp,
@@ -172,6 +173,11 @@ describe("pasada de revalidación (F1-014/023/030)", () => {
   it("expireItemCredits caduca la etiqueta del ítem, y de inmediato", () => {
     expireItemCredits("movie", "m-1");
     expect(revalidateTag).toHaveBeenCalledWith("credits:movie:m-1", { expire: 0 });
+  });
+
+  it("revalidateSagaPage revalida la ficha y «Cómo leerla»", () => {
+    revalidateSagaPage("s-1");
+    expect(calls()).toEqual(["/saga/s-1", "/saga/s-1/como-leerla"]);
   });
 
   // La razón de ser del helper: el «nº X de Y» de CADA miembro cambia cuando
