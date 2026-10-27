@@ -2352,6 +2352,7 @@
     "shelfState_done": "leída",
     "shelfState_now": "ahora",
     "shelfState_todo": "pendiente",
+    "shelfEmpty": "Este itinerario todavía no tiene obras en la balda.",
     "eyebrowUniverse": "Universo",
     "curatorMenu": "Opciones de curación",
     "itemsTitle": "Títulos que la componen",

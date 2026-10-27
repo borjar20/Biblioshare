@@ -75,7 +75,9 @@ export function SagaShelf({
     links[Math.max(0, Math.min(links.length - 1, i + (e.key === "ArrowRight" ? 1 : -1)))]?.focus();
   }
 
-  if (shelf.mode === "empty") return null;
+  // Vacía NO desaparece: la cabecera lleva los chips de itinerario y «Cómo
+  // leerla →», y sin ella el lector no podría salir de una ruta sin obras.
+  const empty = shelf.mode === "empty";
 
   const items: A11yItem[] = shelf.groups.flatMap((g) => [
     ...g.slots.flatMap((s) => slotA11y(s, t)),
@@ -108,17 +110,23 @@ export function SagaShelf({
         </span>
       </div>
 
-      <div ref={rowRef} onKeyDown={onKeyDown} className="flex snap-x items-end gap-4 overflow-x-auto pt-8 pb-2">
-        {shelf.groups.map((g) =>
-          g.key === open || shelf.groups.length === 1 ? (
-            <OpenGroup key={g.key} group={g} label={groupName(g)} showLabel={shelf.groups.length > 1} />
-          ) : (
-            <Pile key={g.key} group={g} label={groupName(g)} onOpen={() => openGroup(g.key)} />
-          ),
-        )}
-      </div>
+      {empty ? (
+        <p data-testid="shelf-empty" className="text-xs text-muted-foreground">
+          {t("shelfEmpty")}
+        </p>
+      ) : (
+        <div ref={rowRef} onKeyDown={onKeyDown} className="flex snap-x items-end gap-4 overflow-x-auto pt-8 pb-2">
+          {shelf.groups.map((g) =>
+            g.key === open || shelf.groups.length === 1 ? (
+              <OpenGroup key={g.key} group={g} label={groupName(g)} showLabel={shelf.groups.length > 1} />
+            ) : (
+              <Pile key={g.key} group={g} label={groupName(g)} onOpen={() => openGroup(g.key)} />
+            ),
+          )}
+        </div>
+      )}
 
-      {shelf.groups.length > 1 && (
+      {!empty && shelf.groups.length > 1 && (
         <div className="flex h-2 gap-0.5">
           {shelf.segments.map((s) => {
             const g = shelf.groups.find((x) => x.key === s.groupKey);
@@ -142,19 +150,21 @@ export function SagaShelf({
         </div>
       )}
 
-      <ol data-testid="shelf-a11y-list" className="sr-only">
-        {items.map(({ work, extra }) => (
-          <li key={work.key}>
-            <a href={work.href} tabIndex={-1}>
-              {work.title} — {t(`shelfState_${work.state}`)}
-              {work.role ? `, ${t(`roleLabel.${work.role}`)}` : ""}
-              {work.skipped ? `, ${t("shelfSkipped")}` : ""}
-              {work.optional ? `, ${t("optionalChip")}` : ""}
-              {extra}
-            </a>
-          </li>
-        ))}
-      </ol>
+      {!empty && (
+        <ol data-testid="shelf-a11y-list" className="sr-only">
+          {items.map(({ work, extra }) => (
+            <li key={work.key}>
+              <a href={work.href} tabIndex={-1}>
+                {work.title} — {t(`shelfState_${work.state}`)}
+                {work.role ? `, ${t(`roleLabel.${work.role}`)}` : ""}
+                {work.skipped ? `, ${t("shelfSkipped")}` : ""}
+                {work.optional ? `, ${t("optionalChip")}` : ""}
+                {extra}
+              </a>
+            </li>
+          ))}
+        </ol>
+      )}
     </section>
   );
 }

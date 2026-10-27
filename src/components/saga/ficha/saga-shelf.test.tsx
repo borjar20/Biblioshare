@@ -174,4 +174,15 @@ describe("SagaShelf", () => {
     expect(screen.queryByTestId("shelf-pile-s1")).toBeNull();
     expect(screen.getByTestId("shelf-pile-s2")).toBeTruthy();
   });
+  it("vacía conserva la cabecera (título, chips, «Cómo leerla») y avisa en vez de pintar la balda", () => {
+    const empty: Shelf = { mode: "empty", openGroupKey: null, nextUp: null, groups: [], segments: [] };
+    render(<SagaShelf {...props} shelf={empty} />);
+    expect(screen.getByTestId("saga-shelf")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "shelfTitle" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Publicación" }).getAttribute("href")).toBe("/saga/1?ruta=publicacion");
+    expect(screen.getByRole("link", { name: "readingLink →" }).getAttribute("href")).toBe("/saga/1/como-leerla?ruta=lectura");
+    expect(screen.getByTestId("shelf-empty").textContent).toBe("shelfEmpty");
+    expect(screen.queryByTestId("shelf-count")).toBeNull();
+    expect(screen.queryByTestId("shelf-a11y-list")).toBeNull();
+  });
 });
