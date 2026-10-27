@@ -20,6 +20,7 @@ const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const USERNAME = process.env.TEST_USER_USERNAME!;
 
 async function loginAsDevtest(page: Page) {
   await page.goto("/login");
@@ -35,6 +36,47 @@ async function gotoFicha(page: Page, query = "") {
 const piles = (page: Page) => page.locator('[data-testid^="shelf-pile-"]');
 const pileIds = async (page: Page) =>
   (await piles(page).evaluateAll((els) => els.map((e) => e.getAttribute("data-testid")!.replace("shelf-pile-", "")))).sort();
+
+const adminHeaders = () => ({ apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` });
+
+async function rest<T>(path: string): Promise<T> {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: adminHeaders() });
+  if (!res.ok) throw new Error(`${path}: ${res.status} ${await res.text()}`);
+  return (await res.json()) as T;
+}
+
+/** Hijas directas del universo con al menos una obra en su subárbol (hija o
+ *  nieta): son las que «Subsagas» pinta como puerta. */
+async function doorSagaIds(): Promise<string[]> {
+  const kids = await rest<Array<{ id: string }>>(`sagas?parent_saga_id=eq.${UNIVERSO_ID}&select=id`);
+  const out: string[] = [];
+  for (const k of kids) {
+    const grand = await rest<Array<{ id: string }>>(`sagas?parent_saga_id=eq.${k.id}&select=id`);
+    const ids = [k.id, ...grand.map((g) => g.id)];
+    const items = await rest<Array<{ item_id: string }>>(
+      `saga_items?saga_id=in.(${ids.join(",")})&select=item_id&limit=1`,
+    );
+    if (items.length > 0) out.push(k.id);
+  }
+  return out;
+}
+
+/** Obras distintas del universo con algún pase terminado de devtest (lo que
+ *  «Tu paso» cuenta como «Terminadas»). */
+async function completedWorksOfDevtest(): Promise<number> {
+  const [profile] = await rest<Array<{ user_id: string }>>(
+    `profiles?username=eq.${encodeURIComponent(USERNAME)}&select=user_id`,
+  );
+  if (!profile) throw new Error(`no se encontró el perfil de ${USERNAME}`);
+  const items = await rest<Array<{ item_type: string; item_id: string }>>(
+    `saga_items?saga_id=in.(${UNIVERSO_ID},${ERA_UNO_ID},${ERA_DOS_ID})&select=item_type,item_id`,
+  );
+  const inSaga = new Set(items.map((i) => `${i.item_type}:${i.item_id}`));
+  const passes = await rest<Array<{ item_type: string; item_id: string }>>(
+    `passes?user_id=eq.${profile.user_id}&status=eq.completed&select=item_type,item_id`,
+  );
+  return new Set(passes.map((p) => `${p.item_type}:${p.item_id}`).filter((k) => inSaga.has(k))).size;
+}
 
 /** href de la primera portada enlazable de la balda, en el orden del DOM. */
 const firstCoverHref = (page: Page) => page.locator("a[data-shelf-link]").first().getAttribute("href");
@@ -161,5 +203,75 @@ test.describe("ficha de saga · lector", () => {
     // las que la curación no numera.
     await gotoFicha(page, "?ruta=publicacion");
     await expect(page.getByTestId("shelf-a11y-list").locator("li")).toHaveCount(distintas);
+  });
+
+  test("con sesión: «Tu paso» cuenta las obras terminadas del lector", async ({ page }) => {
+    const completed = await completedWorksOfDevtest();
+    await loginAsDevtest(page);
+    await gotoFicha(page, "?ruta=lectura");
+
+    if (completed === 0) {
+      // Sin pases terminados puede haber en curso o ninguno; en ambos casos la
+      // tarjeta solo existe si hay algún pase. Lo determinista: si aparece,
+      // «Terminadas» dice 0.
+      const bloque = page.getByTestId("your-passage");
+      if ((await bloque.count()) > 0) {
+        await expect(bloque.locator("dt", { hasText: "Terminadas" }).locator("xpath=following-sibling::dd")).toHaveText("0");
+      }
+      return;
+    }
+    const bloque = page.getByTestId("your-passage");
+    await expect(bloque).toBeVisible();
+    await expect(
+      bloque.locator("dt", { hasText: "Terminadas" }).locator("xpath=following-sibling::dd"),
+    ).toHaveText(String(completed));
+  });
+
+  test("«Subsagas» tiene una puerta por hija con obras, enlazada a su ficha", async ({ page }) => {
+    const esperadas = await doorSagaIds();
+    expect(esperadas.length).toBeGreaterThan(0);
+    await loginAsDevtest(page);
+    await gotoFicha(page);
+
+    const doors = page.getByTestId("subsaga-doors");
+    await expect(doors).toBeVisible();
+    const hrefs = await doors.locator("a").evaluateAll((els) => els.map((e) => e.getAttribute("href")));
+    expect([...hrefs].sort()).toEqual(esperadas.map((id) => `/saga/${id}`).sort());
+  });
+
+  test("el acceso al mapa solo aparece con el mapa encendido y enlaza a /mapa", async ({ page }) => {
+    const [saga] = await rest<Array<{ show_map: boolean }>>(`sagas?id=eq.${UNIVERSO_ID}&select=show_map`);
+    await loginAsDevtest(page);
+    await gotoFicha(page);
+
+    const teaser = page.getByTestId("atlas-teaser");
+    if (saga.show_map) {
+      await expect(teaser).toBeVisible();
+      await expect(teaser).toHaveAttribute("href", `/saga/${UNIVERSO_ID}/mapa`);
+    } else {
+      await expect(teaser).toHaveCount(0);
+    }
+  });
+
+  test("sin sesión: no hay «Tu paso» y las puertas enseñan recuentos, no progreso", async ({ browser }) => {
+    const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+    try {
+      const page = await context.newPage();
+      await page.goto(`/saga/${UNIVERSO_ID}`);
+      await expect(page.getByTestId("saga-shelf")).toBeVisible();
+
+      await expect(page.getByTestId("your-passage")).toHaveCount(0);
+      const doors = page.getByTestId("subsaga-doors");
+      await expect(doors).toBeVisible();
+      const cards = doors.locator("a");
+      const n = await cards.count();
+      expect(n).toBeGreaterThan(0);
+      for (let i = 0; i < n; i++) {
+        await expect(cards.nth(i)).toContainText(/\d+ obras?/);
+        await expect(cards.nth(i)).not.toContainText(" de ");
+      }
+    } finally {
+      await context.close();
+    }
   });
 });
