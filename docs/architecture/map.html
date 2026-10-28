@@ -941,6 +941,8 @@
         "src/lib/sagas/derive-shelf.ts",
         "src/lib/sagas/passage.ts",
         "src/lib/sagas/get-saga-passage.ts",
+        "src/lib/sagas/friends.ts",
+        "src/lib/sagas/get-saga-friends.ts",
         "src/lib/sagas/subsaga-doors.ts",
         "src/lib/sagas/mini-map.ts",
         "src/lib/sagas/resolve-route.ts",
@@ -4204,7 +4206,8 @@
         "deriveShelf: «Te toca» no ofrece una ventana mientras queden otras obras; un salto huérfano en una obra que cuenta no la saca de «Te toca».",
         "La balda vacía conserva cabecera, chips de ruta y enlace a Cómo leerla.",
         "`?tab=mapa` redirige a /saga/[id]/como-leerla conservando ruta, orden y rol.",
-        "Fase 2: «Tu paso» (getSagaPassage → derivePassage) lee passes filtrando por user_id y va detrás de <Suspense>; sin sesión o sin pases no se pinta. Un pase terminado con finishedOn nulo cuenta como más antiguo que cualquiera con fecha. «Subsagas» (deriveSubsagaDoors) no depende del itinerario; el acceso al mapa solo existe si detail.graph !== null."
+        "Fase 2: «Tu paso» (getSagaPassage → derivePassage) lee passes filtrando por user_id y va detrás de <Suspense>; sin sesión o sin pases no se pinta. Un pase terminado con finishedOn nulo cuenta como más antiguo que cualquiera con fecha. «Subsagas» (deriveSubsagaDoors) no depende del itinerario; el acceso al mapa solo existe si detail.graph !== null.",
+        "Fase 3: «Entre amigos» (getSagaFriends → deriveFriends) va a la derecha de «Te toca», sin await y con .catch, detrás de <Suspense>. Amigos = follows aceptados del lector con pases en las obras de la saga; la visibilidad la decide RLS de passes (can_view_profile). Límite: quien sigue la saga sin pases no cuenta porque saga_follows es solo-dueño. Reutiliza UserAvatar."
       ],
       "steps": [
         {
@@ -4234,7 +4237,7 @@
         },
         {
           "node": "r-sagas",
-          "action": "page.tsx monta YourPassage (getSagaPassage + derivePassage, en Suspense), SubsagaDoors (deriveSubsagaDoors) y AtlasTeaser (miniMapPoints) bajo «Te toca»",
+          "action": "page.tsx monta YourPassage (getSagaPassage + derivePassage, en Suspense), SubsagaDoors (deriveSubsagaDoors) y AtlasTeaser (miniMapPoints) bajo «Te toca»; FriendsOnSaga (getSagaFriends + deriveFriends) va junto a «Te toca»",
           "file": "src/components/saga/ficha/your-passage.tsx"
         },
         {

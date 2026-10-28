@@ -8082,3 +8082,28 @@ Dos correcciones de la revisión final de la fase 2 (matizan las decisiones 1 y 
 
 Además, `getSagaPassage` propaga los errores de cada consulta (la página ya degrada a «sin Tu paso») y
 las notas se pintan con su escala («4,5/5»).
+
+## 2026-10-28 — Ficha de saga para el lector, fase 3: «Entre amigos»
+
+1. **«Amigos» son las personas que sigues con el follow aceptado** (`follows.follower_id = yo`,
+   `status = 'accepted'`). No se incluye a quien te sigue a ti.
+2. **Solo cuentan los que tienen pases visibles en las obras de la saga.** La spec también hablaba de «quien
+   sigue la saga», pero `saga_follows` tiene RLS de solo dueño: no se puede leer si otra persona sigue una saga
+   sin una migración, y esta fase no toca el esquema. **Límite asumido**: quien sigue la saga pero aún no tiene
+   pases en ella no aparece. Si se quiere, hará falta una vista o función `security definer` que exponga ese
+   dato solo a quien lo sigue aceptado.
+3. **La visibilidad la decide RLS sobre `passes`** (`can_view_profile`). La lectura no filtra a mano por perfil
+   público o privado: lo que la base no devuelve no aparece. Las notas ya eran legibles para la media comunitaria.
+4. **Qué se enseña por amigo:** avatar y nombre con enlace a `/u/<username>`; «Va por X» (obra en curso) o, si no
+   hay, «Terminó X» (la terminada más avanzada en el orden de la balda); «La terminó» si cerró todas las obras
+   que cuentan; barra de terminadas sobre las que cuentan; nota media sobre sus últimos pases terminados con nota,
+   en puntos. Orden por actividad reciente; se ven 4 y el resto es «y N más».
+5. **El orden es el de la balda** (la misma lista `order` de «Tu paso»), así «por dónde va» se mide igual que
+   «Te toca».
+6. **Sin sesión, o sin amigos con pases, el bloque no se pinta** y no hay estado vacío. La lectura va sin
+   `await` en la página, con `.catch` que devuelve lista vacía, detrás de `<Suspense>`; sin `use cache`
+   (regla #437).
+7. **Se reutiliza el `UserAvatar` compartido** (`src/components/social/user-avatar.tsx`, con degradado y
+   iniciales) en lugar de un avatar propio de la ficha.
+
+Sin migraciones. Evidencia en [el informe de la fase 3](../testing/2026-10-28-sagas-ficha-lector-f3.md).
