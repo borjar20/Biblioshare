@@ -18,8 +18,8 @@ export function sagaHref(id: string): string {
   return `/saga/${id}`;
 }
 
-/** Página interina «Cómo leerla» (spec 2026-10-27): el timeline detallado, los
- *  itinerarios y la lente de rol, hasta que el atlas de la saga la sustituya. */
-export function sagaReadingHref(id: string): string {
-  return `${sagaHref(id)}/como-leerla`;
+/** Atlas de la saga (spec 2026-10-28): sustituye al grafo y a «Cómo leerla»,
+ *  que queda como redirect a esta ruta. */
+export function sagaAtlasHref(id: string): string {
+  return `${sagaHref(id)}/mapa`;
 }

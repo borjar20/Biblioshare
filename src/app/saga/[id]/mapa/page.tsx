@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { hasMinRole } from "@/lib/auth/roles";
-import { sagaHref } from "@/lib/catalog/item-href";
+import { sagaAtlasHref, sagaHref } from "@/lib/catalog/item-href";
 import { getSagaDetail } from "@/lib/sagas/get-saga-detail";
 import { getRouteEntries } from "@/lib/sagas/get-saga-routes";
 import { deriveTimeline } from "@/lib/sagas/derive-timeline";
@@ -14,6 +15,7 @@ import { itinerarySteps } from "@/lib/sagas/atlas/itinerary";
 import { routeCounter } from "@/lib/sagas/atlas/route-counter";
 import { atlasRoutes, legacyAtlasQuery } from "@/lib/sagas/atlas/lens";
 import { SagaAtlas } from "@/components/saga/atlas/saga-atlas";
+import { AtlasSkeleton } from "@/components/saga/atlas/atlas-skeleton";
 
 export async function generateMetadata({
   params,
@@ -26,23 +28,36 @@ export async function generateMetadata({
   return { title: saga ? `${saga.name} · Atlas — Biblioshare` : "Biblioshare" };
 }
 
-// Atlas de la saga (spec 2026-10-28). Sustituye al grafo y a «Cómo leerla».
-// Sin `use cache` (regla #437): `detail` lleva estados y pases del lector.
-// Solo redirige a la ficha si la saga no tiene obras (`shelfGraph` vacío): ya no
-// mira `detail.graph` ni el interruptor `show_map` (spec §3 y §9).
-export default async function SagaAtlasPage({
-  params,
-  searchParams,
-}: {
+type AtlasPageProps = {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ lente?: string; ruta?: string; orden?: string; rol?: string }>;
-}) {
+};
+
+// Atlas de la saga (spec 2026-10-28). Sustituye al grafo y a «Cómo leerla».
+// Sin `use cache` (regla #437): `detail` lleva estados y pases del lector.
+// La página es un shell síncrono: `params`, `searchParams` y la sesión se leen
+// dentro del <Suspense> (Cache Components: fuera de él bloquean la navegación,
+// «uncached data during prerendering»). El fantasma es el suelo del atlas.
+export default function SagaAtlasPage(props: AtlasPageProps) {
+  return (
+    <Suspense fallback={<AtlasSkeleton />}>
+      <SagaAtlasContent {...props} />
+    </Suspense>
+  );
+}
+
+// Los `redirect`/`notFound` de aquí dentro ocurren ya en streaming: Next emite
+// el redirect como meta en cliente y el 404 con el `not-found.tsx` del segmento
+// (docs de `redirect` y `notFound`, Next 16). Solo redirige a la ficha si la
+// saga no tiene obras (`shelfGraph` vacío): ya no mira `detail.graph` ni el
+// interruptor `show_map` (spec §3 y §9).
+async function SagaAtlasContent({ params, searchParams }: AtlasPageProps) {
   const { id } = await params;
   const sp = await searchParams;
   const legacy = legacyAtlasQuery(sp);
   if (legacy) {
     // Nunca `/mapa?` con la query vacía (p. ej. `?orden=lectura` se traduce a nada).
-    const base = `${sagaHref(id)}/mapa`;
+    const base = sagaAtlasHref(id);
     redirect(legacy.size ? `${base}?${legacy}` : base);
   }
 

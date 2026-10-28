@@ -7,7 +7,7 @@ import { skipOptional, unskipOptional } from "@/lib/sagas/optional-actions";
 import styles from "./atlas.module.css";
 
 // «Saltar» / «Deshacer» de una opcional en el atlas (mini-ficha y lista). Mismo `<form action>`
-// que el de la ficha (src/components/saga/timeline/skip-optional-button.tsx), pero con la
+// que el del antiguo timeline de «Cómo leerla» (retirado con el atlas), pero con la
 // `AtlasWork`. Quien lo pinta decide si hay sesión y si la obra es opcional.
 //
 // El par (tipo, id) sale de la clave con `parseItemKey`; la saga que se GUARDA es

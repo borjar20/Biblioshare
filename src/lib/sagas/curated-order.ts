@@ -137,7 +137,7 @@ export function createCuratedOrder(
     // de la revisión final de la fase 3): manda la ficha. Cambio en vivo en
     // los tres consumidores de `createCuratedOrder` — el generador del
     // itinerario, la expansión de un bloque dentro de un itinerario
-    // (route-view.tsx) y el «siguiente»/portadas de las cards de Mi
+    // (la vista de itinerario de «Cómo leerla», ya retirada) y el «siguiente»/portadas de las cards de Mi
     // Biblioteca (build-library-saga-cards.ts) — así que los tres coinciden
     // ahora con la ficha y con el mapa.
     out.push(...direct.map((m) => ({ key: itemKey(m.itemType, m.itemId), sagaId })));

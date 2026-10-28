@@ -256,7 +256,7 @@ describe("freeBlockWindow", () => {
 // Arreglo tras la revisión de Task 4-bis: el interruptor `show_map` mandaba
 // solo en `hasGraph`, no en `graph` — así que `/saga/[id]/mapa/page.tsx`
 // (que comprueba `!graph`, nunca `hasGraph`) y el panel de grafo resaltado de
-// una ruta curada en `saga-map-tab.tsx` (`... && graph`) se lo saltaban los
+// una ruta curada de la antigua pestaña de mapa (`... && graph`, ya retirada) se lo saltaban los
 // dos, verificado en vivo con el interruptor apagado. `resolveSagaGraph` es
 // la regla aislada y pura: "con el interruptor apagado no hay mapa", sin
 // Supabase de por medio. Cubre exactamente lo que antes solo se veía

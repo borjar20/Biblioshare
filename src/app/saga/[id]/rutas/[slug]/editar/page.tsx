@@ -52,7 +52,7 @@ export default async function RouteEditorPage({
   const descendantIds = detail.childRefs.map((c) => c.id);
 
   // Acento y recuento de cada bloque-subsaga: mismo criterio de resolución
-  // que route-view.tsx (si la subsaga tiene grupo en la ficha, ese acento
+  // que seguía la vista de itinerario de «Cómo leerla», ya retirada (si la subsaga tiene grupo en la ficha, ese acento
   // manda; si no tiene grupo — sin miembros, la rotación de groupMembers no
   // la cubre —, su accent_color persistido si es válido, o beige).
   const groupAccentBySagaId = new Map(

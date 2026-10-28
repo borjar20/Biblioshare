@@ -1,6 +1,6 @@
 import "server-only";
 import { revalidatePath, revalidateTag, updateTag } from "next/cache";
-import { itemHref, sagaHref, sagaReadingHref } from "@/lib/catalog/item-href";
+import { itemHref, sagaAtlasHref, sagaHref } from "@/lib/catalog/item-href";
 import type { ItemType } from "@/lib/catalog/types";
 import type { WrapUpKind } from "@/lib/wrap-ups/windows";
 
@@ -125,14 +125,13 @@ export function revalidateCollectionPages(): void {
   revalidatePath("/coleccion/c/[id]", "page");
 }
 
-/** La ficha de una saga concreta, su atlas (/saga/[id]/mapa, spec 2026-10-28) y
- *  «Cómo leerla» (spec 2026-10-27), que pintan los mismos estados: adoptar un
- *  itinerario o saltar una opcional se hace desde el atlas y tiene que verse en
- *  todas sin salir y volver. */
+/** La ficha de una saga concreta y su atlas (/saga/[id]/mapa, spec 2026-10-28),
+ *  que pintan los mismos estados: adoptar un itinerario o saltar una opcional se
+ *  hace desde el atlas y tiene que verse en las dos sin salir y volver.
+ *  «Cómo leerla» ya es solo un redirect al atlas: no hay nada que revalidar. */
 export function revalidateSagaPage(id: string): void {
   revalidatePath(sagaHref(id));
-  revalidatePath(`${sagaHref(id)}/mapa`);
-  revalidatePath(sagaReadingHref(id));
+  revalidatePath(sagaAtlasHref(id));
 }
 
 /** La pantalla de curación de miembros de una saga (/saga/[id]/editar, Task 8).

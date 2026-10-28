@@ -97,6 +97,8 @@
 .eyebrow { margin: 0; font-family: var(--font-geist-mono), monospace; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--glow); }
 .title { margin: 2px 0 0; font-family: var(--font-serif), serif; font-size: 20px; font-weight: 600; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .summary { margin: 4px 0 0; font-size: 14px; line-height: 1.4; color: var(--muted); max-width: 52ch; }
+/* Fantasma de la barra (AtlasSkeleton): barras del color del panel, sin texto. */
+.skeletonLine { border-radius: 999px; background: var(--panel); }
 .summary b { color: var(--glow); font-weight: 700; font-variant-numeric: tabular-nums; }
 
 .dock { position: absolute; left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }

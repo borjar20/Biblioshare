@@ -27,13 +27,12 @@ export function nodeBoxOf(node: SagaGraphNode): { w: number; h: number } {
 }
 
 // `deriveSagaMap` tiene que devolver coordenadas en PÍXELES, no en índice de
-// columna/fila (0, 1, 2…): `saga-graph-view.tsx` usa `n.x`/`n.y` TAL CUAL
-// como `position` de React Flow (`position: { x: n.x, y: n.y }`), sin
-// normalizar nada. La única función que normaliza escalas es `scaleNodes`
-// (derive-timeline.ts), y solo la llama el mini-preview del CTA
-// (map-cta.tsx) — la vista 2D no pasa por ahí. Si aquí se devolvieran
-// índices, todos los nodos caerían unos sobre otros en el lienzo, porque la
-// tarjeta de portada mide 78×116px (`graph-nodes.tsx`, `CoverNode`).
+// columna/fila (0, 1, 2…). Nació para la vista de grafo con React Flow (ya
+// retirada con el atlas, spec 2026-10-28), que usaba `n.x`/`n.y` TAL CUAL como
+// `position` de cada portada de 78×116px: con índices, todos los nodos caían
+// unos sobre otros. Hoy las coordenadas las normaliza el mini-mapa de la
+// tarjeta de la ficha (mini-map.ts), y el layout (layout-map.ts) sigue
+// razonando en píxeles con estos pasos.
 //
 // Paso horizontal entre columnas: bajo cada portada cuelga una etiqueta de
 // 150px, centrada sobre la tarjeta (78px de ancho). Dos columnas contiguas

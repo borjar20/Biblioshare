@@ -283,7 +283,7 @@ export function freeBlockWindow(
  * miraba `saga.showMap` — así que cualquier sitio que comprobara
  * `graph !== null` en vez de `hasGraph` se saltaba el interruptor. Dos lo
  * hacían de hecho: `/saga/[id]/mapa/page.tsx` (`if (!graph) redirect(...)`) y
- * el panel de grafo resaltado de una ruta curada en `saga-map-tab.tsx`
+ * el panel de grafo resaltado de una ruta curada de la antigua pestaña de mapa
  * (`... && graph`), los dos verificados en vivo con el interruptor apagado.
  *
  * Con `graph` ya `null` cuando `showMap` es `false`, TODO consumidor que

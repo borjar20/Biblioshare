@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { hasMinRole } from "@/lib/auth/roles";
-import { sagaHref, sagaReadingHref } from "@/lib/catalog/item-href";
+import { sagaAtlasHref, sagaHref } from "@/lib/catalog/item-href";
 import { getSagaDetail } from "@/lib/sagas/get-saga-detail";
 import { deriveShelf } from "@/lib/sagas/derive-shelf";
 import { getSagaPassage } from "@/lib/sagas/get-saga-passage";
@@ -48,14 +48,14 @@ export default async function SagaDetailPage({
   const { tab, orden, ruta, rol } = await searchParams;
 
   // Enlaces viejos a la pestaña «Mapa de lectura»: su contenido vive ahora en
-  // «Cómo leerla», con los mismos parámetros.
+  // el atlas, con los mismos parámetros (`/mapa` traduce los viejos a lentes).
   if (tab === "mapa") {
     const q = new URLSearchParams();
     if (ruta) q.set("ruta", ruta);
     if (orden) q.set("orden", orden);
     if (rol) q.set("rol", rol);
     const qs = q.toString();
-    redirect(qs ? `${sagaReadingHref(id)}?${qs}` : sagaReadingHref(id));
+    redirect(qs ? `${sagaAtlasHref(id)}?${qs}` : sagaAtlasHref(id));
   }
 
   const supabase = await createClient();
@@ -122,7 +122,7 @@ export default async function SagaDetailPage({
           routes={shelfRoutes.map((r) => ({ slug: r.slug, name: r.name }))}
           activeRoute={activeRoute}
           baseHref={sagaHref(detail.saga.id)}
-          readingHref={`${sagaReadingHref(detail.saga.id)}?ruta=${encodeURIComponent(activeRoute)}`}
+          readingHref={atlasHrefFor(detail.saga.id, activeRoute)}
           ratings={detail.isAuthenticated ? ratings : undefined}
         />
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
@@ -143,13 +143,21 @@ export default async function SagaDetailPage({
           <YourPassage passage={passage} sagaName={detail.saga.name} />
         </Suspense>
         <SubsagaDoors doors={doors} authenticated={detail.isAuthenticated} />
-        {detail.graph && <AtlasTeaser href={`${sagaHref(detail.saga.id)}/mapa`} map={miniMapPoints(detail.graph)} />}
+        {detail.graph && <AtlasTeaser href={sagaAtlasHref(detail.saga.id)} map={miniMapPoints(detail.graph)} />}
         <section>
           <SagaAllWorks groups={detail.groups} windows={detail.windows} />
         </section>
       </div>
     </div>
   );
+}
+
+// «Ver en el mapa» de la balda: el atlas con el itinerario activo. «Publicación»
+// no es un itinerario en el atlas sino una lente (spec 2026-10-28 §3).
+function atlasHrefFor(sagaId: string, activeRoute: string): string {
+  return activeRoute === "publicacion"
+    ? `${sagaAtlasHref(sagaId)}?lente=publicacion`
+    : `${sagaAtlasHref(sagaId)}?ruta=${encodeURIComponent(activeRoute)}`;
 }
 
 // Backdrop de TMDB de la primera película de la saga que lo tenga (spec §1).
