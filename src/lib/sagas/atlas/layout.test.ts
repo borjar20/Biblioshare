@@ -97,16 +97,18 @@ describe("layoutAtlas", () => {
     }]);
   });
 
-  it("orden: v intercambia los ejes", () => {
+  it("orden: v intercambia los ejes (el transversal se conserva; el de lectura usa el paso de v)", () => {
     const m = model([work("a"), work("b", { regionKey: "r2" }), work("w", { window: win("a", "b") })], ["r1", "r2"]);
     const h = layoutAtlas(m, "orden", "h"), v = layoutAtlas(m, "orden", "v");
-    expect(v.items.map((i) => [i.x, i.y])).toEqual(h.items.map((i) => [i.y, i.x]));
-    expect(v.regions.map((r) => [r.x, r.y, r.w, r.h])).toEqual(h.regions.map((r) => [r.y, r.x, r.h, r.w]));
-    expect(v.islands.map((i) => [i.x, i.y, i.r])).toEqual(h.islands.map((i) => [i.y, i.x, i.r]));
-    expect(v.arcs[0]).toEqual({
-      key: h.arcs[0].key, x1: h.arcs[0].y1, y1: h.arcs[0].x1, x2: h.arcs[0].y2, y2: h.arcs[0].x2,
-      via: { x: h.arcs[0].via.y, y: h.arcs[0].via.x },
-    });
+    // Eje transversal: el y de h pasa a ser el x de v, sin cambios.
+    expect(v.items.map((i) => i.x)).toEqual(h.items.map((i) => i.y));
+    // Eje de lectura: mismo orden, ahora en y.
+    expect(v.items.map((i) => i.y)).toEqual([0, 114 + 60, 87]);
+    const [a, b, w] = ["a", "b", "w"].map((k) => pos(v, k));
+    expect(v.arcs[0]).toEqual({ key: "i:book:w", x1: a.x, y1: a.y, x2: b.x, y2: b.y, via: { x: w.x, y: w.y } });
+    // Regiones: en v la portada mide COVER_W de ancho y COVER_H a lo largo del eje.
+    expect(v.regions[0]).toEqual({ key: "r1", x: -COVER_W / 2 - 24, y: -COVER_H / 2 - 24, w: COVER_W + 48, h: COVER_H + 48 });
+    expect(v.islands.map((i) => [i.x, i.y])).toEqual(v.regions.map((r) => [r.x + r.w / 2, r.y + r.h / 2]));
     // El extent se calcula con la orientación final (las portadas no se giran): contiene todos los centros.
     for (const i of v.items) {
       expect(i.x).toBeGreaterThan(v.extent.minX);
@@ -114,6 +116,26 @@ describe("layoutAtlas", () => {
       expect(i.y).toBeGreaterThan(v.extent.minY);
       expect(i.y).toBeLessThan(v.extent.maxY);
     }
+  });
+
+  it("v: obras consecutivas de la fila no se tocan (Δy ≥ COVER_H + 16) en las tres lentes", () => {
+    const m = model([work("a", { year: 1990 }), work("b", { year: 1991 }), work("c", { year: 1992 })]);
+    for (const lens of ["orden", "rol", "publicacion"] as const) {
+      const l = layoutAtlas(m, lens, "v");
+      const ys = ["a", "b", "c"].map((k) => pos(l, k).y);
+      for (let i = 1; i < ys.length; i++) expect(ys[i] - ys[i - 1]).toBeGreaterThanOrEqual(COVER_H + 16);
+    }
+  });
+
+  it("v: las seguidoras de un tándem y las extra escalan con el paso", () => {
+    const m = model([
+      work("a", { tandem: { mode: null, note: null, partnerKeys: ["i:book:b"] } }),
+      work("b", { tandem: { mode: null, note: null, partnerKeys: ["i:book:a"] } }),
+      work("x1", { extra: true }), work("x2", { extra: true }),
+    ]);
+    const l = layoutAtlas(m, "orden", "v");
+    expect(pos(l, "b").y - pos(l, "a").y).toBeCloseTo((14 * 114) / 84);
+    expect(pos(l, "x2").y - pos(l, "x1").y).toBeCloseTo(114 * 0.7);
   });
 
   it("orden: islas solo con dos o más regiones", () => {

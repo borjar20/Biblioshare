@@ -10,7 +10,11 @@ export type Lens = "orden" | "rol" | "publicacion";
 
 export const COVER_W = 60;
 export const COVER_H = 90;
-const STEP = 84;
+// Paso entre obras consecutivas a lo largo del eje de lectura. En `h` ese eje es el ancho
+// de la portada (60 → 84); en `v` es el alto (90), así que el paso crece a COVER_H + 24 para
+// que las portadas no se toquen.
+const STEP_H = 84;
+const STEP_V = COVER_H + 24;
 const REGION_GAP = 60;
 const PAD = 24;
 const MARGIN = 40;
@@ -30,7 +34,13 @@ type Layout = Omit<AtlasLayout, "extent">;
 // Función y no constante: cada layout recibe sus propios arrays (no compartidos entre llamadas).
 const empty = (): Layout => ({ items: [], regions: [], islands: [], arcs: [], guides: [], threads: [] });
 
-function layoutOrden(model: AtlasModel): Layout {
+/** Medidas que dependen de la orientación, en el espacio `a`/`c` (antes del `swap`):
+ *  `step` es el paso a lo largo de `a`; `along`/`cross` son la portada medida en `a` y en `c`. */
+type Dims = { step: number; along: number; cross: number };
+const dimsFor = (o: Orientation): Dims =>
+  o === "v" ? { step: STEP_V, along: COVER_H, cross: COVER_W } : { step: STEP_H, along: COVER_W, cross: COVER_H };
+
+function layoutOrden(model: AtlasModel, { step: STEP, along, cross }: Dims): Layout {
   const placed = new Map<string, PlacedWork>();
   const place = (key: string, x: number, y: number, scale = 1) => {
     const p = { key, x, y, scale };
@@ -43,7 +53,9 @@ function layoutOrden(model: AtlasModel): Layout {
   // Obras de fila: una por paso, salvo el segundo y siguientes de un tándem.
   let cursor = 0;
   let prevRegion: string | null = null;
-  // Seguidoras ya colgadas de cada pareja: la n-ésima se desplaza 14*n, 10*n para no apilarse.
+  // Seguidoras ya colgadas de cada pareja: la n-ésima se desplaza 14*n, 10*n para no apilarse
+  // (los 14 de `a` escalan con el paso, que en `v` es más largo).
+  const FOLLOW = (14 * STEP) / STEP_H;
   const followers = new Map<string, number>();
   for (const w of row) {
     const partnerKey = w.tandem?.partnerKeys.find((k) => placed.has(k));
@@ -51,7 +63,7 @@ function layoutOrden(model: AtlasModel): Layout {
       const partner = placed.get(partnerKey)!;
       const n = (followers.get(partnerKey) ?? 0) + 1;
       followers.set(partnerKey, n);
-      place(w.key, partner.x + 14 * n, 10 * n);
+      place(w.key, partner.x + FOLLOW * n, 10 * n);
       continue;
     }
     if (prevRegion !== null && w.regionKey !== prevRegion) cursor += REGION_GAP;
@@ -102,8 +114,8 @@ function layoutOrden(model: AtlasModel): Layout {
     const s = span.get(r.key);
     if (!s) continue;
     regions.push({
-      key: r.key, x: s.min - COVER_W / 2 - PAD, y: -COVER_H / 2 - PAD,
-      w: s.max - s.min + COVER_W + 2 * PAD, h: COVER_H + 2 * PAD,
+      key: r.key, x: s.min - along / 2 - PAD, y: -cross / 2 - PAD,
+      w: s.max - s.min + along + 2 * PAD, h: cross + 2 * PAD,
     });
   }
   const islands =
@@ -117,7 +129,7 @@ function layoutOrden(model: AtlasModel): Layout {
   return { ...empty(), items: model.works.map((w) => placed.get(w.key)!), regions, islands, arcs };
 }
 
-function layoutRol(model: AtlasModel): Layout {
+function layoutRol(model: AtlasModel, { step: STEP }: Dims): Layout {
   const laneOf = (w: AtlasWork): string => w.role ?? "principal";
   const present = new Set(model.works.map(laneOf));
   const lanes: string[] = ["principal", ...SAGA_ITEM_ROLES].filter((l) => present.has(l));
@@ -136,7 +148,7 @@ function layoutRol(model: AtlasModel): Layout {
   return { ...empty(), items, guides, threads };
 }
 
-function layoutPublicacion(model: AtlasModel): Layout {
+function layoutPublicacion(model: AtlasModel, { step: STEP, cross }: Dims): Layout {
   const COL = STEP * 1.3;
   const byIndex = [...model.works].sort((p, q) => p.readingIndex - q.readingIndex);
   const years = [...new Set(model.works.map((w) => w.year).filter((y): y is number => y !== null))].sort((p, q) => p - q);
@@ -151,7 +163,7 @@ function layoutPublicacion(model: AtlasModel): Layout {
     const i = depth.get(col) ?? 0;
     depth.set(col, i + 1);
     placed.set(w.key, {
-      key: w.key, x: w.year === null ? undatedA : years.indexOf(w.year) * COL, y: i === 0 ? 0 : -i * (COVER_H + 16), scale: 1, // evita -0
+      key: w.key, x: w.year === null ? undatedA : years.indexOf(w.year) * COL, y: i === 0 ? 0 : -i * (cross + 16), scale: 1, // evita -0
     });
   }
   const guides: Layout["guides"] = years.map((y, i) => ({ kind: "tick" as const, key: String(y), x: i * COL, y: 70 }));
@@ -207,7 +219,8 @@ function extentOf(l: Layout): Extent {
 }
 
 export function layoutAtlas(model: AtlasModel, lens: Lens, orientation: Orientation): AtlasLayout {
-  const h = lens === "orden" ? layoutOrden(model) : lens === "rol" ? layoutRol(model) : layoutPublicacion(model);
+  const dims = dimsFor(orientation);
+  const h = lens === "orden" ? layoutOrden(model, dims) : lens === "rol" ? layoutRol(model, dims) : layoutPublicacion(model, dims);
   const out = orientation === "v" ? swap(h) : h;
   return { ...out, extent: extentOf(out) };
 }
