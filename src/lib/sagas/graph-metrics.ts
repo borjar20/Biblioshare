@@ -1,8 +1,8 @@
 import type { SagaGraphNode } from "./map-types";
 
-// Medidas en PÍXELES de cada tipo de nodo del grafo 2D, escritas UNA vez. Las
-// consume `graph-nodes.tsx` (que las dibuja) y `map-overlays.ts` (que envuelve
-// nodos con una cápsula o un marco, y para eso necesita saber cuánto ocupan).
+// Medidas en PÍXELES de cada tipo de nodo del grafo derivado, escritas UNA vez.
+// Las consumen `derive-map.ts` y `layout-map.ts` (el grafo 2D de React Flow que
+// las dibujaba se retiró con el atlas, spec 2026-10-28).
 // Antes vivían como clases Tailwind literales dentro de `graph-nodes.tsx` y
 // repetidas en los comentarios de `derive-map.ts` que justifican
 // NODE_STEP_X/NODE_STEP_Y; un tercer sitio que las repitiera en silencio es
