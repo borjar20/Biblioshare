@@ -125,11 +125,13 @@ export function revalidateCollectionPages(): void {
   revalidatePath("/coleccion/c/[id]", "page");
 }
 
-/** La ficha de una saga concreta y su página «Cómo leerla» (spec 2026-10-27),
- *  que pinta los mismos estados: adoptar un itinerario o saltar una opcional
- *  se hace desde allí y tiene que verse en las dos. */
+/** La ficha de una saga concreta, su atlas (/saga/[id]/mapa, spec 2026-10-28) y
+ *  «Cómo leerla» (spec 2026-10-27), que pintan los mismos estados: adoptar un
+ *  itinerario o saltar una opcional se hace desde el atlas y tiene que verse en
+ *  todas sin salir y volver. */
 export function revalidateSagaPage(id: string): void {
   revalidatePath(sagaHref(id));
+  revalidatePath(`${sagaHref(id)}/mapa`);
   revalidatePath(sagaReadingHref(id));
 }
 
