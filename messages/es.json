@@ -2362,7 +2362,18 @@
       "tandemIndistinto": "En cualquier orden con {titles}",
       "step": "Paso {n} del itinerario",
       "workAria": "{title}, {state}",
-      "planeAria": "Atlas de {saga}, lente {lens}. {summary}"
+      "planeAria": "Atlas de {saga}, lente {lens}. {summary}",
+      "islandAria": "{name}: {completed} de {total} leídas",
+      "islandAriaCount": "{name}: {count, plural, =1 {1 obra} other {# obras}}",
+      "rolePlural": {
+        "principal": "{count, plural, =1 {principal} other {principales}}",
+        "precuela": "{count, plural, =1 {precuela} other {precuelas}}",
+        "novela_corta": "{count, plural, =1 {novela corta} other {novelas cortas}}",
+        "relato": "{count, plural, =1 {relato} other {relatos}}",
+        "spin_off": "{count, plural, =1 {spin-off} other {spin-offs}}",
+        "companero": "{count, plural, =1 {compañero} other {compañeros}}",
+        "crossover": "{count, plural, =1 {crossover} other {crossovers}}"
+      }
     },
     "notFoundTitle": "Saga no encontrada",
     "notFoundDescription": "Esta saga no existe.",

@@ -1,0 +1,70 @@
+/* Atlas de la saga (spec 2026-10-28 §6). Siempre oscuro: tokens propios, los mismos valores que
+   Entre nosotros (src/components/comparisons/explorer.module.css, .immersive). */
+.root {
+  --ground: #1d1713; --panel: #2a221d; --line: #4a3d34; --fg: #f1e7dd; --muted: #b2a293; --faint: #7d6e62; --glow: #f2c27b;
+  position: relative; background: var(--ground); color: var(--fg); font-family: var(--font-geist-sans), sans-serif;
+}
+
+/* Lienzo: toma los gestos y los atajos. Anillo solo con teclado. */
+.stage { position: absolute; inset: 0; overflow: hidden; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+.stage:active { cursor: grabbing; }
+.stage:focus { outline: none; }
+.stage:focus-visible::after { content: ''; position: absolute; inset: 1px; border: 2px solid var(--glow); pointer-events: none; }
+
+.plane { position: absolute; left: 0; top: 0; width: 0; height: 0; will-change: transform; }
+.plane[data-animated='true'] { transition: transform 350ms cubic-bezier(.2, .7, .2, 1); }
+.backdrop { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+.regionName { font-size: 13px; font-weight: 700; letter-spacing: .02em; }
+
+/* Islas: un círculo por región; el texto se contraescala para leerse a cualquier zoom. */
+.island { position: absolute; border-radius: 50%; display: grid; place-items: center; color: var(--fg); border: 2px solid transparent; cursor: pointer; }
+.island[data-state='current'] { border-color: var(--glow); }
+.islandLabel { display: grid; justify-items: center; gap: 2px; transform: scale(calc(1 / var(--k, 1))); white-space: nowrap; font-size: 13px; font-weight: 700; line-height: 1.2; pointer-events: none; }
+.islandLabel small { font-size: 11px; font-weight: 500; color: var(--muted); max-width: 18ch; overflow: hidden; text-overflow: ellipsis; }
+.island:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+
+/* Obras: posición y escala en el mundo; el cambio de lente las anima. */
+.work { position: absolute; left: 0; top: 0; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; transition: transform 450ms cubic-bezier(.2, .7, .2, 1); }
+.cover { position: relative; display: block; width: 100%; height: 100%; border-radius: 3px; overflow: hidden; background: var(--panel); box-shadow: 0 2px 8px rgba(0, 0, 0, .45); }
+.cover img { object-fit: cover; }
+.spine { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 4px; color: var(--ground); font-size: 8px; font-weight: 700; line-height: 1.1; text-align: center; writing-mode: vertical-rl; overflow: hidden; }
+.work:focus-visible .cover { outline: 2px solid var(--glow); outline-offset: 2px; }
+.caption { position: absolute; left: 50%; top: calc(100% + 4px); width: 84px; transform: translateX(-50%); display: grid; gap: 1px; text-align: center; pointer-events: none; }
+.captionTitle { font-size: 7px; font-weight: 700; line-height: 1.15; color: var(--fg); overflow-wrap: anywhere; }
+.captionMeta { font-size: 6px; color: var(--muted); }
+
+/* Progreso (la capa la conmutará la Task 8): «ahora» con aro dorado, saltada atenuada. */
+.root[data-progress='on'] .work[data-state='now'] .cover { box-shadow: 0 0 0 2px var(--glow), 0 0 18px color-mix(in srgb, var(--glow) 55%, transparent); }
+.root[data-progress='on'] .work[data-skipped='true'] { opacity: .45; }
+
+/* Barra superior y dock: el contenedor no toma punteros, sus hijos sí. */
+.top { position: absolute; left: 0; right: 0; top: 0; z-index: 2; display: flex; gap: 12px; align-items: flex-start;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) calc(16px + env(safe-area-inset-right, 0px)) 32px calc(16px + env(safe-area-inset-left, 0px));
+  background: linear-gradient(to bottom, var(--ground) calc(100% - 32px), transparent); pointer-events: none; }
+.top > * { pointer-events: auto; }
+.back { display: grid; place-items: center; flex: none; width: 44px; height: 44px; border-radius: 12px; background: var(--panel); font-size: 20px; color: var(--fg); }
+.heading { min-width: 0; }
+.eyebrow { margin: 0; font-family: var(--font-geist-mono), monospace; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--glow); }
+.title { margin: 2px 0 0; font-family: var(--font-serif), serif; font-size: 20px; font-weight: 600; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.summary { margin: 4px 0 0; font-size: 14px; line-height: 1.4; color: var(--muted); max-width: 52ch; }
+.summary b { color: var(--glow); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.dock { position: absolute; left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
+.lens { pointer-events: auto; display: flex; gap: 4px; padding: 5px; border-radius: 999px; background: color-mix(in srgb, var(--panel) 90%, transparent); backdrop-filter: blur(8px); box-shadow: 0 10px 30px rgba(0, 0, 0, .4); }
+.lens button { display: flex; align-items: center; gap: 7px; padding: 9px 16px; min-height: 44px; border-radius: 999px; font-size: 14px; font-weight: 600; color: var(--muted); background: transparent; }
+.lens button[aria-pressed='true'] { background: var(--fg); color: var(--ground); }
+.lens svg { width: 16px; height: 16px; flex: none; }
+.legend { margin: 0; font-size: 12.5px; color: var(--faint); text-align: center; max-width: 56ch; line-height: 1.4; text-wrap: balance; }
+.zoom { position: absolute; right: calc(16px + env(safe-area-inset-right, 0px)); bottom: calc(96px + env(safe-area-inset-bottom, 0px)); z-index: 2; display: flex; flex-direction: column; gap: 6px; }
+.zoom button { width: 44px; height: 44px; border-radius: 12px; background: var(--panel); display: grid; place-items: center; color: var(--fg); font-size: 18px; font-weight: 600; }
+.back:focus-visible, .lens button:focus-visible, .zoom button:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+
+@media (max-width: 640px) {
+  .lens button span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .lens button { padding: 10px 14px; }
+  .zoom { display: none; }
+  .title { font-size: 17px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .work, .plane[data-animated='true'] { transition: none; }
+}

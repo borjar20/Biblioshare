@@ -1,12 +1,19 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
-import { getSagaDetail } from "@/lib/sagas/get-saga-detail";
+import { hasMinRole } from "@/lib/auth/roles";
 import { sagaHref } from "@/lib/catalog/item-href";
-import { GraphLegend } from "@/components/saga/graph/graph-legend";
-import { SagaGraphLazy } from "@/components/saga/graph/saga-graph-lazy";
+import { getSagaDetail } from "@/lib/sagas/get-saga-detail";
+import { getRouteEntries } from "@/lib/sagas/get-saga-routes";
+import { deriveTimeline } from "@/lib/sagas/derive-timeline";
+import { mainOrderFor, shelfRoutesFor } from "@/lib/sagas/shelf-sections";
+import { resolveActiveRoute } from "@/lib/sagas/resolve-active-route";
+import { deriveAtlas } from "@/lib/sagas/atlas/model";
+import { itinerarySteps } from "@/lib/sagas/atlas/itinerary";
+import { routeCounter } from "@/lib/sagas/atlas/route-counter";
+import { legacyAtlasQuery, parseLens, parseRole } from "@/lib/sagas/atlas/lens";
+import { SagaAtlas } from "@/components/saga/atlas/saga-atlas";
 
 export async function generateMetadata({
   params,
@@ -16,61 +23,63 @@ export async function generateMetadata({
   const { id } = await params;
   const supabase = await createClient();
   const { data: saga } = await supabase.from("sagas").select("name").eq("id", id).maybeSingle();
-  return { title: saga ? `${saga.name} · Mapa — Biblioshare` : "Biblioshare" };
+  return { title: saga ? `${saga.name} · Atlas — Biblioshare` : "Biblioshare" };
 }
 
-// Mapa a pantalla completa (frame C): pensado para móvil; en PC el grafo ya va
-// embebido en la ficha (frame E), pero la ruta funciona igual si se comparte
-// un link directo. Sin grafo no hay nada que enseñar aquí: redirige a la
-// ficha en vez de dejar el visor vacío. `detail.graph` (no `hasGraph`) es
-// aposta: desde `resolveSagaGraph` (fase 3, Task 4-bis, arreglo tras
-// revisión) `graph` ya es `null` tanto sin nada curado como con el
-// interruptor `show_map` apagado, así que un link directo a esta URL con el
-// interruptor apagado redirige igual que si la saga no tuviera nada que
-// dibujar — el interruptor manda aquí también, sin que este archivo tenga que
-// mirarlo explícitamente.
-export default async function SagaMapPage({
+// Atlas de la saga (spec 2026-10-28). Sustituye al grafo y a «Cómo leerla».
+// Sin `use cache` (regla #437): `detail` lleva estados y pases del lector.
+// Solo redirige a la ficha si la saga no tiene obras (`shelfGraph` vacío): ya no
+// mira `detail.graph` ni el interruptor `show_map` (spec §3 y §9).
+export default async function SagaAtlasPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ lente?: string; ruta?: string; orden?: string; rol?: string }>;
 }) {
   const { id } = await params;
-  const t = await getTranslations("saga");
-  const supabase = await createClient();
+  const sp = await searchParams;
+  const legacy = legacyAtlasQuery(sp);
+  if (legacy) redirect(`${sagaHref(id)}/mapa?${legacy}`);
 
+  const supabase = await createClient();
   const detail = await getSagaDetail(supabase, id);
   if (!detail) notFound();
-  const graph = detail.graph;
-  if (!graph) redirect(sagaHref(id));
+  if (detail.shelfGraph.nodes.length === 0) redirect(sagaHref(id));
+
+  const t = await getTranslations("saga");
+  // «Publicación» ya es una lente: no se ofrece como itinerario.
+  const routes = shelfRoutesFor(detail, t("orderReading")).filter((r) => r.slug !== "publicacion");
+  const activeRoute = resolveActiveRoute({ routes, routeChoice: detail.routeChoice }, { ruta: sp.ruta });
+  const row = routes.find((r) => r.slug === activeRoute && r.id !== undefined);
+  const entries = row?.id ? await getRouteEntries(supabase, row.id) : null;
+
+  const sections = deriveTimeline(detail.shelfGraph, {
+    authenticated: detail.isAuthenticated,
+    showOptional: detail.showOptionalReadings,
+  });
+  const years = new Map(detail.groups.flatMap((g) => g.members).map((m) => [`i:${m.itemType}:${m.itemId}`, m.year] as const));
+  const model = deriveAtlas({
+    sections,
+    authenticated: detail.isAuthenticated,
+    years,
+    steps: entries ? itinerarySteps(entries, mainOrderFor(detail)) : null,
+  });
 
   return (
-    <div className="relative h-dvh w-full">
-      <SagaGraphLazy graph={graph} className="h-full w-full" showZoomControls />
-
-      <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center gap-3 bg-gradient-to-b from-black/70 to-transparent p-4">
-        <Link
-          href={sagaHref(id)}
-          aria-label={t("backToSaga")}
-          className="pointer-events-auto grid h-9 w-9 place-items-center rounded-lg bg-white/10 text-base text-[#f0e6d4] backdrop-blur"
-        >
-          ‹
-        </Link>
-        <div className="min-w-0">
-          <p className="truncate font-serif text-[15px] font-semibold text-[#f0e6d4]">{detail.saga.name}</p>
-          <p className="font-mono text-[9px] uppercase tracking-widest text-[#b9a986]">
-            {t("mapTitle", { count: detail.memberCount })}
-          </p>
-        </div>
-      </header>
-
-      <p className="pointer-events-none absolute left-1/2 top-16 z-10 -translate-x-1/2 rounded-full bg-black/50 px-3 py-1.5 font-mono text-[10px] text-[#b9a986] backdrop-blur">
-        {t("mapHint")}
-      </p>
-
-      <div className="absolute inset-x-0 bottom-0 z-10 rounded-t-2xl border-t border-border bg-background/95 px-4 pb-4 pt-2 backdrop-blur">
-        <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-surface-muted" />
-        <GraphLegend graph={graph} />
-      </div>
-    </div>
+    <SagaAtlas
+      sagaId={id}
+      sagaName={detail.saga.name}
+      workCount={detail.memberCount}
+      model={model}
+      authenticated={detail.isAuthenticated}
+      initialLens={parseLens(sp.lente)}
+      initialRole={parseRole(sp.rol)}
+      routes={routes.map((r) => ({ slug: r.slug, name: r.name, summary: r.summary, curated: r.id !== undefined }))}
+      activeRoute={activeRoute}
+      adoptedRoute={detail.routeChoice}
+      counter={entries ? routeCounter(detail, entries) : null}
+      canEdit={hasMinRole(detail.viewerRole, "collaborator")}
+    />
   );
 }

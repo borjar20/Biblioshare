@@ -32,4 +32,11 @@ describe("rutas que se comen el marco de la app", () => {
     expect(isFullscreenRoute("/comunidad")).toBe(false);
     expect(isFullscreenRoute("/comunidad/entre-nosotros-x")).toBe(false);
   });
+
+  it("el atlas de una saga sí, pero no su editor ni la ficha", () => {
+    expect(isFullscreenRoute("/saga/x/mapa")).toBe(true);
+    expect(isFullscreenRoute("/saga/x/mapa/editar")).toBe(false);
+    expect(isFullscreenRoute("/saga/x")).toBe(false);
+    expect(isFullscreenRoute("/saga/x/mapas")).toBe(false);
+  });
 });
