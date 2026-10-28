@@ -51,6 +51,7 @@ export async function FriendsOnSaga({ friends }: { friends: Promise<FriendOnSaga
                     )}
                     {f.status.kind === "finished" && <span className="text-green">{t("friendsFinished")}</span>}
                     {f.status.kind === "started" && t("friendsStarted")}
+                    {f.status.kind === "dropped" && t("friendsDropped")}
                   </p>
                 </div>
                 {f.average !== null && <RatingDots value={f.average} size="sm" />}
@@ -73,7 +74,7 @@ export async function FriendsOnSaga({ friends }: { friends: Promise<FriendOnSaga
 
 export function FriendsOnSagaSkeleton() {
   return (
-    <div className="h-[180px]" data-testid="friends-on-saga-skeleton">
+    <div className="hidden h-[180px] lg:block" data-testid="friends-on-saga-skeleton">
       <Skeleton className="size-full rounded-[14px]" />
     </div>
   );

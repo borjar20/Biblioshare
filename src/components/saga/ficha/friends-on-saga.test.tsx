@@ -49,6 +49,10 @@ describe("FriendsOnSaga", () => {
     expect(screen.getByRole("link", { name: "friendsLast:Mesías" }).getAttribute("href")).toBe("/libro/b");
     expect(screen.getByText("friendsStarted")).toBeTruthy();
   });
+  it("dropped sale como texto atenuado", async () => {
+    await run([friend(1, { status: { kind: "dropped" } })]);
+    expect(screen.getByText("friendsDropped").className).toContain("text-muted-foreground");
+  });
   it("sin avatar salen las iniciales", async () => {
     await run([friend(1, { displayName: "Ana Pérez" })]);
     expect(screen.getByText("AP")).toBeTruthy();

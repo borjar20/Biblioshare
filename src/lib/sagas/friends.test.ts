@@ -73,9 +73,34 @@ describe("deriveFriends", () => {
     expect(f.status).toEqual({ kind: "last", title: "C", href: "/c" });
   });
 
-  it("started si solo hay planned o dropped", () => {
-    const f = one([fp("u", "book:a", { status: "planned", finishedOn: null }), fp("u", "book:b", { status: "dropped", finishedOn: null })]);
+  it("started si solo hay planned", () => {
+    const f = one([fp("u", "book:a", { status: "planned", finishedOn: null }), fp("u", "book:b", { status: "planned", finishedOn: null })]);
     expect(f.status).toEqual({ kind: "started" });
+  });
+
+  it("dropped si solo hay abandonadas (sin leyendo activo ni terminadas)", () => {
+    const f = one([fp("u", "book:a", { status: "dropped", finishedOn: null }), fp("u", "book:b", { status: "planned", finishedOn: null })]);
+    expect(f.status).toEqual({ kind: "dropped" });
+  });
+
+  it("una terminada o un leyendo activo ganan a dropped", () => {
+    expect(one([fp("u", "book:a", { status: "dropped", finishedOn: null }), fp("u", "book:b")]).status.kind).toBe("last");
+    expect(
+      one([fp("u", "book:a", { status: "dropped", finishedOn: null }), fp("u", "book:b", { status: "in_progress", isActive: true, finishedOn: null })]).status.kind,
+    ).toBe("reading");
+  });
+
+  it("sin obras que cuenten (todas opcionales) nunca es finished", () => {
+    const optionalOnly: FriendsInput["order"] = [
+      { key: "book:o1", title: "O1", href: "/o1", optional: true },
+      { key: "book:o2", title: "O2", href: "/o2", optional: true },
+    ];
+    const run = (passes: FriendPass[]) => deriveFriends({ passes, identities: [id("u")], order: optionalOnly })[0];
+    const done = run([fp("u", "book:o1"), fp("u", "book:o2")]);
+    expect(done.counted).toBe(0);
+    expect(done.status).toEqual({ kind: "last", title: "O2", href: "/o2" });
+    expect(run([fp("u", "book:o1", { status: "planned", finishedOn: null })]).status).toEqual({ kind: "started" });
+    expect(run([fp("u", "book:o1", { status: "dropped", finishedOn: null })]).status).toEqual({ kind: "dropped" });
   });
 
   it("average usa el último pase terminado por obra; sin nota no aporta", () => {

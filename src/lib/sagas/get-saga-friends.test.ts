@@ -135,6 +135,35 @@ describe("getSagaFriends", () => {
     expect(r[0]).toMatchObject({ userId: "a", completed: 1, counted: 2 });
   });
 
+  it("con más seguidos que un trozo, trocea pases e identidades y junta los resultados", async () => {
+    mocks.getCurrentUser.mockResolvedValue({ id: "me" });
+    const ids = Array.from({ length: 120 }, (_, i) => `f${i}`);
+    const { supabase, calls } = fakeSupabase({
+      follows: ids.map((followee_id) => ({ followee_id })),
+      "passes:book": [pass("f0", "b1"), pass("f119", "b1")],
+      profile_identities: [ident("f0"), ident("f119")],
+    });
+    const r = await getSagaFriends(supabase, detail(), order);
+    const bookCalls = calls.filter((c) => c.table === "passes" && c.eq.some(([, v]) => v === "book"));
+    expect(bookCalls).toHaveLength(3); // 120 seguidos = 50 + 50 + 20
+    const sent = bookCalls.flatMap((c) => c.in.find(([col]) => col === "user_id")![1]);
+    expect(sent).toEqual(ids);
+    expect(r.map((f) => f.userId).sort()).toEqual(["f0", "f119"]);
+  });
+
+  it("trocea la consulta de identidades por ids de usuario", async () => {
+    mocks.getCurrentUser.mockResolvedValue({ id: "me" });
+    const ids = Array.from({ length: 60 }, (_, i) => `f${i}`);
+    const { supabase, calls } = fakeSupabase({
+      follows: ids.map((followee_id) => ({ followee_id })),
+      "passes:book": ids.map((u) => pass(u, "b1")),
+      profile_identities: ids.map(ident),
+    });
+    const r = await getSagaFriends(supabase, detail(), order);
+    expect(calls.filter((c) => c.table === "profile_identities")).toHaveLength(2);
+    expect(r).toHaveLength(60);
+  });
+
   it.each(["follows", "passes:book", "profile_identities"])("lanza si falla la consulta de %s", async (key) => {
     mocks.getCurrentUser.mockResolvedValue({ id: "me" });
     const { supabase } = fakeSupabase(

@@ -33,6 +33,7 @@ export type FriendOnSaga = {
     | { kind: "reading"; title: string; href: string }
     | { kind: "finished" }
     | { kind: "last"; title: string; href: string }
+    | { kind: "dropped" }
     | { kind: "started" };
   average: number | null;
   lastActivity: string; // YYYY-MM-DD
@@ -58,10 +59,13 @@ export function deriveFriends({ passes, identities, order }: FriendsInput): Frie
 
     const lastDone = new Map<string, FriendPass>();
     let reading: number | null = null;
+    let anyDropped = false;
     for (const p of list) {
       if (p.status === "completed") {
         const prev = lastDone.get(p.itemKey);
         if (!prev || laterFinish(p, prev)) lastDone.set(p.itemKey, p);
+      } else if (p.status === "dropped") {
+        anyDropped = true;
       } else if (p.status === "in_progress" && p.isActive) {
         const i = index.get(p.itemKey)!;
         if (reading === null || i > reading) reading = i;
@@ -80,6 +84,8 @@ export function deriveFriends({ passes, identities, order }: FriendsInput): Frie
     } else if (lastDone.size > 0) {
       const i = Math.max(...[...lastDone.keys()].map((k) => index.get(k)!));
       status = { kind: "last", title: order[i].title, href: order[i].href };
+    } else if (anyDropped) {
+      status = { kind: "dropped" };
     } else {
       status = { kind: "started" };
     }
