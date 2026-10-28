@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { legacyAtlasQuery, parseLens, parseRole } from "./lens";
+import { atlasRoutes, legacyAtlasQuery, parseLens, parseRole } from "./lens";
 
 describe("parseLens / parseRole", () => {
   it("desconocido → valor por defecto", () => {
@@ -27,5 +27,16 @@ describe("legacyAtlasQuery", () => {
     expect(legacyAtlasQuery({})).toBeNull();
     expect(legacyAtlasQuery({ ruta: "r1" })).toBeNull();
     expect(legacyAtlasQuery({ ruta: "r1", lente: "rol", rol: "precuela" })).toBeNull();
+  });
+});
+
+describe("atlasRoutes", () => {
+  it("quita «Publicación» (ya es una lente) y conserva el resto en orden", () => {
+    const routes = [
+      { slug: "lectura", name: "Orden de lectura" },
+      { slug: "publicacion", name: "Publicación" },
+      { slug: "la-guardia", name: "La Guardia" },
+    ];
+    expect(atlasRoutes(routes).map((r) => r.slug)).toEqual(["lectura", "la-guardia"]);
   });
 });

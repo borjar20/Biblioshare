@@ -281,7 +281,8 @@ describe("capas Itinerario y Progreso, y hoja de itinerarios", () => {
     hasItinerary: true,
   };
 
-  it("abrir el chip lista las rutas sin «Publicación»", () => {
+  // Que «Publicación» no llegue como ruta lo cubre `atlasRoutes` (lens.test.ts).
+  it("abrir el chip lista las rutas y el resumen de la activa", () => {
     view({ routes, activeRoute: "la-guardia" });
     const chip = screen.getByRole("button", { name: "Itinerario: La Guardia" });
     expect(chip.getAttribute("aria-expanded")).toBe("false");
@@ -291,7 +292,6 @@ describe("capas Itinerario y Progreso, y hoja de itinerarios", () => {
     expect(dialog).toBeTruthy();
     expect(screen.getByRole("radio", { name: "Orden de lectura" })).toBeTruthy();
     expect((screen.getByRole("radio", { name: "La Guardia" }) as HTMLInputElement).checked).toBe(true);
-    expect(screen.queryByRole("radio", { name: /Publicación/ })).toBeNull();
     expect(dialog.textContent).toContain("Solo los libros de la Guardia.");
   });
 

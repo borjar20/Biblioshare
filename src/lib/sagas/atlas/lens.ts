@@ -11,6 +11,11 @@ export function parseRole(raw: string | undefined): SagaItemRole | null {
   return SAGA_ITEM_ROLES.find((r) => r === raw) ?? null;
 }
 
+/** Itinerarios que ofrece el atlas: «Publicación» ya es una lente, no se ofrece como ruta. */
+export function atlasRoutes<R extends { slug: string }>(routes: readonly R[]): R[] {
+  return routes.filter((r) => r.slug !== "publicacion");
+}
+
 /** Traduce parámetros viejos (?ruta=publicacion, ?orden=publicacion, ?rol=) a los
  *  del atlas. Devuelve null si ya están normalizados (así no hay bucle de redirects). */
 export function legacyAtlasQuery(q: {

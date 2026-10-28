@@ -12,7 +12,7 @@ import { resolveActiveRoute } from "@/lib/sagas/resolve-active-route";
 import { deriveAtlas } from "@/lib/sagas/atlas/model";
 import { itinerarySteps } from "@/lib/sagas/atlas/itinerary";
 import { routeCounter } from "@/lib/sagas/atlas/route-counter";
-import { legacyAtlasQuery } from "@/lib/sagas/atlas/lens";
+import { atlasRoutes, legacyAtlasQuery } from "@/lib/sagas/atlas/lens";
 import { SagaAtlas } from "@/components/saga/atlas/saga-atlas";
 
 export async function generateMetadata({
@@ -52,8 +52,7 @@ export default async function SagaAtlasPage({
   if (detail.shelfGraph.nodes.length === 0) redirect(sagaHref(id));
 
   const t = await getTranslations("saga");
-  // «Publicación» ya es una lente: no se ofrece como itinerario.
-  const routes = shelfRoutesFor(detail, t("orderReading")).filter((r) => r.slug !== "publicacion");
+  const routes = atlasRoutes(shelfRoutesFor(detail, t("orderReading")));
   const activeRoute = resolveActiveRoute({ routes, routeChoice: detail.routeChoice }, { ruta: sp.ruta });
   const row = routes.find((r) => r.slug === activeRoute && r.id !== undefined);
   const entries = row?.id ? await getRouteEntries(supabase, row.id) : null;
