@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { toScreen } from "@/lib/atlas/camera";
-import { centreIn, fitVisible } from "./visible-camera";
+import { cardPosition, centreIn, fitVisible, inVisibleArea } from "./visible-camera";
 
 const vp = { width: 400, height: 800 };
 const insets = { top: 150, bottom: 100 };
@@ -32,5 +32,50 @@ describe("fitVisible", () => {
 
   it("respeta el zoom máximo", () => {
     expect(fitVisible({ minX: 0, minY: 0, maxX: 10, maxY: 10 }, vp, insets, 2).k).toBe(2);
+  });
+});
+
+describe("inVisibleArea", () => {
+  const cam = { x: 0, y: 0, k: 1 }; // el origen cae en (200, 400)
+
+  it("dentro de la zona libre", () => {
+    expect(inVisibleArea(cam, vp, insets, { x: 0, y: 0 })).toBe(true);
+  });
+
+  it("bajo la barra o el dock cuenta como fuera", () => {
+    expect(inVisibleArea(cam, vp, insets, { x: 0, y: -300 })).toBe(false); // y = 100 < 150
+    expect(inVisibleArea(cam, vp, insets, { x: 0, y: 350 })).toBe(false); // y = 750 > 700
+  });
+
+  it("a los lados del viewport cuenta como fuera", () => {
+    expect(inVisibleArea(cam, vp, insets, { x: -250, y: 0 })).toBe(false);
+    expect(inVisibleArea(cam, vp, insets, { x: 250, y: 0 })).toBe(false);
+  });
+});
+
+describe("cardPosition", () => {
+  const wide = { width: 1200, height: 800 };
+  const card = { width: 300, height: 200 };
+
+  it("a la derecha de la obra y centrada en vertical", () => {
+    const pos = cardPosition({ x: 300, y: 400, halfW: 30, halfH: 45 }, wide, insets, card);
+    expect(pos).toEqual({ left: 342, top: 300, side: "right" });
+  });
+
+  it("sin sitio a la derecha, se da la vuelta", () => {
+    const pos = cardPosition({ x: 1000, y: 400, halfW: 30, halfH: 45 }, wide, insets, card);
+    expect(pos.side).toBe("left");
+    expect(pos.left).toBe(1000 - 30 - 12 - 300);
+  });
+
+  it("no se mete bajo la barra ni bajo el dock", () => {
+    expect(cardPosition({ x: 300, y: 160, halfW: 30, halfH: 45 }, wide, insets, card).top).toBe(158);
+    expect(cardPosition({ x: 300, y: 690, halfW: 30, halfH: 45 }, wide, insets, card).top).toBe(800 - 100 - 200 - 8);
+  });
+
+  it("sin sitio a ningún lado, queda dentro del viewport", () => {
+    const pos = cardPosition({ x: 200, y: 400, halfW: 150, halfH: 45 }, { width: 500, height: 800 }, insets, card);
+    expect(pos.left).toBeGreaterThanOrEqual(8);
+    expect(pos.left + card.width).toBeLessThanOrEqual(492);
   });
 });

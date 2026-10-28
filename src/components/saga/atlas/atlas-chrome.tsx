@@ -39,17 +39,30 @@ export function AtlasTopBar({ sagaId, sagaName, workCount, summary, actions, ref
   );
 }
 
-export function AtlasDock({ lens, onLens, ref }: { lens: Lens; onLens: (lens: Lens) => void; ref?: Ref<HTMLDivElement> }) {
+export function AtlasDock({ lens, onLens, listOn, onList, ref }: {
+  lens: Lens; onLens: (lens: Lens) => void;
+  listOn: boolean; onList: () => void; // «Ver como lista»: la lista sustituye al plano
+  ref?: Ref<HTMLDivElement>;
+}) {
   const t = useTranslations("saga");
   return (
     <div ref={ref} className={styles.dock} data-atlas-chrome="dock">
-      <div className={styles.lens} role="group" aria-label={t("atlas.lensGroup")}>
-        {LENSES.map((l) => (
-          <button key={l} type="button" aria-pressed={l === lens} aria-label={t(LENS_LABEL[l])} onClick={() => onLens(l)}>
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">{LENS_ICON[l]}</svg>
-            <span aria-hidden="true">{t(LENS_LABEL[l])}</span>
-          </button>
-        ))}
+      <div className={styles.dockRow}>
+        <div className={styles.lens} role="group" aria-label={t("atlas.lensGroup")}>
+          {LENSES.map((l) => (
+            <button key={l} type="button" aria-pressed={l === lens} aria-label={t(LENS_LABEL[l])} onClick={() => onLens(l)}>
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">{LENS_ICON[l]}</svg>
+              <span aria-hidden="true">{t(LENS_LABEL[l])}</span>
+            </button>
+          ))}
+        </div>
+        {/* Interruptor con nombre fijo: `aria-pressed` dice si la lista está puesta. */}
+        <button type="button" className={styles.listToggle} aria-pressed={listOn} aria-label={t("atlas.list")} onClick={onList}>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+            <path d="M5 4h9M5 8h9M5 12h9" /><circle cx="2" cy="4" r="1" fill="currentColor" /><circle cx="2" cy="8" r="1" fill="currentColor" /><circle cx="2" cy="12" r="1" fill="currentColor" />
+          </svg>
+          <span aria-hidden="true">{t("atlas.list")}</span>
+        </button>
       </div>
       <p className={styles.legend}>{t(LENS_LEGEND[lens])}</p>
     </div>

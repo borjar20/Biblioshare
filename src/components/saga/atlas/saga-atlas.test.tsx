@@ -16,6 +16,7 @@ vi.mock("next/navigation", () => ({
 }));
 // Server actions de Adoptar: en jsdom no se pueden importar (importan el cliente de servidor).
 vi.mock("@/lib/sagas/route-actions", () => ({ adoptRoute: vi.fn(async () => ({})), dropRoute: vi.fn(async () => ({})) }));
+vi.mock("@/lib/sagas/optional-actions", () => ({ skipOptional: vi.fn(async () => {}), unskipOptional: vi.fn(async () => {}) }));
 vi.mock("next/image", () => ({
   // eslint-disable-next-line @next/next/no-img-element
   default: (p: { alt: string }) => <img alt={p.alt} />,
@@ -178,12 +179,22 @@ describe("SagaAtlas", () => {
     view();
     fireEvent.pointerDown(stage(), { pointerId: 1, pointerType: "mouse", button: 0, buttons: 1, clientX: 100, clientY: 100 });
     fireEvent.pointerMove(stage(), { pointerId: 1, pointerType: "mouse", buttons: 1, clientX: 140, clientY: 100 });
-    const dragged = plane().style.transform;
-    expect(dragged).not.toBe("");
+    expect(plane().style.transform).not.toBe("");
     fireEvent.pointerUp(stage(), { pointerId: 1, pointerType: "mouse" });
     await new Promise((r) => setTimeout(r, 0));
     fireEvent.click(screen.getByRole("button", { name: "A, leída" }));
-    expect(plane().style.transform).not.toBe(dragged);
+    // El clic abre la mini-ficha (ya no acerca la cámara: Task 9).
+    expect(screen.getByRole("dialog", { name: "A" })).toBeTruthy();
+  });
+
+  it("el clic que cierra un arrastre no abre la mini-ficha", () => {
+    view();
+    const a = screen.getByRole("button", { name: "A, leída" });
+    fireEvent.pointerDown(a, { pointerId: 1, pointerType: "mouse", button: 0, buttons: 1, clientX: 100, clientY: 100 });
+    fireEvent.pointerMove(stage(), { pointerId: 1, pointerType: "mouse", buttons: 1, clientX: 140, clientY: 100 });
+    fireEvent.pointerUp(stage(), { pointerId: 1, pointerType: "mouse" });
+    fireEvent.click(a);
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("la cámara movida se guarda al desmontar aunque no haya pasado el debounce", () => {

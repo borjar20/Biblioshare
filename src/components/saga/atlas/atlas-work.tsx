@@ -13,7 +13,7 @@ const STATE_KEY = { done: "done", now: "now", todo: "todo" } as const;
 /** Una obra del plano (spec 2026-10-28 §5.3): portada en `covers`, más título y rol en
  *  `detail`. En `islands` sigue montada pero con `visibility: hidden` (fuera también del
  *  orden de tabulación): al volver a acercar, cada portada anima desde su sitio. */
-export function AtlasWork({ work, placed, accent, level, dim = 1, filtered = false, progress = false, showReadingNo = false, onSelect }: {
+export function AtlasWork({ work, placed, accent, level, dim = 1, filtered = false, progress = false, showReadingNo = false, selected = false, onSelect, onFocus }: {
   work: AtlasWorkModel;
   placed: PlacedWork;
   accent: SagaAccentToken;
@@ -22,7 +22,9 @@ export function AtlasWork({ work, placed, accent, level, dim = 1, filtered = fal
   filtered?: boolean; // atenuada por un filtro (carril de `?rol=` u obra fuera del itinerario)
   progress?: boolean; // capa Progreso encendida: marcas y estado en el nombre accesible
   showReadingNo?: boolean; // Publicación: número de lectura sobre la portada
-  onSelect?: (work: AtlasWorkModel) => void;
+  selected?: boolean; // su mini-ficha está abierta
+  onSelect?: (work: AtlasWorkModel) => void; // clic, Enter o Espacio: abre la mini-ficha
+  onFocus?: (work: AtlasWorkModel) => void; // la cámara sigue al foco de teclado (saga-atlas)
 }) {
   const t = useTranslations("saga");
   const state = work.skipped ? t("atlas.skipped") : t(`atlas.${STATE_KEY[work.state]}`);
@@ -40,7 +42,10 @@ export function AtlasWork({ work, placed, accent, level, dim = 1, filtered = fal
       data-skipped={work.skipped || undefined}
       data-dimmed={filtered || undefined}
       data-step={work.step ?? undefined}
+      data-selected={selected || undefined}
       aria-label={label}
+      aria-haspopup={onSelect ? "dialog" : undefined}
+      aria-expanded={onSelect ? selected : undefined}
       style={{
         ["--dim" as string]: dim,
         // `--s`: la escala propia (extras a 0,7); el área táctil la compensa junto a `--k`.
@@ -51,6 +56,7 @@ export function AtlasWork({ work, placed, accent, level, dim = 1, filtered = fal
         visibility: level === "islands" ? "hidden" : undefined,
       }}
       onClick={onSelect ? () => onSelect(work) : undefined}
+      onFocus={onFocus ? () => onFocus(work) : undefined}
     >
       <span className={styles.cover}>
         {work.coverUrl ? (

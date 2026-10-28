@@ -109,6 +109,54 @@
 .zoom button { width: 44px; height: 44px; border-radius: 12px; background: var(--panel); display: grid; place-items: center; color: var(--fg); font-size: 18px; font-weight: 600; }
 .back:focus-visible, .lens button:focus-visible, .zoom button:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
 
+/* Dock: lentes y «Ver como lista» en la misma fila. */
+.dockRow { display: flex; gap: 8px; align-items: center; pointer-events: none; }
+.dockRow > * { pointer-events: auto; }
+.listToggle { display: flex; align-items: center; gap: 7px; min-height: 44px; min-width: 44px; padding: 0 16px; border-radius: 999px; font-size: 14px; font-weight: 600;
+  color: var(--muted); background: color-mix(in srgb, var(--panel) 90%, transparent); backdrop-filter: blur(8px); box-shadow: 0 10px 30px rgba(0, 0, 0, .4); }
+.listToggle[aria-pressed='true'] { background: var(--fg); color: var(--ground); }
+.listToggle svg { width: 16px; height: 16px; flex: none; }
+.listToggle:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+
+/* Obra con la mini-ficha abierta: anillo que no depende solo del color (borde además del brillo). */
+.work[data-selected] .cover { outline: 2px solid var(--fg); outline-offset: 3px; }
+
+/* Mini-ficha (Task 9): tarjeta flotante junto a la obra a ≥ 640 px (`--x`/`--y` de cardPosition);
+   abajo, hoja inferior con fondo, como la de itinerarios. */
+.workSheet { position: absolute; left: var(--x, 16px); top: var(--y, 96px); z-index: 3; width: 300px; max-height: calc(100% - 32px); overflow: auto;
+  padding: 14px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 16px 40px rgba(0, 0, 0, .5); color: var(--fg);
+  display: grid; gap: 12px; }
+.workSheet:focus { outline: none; }
+.workSheet:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+.wsHead { display: flex; gap: 12px; align-items: flex-start; }
+.wsCover { position: relative; flex: none; width: 56px; height: 84px; border-radius: 3px; overflow: hidden; background: var(--ground); box-shadow: 0 2px 8px rgba(0, 0, 0, .45); }
+.wsCover img { object-fit: cover; }
+.wsHeading { min-width: 0; flex: 1; display: grid; gap: 4px; align-content: start; }
+.wsTitle { margin: 0; font-family: var(--font-serif), serif; font-size: 17px; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
+.wsMeta { margin: 0; font-family: var(--font-geist-mono), monospace; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.wsRole { justify-self: start; display: inline-flex; gap: 5px; align-items: center; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); font-size: 12px; color: var(--fg); }
+.wsClose { flex: none; width: 44px; height: 44px; margin: -10px -10px 0 0; border-radius: 12px; display: grid; place-items: center; color: var(--muted); font-size: 16px; }
+.wsClose:focus-visible, .wsOpen:focus-visible, .skip:focus-visible, .listLink:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+.wsFacts { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 13px; line-height: 1.4; color: var(--muted); }
+.wsFacts em { color: var(--fg); }
+.wsFits { color: var(--map-window); font-weight: 600; }
+.wsFits::before { content: '● '; }
+.wsActions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.wsOpen { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 999px; background: var(--fg); color: var(--ground); font-size: 13px; font-weight: 700; }
+.skipForm { display: contents; }
+.skip { min-height: 44px; min-width: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--fg); font-size: 13px; font-weight: 600; }
+.skip:disabled { opacity: .6; }
+
+/* «Ver como lista»: sustituye al plano (que sigue montado pero oculto) en la zona libre. */
+.stage[data-hidden] { visibility: hidden; }
+.list { position: absolute; inset: 0; z-index: 1; overflow: auto; padding-left: calc(16px + env(safe-area-inset-left, 0px)); padding-right: calc(16px + env(safe-area-inset-right, 0px)); }
+.listItems { margin: 0 auto; padding: 0; max-width: 640px; list-style: none; display: grid; gap: 2px; }
+.listItem { display: flex; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.listText { min-width: 0; flex: 1; display: grid; gap: 2px; }
+.listLink { display: flex; gap: 10px; min-height: 44px; align-items: center; font-size: 15px; font-weight: 600; color: var(--fg); }
+.listNo { flex: none; min-width: 2.5ch; font-family: var(--font-geist-mono), monospace; font-size: 12px; color: var(--glow); font-variant-numeric: tabular-nums; text-align: right; }
+.listLine { margin: 0; padding-left: calc(2.5ch + 10px); font-size: 13px; line-height: 1.4; color: var(--muted); }
+
 @media (max-width: 640px) {
   .lens button span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .lens button { padding: 10px 14px; }
@@ -123,6 +171,10 @@
   .sheet { position: fixed; left: 0; right: 0; top: auto; bottom: 0; z-index: 4; width: auto; max-height: 75dvh; border-radius: 16px 16px 0 0;
     padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)); border-width: 1px 0 0; }
   .sheetBackdrop { display: block; position: fixed; inset: 0; z-index: 3; background: rgba(0, 0, 0, .5); }
+  .workSheet { position: fixed; left: 0; right: 0; top: auto; bottom: 0; z-index: 4; width: auto; max-height: 75dvh; border-radius: 16px 16px 0 0;
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)); border-width: 1px 0 0; }
+  .listToggle span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .listToggle { padding: 0 14px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .root[data-ready='true'] .work, .plane[data-animated='true'] { transition: none; }

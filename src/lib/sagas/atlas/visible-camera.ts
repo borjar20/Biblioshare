@@ -1,4 +1,4 @@
-import { fit } from "@/lib/atlas/camera";
+import { fit, toScreen } from "@/lib/atlas/camera";
 import type { Camera, Extent, Point, Viewport } from "@/lib/atlas/types";
 
 // Cámara del atlas de la saga contando con el cromo: la barra superior y el dock tapan
@@ -21,4 +21,34 @@ export function centreIn(p: Point, k: number, insets: Insets): Camera {
 export function fitVisible(extent: Extent, vp: Viewport, insets: Insets, maxK: number): Camera {
   const c = fit(extent, vp, { x: MARGIN.x, y: insets.top + insets.bottom + MARGIN.y }, maxK);
   return centreIn(c, c.k, insets);
+}
+
+/** ¿Cae `p` dentro de la zona libre (entre la barra y el dock, y dentro del ancho)? */
+export function inVisibleArea(cam: Camera, vp: Viewport, insets: Insets, p: Point): boolean {
+  const s = toScreen(cam, vp, p);
+  return s.x >= 0 && s.x <= vp.width && s.y >= insets.top && s.y <= vp.height - insets.bottom;
+}
+
+/** Aire entre la obra y la tarjeta, y entre la tarjeta y los bordes. */
+const CARD_GAP = 12;
+const CARD_EDGE = 8;
+const clampTo = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(v, Math.max(lo, hi)));
+
+/**
+ * Sitio de la mini-ficha flotante (≥ 640 px): a la derecha de la obra, o a la izquierda si
+ * no cabe; centrada en vertical con la obra y siempre dentro de la zona libre. `anchor` es
+ * el centro de la obra en pantalla y su medio ancho y medio alto ya escalados.
+ */
+export function cardPosition(
+  anchor: { x: number; y: number; halfW: number; halfH: number },
+  vp: Viewport,
+  insets: Insets,
+  card: { width: number; height: number },
+): { left: number; top: number; side: "left" | "right" } {
+  const right = anchor.x + anchor.halfW + CARD_GAP;
+  const maxLeft = vp.width - CARD_EDGE - card.width;
+  const top = clampTo(anchor.y - card.height / 2, insets.top + CARD_EDGE, vp.height - insets.bottom - card.height - CARD_EDGE);
+  if (right <= maxLeft) return { left: right, top, side: "right" };
+  const left = anchor.x - anchor.halfW - CARD_GAP - card.width;
+  return { left: clampTo(left, CARD_EDGE, maxLeft), top, side: "left" };
 }

@@ -16,7 +16,7 @@ export function zoomLevel(k: number, layout: AtlasLayout): AtlasLevel {
 
 /** El plano: un `div` con la transformación mundo → pantalla de la cámara. Dentro, el
  *  fondo SVG y una obra por item, en orden de lectura (es el orden de tabulación). */
-export function AtlasPlane({ lens, orientation, role, layout, model, camera, viewport, animated, sagaName, progress, onIsland, onRole, onSelect }: {
+export function AtlasPlane({ lens, orientation, role, layout, model, camera, viewport, animated, sagaName, progress, selectedKey = null, onIsland, onRole, onSelect, onFocusWork }: {
   lens: Lens;
   orientation: Orientation;
   role: SagaItemRole | null; // resaltado de `?rol=` (solo cuenta en la lente Rol)
@@ -29,7 +29,9 @@ export function AtlasPlane({ lens, orientation, role, layout, model, camera, vie
   progress: boolean; // capa Progreso (solo puede estar encendida con sesión)
   onIsland: (p: Point) => void;
   onRole: (role: SagaItemRole) => void;
+  selectedKey?: string | null; // obra con la mini-ficha abierta
   onSelect?: (work: AtlasWorkModel) => void;
+  onFocusWork?: (work: AtlasWorkModel) => void;
 }) {
   const level = zoomLevel(camera.k, layout);
   const placed = new Map(layout.items.map((i) => [i.key, i] as const));
@@ -50,7 +52,8 @@ export function AtlasPlane({ lens, orientation, role, layout, model, camera, vie
         return p ? (
           <AtlasWork key={w.key} work={w} placed={p} accent={accent.get(w.regionKey) ?? "beige"} level={level}
             dim={dim.opacity} filtered={dim.filtered} progress={progress}
-            showReadingNo={lens === "publicacion"} onSelect={onSelect} />
+            showReadingNo={lens === "publicacion"} selected={w.key === selectedKey}
+            onSelect={onSelect} onFocus={onFocusWork} />
         ) : null;
       })}
     </div>
