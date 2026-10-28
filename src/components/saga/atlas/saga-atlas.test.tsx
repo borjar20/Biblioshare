@@ -68,7 +68,8 @@ describe("SagaAtlas", () => {
   });
 
   it("la lente activa tiene aria-pressed=true", () => {
-    view({ initialLens: "publicacion" });
+    search = "lente=publicacion";
+    view();
     expect(screen.getByRole("button", { name: "Publicación" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: "Orden" }).getAttribute("aria-pressed")).toBe("false");
   });
@@ -101,7 +102,8 @@ describe("SagaAtlas", () => {
   });
 
   it("el resumen de Rol lista los roles presentes en plural", () => {
-    view({ initialLens: "rol" });
+    search = "lente=rol";
+    view();
     expect(document.querySelector("[aria-live='polite']")?.textContent).toBe("2 principales, 1 relato");
   });
 
@@ -113,7 +115,8 @@ describe("SagaAtlas", () => {
 
   it("volver a Orden quita lente y conserva ruta", () => {
     window.history.replaceState(null, "", "/saga/s1/mapa?lente=rol&ruta=cronologico");
-    view({ initialLens: "rol" });
+    search = "lente=rol";
+    view();
     fireEvent.click(screen.getByRole("button", { name: "Orden" }));
     expect(window.location.search).toBe("?ruta=cronologico");
   });
@@ -183,5 +186,68 @@ describe("SagaAtlas", () => {
     const island = screen.getByRole("button", { name: "Dos: 0 de 2 leídas, en curso" });
     expect(island.textContent).toContain("en curso");
     expect(screen.getByRole("button", { name: "Uno: 1 de 1 leídas" }).textContent).not.toContain("en curso");
+  });
+});
+
+describe("lentes Rol y Publicación", () => {
+  it("Rol: una etiqueta de carril por rol presente", () => {
+    search = "lente=rol";
+    view();
+    expect(screen.getByText("principales")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Relato" })).toBeTruthy();
+    expect(screen.queryByText("Precuela")).toBeNull();
+  });
+
+  it("Rol: con ?rol=relato, las obras sin ese rol quedan atenuadas", () => {
+    search = "lente=rol&rol=relato";
+    view();
+    const dimmed = (k: string) => document.querySelector(`[data-work-key="${k}"]`)!.getAttribute("data-dimmed");
+    expect(dimmed("a")).toBe("true");
+    expect(dimmed("c")).toBe("true");
+    expect(dimmed("b")).toBeNull();
+  });
+
+  it("Rol: tocar la etiqueta fija y quita el resaltado en la URL", () => {
+    search = "lente=rol";
+    window.history.replaceState(null, "", "/saga/s1/mapa?lente=rol&ruta=x");
+    view();
+    fireEvent.click(screen.getByRole("button", { name: "Relato" }));
+    expect(window.location.search).toBe("?lente=rol&ruta=x&rol=relato");
+    expect(document.querySelector('[data-work-key="a"]')!.getAttribute("data-dimmed")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Relato" }));
+    expect(window.location.search).toBe("?lente=rol&ruta=x");
+    expect(document.querySelector('[data-work-key="a"]')!.getAttribute("data-dimmed")).toBeNull();
+  });
+
+  it("Rol: sin ?rol= nada está atenuado", () => {
+    search = "lente=rol";
+    view();
+    expect(document.querySelectorAll("[data-dimmed]")).toHaveLength(0);
+  });
+
+  it("Publicación: el resumen nombra el rango de años", () => {
+    search = "lente=publicacion";
+    view();
+    expect(document.querySelector("[aria-live='polite']")?.textContent).toContain("De 2000 a 2002");
+  });
+
+  it("Publicación: ticks por año y número de lectura en cada obra", () => {
+    search = "lente=publicacion";
+    view();
+    expect(screen.getByText("2001")).toBeTruthy();
+    expect(document.querySelector('[data-work-key="b"] [data-reading-no]')!.textContent).toBe("2");
+  });
+
+  it("Publicación: «sin año» y «·» para obras sin año ni número", () => {
+    search = "lente=publicacion";
+    const works = [work("a", 0, "done", { year: null, readingNo: null }), work("b", 1, "todo")];
+    view({ model: { ...model, works, nowKey: null } });
+    expect(screen.getByText("sin año")).toBeTruthy();
+    expect(document.querySelector('[data-work-key="a"] [data-reading-no]')!.textContent).toBe("·");
+  });
+
+  it("Orden no pinta insignias de lectura", () => {
+    view();
+    expect(document.querySelectorAll("[data-reading-no]")).toHaveLength(0);
   });
 });

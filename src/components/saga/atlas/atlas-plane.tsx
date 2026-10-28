@@ -1,7 +1,8 @@
 "use client";
 import type { CSSProperties } from "react";
 import type { Camera, Point, Viewport } from "@/lib/atlas/types";
-import type { AtlasLayout, Lens } from "@/lib/sagas/atlas/layout";
+import type { SagaItemRole } from "@/lib/sagas/roles";
+import type { AtlasLayout, Lens, Orientation } from "@/lib/sagas/atlas/layout";
 import type { AtlasModel, AtlasWork as AtlasWorkModel } from "@/lib/sagas/atlas/model";
 import { AtlasBackdrop } from "./atlas-backdrop";
 import { AtlasWork, type AtlasLevel } from "./atlas-work";
@@ -14,8 +15,10 @@ export function zoomLevel(k: number, layout: AtlasLayout): AtlasLevel {
 
 /** El plano: un `div` con la transformación mundo → pantalla de la cámara. Dentro, el
  *  fondo SVG y una obra por item, en orden de lectura (es el orden de tabulación). */
-export function AtlasPlane({ lens, layout, model, camera, viewport, animated, sagaName, authenticated, onIsland, onSelect }: {
+export function AtlasPlane({ lens, orientation, role, layout, model, camera, viewport, animated, sagaName, authenticated, onIsland, onRole, onSelect }: {
   lens: Lens;
+  orientation: Orientation;
+  role: SagaItemRole | null; // resaltado de `?rol=` (solo cuenta en la lente Rol)
   layout: AtlasLayout;
   model: AtlasModel;
   camera: Camera;
@@ -24,6 +27,7 @@ export function AtlasPlane({ lens, layout, model, camera, viewport, animated, sa
   sagaName: string;
   authenticated: boolean;
   onIsland: (p: Point) => void;
+  onRole: (role: SagaItemRole) => void;
   onSelect?: (work: AtlasWorkModel) => void;
 }) {
   const level = zoomLevel(camera.k, layout);
@@ -37,12 +41,14 @@ export function AtlasPlane({ lens, layout, model, camera, viewport, animated, sa
   const works = [...model.works].sort((a, b) => a.readingIndex - b.readingIndex);
   return (
     <div className={styles.plane} style={style} data-level={level} data-animated={animated}>
-      <AtlasBackdrop lens={lens} layout={layout} model={model} level={level} sagaName={sagaName}
-        authenticated={authenticated} onIsland={onIsland} />
+      <AtlasBackdrop lens={lens} orientation={orientation} role={role} layout={layout} model={model} level={level} sagaName={sagaName}
+        authenticated={authenticated} onIsland={onIsland} onRole={onRole} />
       {works.map((w) => {
         const p = placed.get(w.key);
         return p ? (
-          <AtlasWork key={w.key} work={w} placed={p} accent={accent.get(w.regionKey) ?? "beige"} level={level} onSelect={onSelect} />
+          <AtlasWork key={w.key} work={w} placed={p} accent={accent.get(w.regionKey) ?? "beige"} level={level}
+            dimmed={lens === "rol" && role !== null && w.role !== role}
+            showReadingNo={lens === "publicacion"} onSelect={onSelect} />
         ) : null;
       })}
     </div>

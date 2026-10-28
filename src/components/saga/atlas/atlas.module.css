@@ -77,3 +77,18 @@
 @media (prefers-reduced-motion: reduce) {
   .root[data-ready='true'] .work, .plane[data-animated='true'] { transition: none; }
 }
+
+/* Rol y Publicación (Task 7): etiquetas de carril y de año, contraescaladas para leerse a
+   cualquier zoom; insignia de lectura; obras atenuadas por `?rol=`. */
+.lane, .tick { position: absolute; transform: translate(-50%, -50%) scale(calc(1 / var(--k, 1))); white-space: nowrap;
+  font-size: 12px; font-weight: 700; line-height: 1; color: var(--muted); background: var(--ground); padding: 4px 8px; border-radius: 999px; pointer-events: none; }
+.tick { font-family: var(--font-geist-mono), monospace; font-weight: 600; font-variant-numeric: tabular-nums; }
+.laneButton { pointer-events: auto; cursor: pointer; border: 1px solid var(--line); }
+.laneButton[aria-pressed='true'] { color: var(--ground); background: var(--glow); border-color: var(--glow); }
+/* Área táctil ≥ 44 px de pantalla: el botón ya está contraescalado, así que basta el relleno. */
+.laneButton::before { content: ''; position: absolute; left: 50%; top: 50%; width: 100%; height: 100%; min-width: 44px; min-height: 44px; transform: translate(-50%, -50%); }
+.laneButton:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+.badge { position: absolute; left: 0; top: 0; transform: translate(-30%, -30%) scale(calc(1 / var(--k, 1))); transform-origin: center;
+  min-width: 18px; height: 18px; padding: 0 4px; display: grid; place-items: center; border-radius: 9px; background: var(--glow); color: var(--ground);
+  font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; pointer-events: none; }
+.work[data-dimmed='true'] { opacity: .35; }

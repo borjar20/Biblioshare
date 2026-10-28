@@ -13,11 +13,13 @@ const STATE_KEY = { done: "done", now: "now", todo: "todo" } as const;
 /** Una obra del plano (spec 2026-10-28 §5.3): portada en `covers`, más título y rol en
  *  `detail`. En `islands` sigue montada pero con `visibility: hidden` (fuera también del
  *  orden de tabulación): al volver a acercar, cada portada anima desde su sitio. */
-export function AtlasWork({ work, placed, accent, level, onSelect }: {
+export function AtlasWork({ work, placed, accent, level, dimmed = false, showReadingNo = false, onSelect }: {
   work: AtlasWorkModel;
   placed: PlacedWork;
   accent: SagaAccentToken;
   level: AtlasLevel;
+  dimmed?: boolean; // carril no elegido en `?rol=`
+  showReadingNo?: boolean; // Publicación: número de lectura sobre la portada
   onSelect?: (work: AtlasWorkModel) => void;
 }) {
   const t = useTranslations("saga");
@@ -30,6 +32,7 @@ export function AtlasWork({ work, placed, accent, level, onSelect }: {
       data-work-key={work.key}
       data-state={work.state}
       data-skipped={work.skipped || undefined}
+      data-dimmed={dimmed || undefined}
       aria-label={t("atlas.workAria", { title: work.title, state: role ? `${state}, ${role}` : state })}
       style={{
         // `--s`: la escala propia (extras a 0,7); el área táctil la compensa junto a `--k`.
@@ -50,6 +53,9 @@ export function AtlasWork({ work, placed, accent, level, onSelect }: {
           </span>
         )}
       </span>
+      {showReadingNo && (
+        <span className={styles.badge} data-reading-no aria-hidden="true">{work.readingNo ?? "·"}</span>
+      )}
       {level === "detail" && (
         <span className={styles.caption} aria-hidden="true">
           <span className={styles.captionTitle}>{work.title}</span>

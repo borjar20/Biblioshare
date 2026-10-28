@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import type { SagaItemRole } from "@/lib/sagas/roles";
 import { layoutAtlas, type Lens, type Orientation } from "@/lib/sagas/atlas/layout";
 import type { AtlasModel } from "@/lib/sagas/atlas/model";
-import { parseLens } from "@/lib/sagas/atlas/lens";
+import { parseLens, parseRole } from "@/lib/sagas/atlas/lens";
 import { summarize } from "@/lib/sagas/atlas/summary";
 import { AtlasPlane } from "./atlas-plane";
 import { AtlasDock, AtlasTopBar, AtlasZoom, LENS_LABEL, LENSES } from "./atlas-chrome";
@@ -25,20 +25,18 @@ export type SagaAtlasProps = {
 const bold = (chunks: ReactNode) => <b>{chunks}</b>;
 
 /** Isla cliente del atlas de la saga (spec 2026-10-28 §6). Deriva todo de props; su estado
- *  es la lente y la cámara. `initialRole`, rutas, contador y `canEdit` son de las capas y
+ *  es la lente y la cámara. `initialLens` e `initialRole` siguen en el tipo pero no se leen (manda la URL); rutas, contador y `canEdit` son de las capas y
  *  hojas de las Tasks 7–9. */
-export function SagaAtlas({ sagaId, sagaName, workCount, model, authenticated, initialLens }: SagaAtlasProps) {
+export function SagaAtlas({ sagaId, sagaName, workCount, model, authenticated }: SagaAtlasProps) {
   const t = useTranslations("saga");
   const pathname = usePathname();
   const stageRef = useRef<HTMLDivElement>(null);
   const viewport = useViewport(stageRef);
-  // La lente se siembra de la URL del CLIENTE: al volver atrás, Next restaura el payload RSC
-  // cacheado con el `initialLens` viejo, pero la URL (sincronizada con replaceState) manda.
+  // Lente y rol salen de la URL del CLIENTE: al volver atrás, Next restaura el payload RSC
+  // cacheado con los `initial*` viejos, pero la URL (sincronizada con replaceState) manda.
   const searchParams = useSearchParams();
-  const [lens, setLens] = useState<Lens>(() => {
-    const raw = searchParams.get("lente");
-    return raw !== null ? parseLens(raw) : initialLens;
-  });
+  const [lens, setLens] = useState<Lens>(() => parseLens(searchParams.get("lente") ?? undefined));
+  const [role, setRole] = useState<SagaItemRole | null>(() => parseRole(searchParams.get("rol") ?? undefined));
   // Sin transición de las obras hasta medir el viewport y pintar el primer layout con la
   // orientación real: si no, en móvil «vuelan» de horizontal a vertical al cargar.
   const [ready, setReady] = useState(false);
@@ -83,19 +81,36 @@ export function SagaAtlas({ sagaId, sagaName, workCount, model, authenticated, i
     summaryPlain = t.markup(`atlas.${summary.key}`, { ...summary.values, b: (chunks) => chunks });
   }
 
-  function changeLens(next: Lens) {
-    if (next === lens) return;
-    setLens(next);
-    // Desde la URL viva y no desde props: conserva `ruta` y lo que haya.
+  /** Escribe la vista en la URL viva (no en props): conserva `ruta` y lo que haya. */
+  function writeQuery(edit: (q: URLSearchParams) => void) {
     const q = new URLSearchParams(window.location.search);
-    if (next === "orden") q.delete("lente");
-    else q.set("lente", next);
-    if (next !== "rol") q.delete("rol");
+    edit(q);
     const qs = q.toString();
     // `lente` y `rol` son estado de vista: sin viaje al servidor. Next 16 sincroniza
     // `useSearchParams` con `history.replaceState` (docs: linking-and-navigating). Los
     // cambios de `ruta` (Task 8) sí irán por `router.replace`: cambian los datos.
     window.history.replaceState(null, "", qs ? `${pathname}?${qs}` : pathname);
+  }
+
+  function changeLens(next: Lens) {
+    if (next === lens) return;
+    setLens(next);
+    if (next !== "rol") setRole(null);
+    writeQuery((q) => {
+      if (next === "orden") q.delete("lente");
+      else q.set("lente", next);
+      if (next !== "rol") q.delete("rol");
+    });
+  }
+
+  /** Tocar la etiqueta de un carril fija el resaltado; tocarla de nuevo lo quita. */
+  function toggleRole(r: SagaItemRole) {
+    const next = role === r ? null : r;
+    setRole(next);
+    writeQuery((q) => {
+      if (next) q.set("rol", next);
+      else q.delete("rol");
+    });
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
@@ -121,9 +136,10 @@ export function SagaAtlas({ sagaId, sagaName, workCount, model, authenticated, i
         {...bind}
       >
         <AtlasPlane
-          lens={lens} layout={layout} model={model} camera={camera} viewport={viewport} animated={animated}
-          sagaName={sagaName} authenticated={authenticated}
+          lens={lens} orientation={orientation} role={role} layout={layout} model={model} camera={camera}
+          viewport={viewport} animated={animated} sagaName={sagaName} authenticated={authenticated}
           onIsland={(p) => focusOn(p, 1)}
+          onRole={toggleRole}
           // Interino hasta la mini-ficha (Task 9): tocar una obra la acerca al detalle.
           onSelect={(w) => {
             const p = layout.items.find((i) => i.key === w.key);
