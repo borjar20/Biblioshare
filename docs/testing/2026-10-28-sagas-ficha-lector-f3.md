@@ -48,3 +48,12 @@ Total 18/18 (59 s).
 - Producción y la comprobación visual a 375 px.
 - Límite conocido (decisión 2): quien sigue la saga sin pases en ella no aparece, porque `saga_follows` es de
   solo dueño.
+
+## Correcciones de la revisión final
+
+- `getSagaFriends` trocea con `chunkIds` las consultas de pases (por seguidos) y de identidades; test con más de un trozo.
+- Nuevo estado `dropped` («La dejó») en `deriveFriends` y en el componente; `started` queda solo para planned. Test para `counted === 0` (nunca «finished»).
+- El esqueleto de «Entre amigos» solo se pinta en lg (`hidden lg:block`) para no saltar el layout móvil.
+- `friendsProgress` pasa a «{completed} de {counted} obras terminadas» (aria-label, visual igual).
+- El e2e con sesión acepta 1–4 filas (la UI solo cuenta la ruta activa).
+- Issues abiertas: #1556 (quien sigue la saga sin pases, deuda P3), #1557 (e2e de la rama con amigos, cobertura P2), #1558 (`UserAvatar` decorativo, deuda P3).
