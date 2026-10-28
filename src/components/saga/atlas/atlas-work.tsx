@@ -13,18 +13,24 @@ const STATE_KEY = { done: "done", now: "now", todo: "todo" } as const;
 /** Una obra del plano (spec 2026-10-28 §5.3): portada en `covers`, más título y rol en
  *  `detail`. En `islands` sigue montada pero con `visibility: hidden` (fuera también del
  *  orden de tabulación): al volver a acercar, cada portada anima desde su sitio. */
-export function AtlasWork({ work, placed, accent, level, dimmed = false, showReadingNo = false, onSelect }: {
+export function AtlasWork({ work, placed, accent, level, dim = 1, filtered = false, progress = false, showReadingNo = false, onSelect }: {
   work: AtlasWorkModel;
   placed: PlacedWork;
   accent: SagaAccentToken;
   level: AtlasLevel;
-  dimmed?: boolean; // carril no elegido en `?rol=`
+  dim?: number; // opacidad final: el mínimo de las fuentes (`workDim`)
+  filtered?: boolean; // atenuada por un filtro (carril de `?rol=` u obra fuera del itinerario)
+  progress?: boolean; // capa Progreso encendida: marcas y estado en el nombre accesible
   showReadingNo?: boolean; // Publicación: número de lectura sobre la portada
   onSelect?: (work: AtlasWorkModel) => void;
 }) {
   const t = useTranslations("saga");
   const state = work.skipped ? t("atlas.skipped") : t(`atlas.${STATE_KEY[work.state]}`);
   const role = work.role ? t(`roleLabel.${work.role}`) : null;
+  // Sin la capa (o sin sesión) el nombre no afirma un estado del lector: solo título, rol y paso.
+  const label = [work.title, progress ? state : null, role, work.step !== null ? t("atlas.step", { n: work.step }) : null]
+    .filter(Boolean)
+    .join(", ");
   return (
     <button
       type="button"
@@ -32,9 +38,11 @@ export function AtlasWork({ work, placed, accent, level, dimmed = false, showRea
       data-work-key={work.key}
       data-state={work.state}
       data-skipped={work.skipped || undefined}
-      data-dimmed={dimmed || undefined}
-      aria-label={t("atlas.workAria", { title: work.title, state: role ? `${state}, ${role}` : state })}
+      data-dimmed={filtered || undefined}
+      data-step={work.step ?? undefined}
+      aria-label={label}
       style={{
+        ["--dim" as string]: dim,
         // `--s`: la escala propia (extras a 0,7); el área táctil la compensa junto a `--k`.
         ["--s" as string]: placed.scale,
         width: COVER_W,
@@ -53,6 +61,13 @@ export function AtlasWork({ work, placed, accent, level, dimmed = false, showRea
           </span>
         )}
       </span>
+      {/* Capa Progreso: señales que no dependen del color (✓, etiqueta «ahora», tachado en CSS). */}
+      {progress && work.state === "done" && !work.skipped && (
+        <span className={styles.doneMark} data-done-mark aria-hidden="true">✓</span>
+      )}
+      {progress && work.state === "now" && (
+        <span className={styles.nowLabel} data-now-label aria-hidden="true">{t("atlas.now")}</span>
+      )}
       {showReadingNo && (
         <span className={styles.badge} data-reading-no aria-hidden="true">{work.readingNo ?? "·"}</span>
       )}

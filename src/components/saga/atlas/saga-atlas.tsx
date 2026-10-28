@@ -8,14 +8,15 @@ import type { AtlasModel } from "@/lib/sagas/atlas/model";
 import { parseLens, parseRole } from "@/lib/sagas/atlas/lens";
 import { summarize } from "@/lib/sagas/atlas/summary";
 import { AtlasPlane } from "./atlas-plane";
-import { AtlasDock, AtlasTopBar, AtlasZoom, LENS_LABEL, LENSES } from "./atlas-chrome";
+import { AtlasDock, AtlasTopBar, AtlasZoom, LENS_LABEL, LENSES, ProgressToggle } from "./atlas-chrome";
+import { ItinerarySheet, type AtlasRoute } from "./itinerary-sheet";
 import { useAtlasCamera, useViewport } from "./use-atlas-camera";
 import styles from "./atlas.module.css";
 
 export type SagaAtlasProps = {
   sagaId: string; sagaName: string; workCount: number;
   model: AtlasModel; authenticated: boolean;
-  routes: Array<{ slug: string; name: string; summary: string | null; curated: boolean }>;
+  routes: AtlasRoute[];
   activeRoute: string; adoptedRoute: string | null;
   counter: { completed: number; total: number } | null; // ruta activa curada
   canEdit: boolean;
@@ -24,9 +25,11 @@ export type SagaAtlasProps = {
 const bold = (chunks: ReactNode) => <b>{chunks}</b>;
 
 /** Isla cliente del atlas de la saga (spec 2026-10-28 §6). Deriva todo de props; su estado
- *  es la lente y la cámara. La lente y el rol salen de la URL del cliente (ya no hay props iniciales); rutas, contador y `canEdit` son de las capas y
- *  hojas de las Tasks 7–9. */
-export function SagaAtlas({ sagaId, sagaName, workCount, model, authenticated }: SagaAtlasProps) {
+ *  es la lente, el rol resaltado, la capa Progreso y la cámara. La lente y el rol salen de la
+ *  URL del cliente; la ruta activa, de la prop (cambiarla vuelve a pedir datos al servidor). */
+export function SagaAtlas({
+  sagaId, sagaName, workCount, model, authenticated, routes, activeRoute, adoptedRoute, counter, canEdit,
+}: SagaAtlasProps) {
   const t = useTranslations("saga");
   const pathname = usePathname();
   const stageRef = useRef<HTMLDivElement>(null);
@@ -36,6 +39,9 @@ export function SagaAtlas({ sagaId, sagaName, workCount, model, authenticated }:
   const searchParams = useSearchParams();
   const [lens, setLens] = useState<Lens>(() => parseLens(searchParams.get("lente") ?? undefined));
   const [role, setRole] = useState<SagaItemRole | null>(() => parseRole(searchParams.get("rol") ?? undefined));
+  // Capa Progreso: encendida por defecto con sesión; sin sesión no hay estado que enseñar.
+  const [progressOn, setProgressOn] = useState(authenticated);
+  const progress = authenticated && progressOn;
   // Sin transición de las obras hasta medir el viewport y pintar el primer layout con la
   // orientación real: si no, en móvil «vuelan» de horizontal a vertical al cargar.
   const [ready, setReady] = useState(false);
@@ -87,7 +93,7 @@ export function SagaAtlas({ sagaId, sagaName, workCount, model, authenticated }:
     const qs = q.toString();
     // `lente` y `rol` son estado de vista: sin viaje al servidor. Next 16 sincroniza
     // `useSearchParams` con `history.replaceState` (docs: linking-and-navigating). Los
-    // cambios de `ruta` (Task 8) sí irán por `router.replace`: cambian los datos.
+    // cambios de `ruta` van por `router.replace` (itinerary-sheet.tsx): cambian los datos.
     window.history.replaceState(null, "", qs ? `${pathname}?${qs}` : pathname);
   }
 
@@ -124,7 +130,7 @@ export function SagaAtlas({ sagaId, sagaName, workCount, model, authenticated }:
   }
 
   return (
-    <div className={`${styles.root} h-dvh w-full overflow-hidden`} data-progress={authenticated ? "on" : "off"} data-ready={ready ? "true" : undefined}>
+    <div className={`${styles.root} h-dvh w-full overflow-hidden`} data-progress={progress ? "on" : "off"} data-ready={ready ? "true" : undefined}>
       <div
         ref={stageRef}
         className={styles.stage}
@@ -136,7 +142,7 @@ export function SagaAtlas({ sagaId, sagaName, workCount, model, authenticated }:
       >
         <AtlasPlane
           lens={lens} orientation={orientation} role={role} layout={layout} model={model} camera={camera}
-          viewport={viewport} animated={animated} sagaName={sagaName} authenticated={authenticated}
+          viewport={viewport} animated={animated} sagaName={sagaName} progress={progress}
           onIsland={(p) => focusOn(p, 1)}
           onRole={toggleRole}
           // Interino hasta la mini-ficha (Task 9): tocar una obra la acerca al detalle.
@@ -146,7 +152,11 @@ export function SagaAtlas({ sagaId, sagaName, workCount, model, authenticated }:
           }}
         />
       </div>
-      <AtlasTopBar sagaId={sagaId} sagaName={sagaName} workCount={workCount} summary={summaryRich} />
+      <AtlasTopBar sagaId={sagaId} sagaName={sagaName} workCount={workCount} summary={summaryRich} actions={<>
+        <ItinerarySheet sagaId={sagaId} routes={routes} activeRoute={activeRoute} adoptedRoute={adoptedRoute}
+          counter={counter} authenticated={authenticated} canEdit={canEdit} />
+        {authenticated && <ProgressToggle on={progressOn} onToggle={() => setProgressOn((on) => !on)} />}
+      </>} />
       <AtlasZoom onZoomIn={() => zoomBy(1.25)} onZoomOut={() => zoomBy(0.8)} onFit={fitAll} />
       <AtlasDock lens={lens} onLens={changeLens} />
     </div>

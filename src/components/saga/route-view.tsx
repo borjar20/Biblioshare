@@ -13,7 +13,7 @@ import { resolveRoute, unnamedMembers } from "@/lib/sagas/resolve-route";
 import { isMemberCompleted } from "@/lib/sagas/completion";
 import { isSagaAccentToken } from "@/lib/sagas/accents";
 import type { SagaDetail } from "@/lib/sagas/get-saga-detail";
-import { AdoptRouteButton } from "./adopt-route-button";
+import { AdoptRouteButton } from "./atlas/adopt-route-button";
 import { ReadingTimeline } from "./reading-timeline";
 import { RouteBlock } from "./route-block";
 

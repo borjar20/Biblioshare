@@ -19,8 +19,9 @@ const LENS_ICON: Record<Lens, ReactNode> = {
   publicacion: <><path d="M1 12h14" /><path d="M3 10v4M8 10v4M13 10v4" /><path d="M3 7 8 3l5 4" /></>,
 };
 
-export function AtlasTopBar({ sagaId, sagaName, workCount, summary }: {
+export function AtlasTopBar({ sagaId, sagaName, workCount, summary, actions }: {
   sagaId: string; sagaName: string; workCount: number; summary: ReactNode;
+  actions?: ReactNode; // a la derecha: chip de itinerario e interruptor de Progreso
 }) {
   const t = useTranslations("saga");
   return (
@@ -31,6 +32,7 @@ export function AtlasTopBar({ sagaId, sagaName, workCount, summary }: {
         <h1 className={styles.title}>{sagaName}</h1>
         <p className={styles.summary} aria-live="polite">{summary}</p>
       </div>
+      {actions && <div className={styles.actions}>{actions}</div>}
     </header>
   );
 }
@@ -60,5 +62,15 @@ export function AtlasZoom({ onZoomIn, onZoomOut, onFit }: { onZoomIn: () => void
       <button type="button" aria-label={t("zoomOut")} onClick={onZoomOut}>−</button>
       <button type="button" aria-label={t("fit")} onClick={onFit}>⤢</button>
     </div>
+  );
+}
+
+/** Interruptor de la capa Progreso (solo con sesión). Señal visible además del color: el punto. */
+export function ProgressToggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+  const t = useTranslations("saga.atlas");
+  return (
+    <button type="button" className={styles.chip} data-toggle aria-pressed={on} onClick={onToggle}>
+      <span aria-hidden="true">{on ? "●" : "○"}</span> {t("progress")}
+    </button>
   );
 }

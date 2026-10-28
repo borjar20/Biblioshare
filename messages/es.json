@@ -2361,7 +2361,6 @@
       "tandemSimultaneo": "A la vez que {titles}",
       "tandemIndistinto": "En cualquier orden con {titles}",
       "step": "Paso {n} del itinerario",
-      "workAria": "{title}, {state}",
       "planeAria": "Atlas de {saga}, lente {lens}. {summary}",
       "islandAria": "{name}: {completed} de {total} leídas",
       "islandAriaCount": "{name}: {count, plural, =1 {1 obra} other {# obras}}",

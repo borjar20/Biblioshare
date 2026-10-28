@@ -29,9 +29,11 @@
 .island:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
 
 /* Obras: posición y escala en el mundo; el cambio de lente las anima. */
-.work { position: absolute; left: 0; top: 0; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; }
+.work { position: absolute; left: 0; top: 0; padding: 0; border: 0; background: none; color: inherit; cursor: pointer;
+  /* `--dim` es la ÚNICA fuente de opacidad: el mínimo de rol, itinerario y progreso (work-dim.ts). */
+  opacity: var(--dim, 1); }
 /* Solo tras el primer layout medido: evita el vuelo inicial de horizontal a vertical. */
-.root[data-ready='true'] .work { transition: transform 450ms cubic-bezier(.2, .7, .2, 1); }
+.root[data-ready='true'] .work { transition: transform 450ms cubic-bezier(.2, .7, .2, 1), opacity 200ms ease; }
 .cover { position: relative; display: block; width: 100%; height: 100%; border-radius: 3px; overflow: hidden; background: var(--panel); box-shadow: 0 2px 8px rgba(0, 0, 0, .45); }
 .cover img { object-fit: cover; }
 .spine { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 4px; color: var(--ground); font-size: 8px; font-weight: 700; line-height: 1.1; text-align: center; writing-mode: vertical-rl; overflow: hidden; }
@@ -40,17 +42,57 @@
 .captionTitle { font-size: 7px; font-weight: 700; line-height: 1.15; color: var(--fg); overflow-wrap: anywhere; }
 .captionMeta { font-size: 6px; color: var(--muted); }
 
-/* Progreso (la capa la conmutará la Task 8): «ahora» con aro dorado, saltada atenuada. */
-.root[data-progress='on'] .work[data-state='now'] .cover { box-shadow: 0 0 0 2px var(--glow), 0 0 18px color-mix(in srgb, var(--glow) 55%, transparent); }
-.root[data-progress='on'] .work[data-skipped='true'] { opacity: .45; }
+/* Capa Progreso (spec §5.2): la opacidad va en `--dim`; aquí solo las marcas. Ninguna depende
+   solo del color: ✓ en la leída, etiqueta «ahora», tachado diagonal en la saltada. */
+.root[data-progress='on'] .work[data-state='now'] .cover { box-shadow: 0 0 0 3px var(--glow), 0 0 22px 4px color-mix(in srgb, var(--glow) 55%, transparent); }
+.root[data-progress='on'] .work[data-skipped='true'] .cover::after { content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(to top right, transparent calc(50% - 1.5px), var(--fg) calc(50% - 1.5px), var(--fg) calc(50% + 1.5px), transparent calc(50% + 1.5px)); }
+.doneMark, .nowLabel { position: absolute; pointer-events: none; font-weight: 700; line-height: 1; }
+.doneMark { right: 0; top: 0; transform: translate(30%, -30%) scale(calc(1 / var(--k, 1))); width: 18px; height: 18px; display: grid; place-items: center;
+  border-radius: 50%; background: var(--fg); color: var(--ground); font-size: 11px; }
+.nowLabel { left: 50%; bottom: 100%; transform: translate(-50%, -6px) scale(calc(1 / var(--k, 1))); transform-origin: bottom center; padding: 3px 7px;
+  border-radius: 999px; background: var(--glow); color: var(--ground); font-size: 11px; letter-spacing: .02em; white-space: nowrap; }
+/* Con paso de itinerario, el círculo numerado va bajo la portada: el pie baja para no pisarlo. */
+.work[data-step] .caption { top: calc(100% + 22px); }
+.stepBadge { font-size: 9px; font-weight: 700; fill: var(--ground); font-variant-numeric: tabular-nums; }
 
 /* Barra superior y dock: el contenedor no toma punteros, sus hijos sí. */
-.top { position: absolute; left: 0; right: 0; top: 0; z-index: 2; display: flex; gap: 12px; align-items: flex-start;
+.top { position: absolute; left: 0; right: 0; top: 0; z-index: 3; display: flex; gap: 12px; align-items: flex-start;
   padding: calc(12px + env(safe-area-inset-top, 0px)) calc(16px + env(safe-area-inset-right, 0px)) 32px calc(16px + env(safe-area-inset-left, 0px));
   background: linear-gradient(to bottom, var(--ground) calc(100% - 32px), transparent); pointer-events: none; }
 .top > * { pointer-events: auto; }
 .back { display: grid; place-items: center; flex: none; width: 44px; height: 44px; border-radius: 12px; background: var(--panel); font-size: 20px; color: var(--fg); }
-.heading { min-width: 0; }
+.heading { min-width: 0; flex: 1; }
+/* Derecha de la barra: chip de itinerario e interruptor de Progreso. */
+.actions { flex: none; display: flex; gap: 8px; align-items: center; }
+.chip { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; max-width: 280px; padding: 0 14px; border-radius: 999px;
+  background: var(--panel); border: 1px solid var(--line); color: var(--fg); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.chip:not([data-static]):not([data-toggle]) { color: color-mix(in srgb, var(--map-itinerary-jump) 55%, var(--fg)); }
+.chip[data-static] { color: var(--muted); }
+.chip[data-toggle][aria-pressed='true'] { background: var(--fg); color: var(--ground); border-color: var(--fg); }
+.chipName { overflow: hidden; text-overflow: ellipsis; }
+.chip:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+.itinWrap { position: relative; }
+
+/* Hoja de itinerarios: desplegable anclado bajo el chip a ≥ 640 px (abajo, hoja inferior). */
+.sheet { position: absolute; right: 0; top: calc(100% + 8px); z-index: 2; width: 320px; max-height: 70vh; overflow: auto; padding: 14px;
+  border-radius: 14px; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 16px 40px rgba(0, 0, 0, .5); color: var(--fg); }
+.sheetBackdrop { display: none; }
+.sheetTitle { margin: 0 0 6px; font-size: 14px; font-weight: 700; }
+.routeList { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+.routeLabel { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; color: var(--muted); cursor: pointer; }
+.route[data-active] .routeLabel { color: var(--fg); font-weight: 600; }
+.routeLabel input { width: 18px; height: 18px; accent-color: var(--glow); margin: 0; flex: none; }
+.routeLabel input:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+.routeDetail { padding: 0 0 8px 28px; display: grid; gap: 8px; }
+.routeSummary { margin: 0; font-size: 12.5px; line-height: 1.4; color: var(--muted); }
+.routeMeta { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 12.5px; color: var(--muted); }
+.adopt { min-height: 44px; padding: 0 16px; border-radius: 999px; background: var(--fg); color: var(--ground); font-size: 13px; font-weight: 700; }
+.adopt[data-adopted] { background: transparent; color: var(--fg); border: 1px solid var(--line); }
+.adopt:disabled { opacity: .6; }
+.adopt:focus-visible, .manage:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+.manage { display: flex; align-items: center; gap: 6px; min-height: 44px; margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--line);
+  font-size: 13px; font-weight: 600; color: var(--glow); }
 .eyebrow { margin: 0; font-family: var(--font-geist-mono), monospace; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--glow); }
 .title { margin: 2px 0 0; font-family: var(--font-serif), serif; font-size: 20px; font-weight: 600; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .summary { margin: 4px 0 0; font-size: 14px; line-height: 1.4; color: var(--muted); max-width: 52ch; }
@@ -73,6 +115,13 @@
   .zoom { gap: 4px; right: calc(12px + env(safe-area-inset-right, 0px)); bottom: calc(132px + env(safe-area-inset-bottom, 0px)); }
   .zoom button { border-radius: 10px; font-size: 16px; }
   .title { font-size: 17px; }
+  /* El chip y Progreso bajan a su propia fila, alineada con el título. */
+  .top { flex-wrap: wrap; }
+  .actions { order: 3; flex-basis: 100%; padding-left: 56px; }
+  .chip { font-size: 12px; padding: 0 12px; max-width: calc(100vw - 180px); }
+  .sheet { position: fixed; left: 0; right: 0; top: auto; bottom: 0; z-index: 4; width: auto; max-height: 75dvh; border-radius: 16px 16px 0 0;
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)); border-width: 1px 0 0; }
+  .sheetBackdrop { display: block; position: fixed; inset: 0; z-index: 3; background: rgba(0, 0, 0, .5); }
 }
 @media (prefers-reduced-motion: reduce) {
   .root[data-ready='true'] .work, .plane[data-animated='true'] { transition: none; }
@@ -95,5 +144,3 @@
 .badge { position: absolute; left: 0; top: 0; transform: translate(-30%, -30%) scale(calc(1 / var(--k, 1))); transform-origin: center;
   min-width: 18px; height: 18px; padding: 0 4px; display: grid; place-items: center; border-radius: 9px; background: var(--glow); color: var(--ground);
   font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; pointer-events: none; }
-/* Compuesto: gana al `.root[data-progress='on'] .work[data-skipped='true']` (.45) por especificidad. */
-.work[data-dimmed='true'], .root[data-progress='on'] .work[data-skipped='true'][data-dimmed='true'] { opacity: .35; }

@@ -11,6 +11,11 @@ describe("arcChainPath", () => {
     expect(arcChainPath([{ x: 0, y: 0 }, { x: 0, y: 400 }], "v")).toBe("M 0 0 Q -200 200 0 400");
   });
 
+  it("side = -1 dobla el arco al otro lado (abajo en h, +x en v)", () => {
+    expect(arcChainPath([{ x: 0, y: 0 }, { x: 400, y: 0 }], "h", -1)).toBe("M 0 0 Q 200 200 400 0");
+    expect(arcChainPath([{ x: 0, y: 0 }, { x: 0, y: 400 }], "v", -1)).toBe("M 0 0 Q 200 200 0 400");
+  });
+
   it("un salto largo se arquea mucho más que uno corto, con tope", () => {
     const peak = (d: number) => Math.abs(Number(arcChainPath([{ x: 0, y: 0 }, { x: d, y: 0 }], "h").split(" ")[5])) / 2;
     expect(peak(400)).toBeGreaterThan(peak(100));

@@ -18,11 +18,14 @@ export function AdoptRouteButton({
   slug,
   adopted,
   labels,
+  className,
 }: {
   sagaId: string;
   slug: string;
   adopted: boolean;
   labels: { adopt: string; adopted: string };
+  /** Sustituye las clases del botón (el atlas es oscuro siempre y lleva sus propios tokens). */
+  className?: string;
 }) {
   const t = useTranslations("saga");
   const [state, formAction, pending] = useActionState(
@@ -35,7 +38,8 @@ export function AdoptRouteButton({
       <button
         type="submit"
         disabled={pending}
-        className={`shrink-0 rounded-lg px-3 py-1.5 text-[11px] font-semibold disabled:opacity-60 ${
+        data-adopted={adopted || undefined}
+        className={className ?? `shrink-0 rounded-lg px-3 py-1.5 text-[11px] font-semibold disabled:opacity-60 ${
           adopted ? "bg-surface-muted text-muted-foreground" : "bg-foreground text-background"
         }`}
       >

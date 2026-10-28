@@ -14,6 +14,8 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/saga/s1/mapa",
   useSearchParams: () => new URLSearchParams(search),
 }));
+// Server actions de Adoptar: en jsdom no se pueden importar (importan el cliente de servidor).
+vi.mock("@/lib/sagas/route-actions", () => ({ adoptRoute: vi.fn(async () => ({})), dropRoute: vi.fn(async () => ({})) }));
 vi.mock("next/image", () => ({
   // eslint-disable-next-line @next/next/no-img-element
   default: (p: { alt: string }) => <img alt={p.alt} />,
@@ -265,5 +267,111 @@ describe("lentes Rol y Publicación", () => {
     expect(document.body.textContent).not.toContain("#1");
     mount(false);
     expect(document.body.textContent).toContain("#1");
+  });
+});
+
+describe("capas Itinerario y Progreso, y hoja de itinerarios", () => {
+  const routes: SagaAtlasProps["routes"] = [
+    { slug: "lectura", name: "Orden de lectura", summary: null, curated: false },
+    { slug: "la-guardia", name: "La Guardia", summary: "Solo los libros de la Guardia.", curated: true },
+  ];
+  const itinerary: AtlasModel = {
+    ...model,
+    works: [work("a", 0, "done", { step: 1 }), work("b", 1, "now", { role: "relato", step: 2 }), work("c", 2, "todo")],
+    hasItinerary: true,
+  };
+
+  it("abrir el chip lista las rutas sin «Publicación»", () => {
+    view({ routes, activeRoute: "la-guardia" });
+    const chip = screen.getByRole("button", { name: "Itinerario: La Guardia" });
+    expect(chip.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(chip);
+    expect(chip.getAttribute("aria-expanded")).toBe("true");
+    const dialog = screen.getByRole("dialog", { name: "Elige itinerario" });
+    expect(dialog).toBeTruthy();
+    expect(screen.getByRole("radio", { name: "Orden de lectura" })).toBeTruthy();
+    expect((screen.getByRole("radio", { name: "La Guardia" }) as HTMLInputElement).checked).toBe(true);
+    expect(screen.queryByRole("radio", { name: /Publicación/ })).toBeNull();
+    expect(dialog.textContent).toContain("Solo los libros de la Guardia.");
+  });
+
+  it("sin rutas curadas el chip es una etiqueta que no despliega", () => {
+    view();
+    expect(screen.queryByRole("button", { name: /Itinerario/ })).toBeNull();
+    expect(screen.getByText("Orden de lectura")).toBeTruthy();
+  });
+
+  it("elegir una ruta llama a replace con ruta= y conserva lente", () => {
+    window.history.replaceState(null, "", "/saga/s1/mapa?lente=rol");
+    search = "lente=rol";
+    view({ routes, activeRoute: "lectura" });
+    fireEvent.click(screen.getByRole("button", { name: "Itinerario: Orden de lectura" }));
+    fireEvent.click(screen.getByRole("radio", { name: "La Guardia" }));
+    expect(replace).toHaveBeenCalledWith("/saga/s1/mapa?lente=rol&ruta=la-guardia", { scroll: false });
+  });
+
+  it("Escape cierra la hoja y devuelve el foco al chip", () => {
+    view({ routes, activeRoute: "la-guardia" });
+    const chip = screen.getByRole("button", { name: "Itinerario: La Guardia" });
+    fireEvent.click(chip);
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(chip);
+  });
+
+  it("tocar fuera cierra la hoja", () => {
+    view({ routes, activeRoute: "la-guardia" });
+    fireEvent.click(screen.getByRole("button", { name: "Itinerario: La Guardia" }));
+    fireEvent.pointerDown(stage());
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("con counter sale «Llevas 0 de 2 de esta ruta», Adoptar y el enlace de gestión", () => {
+    view({ routes, activeRoute: "la-guardia", counter: { completed: 0, total: 2 }, canEdit: true });
+    fireEvent.click(screen.getByRole("button", { name: "Itinerario: La Guardia" }));
+    const dialog = screen.getByRole("dialog");
+    expect(dialog.textContent).toContain("Llevas 0 de 2 de esta ruta");
+    expect(screen.getByRole("button", { name: "Leer por aquí" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Gestionar itinerarios/ }).getAttribute("href")).toBe("/saga/s1/rutas");
+  });
+
+  it("sin sesión no hay Adoptar ni interruptor de Progreso, y la obra no dice estado", () => {
+    view({ routes, activeRoute: "la-guardia", authenticated: false });
+    expect(screen.queryByRole("button", { name: "Progreso" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Itinerario: La Guardia" }));
+    expect(screen.queryByRole("button", { name: "Leer por aquí" })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Gestionar/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "C" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "B, Relato" })).toBeTruthy();
+  });
+
+  it("con hasItinerary, las obras sin paso llevan data-dimmed y las otras su paso en el nombre", () => {
+    view({ model: itinerary, routes, activeRoute: "la-guardia" });
+    expect(document.querySelector('[data-work-key="c"]')!.getAttribute("data-dimmed")).toBe("true");
+    expect(document.querySelector('[data-work-key="a"]')!.getAttribute("data-dimmed")).toBeNull();
+    expect(screen.getByRole("button", { name: "B, ahora, Relato, Paso 2 del itinerario" })).toBeTruthy();
+    // Un círculo numerado por paso en el fondo.
+    expect([...document.querySelectorAll("[data-step-badge]")].map((n) => n.textContent)).toEqual(["1", "2"]);
+  });
+
+  it("la opacidad es el mínimo de las fuentes de atenuación", () => {
+    view({ model: itinerary, routes, activeRoute: "la-guardia" });
+    const dim = (k: string) => (document.querySelector(`[data-work-key="${k}"]`) as HTMLElement).style.getPropertyValue("--dim");
+    expect(dim("a")).toBe("1");
+    expect(dim("c")).toBe("0.3"); // fuera de ruta (0,3) gana a pendiente (0,4)
+  });
+
+  it("con Progreso, la obra «ahora» lleva la etiqueta «ahora»; apagado, se quita", () => {
+    view();
+    const now = () => document.querySelector('[data-work-key="b"] [data-now-label]');
+    expect(now()?.textContent).toBe("ahora");
+    expect(document.querySelector('[data-work-key="a"] [data-done-mark]')).toBeTruthy();
+    const toggle = screen.getByRole("button", { name: "Progreso" });
+    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-pressed")).toBe("false");
+    expect(now()).toBeNull();
+    expect(screen.getByRole("button", { name: "C" })).toBeTruthy();
+    expect((document.querySelector('[data-work-key="c"]') as HTMLElement).style.getPropertyValue("--dim")).toBe("1");
   });
 });

@@ -6,6 +6,7 @@ import type { AtlasLayout, Lens, Orientation } from "@/lib/sagas/atlas/layout";
 import type { AtlasModel, AtlasWork as AtlasWorkModel } from "@/lib/sagas/atlas/model";
 import { AtlasBackdrop } from "./atlas-backdrop";
 import { AtlasWork, type AtlasLevel } from "./atlas-work";
+import { workDim } from "./work-dim";
 import styles from "./atlas.module.css";
 
 /** Nivel de zoom semántico (spec 2026-10-28 §5.3). Sin islas (saga sin subsagas) no hay nivel `islands`. */
@@ -15,7 +16,7 @@ export function zoomLevel(k: number, layout: AtlasLayout): AtlasLevel {
 
 /** El plano: un `div` con la transformación mundo → pantalla de la cámara. Dentro, el
  *  fondo SVG y una obra por item, en orden de lectura (es el orden de tabulación). */
-export function AtlasPlane({ lens, orientation, role, layout, model, camera, viewport, animated, sagaName, authenticated, onIsland, onRole, onSelect }: {
+export function AtlasPlane({ lens, orientation, role, layout, model, camera, viewport, animated, sagaName, progress, onIsland, onRole, onSelect }: {
   lens: Lens;
   orientation: Orientation;
   role: SagaItemRole | null; // resaltado de `?rol=` (solo cuenta en la lente Rol)
@@ -25,7 +26,7 @@ export function AtlasPlane({ lens, orientation, role, layout, model, camera, vie
   viewport: Viewport;
   animated: boolean;
   sagaName: string;
-  authenticated: boolean;
+  progress: boolean; // capa Progreso (solo puede estar encendida con sesión)
   onIsland: (p: Point) => void;
   onRole: (role: SagaItemRole) => void;
   onSelect?: (work: AtlasWorkModel) => void;
@@ -42,12 +43,13 @@ export function AtlasPlane({ lens, orientation, role, layout, model, camera, vie
   return (
     <div className={styles.plane} style={style} data-level={level} data-animated={animated}>
       <AtlasBackdrop lens={lens} orientation={orientation} role={role} layout={layout} model={model} level={level} sagaName={sagaName}
-        authenticated={authenticated} onIsland={onIsland} onRole={onRole} />
+        progress={progress} onIsland={onIsland} onRole={onRole} />
       {works.map((w) => {
         const p = placed.get(w.key);
+        const dim = workDim(w, { lens, role, hasItinerary: model.hasItinerary, progress });
         return p ? (
           <AtlasWork key={w.key} work={w} placed={p} accent={accent.get(w.regionKey) ?? "beige"} level={level}
-            dimmed={lens === "rol" && role !== null && w.role !== role}
+            dim={dim.opacity} filtered={dim.filtered} progress={progress}
             showReadingNo={lens === "publicacion"} onSelect={onSelect} />
         ) : null;
       })}
