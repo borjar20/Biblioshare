@@ -65,21 +65,27 @@ function IslandButton({ region, name, x, y, r, works, authenticated, onClick }: 
   const finished = progress && region.completed >= region.counted;
   const figure = finished ? `${region.counted}✓` : progress && region.completed > 0 ? `${region.completed}/${region.counted}` : String(works);
   const color = SAGA_ACCENT[region.accent].cssVar;
+  const current = region.state === "current";
   return (
     <button
       type="button"
       className={styles.island}
       data-state={region.state}
-      aria-label={progress ? t("islandAria", { name, completed: region.completed, total: region.counted }) : t("islandAriaCount", { name, count: works })}
+      aria-label={[
+        progress ? t("islandAria", { name, completed: region.completed, total: region.counted }) : t("islandAriaCount", { name, count: works }),
+        current ? t("islandCurrent") : null,
+      ].filter(Boolean).join(", ")}
       style={{
         left: x - r, top: y - r, width: 2 * r, height: 2 * r,
-        background: `color-mix(in srgb, ${color} ${region.state === "current" ? 50 : 32}%, transparent)`,
+        background: `color-mix(in srgb, ${color} ${current ? 50 : 32}%, transparent)`,
       }}
       onClick={onClick}
     >
       <span className={styles.islandLabel}>
         {figure}
         <small>{name}</small>
+        {/* Señal que no depende del color (ni del aro dorado). */}
+        {current && <span className={styles.islandCurrent} aria-hidden="true">● {t("islandCurrent")}</span>}
       </span>
     </button>
   );

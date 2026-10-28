@@ -1,13 +1,13 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import type { SagaItemRole } from "@/lib/sagas/roles";
 import { layoutAtlas, type Lens, type Orientation } from "@/lib/sagas/atlas/layout";
 import type { AtlasModel } from "@/lib/sagas/atlas/model";
 import { summarize } from "@/lib/sagas/atlas/summary";
 import { AtlasPlane } from "./atlas-plane";
-import { AtlasDock, AtlasTopBar, AtlasZoom, LENSES } from "./atlas-chrome";
+import { AtlasDock, AtlasTopBar, AtlasZoom, LENS_LABEL, LENSES } from "./atlas-chrome";
 import { useAtlasCamera, useViewport } from "./use-atlas-camera";
 import styles from "./atlas.module.css";
 
@@ -21,7 +21,6 @@ export type SagaAtlasProps = {
   canEdit: boolean;
 };
 
-const LENS_NAME = { orden: "atlas.lensOrden", rol: "atlas.lensRol", publicacion: "atlas.lensPublicacion" } as const;
 const bold = (chunks: ReactNode) => <b>{chunks}</b>;
 
 /** Isla cliente del atlas de la saga (spec 2026-10-28 §6). Deriva todo de props; su estado
@@ -29,7 +28,6 @@ const bold = (chunks: ReactNode) => <b>{chunks}</b>;
  *  hojas de las Tasks 7–9. */
 export function SagaAtlas({ sagaId, sagaName, workCount, model, authenticated, initialLens }: SagaAtlasProps) {
   const t = useTranslations("saga");
-  const router = useRouter();
   const pathname = usePathname();
   const stageRef = useRef<HTMLDivElement>(null);
   const viewport = useViewport(stageRef);
@@ -79,7 +77,10 @@ export function SagaAtlas({ sagaId, sagaName, workCount, model, authenticated, i
     else q.set("lente", next);
     if (next !== "rol") q.delete("rol");
     const qs = q.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    // `lente` y `rol` son estado de vista: sin viaje al servidor. Next 16 sincroniza
+    // `useSearchParams` con `history.replaceState` (docs: linking-and-navigating). Los
+    // cambios de `ruta` (Task 8) sí irán por `router.replace`: cambian los datos.
+    window.history.replaceState(null, "", qs ? `${pathname}?${qs}` : pathname);
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
@@ -100,7 +101,7 @@ export function SagaAtlas({ sagaId, sagaName, workCount, model, authenticated, i
         className={styles.stage}
         role="group"
         tabIndex={0}
-        aria-label={t("atlas.planeAria", { saga: sagaName, lens: t(LENS_NAME[lens]), summary: summaryPlain })}
+        aria-label={t("atlas.planeAria", { saga: sagaName, lens: t(LENS_LABEL[lens]), summary: summaryPlain })}
         onKeyDown={onKeyDown}
         {...bind}
       >

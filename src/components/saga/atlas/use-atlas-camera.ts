@@ -10,6 +10,8 @@ import { readCamera, writeCamera } from "@/lib/sagas/atlas/camera-storage";
 const DRAG_THRESHOLD = 5;
 const FIT_PAD: Point = { x: 48, y: 200 };
 const FALLBACK: Camera = { x: 0, y: 0, k: 1 };
+/** Por debajo de este zoom, encajar la saga entera deja portadas demasiado pequeñas. */
+const FIT_MIN_K = 0.9;
 
 /** Punto de pantalla relativo al contenedor. */
 function localPoint(el: HTMLElement | null, e: { clientX: number; clientY: number }): Point {
@@ -39,8 +41,9 @@ export function useViewport(ref: RefObject<HTMLElement | null>): Viewport {
  * Cámara, gestos y persistencia. Recibe el viewport ya medido (`useViewport`) porque la
  * orientación del layout depende de él: el layout se calcula entre las dos llamadas.
  *
- * Mientras nadie mueve la cámara, es la inicial DERIVADA: la guardada en sessionStorage, o
- * la obra «ahora» a k = 1, o encajar todo. Así sigue al layout (giro del móvil) sin efectos.
+ * Mientras nadie mueve la cámara, es la inicial DERIVADA: la guardada en sessionStorage; si
+ * no hay, encajar toda la saga (hasta 2×) cuando cabe a k ≥ 0,9; si no cabe, la obra «ahora»
+ * (o la primera) a k = 1. Así sigue al layout (giro del móvil) sin efectos.
  * Lo que se guarda es solo la cámara que alguien movió.
  */
 export function useAtlasCamera({ ref, viewport, extent, focus, sagaId }: {
@@ -58,7 +61,10 @@ export function useAtlasCamera({ ref, viewport, extent, focus, sagaId }: {
     if (!ready) return null;
     const saved = readCamera(sagaId);
     if (saved) return saved;
-    return focus ? { x: focus.x, y: focus.y, k: 1 } : fit(extent, viewport, FIT_PAD);
+    // Saga corta: se ve entera y grande. Saga larga: se lee desde donde vas, a tamaño real.
+    const whole = fit(extent, viewport, FIT_PAD, 2);
+    if (whole.k >= FIT_MIN_K || !focus) return whole;
+    return { x: focus.x, y: focus.y, k: 1 };
   }, [ready, sagaId, focus, extent, viewport]);
   const camera = moved ?? initial ?? FALLBACK;
 
@@ -72,11 +78,25 @@ export function useAtlasCamera({ ref, viewport, extent, focus, sagaId }: {
     setMoved((prev) => f(prev ?? live.current.camera));
   }, []);
 
+  // Guardado con debounce; lo pendiente se escribe igualmente al desmontar (salir del atlas
+  // justo después de mover no debe perder la cámara).
+  const pending = useRef<{ sagaId: string; camera: Camera } | null>(null);
   useEffect(() => {
     if (!moved) return;
-    const id = setTimeout(() => writeCamera(sagaId, moved), 200);
+    pending.current = { sagaId, camera: moved };
+    const id = setTimeout(() => {
+      writeCamera(sagaId, moved);
+      pending.current = null;
+    }, 200);
     return () => clearTimeout(id);
   }, [moved, sagaId]);
+  useEffect(() => {
+    const box = pending;
+    return () => {
+      if (box.current) writeCamera(box.current.sagaId, box.current.camera);
+      box.current = null;
+    };
+  }, []);
 
   const local = (e: { clientX: number; clientY: number }) => localPoint(ref.current, e);
 
@@ -103,11 +123,44 @@ export function useAtlasCamera({ ref, viewport, extent, focus, sagaId }: {
     try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch { /* puntero ya suelto */ }
   };
 
+  // Soltar un puntero. El arrastre se olvida en la siguiente vuelta: así `onClickCapture`
+  // aún ve el arrastre del clic que sigue al `pointerup`, pero un Enter posterior no se pierde.
+  const release = useCallback((id: number) => {
+    pointers.current.delete(id);
+    if (pointers.current.size < 2) pinch.current = null;
+    if (pointers.current.size === 0) {
+      const ended = drag.current;
+      setTimeout(() => {
+        if (drag.current === ended) drag.current = null;
+      }, 0);
+    }
+  }, []);
+
+  // Un ratón que se suelta fuera del lienzo antes del umbral (sin captura) no manda
+  // `pointerup` al lienzo. Mientras haya punteros pulsados se escucha también en `window`.
+  const windowCleanup = useRef<(() => void) | null>(null);
+  const watchWindow = () => {
+    if (windowCleanup.current) return;
+    const onUp = (e: PointerEvent) => {
+      release(e.pointerId);
+      if (pointers.current.size === 0) windowCleanup.current?.();
+    };
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    windowCleanup.current = () => {
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      windowCleanup.current = null;
+    };
+  };
+  useEffect(() => () => windowCleanup.current?.(), []);
+
   const bind = {
     onPointerDown(e: ReactPointerEvent<HTMLElement>) {
       if (e.pointerType === "mouse" && e.button !== 0) return;
       const p = local(e);
       pointers.current.set(e.pointerId, p);
+      watchWindow();
       if (pointers.current.size === 1) drag.current = { start: p, moved: false };
       if (pointers.current.size === 2) {
         pinch.current = pair();
@@ -120,6 +173,12 @@ export function useAtlasCamera({ ref, viewport, extent, focus, sagaId }: {
     onPointerMove(e: ReactPointerEvent<HTMLElement>) {
       const prev = pointers.current.get(e.pointerId);
       if (!prev) return;
+      // Ratón sin botones pulsados: se soltó sin que nos llegara el `pointerup`.
+      if (e.pointerType === "mouse" && e.buttons === 0) {
+        release(e.pointerId);
+        drag.current = null;
+        return;
+      }
       const p = local(e);
       pointers.current.set(e.pointerId, p);
       if (pointers.current.size >= 2 && pinch.current) {
@@ -140,12 +199,10 @@ export function useAtlasCamera({ ref, viewport, extent, focus, sagaId }: {
       update((c) => panBy(c, p.x - prev.x, p.y - prev.y), false);
     },
     onPointerUp(e: ReactPointerEvent<HTMLElement>) {
-      pointers.current.delete(e.pointerId);
-      if (pointers.current.size < 2) pinch.current = null;
+      release(e.pointerId);
     },
     onPointerCancel(e: ReactPointerEvent<HTMLElement>) {
-      pointers.current.delete(e.pointerId);
-      if (pointers.current.size < 2) pinch.current = null;
+      release(e.pointerId);
     },
     /** Un arrastre no es un clic: se lo come antes de que llegue a la obra o la isla. */
     onClickCapture(e: ReactMouseEvent<HTMLElement>) {

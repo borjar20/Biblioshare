@@ -32,6 +32,8 @@ export function AtlasWork({ work, placed, accent, level, onSelect }: {
       data-skipped={work.skipped || undefined}
       aria-label={t("atlas.workAria", { title: work.title, state: role ? `${state}, ${role}` : state })}
       style={{
+        // `--s`: la escala propia (extras a 0,7); el área táctil la compensa junto a `--k`.
+        ["--s" as string]: placed.scale,
         width: COVER_W,
         height: COVER_H,
         transform: `translate(${placed.x - COVER_W / 2}px, ${placed.y - COVER_H / 2}px) scale(${placed.scale})`,

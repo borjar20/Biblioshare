@@ -2365,6 +2365,7 @@
       "planeAria": "Atlas de {saga}, lente {lens}. {summary}",
       "islandAria": "{name}: {completed} de {total} leídas",
       "islandAriaCount": "{name}: {count, plural, =1 {1 obra} other {# obras}}",
+      "islandCurrent": "en curso",
       "rolePlural": {
         "principal": "{count, plural, =1 {principal} other {principales}}",
         "precuela": "{count, plural, =1 {precuela} other {precuelas}}",

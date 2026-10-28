@@ -9,7 +9,8 @@ import styles from "./atlas.module.css";
 // Cromo del atlas (spec 2026-10-28 §6): barra superior, dock de lentes y zoom.
 // Sin estado: todo llega de SagaAtlas.
 
-const LENS_LABEL = { orden: "atlas.lensOrden", rol: "atlas.lensRol", publicacion: "atlas.lensPublicacion" } as const;
+/** Nombre de cada lente: lo comparten el dock y el `aria-label` del lienzo. */
+export const LENS_LABEL = { orden: "atlas.lensOrden", rol: "atlas.lensRol", publicacion: "atlas.lensPublicacion" } as const;
 const LENS_LEGEND = { orden: "atlas.legendOrden", rol: "atlas.legendRol", publicacion: "atlas.legendPublicacion" } as const;
 export const LENSES: readonly Lens[] = ["orden", "rol", "publicacion"];
 const LENS_ICON: Record<Lens, ReactNode> = {

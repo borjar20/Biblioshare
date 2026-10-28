@@ -40,7 +40,11 @@ export default async function SagaAtlasPage({
   const { id } = await params;
   const sp = await searchParams;
   const legacy = legacyAtlasQuery(sp);
-  if (legacy) redirect(`${sagaHref(id)}/mapa?${legacy}`);
+  if (legacy) {
+    // Nunca `/mapa?` con la query vacía (p. ej. `?orden=lectura` se traduce a nada).
+    const base = `${sagaHref(id)}/mapa`;
+    redirect(legacy.size ? `${base}?${legacy}` : base);
+  }
 
   const supabase = await createClient();
   const detail = await getSagaDetail(supabase, id);
