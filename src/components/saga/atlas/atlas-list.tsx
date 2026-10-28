@@ -36,7 +36,8 @@ export function AtlasList({ sagaId, sagaName, model, lens, authenticated, progre
           return (
             <li key={w.key} className={styles.listItem} data-state={w.state}>
               <div className={styles.listText}>
-                <Link href={w.href} className={styles.listLink}>
+                {/* Nombre explícito: sin él, número y título se leen pegados («1A»). */}
+                <Link href={w.href} className={styles.listLink} aria-label={w.readingNo !== null ? `${w.readingNo}. ${w.title}` : undefined}>
                   <span className={styles.listNo} aria-hidden={w.readingNo === null || undefined}>{w.readingNo ?? "·"}</span>
                   <span>{w.title}</span>
                 </Link>

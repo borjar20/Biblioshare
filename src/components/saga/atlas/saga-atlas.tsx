@@ -103,7 +103,7 @@ export function SagaAtlas({
   function followFocus(w: AtlasWork) {
     if (!keyboard.current) return;
     const p = layout.items.find((i) => i.key === w.key);
-    if (p && !inVisibleArea(camera, viewport, insets, p)) focusOn(p); // sin `k`: conserva el zoom
+    if (p && !inVisibleArea(camera, viewport, insets, p, { x: (COVER_W / 2) * p.scale, y: (COVER_H / 2) * p.scale })) focusOn(p); // sin `k`: conserva el zoom
   }
 
   // Cambiar de lente (o girar el móvil) recoloca todo: se encaja de nuevo. La primera

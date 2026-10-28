@@ -1,11 +1,9 @@
-import { SAGA_ITEM_ROLES } from "../roles";
-import type { Lens } from "./layout";
+import { LANE_ORDER, type Lens } from "./layout";
 import type { AtlasWork } from "./model";
 
 // Orden de «Ver como lista» (spec 2026-10-28 §8): el de la lente activa, para que la lista
 // cuente lo mismo que el plano. Puro; no reordena la entrada.
-const LANES: readonly string[] = ["principal", ...SAGA_ITEM_ROLES];
-const lane = (w: AtlasWork) => LANES.indexOf(w.role ?? "principal");
+const lane = (w: AtlasWork) => LANE_ORDER.indexOf(w.role ?? "principal");
 
 export function listOrder(works: readonly AtlasWork[], lens: Lens): AtlasWork[] {
   const byReading = (a: AtlasWork, b: AtlasWork) => a.readingIndex - b.readingIndex;

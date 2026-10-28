@@ -23,10 +23,16 @@ export function fitVisible(extent: Extent, vp: Viewport, insets: Insets, maxK: n
   return centreIn(c, c.k, insets);
 }
 
-/** ¿Cae `p` dentro de la zona libre (entre la barra y el dock, y dentro del ancho)? */
-export function inVisibleArea(cam: Camera, vp: Viewport, insets: Insets, p: Point): boolean {
+/**
+ * ¿Cae `p` dentro de la zona libre (entre la barra y el dock, y dentro del ancho)? `half` es
+ * el medio ancho y medio alto de la portada en unidades del plano (ya con su `scale`): se
+ * exige que quepa entera, no solo su centro. Sin `half`, solo el punto.
+ */
+export function inVisibleArea(cam: Camera, vp: Viewport, insets: Insets, p: Point, half: Point = { x: 0, y: 0 }): boolean {
   const s = toScreen(cam, vp, p);
-  return s.x >= 0 && s.x <= vp.width && s.y >= insets.top && s.y <= vp.height - insets.bottom;
+  const hx = half.x * cam.k;
+  const hy = half.y * cam.k;
+  return s.x - hx >= 0 && s.x + hx <= vp.width && s.y - hy >= insets.top && s.y + hy <= vp.height - insets.bottom;
 }
 
 /** Aire entre la obra y la tarjeta, y entre la tarjeta y los bordes. */

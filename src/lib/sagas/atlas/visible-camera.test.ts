@@ -47,6 +47,16 @@ describe("inVisibleArea", () => {
     expect(inVisibleArea(cam, vp, insets, { x: 0, y: 350 })).toBe(false); // y = 750 > 700
   });
 
+  it("cuenta la portada entera: el centro dentro pero el borde fuera es fuera", () => {
+    const half = { x: 30, y: 45 };
+    expect(inVisibleArea(cam, vp, insets, { x: -170, y: 0 }, half)).toBe(true); // borde izquierdo en 0
+    expect(inVisibleArea(cam, vp, insets, { x: -180, y: 0 }, half)).toBe(false); // centro en 20, borde en −10
+    expect(inVisibleArea(cam, vp, insets, { x: -180, y: 0 })).toBe(true); // solo el centro: dentro
+    expect(inVisibleArea(cam, vp, insets, { x: 0, y: -240 }, half)).toBe(false); // borde superior en 115 < 150
+    expect(inVisibleArea(cam, vp, insets, { x: 0, y: 260 }, half)).toBe(false); // borde inferior en 705 > 700
+    expect(inVisibleArea({ ...cam, k: 2 }, vp, insets, { x: 0, y: -100 }, half)).toBe(false); // centro 200, borde 110 < 150
+  });
+
   it("a los lados del viewport cuenta como fuera", () => {
     expect(inVisibleArea(cam, vp, insets, { x: -250, y: 0 })).toBe(false);
     expect(inVisibleArea(cam, vp, insets, { x: 250, y: 0 })).toBe(false);

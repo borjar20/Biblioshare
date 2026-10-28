@@ -8,6 +8,9 @@ import type { AtlasModel, AtlasWork } from "./model";
 export type Orientation = "h" | "v";
 export type Lens = "orden" | "rol" | "publicacion";
 
+/** Carriles de la lente Rol y orden de la lista: «principal» y luego los roles, en su orden. */
+export const LANE_ORDER: readonly string[] = ["principal", ...SAGA_ITEM_ROLES];
+
 export const COVER_W = 60;
 export const COVER_H = 90;
 // Paso entre obras consecutivas a lo largo del eje de lectura. En `h` ese eje es el ancho
@@ -132,7 +135,7 @@ function layoutOrden(model: AtlasModel, { step: STEP, along, cross }: Dims): Lay
 function layoutRol(model: AtlasModel, { step: STEP }: Dims): Layout {
   const laneOf = (w: AtlasWork): string => w.role ?? "principal";
   const present = new Set(model.works.map(laneOf));
-  const lanes: string[] = ["principal", ...SAGA_ITEM_ROLES].filter((l) => present.has(l));
+  const lanes = LANE_ORDER.filter((l) => present.has(l));
   const byIndex = [...model.works].sort((p, q) => p.readingIndex - q.readingIndex);
 
   const items = model.works.map((w) => ({ key: w.key, x: w.readingIndex * STEP, y: lanes.indexOf(laneOf(w)) * 150, scale: 1 }));

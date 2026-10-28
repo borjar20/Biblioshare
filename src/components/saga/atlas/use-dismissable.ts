@@ -1,21 +1,24 @@
 "use client";
 import { useCallback, useEffect, type FocusEvent, type RefObject } from "react";
 
-/** A partir de aquí las hojas del atlas son hoja inferior con fondo (modal de hecho). */
-export const NARROW_QUERY = "(max-width: 640px)";
+/** Por debajo de 640 px las hojas del atlas son hoja inferior con fondo (modal de hecho); a
+ *  ≥ 640 px, tarjeta o desplegable. 639,98 evita que 640 caiga en los dos lados (la CSS lo repite). */
+export const NARROW_QUERY = "(max-width: 639.98px)";
 
 /**
  * Cierre común de las hojas del atlas (itinerarios y mini-ficha): Escape cierra y pide
  * devolver el foco (`close(true)`); un `pointerdown` fuera de `ref` cierra sin moverlo
  * (`close(false)`), salvo en lo que `ignore` acepte. Devuelve el `onBlur` del contenedor:
- * en móvil, si el foco sale de la hoja, se cierra (así no se escapa tras el fondo).
- * `close` e `ignore` deben ser estables.
+ * si el foco sale de la hoja se cierra, solo en móvil (`blur: "narrow"`, así no se escapa
+ * tras el fondo) o a cualquier ancho (`"always"`, devolviendo el foco al origen); con
+ * `"always"`, lo que `ignore` acepte tampoco cuenta como salir. `close` e `ignore` deben ser estables.
  */
-export function useDismissable({ open, ref, close, ignore }: {
+export function useDismissable({ open, ref, close, ignore, blur = "narrow" }: {
   open: boolean;
   ref: RefObject<HTMLElement | null>;
   close: (refocus: boolean) => void;
   ignore?: (target: Element) => boolean;
+  blur?: "narrow" | "always";
 }) {
   useEffect(() => {
     if (!open) return;
@@ -40,8 +43,11 @@ export function useDismissable({ open, ref, close, ignore }: {
     (e: FocusEvent<HTMLElement>) => {
       const next = e.relatedTarget as Node | null;
       if (!open || !next || ref.current?.contains(next)) return;
-      if (window.matchMedia?.(NARROW_QUERY).matches) close(false);
+      if (blur === "always") {
+        if (next instanceof Element && ignore?.(next)) return;
+        close(true);
+      } else if (window.matchMedia?.(NARROW_QUERY).matches) close(false);
     },
-    [open, ref, close],
+    [open, ref, close, ignore, blur],
   );
 }

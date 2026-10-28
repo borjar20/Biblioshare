@@ -72,7 +72,7 @@ export function AtlasDock({ lens, onLens, listOn, onList, ref }: {
 export function AtlasZoom({ onZoomIn, onZoomOut, onFit }: { onZoomIn: () => void; onZoomOut: () => void; onFit: () => void }) {
   const t = useTranslations("saga.atlas");
   return (
-    <div className={styles.zoom}>
+    <div className={styles.zoom} data-atlas-chrome="zoom">
       <button type="button" aria-label={t("zoomIn")} onClick={onZoomIn}>+</button>
       <button type="button" aria-label={t("zoomOut")} onClick={onZoomOut}>−</button>
       <button type="button" aria-label={t("fit")} onClick={onFit}>⤢</button>

@@ -2,7 +2,7 @@
 import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { AtlasModel } from "@/lib/sagas/atlas/model";
-import { model, plane, stubResizeObserver, view, work } from "./atlas-test-harness";
+import { model, plane, stubResizeObserver, view, work } from "./atlas-test-harness.test-utils";
 
 let search = "";
 vi.mock("next/navigation", () => ({
@@ -50,6 +50,13 @@ describe("Ver como lista", () => {
     expect(stage.getAttribute("aria-hidden")).toBe("true");
     expect(stage.hasAttribute("inert")).toBe(true);
     expect(screen.queryByRole("button", { name: /^A,/ })).toBeNull();
+  });
+
+  it("el enlace se llama «n. título», no «nTítulo»", () => {
+    view({ model: listed });
+    fireEvent.click(toggle());
+    expect(within(screen.getByRole("list", { name: /Dune/ })).getAllByRole("link").map((l) => l.getAttribute("aria-label"))).toEqual(["1. A", "2. B", "3. C"]);
+    expect(screen.getByRole("link", { name: "2. B" }).getAttribute("href")).toBe("/libro/b");
   });
 
   it("con lente=publicacion, en orden de año", () => {

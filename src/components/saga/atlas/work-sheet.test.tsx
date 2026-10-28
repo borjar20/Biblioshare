@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { AtlasModel } from "@/lib/sagas/atlas/model";
-import { model, plane, stubResizeObserver, view, work } from "./atlas-test-harness";
+import { model, plane, stubResizeObserver, view, work } from "./atlas-test-harness.test-utils";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn() }),
@@ -135,5 +135,76 @@ describe("mini-ficha", () => {
     open(/^B,/);
     expect(screen.getByRole("button", { name: /^B,/ }).getAttribute("aria-expanded")).toBe("true");
     expect(screen.getByRole("button", { name: /^A,/ }).getAttribute("aria-expanded")).toBe("false");
+  });
+
+  describe("teclado: la ficha no retiene el foco", () => {
+    const tab = (el: Element, shiftKey = false) => fireEvent.keyDown(el, { key: "Tab", shiftKey });
+
+    it("Tab más allá del último control cierra y deja el foco en la obra", () => {
+      view({ model: rich });
+      const sheet = open(/^B,/);
+      const focusable = [...sheet.querySelectorAll<HTMLElement>("a[href], button")];
+      const last = focusable[focusable.length - 1];
+      last.focus();
+      tab(last);
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(document.activeElement?.getAttribute("data-work-key")).toBe("b");
+    });
+
+    it("Mayús+Tab en el primer control cierra y vuelve a la obra", () => {
+      view({ model: rich });
+      const sheet = open(/^B,/);
+      const first = sheet.querySelector<HTMLElement>("a[href], button")!;
+      first.focus();
+      tab(first, true);
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(document.activeElement?.getAttribute("data-work-key")).toBe("b");
+    });
+
+    it("Tab entre controles internos no cierra", () => {
+      view({ model: rich });
+      const sheet = open(/^B,/);
+      const first = sheet.querySelector<HTMLElement>("a[href], button")!;
+      first.focus();
+      tab(first);
+      expect(screen.getByRole("dialog")).toBeTruthy();
+    });
+
+    it("el foco que sale de la ficha, a cualquier ancho, la cierra", () => {
+      view({ model: rich });
+      const sheet = open(/^B,/);
+      fireEvent.blur(within(sheet).getByRole("link", { name: "Abrir ficha" }), { relatedTarget: screen.getByRole("group", { name: /Atlas de Dune/ }) });
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("el foco que pasa a otra obra o al cromo no la cierra", () => {
+      view({ model: rich });
+      const sheet = open(/^B,/);
+      const link = within(sheet).getByRole("link", { name: "Abrir ficha" });
+      fireEvent.blur(link, { relatedTarget: screen.getByRole("button", { name: /^A,/ }) });
+      fireEvent.blur(link, { relatedTarget: screen.getByRole("button", { name: "Orden" }) });
+      expect(screen.getByRole("dialog")).toBeTruthy();
+    });
+  });
+
+  it("tocar el cromo (barra, dock, zoom, lista) no cierra la ficha; el lienzo vacío sí", () => {
+    view({ model: rich });
+    open(/^B,/);
+    for (const target of [
+      document.querySelector('[data-atlas-chrome="top"]')!,
+      screen.getByRole("button", { name: "Orden" }),
+      screen.getByRole("button", { name: "Ver como lista" }),
+      screen.getByRole("button", { name: "Acercar" }),
+    ]) {
+      fireEvent.pointerDown(target);
+      expect(screen.getByRole("dialog")).toBeTruthy();
+    }
+    fireEvent.pointerDown(screen.getByRole("group", { name: /Atlas de Dune/ }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("el corte móvil es 639,98 px: a 640 ya es tarjeta flotante", async () => {
+    const { NARROW_QUERY } = await import("./use-dismissable");
+    expect(NARROW_QUERY).toBe("(max-width: 639.98px)");
   });
 });

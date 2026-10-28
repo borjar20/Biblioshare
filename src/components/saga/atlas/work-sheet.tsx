@@ -1,7 +1,7 @@
 "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { useTranslations } from "next-intl";
 import type { Viewport } from "@/lib/atlas/types";
 import { SAGA_ACCENT, type SagaAccentToken } from "@/lib/sagas/accents";
@@ -15,8 +15,10 @@ import styles from "./atlas.module.css";
 /** Centro de la obra en pantalla y su medio ancho y medio alto ya escalados. */
 export type WorkAnchor = { x: number; y: number; halfW: number; halfH: number };
 
-/** Obras: tocarlas no cierra la ficha (el clic que sigue la cambia de obra, sin parpadeo). */
-const onWork = (target: Element) => target.closest("[data-work-key]") !== null;
+/** Obras y cromo del atlas (barra, dock, zoom): tocarlos o enfocarlos no cierra la ficha
+ *  (el clic que sigue en una obra la cambia, sin parpadeo; el cromo se usa con la ficha abierta). */
+const keepOpen = (target: Element) => target.closest("[data-work-key], [data-atlas-chrome]") !== null;
+const FOCUSABLE = "a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])";
 /** Tamaño supuesto hasta medir la tarjeta (y en jsdom, que no mide). */
 const CARD_GUESS = { width: 300, height: 220 };
 
@@ -64,14 +66,26 @@ export function WorkSheet({ sagaId, work, works, accent, authenticated, progress
   useEffect(() => {
     dialogRef.current?.focus({ preventScroll: true });
   }, [work.key]);
-  const onBlur = useDismissable({ open: true, ref: wrapRef, close: onClose, ignore: onWork });
+  const onBlur = useDismissable({ open: true, ref: wrapRef, close: onClose, ignore: keepOpen, blur: "always" });
+
+  // Tab que se saldría de la ficha: se cierra y el foco vuelve a la obra que la abrió, para que
+  // el siguiente Tab siga el orden de lectura (la ficha está al final del DOM, tras el plano).
+  function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+    if (e.key !== "Tab" || e.altKey || e.ctrlKey || e.metaKey) return;
+    const items = [...(dialogRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])];
+    const active = document.activeElement;
+    const leaving = e.shiftKey
+      ? items.length === 0 || active === dialogRef.current || active === items[0]
+      : items.length === 0 || active === items[items.length - 1];
+    if (leaving) onClose(true); // sin preventDefault: el Tab sigue desde la obra
+  }
 
   const pos = anchor ? cardPosition(anchor, viewport, insets, size) : null;
   const style = pos ? ({ "--x": `${pos.left}px`, "--y": `${pos.top}px` } as CSSProperties) : undefined;
   const meta = [work.readingNo !== null ? `#${work.readingNo}` : null, progress ? facts.state : null].filter(Boolean).join(" · ");
 
   return (
-    <div ref={wrapRef} onBlur={onBlur}>
+    <div ref={wrapRef} onBlur={onBlur} onKeyDown={onKeyDown}>
       {/* Móvil: el fondo se lleva el toque (con un clic, no un pointerdown: si no, el clic caería en la obra de debajo). */}
       <div className={styles.sheetBackdrop} aria-hidden="true" onClick={() => onClose(false)} />
       <div ref={dialogRef} role="dialog" aria-labelledby={titleId} tabIndex={-1} className={styles.workSheet}
