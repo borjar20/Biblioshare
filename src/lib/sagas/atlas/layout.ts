@@ -27,7 +27,8 @@ export type AtlasLayout = {
 };
 type Layout = Omit<AtlasLayout, "extent">;
 
-const EMPTY: Layout = { items: [], regions: [], islands: [], arcs: [], guides: [], threads: [] };
+// Función y no constante: cada layout recibe sus propios arrays (no compartidos entre llamadas).
+const empty = (): Layout => ({ items: [], regions: [], islands: [], arcs: [], guides: [], threads: [] });
 
 function layoutOrden(model: AtlasModel): Layout {
   const placed = new Map<string, PlacedWork>();
@@ -42,10 +43,15 @@ function layoutOrden(model: AtlasModel): Layout {
   // Obras de fila: una por paso, salvo el segundo y siguientes de un tándem.
   let cursor = 0;
   let prevRegion: string | null = null;
+  // Seguidoras ya colgadas de cada pareja: la n-ésima se desplaza 14*n, 10*n para no apilarse.
+  const followers = new Map<string, number>();
   for (const w of row) {
-    const partner = w.tandem?.partnerKeys.map((k) => placed.get(k)).find((p) => p !== undefined);
-    if (partner) {
-      place(w.key, partner.x + 14, 10);
+    const partnerKey = w.tandem?.partnerKeys.find((k) => placed.has(k));
+    if (partnerKey !== undefined) {
+      const partner = placed.get(partnerKey)!;
+      const n = (followers.get(partnerKey) ?? 0) + 1;
+      followers.set(partnerKey, n);
+      place(w.key, partner.x + 14 * n, 10 * n);
       continue;
     }
     if (prevRegion !== null && w.regionKey !== prevRegion) cursor += REGION_GAP;
@@ -108,7 +114,7 @@ function layoutOrden(model: AtlasModel): Layout {
         }))
       : [];
 
-  return { ...EMPTY, items: model.works.map((w) => placed.get(w.key)!), regions, islands, arcs };
+  return { ...empty(), items: model.works.map((w) => placed.get(w.key)!), regions, islands, arcs };
 }
 
 function layoutRol(model: AtlasModel): Layout {
@@ -127,7 +133,7 @@ function layoutRol(model: AtlasModel): Layout {
     if (w.role === null) lastMain = w.key;
     else if (lastMain !== null) threads.push({ kind: "rol", keys: [lastMain, w.key] });
   }
-  return { ...EMPTY, items, guides, threads };
+  return { ...empty(), items, guides, threads };
 }
 
 function layoutPublicacion(model: AtlasModel): Layout {
@@ -152,7 +158,7 @@ function layoutPublicacion(model: AtlasModel): Layout {
   if (hasUndated) guides.push({ kind: "tick", key: "sin-año", x: undatedA, y: 70 });
 
   return {
-    ...EMPTY, guides, items: model.works.map((w) => placed.get(w.key)!),
+    ...empty(), guides, items: model.works.map((w) => placed.get(w.key)!),
     threads: byIndex.length > 0 ? [{ kind: "publicacion", keys: byIndex.map((w) => w.key) }] : [],
   };
 }
@@ -170,7 +176,9 @@ function swap(l: Layout): Layout {
   };
 }
 
-// Caja de portadas (±COVER/2 × escala), arcos e islas, más margen. Se calcula con
+// Caja de portadas (±COVER/2 × escala), arcos, islas y guías (carriles y años), más margen.
+// Las guías cuentan como puntos: los carriles de Rol quedan a la izquierda de todo y, sin
+// ellos, un `fit` a la extent dejaría sus etiquetas fuera de pantalla. Se calcula con
 // el layout ya orientado, así que no depende de qué eje sea cuál.
 function extentOf(l: Layout): Extent {
   const xs: number[] = [];
@@ -186,6 +194,10 @@ function extentOf(l: Layout): Extent {
   for (const i of l.islands) {
     xs.push(i.x - i.r, i.x + i.r);
     ys.push(i.y - i.r, i.y + i.r);
+  }
+  for (const g of l.guides) {
+    xs.push(g.x);
+    ys.push(g.y);
   }
   if (xs.length === 0) return { minX: -MARGIN, minY: -MARGIN, maxX: MARGIN, maxY: MARGIN };
   return {

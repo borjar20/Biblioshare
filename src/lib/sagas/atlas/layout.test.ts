@@ -174,6 +174,35 @@ describe("layoutAtlas", () => {
     expect(l.extent).toEqual({ minX: -30 - 40, minY: -45 - 40, maxX: 168 + 30 + 40, maxY: 45 + 40 });
   });
 
+  it("orden: un tándem de 3 deja tres posiciones distintas (la n-ésima seguidora se desplaza 14*n, 10*n)", () => {
+    const m = model([
+      work("a", { tandem: { mode: null, note: null, partnerKeys: ["i:book:b", "i:book:c"] } }),
+      work("b", { tandem: { mode: null, note: null, partnerKeys: ["i:book:a", "i:book:c"] } }),
+      work("c", { tandem: { mode: null, note: null, partnerKeys: ["i:book:a", "i:book:b"] } }),
+    ]);
+    const l = layoutAtlas(m, "orden", "h");
+    const [a, b, c] = ["a", "b", "c"].map((k) => pos(l, k));
+    expect(b).toMatchObject({ x: a.x + 14, y: 10 });
+    expect(c).toMatchObject({ x: a.x + 28, y: 20 });
+    expect(new Set([a, b, c].map((i) => `${i.x},${i.y}`)).size).toBe(3);
+  });
+
+  it("rol: la extent incluye los carriles para que fit los deje visibles", () => {
+    const l = layoutAtlas(rolModel, "rol", "h");
+    const lane = l.guides.find((g) => g.kind === "lane")!;
+    expect(l.extent.minX).toBeLessThanOrEqual(lane.x - 40);
+  });
+
+  it("resultados independientes: dos llamadas no comparten arrays", () => {
+    const a = layoutAtlas(rolModel, "rol", "h");
+    const b = layoutAtlas(rolModel, "rol", "h");
+    expect(a.regions).not.toBe(b.regions);
+    expect(a.islands).not.toBe(b.islands);
+    expect(a.arcs).not.toBe(b.arcs);
+    expect(a.guides).not.toBe(b.guides);
+    expect(a.threads).not.toBe(b.threads);
+  });
+
   it("modelo vacío no revienta", () => {
     expect(() => layoutAtlas(model([]), "orden", "h")).not.toThrow();
   });
