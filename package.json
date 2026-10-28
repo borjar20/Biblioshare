@@ -38,7 +38,7 @@
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.110.1",
     "@vercel/speed-insights": "^2.0.0",
-    "next": "16.3.8",
+    "next": "16.4.3",
     "next-intl": "^4.13.1",
     "papaparse": "^5.5.4",
     "react": "19.2.4",
