@@ -59,9 +59,10 @@ export function AtlasWork({ work, placed, accent, level, dimmed = false, showRea
       {level === "detail" && (
         <span className={styles.caption} aria-hidden="true">
           <span className={styles.captionTitle}>{work.title}</span>
-          {(work.readingNo !== null || work.role) && (
+          {/* Con la insignia en la esquina (Publicación) el número no se repite bajo el título. */}
+          {((!showReadingNo && work.readingNo !== null) || work.role) && (
             <span className={styles.captionMeta}>
-              {[work.readingNo !== null ? `#${work.readingNo}` : null, work.role ? t(`roleShort.${work.role}`) : null]
+              {[!showReadingNo && work.readingNo !== null ? `#${work.readingNo}` : null, work.role ? t(`roleShort.${work.role}`) : null]
                 .filter(Boolean)
                 .join(" · ")}
             </span>

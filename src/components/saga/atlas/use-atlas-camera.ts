@@ -3,7 +3,8 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import { clamp, fit, MAX_ZOOM, MIN_ZOOM, panBy, zoomAt, zoomToward } from "@/lib/atlas/camera";
 import type { Camera, Extent, Point, Viewport } from "@/lib/atlas/types";
-import { readCamera, writeCamera } from "@/lib/sagas/atlas/camera-storage";
+import { readCamera, writeCamera, type CameraContext } from "@/lib/sagas/atlas/camera-storage";
+import type { Lens, Orientation } from "@/lib/sagas/atlas/layout";
 
 // Cámara del atlas de la saga (spec 2026-10-28 §7). Toda la geometría sale de
 // `@/lib/atlas/camera`; aquí solo hay estado, gestos y persistencia.
@@ -46,12 +47,14 @@ export function useViewport(ref: RefObject<HTMLElement | null>): Viewport {
  * (o la primera) a k = 1. Así sigue al layout (giro del móvil) sin efectos.
  * Lo que se guarda es solo la cámara que alguien movió.
  */
-export function useAtlasCamera({ ref, viewport, extent, focus, sagaId }: {
+export function useAtlasCamera({ ref, viewport, extent, focus, sagaId, lens, orientation }: {
   ref: RefObject<HTMLElement | null>;
   viewport: Viewport;
   extent: Extent;
   focus: Point | null;
   sagaId: string;
+  lens: Lens;
+  orientation: Orientation;
 }) {
   const [moved, setMoved] = useState<Camera | null>(null);
   // `animated`: los movimientos de botón (encajar, isla, + −) se suavizan; los gestos, no.
@@ -59,13 +62,13 @@ export function useAtlasCamera({ ref, viewport, extent, focus, sagaId }: {
   const ready = viewport.width > 0 && viewport.height > 0;
   const initial = useMemo<Camera | null>(() => {
     if (!ready) return null;
-    const saved = readCamera(sagaId);
+    const saved = readCamera(sagaId, { lens, orientation });
     if (saved) return saved;
     // Saga corta: se ve entera y grande. Saga larga: se lee desde donde vas, a tamaño real.
     const whole = fit(extent, viewport, FIT_PAD, 2);
     if (whole.k >= FIT_MIN_K || !focus) return whole;
     return { x: focus.x, y: focus.y, k: 1 };
-  }, [ready, sagaId, focus, extent, viewport]);
+  }, [ready, sagaId, lens, orientation, focus, extent, viewport]);
   const camera = moved ?? initial ?? FALLBACK;
 
   // Los listeners nativos (rueda) y los updaters leen lo último sin re-suscribirse.
@@ -80,12 +83,17 @@ export function useAtlasCamera({ ref, viewport, extent, focus, sagaId }: {
 
   // Guardado con debounce; lo pendiente se escribe igualmente al desmontar (salir del atlas
   // justo después de mover no debe perder la cámara).
-  const pending = useRef<{ sagaId: string; camera: Camera } | null>(null);
+  const ctx = useRef<CameraContext>({ lens, orientation });
+  useLayoutEffect(() => {
+    ctx.current = { lens, orientation };
+  });
+  const pending = useRef<{ sagaId: string; camera: Camera; ctx: CameraContext } | null>(null);
   useEffect(() => {
     if (!moved) return;
-    pending.current = { sagaId, camera: moved };
+    const at = ctx.current; // lente y orientación en que se movió, no las de cuando dispare el temporizador
+    pending.current = { sagaId, camera: moved, ctx: at };
     const id = setTimeout(() => {
-      writeCamera(sagaId, moved);
+      writeCamera(sagaId, moved, at);
       pending.current = null;
     }, 200);
     return () => clearTimeout(id);
@@ -93,7 +101,7 @@ export function useAtlasCamera({ ref, viewport, extent, focus, sagaId }: {
   useEffect(() => {
     const box = pending;
     return () => {
-      if (box.current) writeCamera(box.current.sagaId, box.current.camera);
+      if (box.current) writeCamera(box.current.sagaId, box.current.camera, box.current.ctx);
       box.current = null;
     };
   }, []);

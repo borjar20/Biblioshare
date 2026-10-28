@@ -5,6 +5,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import messages from "../../../../messages/es.json";
 import type { AtlasModel, AtlasWork } from "@/lib/sagas/atlas/model";
 import { SagaAtlas, type SagaAtlasProps } from "./saga-atlas";
+import { AtlasWork as AtlasWorkCell } from "./atlas-work";
 
 const replace = vi.fn();
 let search = "";
@@ -51,7 +52,7 @@ const model: AtlasModel = {
   nowKey: "b", mode: "next", nextTitle: "B", hasItinerary: false,
 };
 const props: SagaAtlasProps = {
-  sagaId: "s1", sagaName: "Dune", workCount: 3, model, authenticated: true, initialLens: "orden", initialRole: null,
+  sagaId: "s1", sagaName: "Dune", workCount: 3, model, authenticated: true,
   routes: [{ slug: "lectura", name: "Orden de lectura", summary: null, curated: false }], activeRoute: "lectura",
   adoptedRoute: null, counter: null, canEdit: false,
 };
@@ -76,7 +77,7 @@ describe("SagaAtlas", () => {
 
   it("la lente sale de la URL del cliente aunque el payload cacheado diga otra", () => {
     search = "lente=rol";
-    view({ initialLens: "orden" });
+    view();
     expect(screen.getByRole("button", { name: "Rol" }).getAttribute("aria-pressed")).toBe("true");
   });
 
@@ -249,5 +250,20 @@ describe("lentes Rol y Publicación", () => {
   it("Orden no pinta insignias de lectura", () => {
     view();
     expect(document.querySelectorAll("[data-reading-no]")).toHaveLength(0);
+  });
+  it("el número de lectura no se repite bajo el título cuando hay insignia (Publicación)", () => {
+    const w = work("a", 0, "todo");
+    const mount = (showReadingNo: boolean) => {
+      cleanup();
+      render(
+        <NextIntlClientProvider locale="es" messages={messages}>
+          <AtlasWorkCell work={w} placed={{ key: "a", x: 0, y: 0, scale: 1 }} accent="verde" level="detail" showReadingNo={showReadingNo} />
+        </NextIntlClientProvider>,
+      );
+    };
+    mount(true);
+    expect(document.body.textContent).not.toContain("#1");
+    mount(false);
+    expect(document.body.textContent).toContain("#1");
   });
 });

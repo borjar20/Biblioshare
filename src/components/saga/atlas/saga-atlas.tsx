@@ -15,7 +15,6 @@ import styles from "./atlas.module.css";
 export type SagaAtlasProps = {
   sagaId: string; sagaName: string; workCount: number;
   model: AtlasModel; authenticated: boolean;
-  initialLens: Lens; initialRole: SagaItemRole | null;
   routes: Array<{ slug: string; name: string; summary: string | null; curated: boolean }>;
   activeRoute: string; adoptedRoute: string | null;
   counter: { completed: number; total: number } | null; // ruta activa curada
@@ -25,7 +24,7 @@ export type SagaAtlasProps = {
 const bold = (chunks: ReactNode) => <b>{chunks}</b>;
 
 /** Isla cliente del atlas de la saga (spec 2026-10-28 §6). Deriva todo de props; su estado
- *  es la lente y la cámara. `initialLens` e `initialRole` siguen en el tipo pero no se leen (manda la URL); rutas, contador y `canEdit` son de las capas y
+ *  es la lente y la cámara. La lente y el rol salen de la URL del cliente (ya no hay props iniciales); rutas, contador y `canEdit` son de las capas y
  *  hojas de las Tasks 7–9. */
 export function SagaAtlas({ sagaId, sagaName, workCount, model, authenticated }: SagaAtlasProps) {
   const t = useTranslations("saga");
@@ -55,7 +54,7 @@ export function SagaAtlas({ sagaId, sagaName, workCount, model, authenticated }:
     return p ? { x: p.x, y: p.y } : null;
   }, [model, layout]);
   const { camera, animated, zoomBy, fitAll, focusOn, bind } = useAtlasCamera({
-    ref: stageRef, viewport, extent: layout.extent, focus, sagaId,
+    ref: stageRef, viewport, extent: layout.extent, focus, sagaId, lens, orientation,
   });
 
   // Cambiar de lente (o girar el móvil) recoloca todo: se encaja de nuevo. La primera

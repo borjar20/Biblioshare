@@ -82,6 +82,10 @@
    cualquier zoom; insignia de lectura; obras atenuadas por `?rol=`. */
 .lane, .tick { position: absolute; transform: translate(-50%, -50%) scale(calc(1 / var(--k, 1))); white-space: nowrap;
   font-size: 12px; font-weight: 700; line-height: 1; color: var(--muted); background: var(--ground); padding: 4px 8px; border-radius: 999px; pointer-events: none; }
+/* Las marcas de año van junto al eje, no sobre él: 14 px de pantalla (14 / k de mundo) debajo en
+   horizontal, a la derecha en vertical. El desplazamiento va antes de la escala inversa. */
+.tick[data-axis='h'] { transform: translate(-50%, -50%) translateY(calc(14px / var(--k, 1))) scale(calc(1 / var(--k, 1))); }
+.tick[data-axis='v'] { transform: translate(-50%, -50%) translateX(calc(14px / var(--k, 1))) scale(calc(1 / var(--k, 1))); }
 .tick { font-family: var(--font-geist-mono), monospace; font-weight: 600; font-variant-numeric: tabular-nums; }
 .laneButton { pointer-events: auto; cursor: pointer; border: 1px solid var(--line); }
 .laneButton[aria-pressed='true'] { color: var(--ground); background: var(--glow); border-color: var(--glow); }
@@ -91,4 +95,5 @@
 .badge { position: absolute; left: 0; top: 0; transform: translate(-30%, -30%) scale(calc(1 / var(--k, 1))); transform-origin: center;
   min-width: 18px; height: 18px; padding: 0 4px; display: grid; place-items: center; border-radius: 9px; background: var(--glow); color: var(--ground);
   font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; pointer-events: none; }
-.work[data-dimmed='true'] { opacity: .35; }
+/* Compuesto: gana al `.root[data-progress='on'] .work[data-skipped='true']` (.45) por especificidad. */
+.work[data-dimmed='true'], .root[data-progress='on'] .work[data-skipped='true'][data-dimmed='true'] { opacity: .35; }

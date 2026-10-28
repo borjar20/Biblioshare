@@ -148,6 +148,9 @@ function layoutRol(model: AtlasModel, { step: STEP }: Dims): Layout {
   return { ...empty(), items, guides, threads };
 }
 
+/** Clave de la marca de las obras sin año; el fondo la traduce a su etiqueta. */
+export const UNDATED_TICK = "sin-año";
+
 function layoutPublicacion(model: AtlasModel, { step: STEP, cross }: Dims): Layout {
   const COL = STEP * 1.3;
   const byIndex = [...model.works].sort((p, q) => p.readingIndex - q.readingIndex);
@@ -159,7 +162,7 @@ function layoutPublicacion(model: AtlasModel, { step: STEP, cross }: Dims): Layo
   const depth = new Map<string, number>();
   const placed = new Map<string, PlacedWork>();
   for (const w of byIndex) {
-    const col = w.year === null ? "sin-año" : String(w.year);
+    const col = w.year === null ? UNDATED_TICK : String(w.year);
     const i = depth.get(col) ?? 0;
     depth.set(col, i + 1);
     placed.set(w.key, {
@@ -167,7 +170,7 @@ function layoutPublicacion(model: AtlasModel, { step: STEP, cross }: Dims): Layo
     });
   }
   const guides: Layout["guides"] = years.map((y, i) => ({ kind: "tick" as const, key: String(y), x: i * COL, y: 70 }));
-  if (hasUndated) guides.push({ kind: "tick", key: "sin-año", x: undatedA, y: 70 });
+  if (hasUndated) guides.push({ kind: "tick", key: UNDATED_TICK, x: undatedA, y: 70 });
 
   return {
     ...empty(), guides, items: model.works.map((w) => placed.get(w.key)!),

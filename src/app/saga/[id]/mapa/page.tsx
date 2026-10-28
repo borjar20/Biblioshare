@@ -12,7 +12,7 @@ import { resolveActiveRoute } from "@/lib/sagas/resolve-active-route";
 import { deriveAtlas } from "@/lib/sagas/atlas/model";
 import { itinerarySteps } from "@/lib/sagas/atlas/itinerary";
 import { routeCounter } from "@/lib/sagas/atlas/route-counter";
-import { legacyAtlasQuery, parseLens, parseRole } from "@/lib/sagas/atlas/lens";
+import { legacyAtlasQuery } from "@/lib/sagas/atlas/lens";
 import { SagaAtlas } from "@/components/saga/atlas/saga-atlas";
 
 export async function generateMetadata({
@@ -77,8 +77,6 @@ export default async function SagaAtlasPage({
       workCount={detail.memberCount}
       model={model}
       authenticated={detail.isAuthenticated}
-      initialLens={parseLens(sp.lente)}
-      initialRole={parseRole(sp.rol)}
       routes={routes.map((r) => ({ slug: r.slug, name: r.name, summary: r.summary, curated: r.id !== undefined }))}
       activeRoute={activeRoute}
       adoptedRoute={detail.routeChoice}

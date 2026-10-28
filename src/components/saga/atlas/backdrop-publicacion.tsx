@@ -1,11 +1,12 @@
 "use client";
 import { useTranslations } from "next-intl";
-import type { AtlasLayout, Orientation } from "@/lib/sagas/atlas/layout";
-import { positions, smoothPath } from "./backdrop-shared";
+import { UNDATED_TICK, type AtlasLayout, type Orientation } from "@/lib/sagas/atlas/layout";
+import { arcChainPath, positions } from "./backdrop-shared";
 import styles from "./atlas.module.css";
 
 /** Fondo de la lente Publicación: eje de años (o «sin año») y un hilo dorado que une las obras
- *  en el orden de lectura, para ver cuánto se aparta de la salida. */
+ *  en el orden de lectura, para ver cuánto se aparta de la salida. Con las obras en una sola fila,
+ *  cada tramo es un arco que sobresale del eje: un salto fuera de orden se lee como un arco grande. */
 export function BackdropPublicacion({ layout, orientation }: { layout: AtlasLayout; orientation: Orientation }) {
   const t = useTranslations("saga");
   const { minX, maxX, minY, maxY } = layout.extent;
@@ -30,12 +31,12 @@ export function BackdropPublicacion({ layout, orientation }: { layout: AtlasLayo
             stroke="var(--muted)" strokeWidth={1} />
         ))}
         {pts.length > 1 && (
-          <path d={smoothPath(pts)} fill="none" stroke="var(--glow)" strokeOpacity={0.5} strokeWidth={2} strokeLinecap="round" />
+          <path d={arcChainPath(pts, orientation)} fill="none" stroke="var(--glow)" strokeOpacity={0.5} strokeWidth={2} strokeLinecap="round" />
         )}
       </svg>
       {ticks.map((g) => (
-        <span key={g.key} className={styles.tick} style={{ left: g.x, top: g.y }}>
-          {g.key === "sin-año" ? t("atlas.noYear") : g.key}
+        <span key={g.key} className={styles.tick} data-axis={orientation} style={{ left: g.x, top: g.y }}>
+          {g.key === UNDATED_TICK ? t("atlas.noYear") : g.key}
         </span>
       ))}
     </>
