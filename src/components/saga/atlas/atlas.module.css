@@ -78,6 +78,7 @@
 .sheet { position: absolute; right: 0; top: calc(100% + 8px); z-index: 2; width: 320px; max-height: 70vh; overflow: auto; padding: 14px;
   border-radius: 14px; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 16px 40px rgba(0, 0, 0, .5); color: var(--fg); }
 .sheetBackdrop { display: none; }
+.sheet:focus { outline: none; }
 .sheetTitle { margin: 0 0 6px; font-size: 14px; font-weight: 700; }
 .routeList { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
 .routeLabel { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; color: var(--muted); cursor: pointer; }

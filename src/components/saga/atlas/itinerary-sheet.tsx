@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useEffect, useId, useOptimistic, useRef, useState, useTransition, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useOptimistic, useRef, useState, useTransition, type FocusEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { sagaHref } from "@/lib/catalog/item-href";
@@ -11,9 +11,12 @@ export type AtlasRoute = { slug: string; name: string; summary: string | null; c
 
 /** Chip de itinerario de la barra superior y su hoja (spec 2026-10-28 §6, maqueta A).
  *  Una sola pieza de DOM: la CSS la pinta como desplegable bajo el chip a ≥ 640 px y como
- *  hoja inferior con fondo por debajo. Se cierra con Escape y al tocar fuera; el foco
- *  vuelve al chip. Elegir una ruta va por `router.replace`: cambia los datos (los pasos de
- *  la ruta salen del servidor), a diferencia de `lente` y `rol`. */
+ *  hoja inferior con fondo por debajo. Se cierra con Escape, con el chip y al tocar fuera;
+ *  el foco vuelve al chip solo con Escape o el chip (tocar fuera lo deja donde se tocó). En
+ *  móvil también se cierra si el foco sale de la hoja: así no se escapa tras el fondo.
+ *  Elegir una ruta va por `router.replace`: cambia los datos (los pasos de la ruta salen
+ *  del servidor), a diferencia de `lente` y `rol`. Las flechas solo mueven la selección;
+ *  la confirman el clic, Enter o Espacio (una navegación por elección, no por tecla). */
 export function ItinerarySheet({ sagaId, routes, activeRoute, adoptedRoute, counter, authenticated, canEdit }: {
   sagaId: string;
   routes: AtlasRoute[];
@@ -34,24 +37,31 @@ export function ItinerarySheet({ sagaId, routes, activeRoute, adoptedRoute, coun
   const chipRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const dialogId = useId();
+  // Radio marcada con las flechas y aún sin confirmar (solo visual).
+  const [browsing, setBrowsing] = useState<string | null>(null);
+  // La flecha marca la radio vecina con un click/change que NO es una elección.
+  const arrowed = useRef(false);
 
+  const checked = browsing ?? selected;
   const active = routes.find((r) => r.slug === selected) ?? routes[0];
   const name = active?.name ?? "";
   const expandable = routes.some((r) => r.curated);
 
-  const close = useCallback(() => {
+  /** Cierra; con `refocus` (Escape, chip) el foco vuelve al chip. */
+  const close = useCallback((refocus: boolean) => {
     setOpen(false);
-    chipRef.current?.focus();
+    setBrowsing(null);
+    if (refocus) chipRef.current?.focus();
   }, []);
 
   useEffect(() => {
     if (!open) return;
     dialogRef.current?.querySelector<HTMLInputElement>("input:checked")?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
+      if (e.key === "Escape") close(true);
     };
     const onDown = (e: PointerEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) close();
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) close(false);
     };
     document.addEventListener("keydown", onKey);
     document.addEventListener("pointerdown", onDown);
@@ -62,12 +72,38 @@ export function ItinerarySheet({ sagaId, routes, activeRoute, adoptedRoute, coun
   }, [open, close]);
 
   function choose(slug: string) {
+    setBrowsing(null);
+    if (slug === selected) return;
     const q = new URLSearchParams(window.location.search); // conserva `lente` y `rol`
     q.set("ruta", slug);
     startTransition(() => {
       setSelected(slug);
       router.replace(`${pathname}?${q}`, { scroll: false });
     });
+  }
+
+  function onListKeyDown(e: ReactKeyboardEvent<HTMLUListElement>) {
+    const radio = e.target as HTMLInputElement;
+    if (radio.type !== "radio") return;
+    if (e.key.startsWith("Arrow")) arrowed.current = true;
+    else if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault(); // Espacio marcaría la radio y dispararía otro change
+      choose(radio.value);
+    }
+  }
+
+  function onRadioChange(slug: string) {
+    if (arrowed.current) {
+      arrowed.current = false;
+      setBrowsing(slug);
+    } else choose(slug);
+  }
+
+  /** Móvil: la hoja es modal de hecho (fondo encima del atlas); si el foco sale, se cierra. */
+  function onBlur(e: FocusEvent<HTMLDivElement>) {
+    const next = e.relatedTarget as Node | null;
+    if (!open || !next || wrapRef.current?.contains(next)) return;
+    if (window.matchMedia?.("(max-width: 640px)").matches) close(false);
   }
 
   if (!expandable) {
@@ -80,7 +116,7 @@ export function ItinerarySheet({ sagaId, routes, activeRoute, adoptedRoute, coun
   }
 
   return (
-    <div ref={wrapRef} className={styles.itinWrap}>
+    <div ref={wrapRef} className={styles.itinWrap} onBlur={onBlur}>
       <button
         ref={chipRef}
         type="button"
@@ -88,22 +124,24 @@ export function ItinerarySheet({ sagaId, routes, activeRoute, adoptedRoute, coun
         aria-expanded={open}
         aria-controls={open ? dialogId : undefined}
         aria-label={t("atlas.itinerary", { name })}
-        onClick={() => (open ? close() : setOpen(true))}
+        onClick={() => (open ? close(true) : setOpen(true))}
       >
         <span aria-hidden="true">⟿</span> <span className={styles.chipName}>{name}</span> <span aria-hidden="true">▾</span>
       </button>
       {open && (
         <>
-          <div className={styles.sheetBackdrop} aria-hidden="true" onClick={close} />
-          <div ref={dialogRef} id={dialogId} role="dialog" aria-label={t("atlas.itineraryTitle")} className={styles.sheet}>
+          <div className={styles.sheetBackdrop} aria-hidden="true" onClick={() => close(false)} />
+          <div ref={dialogRef} id={dialogId} role="dialog" aria-label={t("atlas.itineraryTitle")} className={styles.sheet}
+            // Enfocable para que un toque en su relleno o en una etiqueta no saque el foco de la hoja.
+            tabIndex={-1}>
             <p className={styles.sheetTitle} aria-hidden="true">{t("atlas.itineraryTitle")}</p>
-            <ul className={styles.routeList}>
+            <ul className={styles.routeList} onKeyDown={onListKeyDown} onPointerDown={() => (arrowed.current = false)}>
               {routes.map((r) => {
-                const isActive = r.slug === selected;
+                const isActive = r.slug === checked;
                 return (
                   <li key={r.slug} className={styles.route} data-active={isActive || undefined}>
                     <label className={styles.routeLabel}>
-                      <input type="radio" name={`${dialogId}-ruta`} value={r.slug} checked={isActive} onChange={() => choose(r.slug)} />
+                      <input type="radio" name={`${dialogId}-ruta`} value={r.slug} checked={isActive} onChange={() => onRadioChange(r.slug)} />
                       <span>{r.name}</span>
                     </label>
                     {isActive && (

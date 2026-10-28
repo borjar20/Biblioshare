@@ -326,6 +326,121 @@ describe("capas Itinerario y Progreso, y hoja de itinerarios", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
+  // Secuencia de un clic real de ratón (pointerdown → pointerup → click): ningún control del
+  // cromo puede depender de que el lienzo no vea el pointerdown.
+  const realClick = (el: Element) => {
+    fireEvent.pointerDown(el, { pointerId: 1, pointerType: "mouse", button: 0, buttons: 1, clientX: 10, clientY: 10 });
+    fireEvent.pointerUp(el, { pointerId: 1, pointerType: "mouse", button: 0, clientX: 10, clientY: 10 });
+    fireEvent.click(el, { detail: 1 });
+  };
+
+  it("un clic real (pointerdown, pointerup, click) en el chip abre la hoja", () => {
+    view({ routes, activeRoute: "la-guardia" });
+    const chip = screen.getByRole("button", { name: "Itinerario: La Guardia" });
+    realClick(chip.querySelector("span:nth-child(2)")!); // el texto del chip, como en el navegador
+    expect(chip.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    realClick(chip);
+    expect(chip.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("un clic real en Progreso, en las lentes y en el zoom funciona igual", () => {
+    view({ routes, activeRoute: "la-guardia" });
+    const toggle = screen.getByRole("button", { name: "Progreso" });
+    realClick(toggle);
+    expect(toggle.getAttribute("aria-pressed")).toBe("false");
+    realClick(screen.getByRole("button", { name: "Rol" }));
+    expect(screen.getByRole("button", { name: "Rol" }).getAttribute("aria-pressed")).toBe("true");
+    const k = () => plane().style.transform;
+    const before = k();
+    realClick(screen.getByRole("button", { name: "Acercar" }));
+    expect(k()).not.toBe(before);
+  });
+
+  it("el cromo (barra, dock, zoom) no vive dentro del lienzo que toma los gestos", () => {
+    view({ routes, activeRoute: "la-guardia" });
+    for (const name of ["Itinerario: La Guardia", "Progreso", "Orden", "Acercar"]) {
+      expect(stage().contains(screen.getByRole("button", { name }))).toBe(false);
+    }
+  });
+
+  it("las flechas solo mueven la selección; Enter la confirma (una navegación)", () => {
+    view({ routes, activeRoute: "la-guardia" });
+    fireEvent.click(screen.getByRole("button", { name: "Itinerario: La Guardia" }));
+    const guardia = screen.getByRole("radio", { name: "La Guardia" });
+    const lectura = screen.getByRole("radio", { name: "Orden de lectura" }) as HTMLInputElement;
+    // El navegador, con una flecha: keydown en la radio enfocada y luego click/change en la siguiente.
+    fireEvent.keyDown(guardia, { key: "ArrowUp" });
+    fireEvent.click(lectura);
+    expect(replace).not.toHaveBeenCalled();
+    expect(lectura.checked).toBe(true);
+    fireEvent.keyDown(lectura, { key: "Enter" });
+    expect(replace).toHaveBeenCalledTimes(1);
+    expect(replace).toHaveBeenCalledWith("/saga/s1/mapa?ruta=lectura", { scroll: false });
+  });
+
+  it("Espacio confirma la radio enfocada", () => {
+    view({ routes, activeRoute: "la-guardia" });
+    fireEvent.click(screen.getByRole("button", { name: "Itinerario: La Guardia" }));
+    const lectura = screen.getByRole("radio", { name: "Orden de lectura" });
+    fireEvent.keyDown(lectura, { key: "ArrowUp" });
+    fireEvent.click(lectura);
+    expect(replace).not.toHaveBeenCalled();
+    fireEvent.keyDown(lectura, { key: " " });
+    expect(replace).toHaveBeenCalledTimes(1);
+  });
+
+  it("tocar fuera cierra sin llevar el foco al chip; cerrar con el chip sí lo lleva", () => {
+    view({ routes, activeRoute: "la-guardia" });
+    const chip = screen.getByRole("button", { name: "Itinerario: La Guardia" });
+    fireEvent.click(chip);
+    stage().focus();
+    fireEvent.pointerDown(stage());
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(stage());
+    fireEvent.click(chip);
+    fireEvent.click(chip);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(chip);
+  });
+
+  describe("hoja en móvil (< 640 px)", () => {
+    const setNarrow = (narrow: boolean) => {
+      window.matchMedia = ((q: string) => ({
+        matches: narrow && q.includes("max-width"), media: q, onchange: null,
+        addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, dispatchEvent: () => false,
+      })) as unknown as typeof window.matchMedia;
+    };
+    afterEach(() => {
+      delete (window as { matchMedia?: unknown }).matchMedia;
+    });
+
+    it("si el foco sale de la hoja, se cierra", () => {
+      setNarrow(true);
+      view({ routes, activeRoute: "la-guardia" });
+      fireEvent.click(screen.getByRole("button", { name: "Itinerario: La Guardia" }));
+      const radio = screen.getByRole("radio", { name: "La Guardia" });
+      fireEvent.blur(radio, { relatedTarget: stage() });
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("el foco que se mueve dentro de la hoja no la cierra", () => {
+      setNarrow(true);
+      view({ routes, activeRoute: "la-guardia" });
+      fireEvent.click(screen.getByRole("button", { name: "Itinerario: La Guardia" }));
+      fireEvent.blur(screen.getByRole("radio", { name: "La Guardia" }), { relatedTarget: screen.getByRole("dialog") });
+      expect(screen.getByRole("dialog")).toBeTruthy();
+    });
+
+    it("en escritorio, el foco que sale no la cierra (desplegable no modal)", () => {
+      setNarrow(false);
+      view({ routes, activeRoute: "la-guardia" });
+      fireEvent.click(screen.getByRole("button", { name: "Itinerario: La Guardia" }));
+      fireEvent.blur(screen.getByRole("radio", { name: "La Guardia" }), { relatedTarget: stage() });
+      expect(screen.getByRole("dialog")).toBeTruthy();
+    });
+  });
+
   it("con counter sale «Llevas 0 de 2 de esta ruta», Adoptar y el enlace de gestión", () => {
     view({ routes, activeRoute: "la-guardia", counter: { completed: 0, total: 2 }, canEdit: true });
     fireEvent.click(screen.getByRole("button", { name: "Itinerario: La Guardia" }));
