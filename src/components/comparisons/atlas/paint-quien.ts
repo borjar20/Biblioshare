@@ -1,6 +1,6 @@
 import type { AtlasPerson } from '@/lib/comparisons/atlas/types';
 import { clusterState, poleLabelAbove, type QuienLayout } from '@/lib/comparisons/atlas/layout';
-import { toScreen } from '@/lib/comparisons/atlas/camera';
+import { toScreen } from '@/lib/atlas/camera';
 import { initials } from '../presentation';
 import { TITLE_ZOOM, type PaintView } from './atlas-palette';
 

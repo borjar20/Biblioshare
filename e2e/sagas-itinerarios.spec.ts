@@ -29,30 +29,22 @@ import { submitLogin } from "./support/visible-form";
 // escribe en BD desde Playwright, solo hace login + navega + interactúa con la
 // UI).
 //
-// Esta suite NO muta el seed salvo la adopción de ruta del test 3, que SÍ deja
-// fila en `saga_route_choices` y por eso se limpia por REST al empezar ese test
-// (`clearRouteChoice`, más abajo). La cabecera decía antes que esa adopción era
-// "idempotente"; no lo era, y esa frase costó tiempo dos veces (issues #180 y
-// #182): idempotente en BD (el `upsert` no duplica) NO es idempotente en UI —
-// con la fila ya puesta, el botón que el test busca ("Leer por aquí") ya no
-// existe, porque pasa a decir "Leyendo por aquí".
+// Esta suite NO muta el seed. La adopción de ruta (que sí deja fila en
+// `saga_route_choices`) se mudó a sagas-atlas.spec.ts, que la limpia antes y
+// después; la historia de por qué esa limpieza no es opcional (#180, #182) está
+// allí.
 const UNIVERSO_ID = "33d7bb93-da3d-4453-a6da-1722beff134d";
 
 const COLLAB_EMAIL = process.env.COLLAB_USER_EMAIL ?? "borjar20+bibliosharecollab@gmail.com";
 const COLLAB_PASSWORD = process.env.COLLAB_USER_PASSWORD ?? "CollabTest1234pass";
 // Id fijo del mismo usuario de arriba (`borjar20+bibliosharecollab@gmail.com`
 // en dev, verificado por SQL 2026-07-27) — mismo patrón que el resto de UUIDs
-// de este fichero: fijos, sin resolverlos en cada test. Solo hace falta para
-// limpiar `saga_route_choices` por REST (más abajo, test "adoptar una ruta"),
-// que filtra por `user_id`, no por email.
+// de este fichero: fijos, sin resolverlos en cada test. Hace falta para leer
+// sus pases por REST (`expectedCounts`), que filtran por `user_id`.
 const COLLAB_USER_ID = "4265f51f-c784-4c5b-8153-3ef970800456";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-function adminHeaders() {
-  return { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` };
-}
 
 // Calcado del helper `loginAs` de sagas-v2-editor.spec.ts/sagas-v2-curacion.spec.ts
 // (patrón del repo: no importar entre specs de e2e, cada fichero es autónomo).
@@ -60,27 +52,6 @@ async function loginAsCollaborator(page: Page) {
   await page.goto("/login");
   await submitLogin(page, COLLAB_EMAIL, COLLAB_PASSWORD);
   await page.waitForURL("/");
-}
-
-// Hallazgo (2026-07-27, al correr la suite entera de sagas tras la fase 3):
-// esta ruta llevaba adoptada por `bibliosharecollab` desde el 2026-07-23
-// (verificado por SQL) — de una pasada de este mismo test que nunca limpió,
-// pese a que el comentario original del test la llamaba "idempotente". No lo
-// es: `AdoptRouteButton` pinta "Leyendo por aquí" en vez de "Leer por aquí"
-// en cuanto `detail.routeChoice === slug`, así que con la ruta YA adoptada el
-// `getByRole("button", { name: "Leer por aquí" })` de la línea de abajo nunca
-// resuelve y el test cuelga hasta el timeout — no es un fallo de fase 3 (este
-// fichero no lo tocó) ni del producto (el botón hace justo lo que su nombre
-// dice). Se limpia por REST antes de cada pasada para que la precondición del
-// test ("Leer por aquí" visible) se cumpla siempre, sin depender de qué dejó
-// la pasada anterior — el propio test ya deja la ruta adoptada al acabar
-// (diseño original), así que no hace falta un `finally` que la desadopte.
-async function clearRouteChoice(sagaId: string) {
-  const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/saga_route_choices?user_id=eq.${COLLAB_USER_ID}&saga_id=eq.${sagaId}`,
-    { method: "DELETE", headers: adminHeaders() },
-  );
-  if (!res.ok) throw new Error(`clearRouteChoice: ${res.status} ${res.statusText} — ${await res.text()}`);
 }
 
 // Cuentas esperadas por REST (service role): obras de «La Guardia» (subsaga
@@ -114,15 +85,26 @@ async function expectedCounts() {
   return { guardia: count(guardia), publicacion: count(universo) };
 }
 
+/** Abre la hoja de itinerarios del atlas desde su chip («Itinerario: <nombre>»). */
+async function openItineraries(page: Page) {
+  await expect(page.locator("[data-ready='true'] [data-atlas-stage]")).toBeVisible();
+  await page.getByRole("button", { name: /^Itinerario: / }).click();
+  return page.getByRole("dialog", { name: "Elige itinerario" });
+}
+
 test.describe("itinerarios de lectura", () => {
-  test("el selector lista las rutas y la elegida muestra su cabecera", async ({ page }) => {
-    await page.goto(`/saga/${UNIVERSO_ID}/como-leerla`);
+  // Mudado al atlas (Task 11 del atlas): el selector de rutas de «Cómo leerla» es ahora la hoja
+  // del chip de itinerario. Elegir una ruta cambia los datos (?ruta=) y la elegida enseña su
+  // resumen y su contador.
+  test("la hoja lista las rutas y la elegida muestra su resumen y su contador", async ({ page }) => {
+    await page.goto(`/saga/${UNIVERSO_ID}/mapa`);
+    const hoja = await openItineraries(page);
 
-    await page.getByRole("link", { name: "La Guardia" }).click();
-
-    await expect(page.getByRole("heading", { name: "La Guardia" })).toBeVisible();
-    await expect(page.getByText("Policíaco")).toBeVisible();
-    await expect(page.getByText(/Llevas \d+ de \d+ de esta ruta/)).toBeVisible();
+    await hoja.getByRole("radio", { name: "La Guardia", exact: true }).check();
+    await expect(page).toHaveURL(/[?&]ruta=la-guardia(&|$)/);
+    await expect(page.getByRole("button", { name: "Itinerario: La Guardia" })).toBeVisible();
+    await expect(hoja.getByText("Policíaco")).toBeVisible();
+    await expect(hoja.getByText(/Llevas \d+ de \d+ de esta ruta/)).toBeVisible();
   });
 
   // Antes era una red contra el #91 («el progreso del hero NO cambia al cambiar
@@ -156,36 +138,30 @@ test.describe("itinerarios de lectura", () => {
     await page.goto(`/saga/${UNIVERSO_ID}?ruta=publicacion`);
     await expect(contador).toHaveText(`${esperado.publicacion.completed} de ${esperado.publicacion.total}`);
 
-    // Y /como-leerla fija el contador propio de la ruta curada.
-    await page.goto(`/saga/${UNIVERSO_ID}/como-leerla?ruta=la-guardia`);
+    // Y la hoja de itinerarios del atlas fija el contador propio de la ruta curada.
+    await page.goto(`/saga/${UNIVERSO_ID}/mapa?ruta=la-guardia`);
+    const hoja = await openItineraries(page);
     await expect(
-      page.getByText(`Llevas ${esperado.guardia.completed} de ${esperado.guardia.total} de esta ruta`),
+      hoja.getByText(`Llevas ${esperado.guardia.completed} de ${esperado.guardia.total} de esta ruta`),
     ).toBeVisible();
   });
 
-  test("adoptar una ruta hace que la ficha abra por ella", async ({ page }) => {
-    await clearRouteChoice(UNIVERSO_ID);
-    await loginAsCollaborator(page);
-    await page.goto(`/saga/${UNIVERSO_ID}/como-leerla?ruta=la-guardia`);
+  // «Adoptar una ruta hace que la ficha abra por ella» se mudó a sagas-atlas.spec.ts (test 6),
+  // que adopta desde la hoja del atlas y además deja limpia `saga_route_choices` al acabar.
 
-    await page.getByRole("button", { name: "Leer por aquí" }).click();
-    await expect(page.getByRole("button", { name: "Leyendo por aquí" })).toBeVisible();
-
-    // Sin searchParams: debe abrir por la adoptada.
-    await page.goto(`/saga/${UNIVERSO_ID}/como-leerla`);
-    await expect(page.getByRole("heading", { name: "La Guardia" })).toBeVisible();
-  });
-
-  test("los enlaces viejos con ?orden=publicacion siguen funcionando", async ({ page }) => {
+  test("los enlaces viejos con ?orden=publicacion acaban en la lente Publicación", async ({ page }) => {
     await page.goto(`/saga/${UNIVERSO_ID}/como-leerla?orden=publicacion`);
 
-    // La lista por año se reconoce por su numeración 01, 02…
-    await expect(page.getByText("01", { exact: true })).toBeVisible();
+    // Redirect en streaming (200 + redirect en cliente): se afirma la URL final, no el status.
+    await expect(page).toHaveURL(`/saga/${UNIVERSO_ID}/mapa?lente=publicacion`);
+    await expect(page.getByRole("button", { name: "Publicación", exact: true })).toHaveAttribute("aria-pressed", "true");
+    // En la lente Publicación cada portada lleva su puesto de lectura.
+    await expect(page.locator("[data-reading-no]")).toHaveCount(3);
   });
 
   // Antes de este test, el único enlace a /rutas vivía en RouteView, que solo
   // se monta cuando la ruta ACTIVA ya es una curada. Aterrizar en la ficha sin
-  // parámetros (la ficha, sin /como-leerla) deja la ruta activa
+  // parámetros (la ficha, sin el atlas) deja la ruta activa
   // fuera de la ecuación: si el enlace de saga-info.tsx no existiera, no
   // habría ningún elemento con este rol/nombre en la página y el test
   // fallaría por timeout. Sin teclear `/rutas` en la barra de direcciones:

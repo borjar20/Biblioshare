@@ -24,6 +24,15 @@ import { submitLogin } from "./support/visible-form";
 // rompe: alguien podría volver a leer `graph !== null` en vez de `hasGraph`
 // en un consumidor nuevo.
 //
+// Mudado al atlas (Task 11 del atlas, 2026-10-28). El atlas ya no mira
+// `show_map` (spec del atlas §3 y §9: abre para toda saga con obras), así que el
+// test 1 deja de encender el interruptor y el 1b («con el interruptor apagado no
+// hay mapa») se borró: afirma justo lo contrario de lo que el atlas promete. Su
+// sustituto es el test 9 de sagas-atlas.spec.ts. Los recuentos de
+// `.react-flow__node` pasan a `[data-work-key]` del plano, y la fila de ventana
+// del timeline a la entrada de «Ver como lista». El párrafo de abajo sobre
+// `show_map` es historia de la fase 3.
+//
 // Mismo patrón de sesión/limpieza que el resto de specs de sagas
 // (sagas-ventanas.spec.ts, sagas-colocacion-bloques.spec.ts): `fetch` nativo
 // (NO el fixture `request` de Playwright, que muere con el contexto del test
@@ -76,26 +85,6 @@ async function loginAsDevtest(page: Page) {
 
 function adminHeaders() {
   return { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` };
-}
-
-// ── Interruptor `show_map` (fase 3, Task 4-bis) ─────────────────────────────
-async function fetchShowMap(sagaId: string): Promise<boolean> {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/sagas?id=eq.${sagaId}&select=show_map`, {
-    headers: adminHeaders(),
-  });
-  if (!res.ok) throw new Error(`fetchShowMap: ${res.status} ${res.statusText} — ${await res.text()}`);
-  const rows = (await res.json()) as Array<{ show_map: boolean }>;
-  if (!rows[0]) throw new Error("fetchShowMap: no se encontró la saga — ¿cambió el seed?");
-  return rows[0].show_map;
-}
-
-async function patchShowMap(sagaId: string, showMap: boolean) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/sagas?id=eq.${sagaId}`, {
-    method: "PATCH",
-    headers: { ...adminHeaders(), "Content-Type": "application/json" },
-    body: JSON.stringify({ show_map: showMap }),
-  });
-  if (!res.ok) throw new Error(`patchShowMap: ${res.status} ${res.statusText} — ${await res.text()}`);
 }
 
 // ── Ventana de Isabel Allende (test 4) ──────────────────────────────────────
@@ -183,75 +172,42 @@ async function deleteRoute(routeId: string) {
   if (!res.ok) throw new Error(`deleteRoute: ${res.status} ${res.statusText} — ${await res.text()}`);
 }
 
+/** Espera a que el atlas haya pintado su primer layout (saga-atlas.tsx, `data-ready`). */
+async function atlasReady(page: Page) {
+  await expect(page.locator("[data-ready='true'] [data-atlas-stage]")).toBeVisible();
+}
+const obra = (page: Page, itemId: string) => page.locator(`[data-work-key="i:book:${itemId}"]`);
+
 // ─────────────────────────────────────────────────────────────────────────
-// Test 1: una saga curada y SIN grafo dibujado a mano enseña mapa cuando el
-// curador enciende `show_map`. Antes de esta fase, `hasGraph` exigía una fila
-// en `saga_nodes` — este universo nunca tuvo una, así que hoy este es
-// exactamente el caso que no enseñaba nada.
+// Test 1: una saga curada y SIN grafo dibujado a mano enseña mapa. Antes de la
+// fase 3, `hasGraph` exigía una fila en `saga_nodes` — este universo nunca tuvo
+// una. Con el atlas tampoco depende ya de `show_map`, que en este universo está
+// apagado (lo comprueba sagas-atlas.spec.ts, test 9).
 //
-// Locator: `.react-flow__node` (clase del propio React Flow, no nuestra —
-// mismo criterio que ya usaba sagas-v2-mapa.spec.ts contra el grafo viejo) +
-// `[data-testid="rf__node-<id>"]`, que React Flow genera a partir del `id`
-// que le pasamos (`saga-graph-view.tsx`: `id: n.id`), y que `deriveSagaMap`
-// construye de forma determinista como `i:<tipo>:<uuid>` a partir de las
-// claves de dominio (la misma clave que usan el borrador de secuencia y las
-// ventanas) — no de un índice de render. Es más estable que el texto visible
-// (título, que pasa por next-intl y por el layout) y más preciso que contar
-// nodos a secas: identifica CUÁLES aparecen, no solo cuántos.
-test("una saga curada y sin grafo dibujado a mano enseña mapa con el interruptor encendido", async ({
-  page,
-}) => {
-  const showMapBefore = await fetchShowMap(ITINERARIOS_UNIVERSO_ID);
-  try {
-    await patchShowMap(ITINERARIOS_UNIVERSO_ID, true);
-    await loginAsDevtest(page);
-    await page.goto(`/saga/${ITINERARIOS_UNIVERSO_ID}/como-leerla?ruta=lectura`);
-
-    // La ruta sintética «lectura» solo se ofrece con `hasGraph` (buildRouteList):
-    // que esté en el selector ya demuestra que el interruptor encendido +
-    // curación real bastan para que exista.
-    await expect(page.getByRole("link", { name: "Orden de lectura", exact: true })).toBeVisible();
-
-    // El mapa 2D: exactamente los 3 nodos de la curación (la obra directa +
-    // las 2 de su bloque), ni uno más — un bloque nunca es un nodo (Task 1).
-    await expect(page.locator(".react-flow__node")).toHaveCount(3);
-    await expect(page.locator(`[data-testid="rf__node-i:book:${RONDA_DE_NOCHE_ID}"]`)).toBeVisible();
-    await expect(page.locator(`[data-testid="rf__node-i:book:${GUARDIAS_ID}"]`)).toBeVisible();
-    await expect(page.locator(`[data-testid="rf__node-i:book:${PIES_DE_BARRO_ID}"]`)).toBeVisible();
-  } finally {
-    await patchShowMap(ITINERARIOS_UNIVERSO_ID, showMapBefore);
-  }
-});
-
+// Locator: `[data-work-key="i:<tipo>:<uuid>"]`, la clave de dominio que
+// `deriveSagaMap` construye de forma determinista (la misma que usan el
+// borrador de secuencia y las ventanas) — no un índice de render. Identifica
+// CUÁLES aparecen, no solo cuántos.
 // ─────────────────────────────────────────────────────────────────────────
-// Test 1b (el matiz que el brief añade sobre el plan original, "la garantía
-// que más fácil se rompe"): con el interruptor APAGADO no hay mapa, aunque la
-// saga tenga curación Y un itinerario curado a mano (`la-guardia`) — la
-// pestaña Mapa sigue viva (por esa ruta no sintética), pero ni ofrece
-// «lectura» ni pinta el grafo 2D para NINGUNA ruta, ni siquiera la curada:
-// `resolveSagaGraph` aplica el interruptor en el ORIGEN (`get-saga-detail.ts`),
-// así que `detail.graph` es `null` para toda la ficha, no solo para la ruta
-// sintética.
-// ─────────────────────────────────────────────────────────────────────────
-test("con el interruptor apagado no hay mapa, ni para «lectura» ni para una ruta curada", async ({
-  page,
-}) => {
-  const showMapBefore = await fetchShowMap(ITINERARIOS_UNIVERSO_ID);
-  try {
-    await patchShowMap(ITINERARIOS_UNIVERSO_ID, false);
-    await loginAsDevtest(page);
-    // `ruta=lectura` explícito: al no estar en `known` (buildRouteList la
-    // excluye sin `hasGraph`), page.tsx degrada a la primera ruta real
-    // (`la-guardia`) en vez de dar página en blanco — se comprueba esa
-    // degradación de paso.
-    await page.goto(`/saga/${ITINERARIOS_UNIVERSO_ID}/como-leerla?ruta=lectura`);
+test("una saga curada y sin grafo dibujado a mano enseña sus obras en el atlas", async ({ page }) => {
+  await loginAsDevtest(page);
+  await page.goto(`/saga/${ITINERARIOS_UNIVERSO_ID}/mapa?ruta=lectura`);
+  await atlasReady(page);
 
-    await expect(page.getByRole("link", { name: "Orden de lectura", exact: true })).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: "La Guardia" })).toBeVisible();
-    await expect(page.locator(".react-flow__node")).toHaveCount(0);
-  } finally {
-    await patchShowMap(ITINERARIOS_UNIVERSO_ID, showMapBefore);
-  }
+  // La ruta sintética «lectura» se ofrece sin `hasGraph` (shelfRoutesFor): que
+  // esté en la hoja de itinerarios, y marcada, demuestra que la curación real basta.
+  await page.getByRole("button", { name: /^Itinerario: / }).click();
+  await expect(
+    page.getByRole("dialog", { name: "Elige itinerario" }).getByRole("radio", { name: "Orden de lectura", exact: true }),
+  ).toBeChecked();
+  await page.keyboard.press("Escape");
+
+  // Exactamente las 3 obras de la curación (la directa + las 2 de su bloque),
+  // ni una más — un bloque nunca es una obra (Task 1).
+  await expect(page.locator("[data-work-key]")).toHaveCount(3);
+  await expect(obra(page, RONDA_DE_NOCHE_ID)).toHaveCount(1);
+  await expect(obra(page, GUARDIAS_ID)).toHaveCount(1);
+  await expect(obra(page, PIES_DE_BARRO_ID)).toHaveCount(1);
 });
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -262,9 +218,8 @@ test("con el interruptor apagado no hay mapa, ni para «lectura» ni para una ru
 // curación real produce), y la comprobación de "recorrible" es contra la UI:
 // los 3 pasos salen como enlaces navegables en `/saga/[id]?ruta=orden-curado`.
 //
-// No toca `show_map`: RouteView (la ruta curada) no depende del interruptor
-// para pintar su LISTA de pasos — solo el grafo 2D resaltado encima depende
-// de él (ver test 1b) — así que este test es independiente del anterior.
+// En el atlas, «recorrible» se lee en el plano: cada obra lleva su número de
+// paso (`data-step`), en el orden de la BD.
 // ─────────────────────────────────────────────────────────────────────────
 test("el generador crea un itinerario recorrible a partir de la curación", async ({ page }) => {
   // Guarda defensiva: si una pasada anterior no limpió (p. ej. el proceso
@@ -300,13 +255,14 @@ test("el generador crea un itinerario recorrible a partir de la curación", asyn
     expect(entries.map((e) => e.item_id)).toEqual([GUARDIAS_ID, PIES_DE_BARRO_ID, RONDA_DE_NOCHE_ID]);
     expect(entries.map((e) => e.position)).toEqual([1, 2, 3]);
 
-    // Recorrible: la ficha, en la ruta generada, ofrece los 3 pasos como
-    // enlaces a sus obras — no una pantalla vacía ni un itinerario fantasma.
-    await page.goto(`/saga/${ITINERARIOS_UNIVERSO_ID}/como-leerla?ruta=orden-curado`);
-    await expect(page.getByRole("heading", { name: "Orden curado" })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Ronda de noche/ })).toBeVisible();
-    await expect(page.getByRole("link", { name: /¡Guardias! ¡Guardias!/ })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Pies de barro/ })).toBeVisible();
+    // Recorrible: el atlas, en la ruta generada, numera las 3 obras como pasos
+    // 1..3 en ese mismo orden — no una pantalla vacía ni un itinerario fantasma.
+    await page.goto(`/saga/${ITINERARIOS_UNIVERSO_ID}/mapa?ruta=orden-curado`);
+    await atlasReady(page);
+    await expect(page.getByRole("button", { name: "Itinerario: Orden curado" })).toBeVisible();
+    await expect(obra(page, GUARDIAS_ID)).toHaveAttribute("data-step", "1");
+    await expect(obra(page, PIES_DE_BARRO_ID)).toHaveAttribute("data-step", "2");
+    await expect(obra(page, RONDA_DE_NOCHE_ID)).toHaveAttribute("data-step", "3");
   } finally {
     const id = routeId ?? (await fetchGeneratedRouteId());
     if (id) await deleteRoute(id);
@@ -318,41 +274,17 @@ test("el generador crea un itinerario recorrible a partir de la curación", asyn
 // sujeto y misma ancla que sagas-ventanas.spec.ts (Isabel Allende, `libre`,
 // «a partir de Rayuela»), sembrados aquí por REST directo — este test no
 // vuelve a probar `WindowEditor` (ya cubierto ahí), sino que la ventana
-// GUARDADA se dibuja como arista en el mapa derivado (`deriveSagaMap`, regla
-// 9 del plan: `after` → arista entrante `requisito`).
+// GUARDADA llega al mapa derivado (`deriveSagaMap`, regla 9 del plan: `after`
+// → arista entrante `requisito`).
 //
-// Locator, y por qué NO es el del grafo 2D (el brief pide mirar los dos antes
-// de decidir): se probó primero `[data-testid="rf__edge-<id>"]` — React Flow
-// pone ese testid al `<g>` de cada arista a partir del `id` que le pasamos, y
-// `deriveSagaMap` lo construye de forma determinista desde las claves de
-// dominio (`window:${after}->${subject}`), así que en teoría era el locator
-// más estable. En la práctica falló SIEMPRE (dos pasadas, con reintento):
-// depurado contra el propio Chromium de Playwright, el `<g>` existe con el
-// `data-id`/`aria-label` correctos y su `<path>` trae una `d` válida
-// (`M78,58 C309,58 309,58 540,58`), pero `getBoundingClientRect()` da
-// `height: 0` — Rayuela e Isabel caen en la MISMA fila del mapa (mismo bloque,
-// Era Uno), así que la arista es una línea perfectamente horizontal, y el
-// bounding box GEOMÉTRICO de una línea así no tiene alto aunque el trazo
-// (`stroke-width: 3`) sí se vea. `toBeVisible()` exige área > 0, así que
-// nunca pasaría para NINGUNA arista horizontal — no es un bug del grafo, es
-// una cuenta de `getBoundingClientRect()` sobre SVG que no ve el trazo. Y es
-// el caso NORMAL aquí: dos anclas de la misma ventana casi siempre viven en
-// el mismo bloque.
-//
-// El timeline móvil (`reading-timeline.tsx`) no tiene ese problema: es HTML
-// de servidor, sin geometría de lienzo.
-//
-// Actualizado en la fase 1 del timeline con estados (2026-07-28): antes esto
-// se comprobaba por el chip «Requisito» de la RAMA, porque un sujeto `libre`
-// no tenía `orderNo` y acababa colgando de su conexión más temprana. Ahora ese
-// sujeto es una fila `window` colocada junto a su ancla, y la fila NOMBRA el
-// ancla («después de Rayuela»). La prueba es más fuerte, no más débil: el chip
-// solo decía «hay una arista requisito»; el texto dice ADEMÁS con quién, que
-// es justo lo que la arista de ventana codifica.
+// Locator: no el trazo SVG del plano (la geometría de una línea no dice con
+// quién conecta, y su caja puede tener alto 0 cuando es horizontal: le pasó al
+// grafo viejo), sino la entrada de la obra en «Ver como lista», que NOMBRA el
+// ancla («después de Rayuela»). Sale de `resolveEntry` en derive-map.ts, la
+// MISMA resolución que dibuja la arista.
 // ─────────────────────────────────────────────────────────────────────────
-test("una entrada libre con ventana produce la arista que cruza en el mapa", async ({ page }) => {
+test("una entrada libre con ventana nombra su ancla en el atlas", async ({ page }) => {
   const isabelBefore = await fetchIsabel();
-  const showMapBefore = await fetchShowMap(SAGAS_V2_UNIVERSO_ID);
   try {
     // Semilla: Isabel Allende pasa a `libre` con una ventana de una sola
     // ancla («a partir de Rayuela»), igual que sagas-ventanas.spec.ts
@@ -360,31 +292,23 @@ test("una entrada libre con ventana produce la arista que cruza en el mapa", asy
     // UI de captura de la ventana.
     await patchIsabel({ position: null, placement: "libre" });
     await insertIsabelWindow();
-    // El universo [QA Sagas v2] ya tiene `show_map=true` en dev, pero no hay
-    // que confiar en un estado incidental: se fija explícitamente y se
-    // restaura al valor real leído, no a `true` a ciegas.
-    await patchShowMap(SAGAS_V2_UNIVERSO_ID, true);
 
-    // Viewport móvil, mismo que ya usaba sagas-v2-mapa.spec.ts para esta misma
-    // pieza. Desde la fase 1 el timeline se monta también al pie del grafo en
-    // PC, así que las dos cáscaras están en el DOM y hay que escopar a la
-    // VISIBLE (regla de los dos árboles) o el locator encuentra el doble.
     await page.setViewportSize({ width: 390, height: 844 });
     await loginAsDevtest(page);
-    await page.goto(`/saga/${SAGAS_V2_UNIVERSO_ID}/como-leerla?ruta=lectura`);
+    await page.goto(`/saga/${SAGAS_V2_UNIVERSO_ID}/mapa?ruta=lectura`);
+    await atlasReady(page);
+    await page.getByRole("button", { name: "Ver como lista" }).click();
 
-    // La fila de ventana que contiene el enlace a la ficha de Isabel (href
-    // estable, de itemHref), y que además nombra el ancla. Que diga «Rayuela»
-    // es lo que prueba la arista: sale de `resolveEntry` en derive-map.ts, la
-    // MISMA resolución que dibuja la arista del grafo.
-    const isabelWindow = page
-      .locator('[data-testid="timeline-window"]:visible')
+    // La entrada que contiene el enlace a la ficha de Isabel (href estable, de
+    // itemHref), y que además nombra el ancla.
+    const isabel = page
+      .getByRole("list", { name: /^Obras de / })
+      .getByRole("listitem")
       .filter({ has: page.locator(`a[href="/libro/${ISABEL_ID}"]`) });
-    await expect(isabelWindow).toBeVisible();
-    await expect(isabelWindow).toContainText("después de Rayuela");
+    await expect(isabel).toBeVisible();
+    await expect(isabel).toContainText("Encaja después de Rayuela");
   } finally {
     await patchIsabel(isabelBefore);
     await deleteIsabelWindow();
-    await patchShowMap(SAGAS_V2_UNIVERSO_ID, showMapBefore);
   }
 });

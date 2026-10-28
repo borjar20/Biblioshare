@@ -8107,3 +8107,34 @@ las notas se pintan con su escala («4,5/5»).
    iniciales) en lugar de un avatar propio de la ficha.
 
 Sin migraciones. Evidencia en [el informe de la fase 3](../testing/2026-10-28-sagas-ficha-lector-f3.md).
+
+## 2026-10-28 — Atlas de la saga (rework de sagas, subproyecto 2)
+
+1. **El atlas sustituye a `/saga/[id]/mapa` (React Flow) y a `/como-leerla`.** `/mapa` es ahora el atlas y
+   `/como-leerla` es una redirección (con los parámetros). Se retiran el grafo, el timeline, los selectores de
+   itinerario y `@xyflow/react` (fuera de `package.json` y del lock; `node_modules` lo conserva hasta el próximo
+   `npm ci`).
+2. **`show_map` solo decide si la ficha enseña la tarjeta del atlas.** El atlas se pinta con el grafo derivado
+   aunque el interruptor esté apagado, igual que la balda: el interruptor esconde el acceso, no el orden.
+3. **Plano DOM + SVG, no canvas**, con la cámara pura compartida con Entre nosotros (`src/lib/atlas/camera.ts`).
+   Las obras son enlaces y botones reales (foco, lector de pantalla, selección de texto), el SVG dibuja los hilos y
+   no hay que reimplementar hit-test ni accesibilidad. A cambio, el coste crece con el número de obras (~50 con
+   portada es asumible; ver la issue de rendimiento en Android).
+4. **Publicación pasa de ruta a lente.** `?ruta=publicacion` y `?orden=publicacion` redirigen a
+   `?lente=publicacion`. Los itinerarios (`ruta`) son solo los curados.
+5. **El hilo del itinerario numera obras y expande bloques** (#1541): un paso-bloque (`s:<uuid>`) se expande a sus
+   obras y cada una lleva su número. `step` cuenta obras, no pasos.
+6. **Lente y rol van en la URL con `history.replaceState`** (sin viaje al servidor); la ruta, con `router.replace`.
+   Se siembran al montar: atrás/adelante entre estados del atlas no los resincroniza (issue abierta). La cámara se
+   guarda en `sessionStorage` por saga + lente + orientación.
+7. **`deriveTimeline` ya no descarta obras sin hueco ni conexión**: pasan a filas puente al final. Así la balda de la
+   ficha también las enseña y una saga cuyas obras no tienen `position` deja de caer en el estado vacío. Efectos en
+   la ficha: «Te toca» puede apuntar ahora a esa obra, el modo «terminada» exige haberla leído, cambia el contador
+   «N de M», cambia el orden de «Tu paso» y de «Entre amigos», y las sagas sin posiciones ya no enseñan el estado
+   vacío.
+8. **El interruptor de opcionales se muda al atlas** (pastilla en la línea de la leyenda del dock).
+9. **`/mapa` es un shell fino con `<Suspense>` + `AtlasSkeleton`** (Next 16, Cache Components) y sin `use cache`
+   (regla #437: depende de la sesión). Las redirecciones legadas llegan como redirect de cliente en streaming
+   (HTTP 200, no 307).
+
+Sin migraciones. Evidencia en [el informe del atlas](../testing/2026-10-28-sagas-atlas.md).

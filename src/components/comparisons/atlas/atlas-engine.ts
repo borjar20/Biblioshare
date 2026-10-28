@@ -4,7 +4,7 @@ import type { QuienLayout } from '@/lib/comparisons/atlas/layout';
 import type { TiempoLayout } from '@/lib/comparisons/atlas/tiempo';
 import type { IslandsLayout } from '@/lib/comparisons/atlas/islands';
 import type { Lens, Scene } from '@/lib/comparisons/atlas/scene';
-import { clamp, fit, panBy, stepCamera, toScreen, toWorld, zoomAt, zoomToward, MAX_ZOOM, MIN_ZOOM } from '@/lib/comparisons/atlas/camera';
+import { clamp, fit, panBy, stepCamera, toScreen, toWorld, zoomAt, zoomToward, MAX_ZOOM, MIN_ZOOM } from '@/lib/atlas/camera';
 import { COVER_ZOOM, readPalette, TITLE_ZOOM, type PaintView } from './atlas-palette';
 import { diffMix } from '@/lib/comparisons/atlas/opinion';
 import { mixHex } from '@/lib/comparisons/atlas/color';

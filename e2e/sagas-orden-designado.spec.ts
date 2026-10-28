@@ -97,17 +97,22 @@ test.afterAll(async () => {
   expect(left).toHaveLength(0);
 });
 
-/** Chips del selector de rutas de la ficha. `RouteSelector` no lleva testid
- *  propio y pinta dos variantes según cuántas rutas haya (toggle con ≤2, tira
- *  de chips con 3+), pero las dos son `<Link>` al mismo `/como-leerla?ruta=<slug>`:
- *  ese href es el único selector estable que vale para las dos, sin inventar un
- *  testid nuevo en el componente.
- *
- *  `:visible` porque las dos cáscaras se montan a la vez y se ocultan por
- *  breakpoint (regla de los dos árboles): sin él, cada locator encontraría el
- *  doble de elementos. */
-function routeChips(page: Page) {
-  return page.locator('a[href*="ruta="]:visible');
+/** Opciones de la hoja de itinerarios del atlas (Task 11 del atlas: sustituye al
+ *  selector de chips de «Cómo leerla», retirado). Cada itinerario es una radio con
+ *  su nombre; el orden de las radios es el que devuelve buildRouteList, así que
+ *  «la primera» sigue siendo el puesto que se designa. */
+async function routeOptions(page: Page) {
+  await page.goto(`/saga/${UNIVERSO_ID}/mapa`);
+  await expect(page.locator("[data-ready='true'] [data-atlas-stage]")).toBeVisible();
+  await page.getByRole("button", { name: /^Itinerario: / }).click();
+  return page.getByRole("dialog", { name: "Elige itinerario" }).getByRole("radio");
+}
+
+/** Nombre accesible de cada radio, en orden (la etiqueta envuelve la radio). */
+async function routeNames(page: Page) {
+  const radios = await routeOptions(page);
+  await expect(radios.first()).toBeVisible();
+  return radios.evaluateAll((els) => els.map((e) => e.closest("label")!.textContent!.trim()));
 }
 
 /** La fila de gestión de un itinerario, en la cáscara VISIBLE. La pantalla
@@ -138,27 +143,30 @@ function badge(page: Page) {
 
 async function designar(page: Page, target: string) {
   await page.goto(`/saga/${UNIVERSO_ID}/rutas`);
-  const boton = row(page, target).getByRole("button", { name: "Usar como orden de lectura" });
+  // La fila sembrada pintada: sin esto, «la chapa tiene 0» pasaría con la página a medio llegar.
+  await expect(row(page, ROUTE_NAME)).toBeVisible();
+  const boton =row(page, target).getByRole("button", { name: "Usar como orden de lectura" });
 
   // IDEMPOTENTE a propósito: los dos tests comparten la fila sembrada en
   // `beforeAll` y el primero deja el itinerario designado, así que el segundo
   // puede llegar aquí con el objetivo YA designado. En ese caso ese botón no
   // existe —la fila designada pinta «Es el orden de lectura», deshabilitado—,
   // y no hay nada que pulsar.
-  if ((await boton.count()) > 0) {
-    // Esperar a que se HABILITE antes de pulsar: es la señal de que el
-    // componente está hidratado. Un clic anterior a la hidratación se pierde.
-    await expect(boton).toBeEnabled();
-    await boton.click();
-  }
-
-  // La designación se aplica al pulsar y la confirma el `router.refresh()` del
-  // manager. Se espera a la chapa, no al botón: el botón también está
-  // deshabilitado mientras la transición está en vuelo. Y recargar no sirve:
-  // `revalidateSagaPage` no invalida esta pantalla, así que la recarga puede
-  // servir caché.
-  if (target === MAPA_GENERADO) await expect(badge(page)).toHaveCount(0);
-  else await expect(badge(page)).toBeVisible();
+  //
+  // «Habilitado» NO es señal de hidratación: el botón ya sale habilitado en el
+  // HTML del servidor, y contra build de producción (Task 11 del atlas) el
+  // clic llegaba antes que React y se perdía — siempre, no a ratos. Por eso se
+  // reintenta el clic hasta ver la chapa: si el primero ya llegó, el botón está
+  // deshabilitado (transición en vuelo) o ha desaparecido, y no se vuelve a pulsar.
+  //
+  // La designación la confirma el `router.refresh()` del manager. Se espera a la
+  // chapa, no al botón. Y recargar no sirve: `revalidateSagaPage` no invalida
+  // esta pantalla, así que la recarga puede servir caché.
+  await expect(async () => {
+    if ((await boton.count()) > 0 && (await boton.isEnabled())) await boton.click();
+    if (target === MAPA_GENERADO) await expect(badge(page)).toHaveCount(0, { timeout: 3_000 });
+    else await expect(badge(page)).toBeVisible({ timeout: 3_000 });
+  }).toPass({ timeout: 30_000 });
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -173,16 +181,15 @@ test("designar un itinerario le da el puesto y la etiqueta de «Orden de lectura
   await loginAsDevtest(page);
   await designar(page, ROUTE_NAME);
 
-  await page.goto(`/saga/${UNIVERSO_ID}/como-leerla`);
-  const chips = routeChips(page);
-  // El primero, no «alguno»: el puesto es parte de lo que se designa.
-  await expect(chips.first()).toHaveText("Orden de lectura");
-  // Y su nombre propio ya no está en ninguna parte del selector: la fila NO se
+  const names = await routeNames(page);
+  // La primera, no «alguna»: el puesto es parte de lo que se designa.
+  expect(names[0]).toBe("Orden de lectura");
+  // Y su nombre propio ya no está en ninguna parte de la hoja: la fila NO se
   // renombra en BD, la etiqueta la pone buildRouteList.
-  await expect(chips.filter({ hasText: ROUTE_NAME })).toHaveCount(0);
-  // Exactamente UN chip con esa etiqueta: si la sintética siguiera ofreciéndose
-  // habría dos, que es justo el estado que esta fase viene a eliminar.
-  await expect(chips.filter({ hasText: "Orden de lectura" })).toHaveCount(1);
+  expect(names).not.toContain(ROUTE_NAME);
+  // Exactamente UNA opción con esa etiqueta: si la sintética siguiera
+  // ofreciéndose habría dos, que es justo el estado que esta fase viene a eliminar.
+  expect(names.filter((n) => n === "Orden de lectura")).toHaveLength(1);
 });
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -196,10 +203,9 @@ test("desdesignar devuelve la ruta sintética y el nombre propio del itinerario"
   await designar(page, ROUTE_NAME);
   await designar(page, MAPA_GENERADO);
 
-  await page.goto(`/saga/${UNIVERSO_ID}/como-leerla`);
-  const chips = routeChips(page);
-  await expect(chips.filter({ hasText: "Orden de lectura" })).toHaveCount(1);
-  await expect(chips.filter({ hasText: ROUTE_NAME })).toHaveCount(1);
+  const names = await routeNames(page);
+  expect(names.filter((n) => n === "Orden de lectura")).toHaveLength(1);
+  expect(names.filter((n) => n === ROUTE_NAME)).toHaveLength(1);
   // Y la sintética recupera su puesto: primera de la lista.
-  await expect(chips.first()).toHaveText("Orden de lectura");
+  expect(names[0]).toBe("Orden de lectura");
 });

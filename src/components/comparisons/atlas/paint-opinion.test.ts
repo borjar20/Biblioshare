@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Palette, PaintView } from './atlas-palette';
-import { toScreen } from '@/lib/comparisons/atlas/camera';
+import { toScreen } from '@/lib/atlas/camera';
 import { ratingX } from '@/lib/comparisons/atlas/opinion';
 import { paintOpinionBack, type OpinionLabels } from './paint-opinion';
 

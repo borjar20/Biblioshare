@@ -1,8 +1,16 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { submitLogin } from "./support/visible-form";
 
 // E2E de la fase 1 del timeline con los cuatro estados: el componente único de
 // orden de lectura, montado en móvil y al pie del grafo de PC.
+//
+// Mudado al atlas (Task 11 del atlas, 2026-10-28): el timeline se retiró. Con
+// un itinerario activo el atlas no reordena la columna: conserva el plano de la
+// curación y marca cada obra del itinerario con su número de paso
+// (`data-step`), que es lo que aquí se comprueba. La numeración de lectura vive
+// en «Ver como lista». El test de PC («el mismo timeline al pie del grafo») se
+// borró: el atlas es un solo árbol para todos los anchos y sagas-atlas.spec.ts
+// lo prueba en escritorio y en móvil.
 //
 // Mismo patrón que sagas-orden-designado.spec.ts: `fetch` nativo (NO el fixture
 // `request` de Playwright, que muere con el contexto del test y dejaría filas
@@ -26,8 +34,8 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 let routeId: string;
-/** Títulos de los pasos sembrados, en el orden del ITINERARIO. */
-let stepTitles: string[] = [];
+/** Claves (`i:<tipo>:<uuid>`) de los pasos sembrados, en el orden del ITINERARIO. */
+let stepKeys: string[] = [];
 
 async function loginAsDevtest(page: Page) {
   await page.goto("/login");
@@ -86,10 +94,7 @@ test.beforeAll(async () => {
     ),
   });
 
-  const books = (await (
-    await api(`books?id=in.(${reversed.map((m) => m.item_id).join(",")})&select=id,title`)
-  ).json()) as Array<{ id: string; title: string }>;
-  stepTitles = reversed.map((m) => books.find((b) => b.id === m.item_id)!.title);
+  stepKeys = reversed.map((m) => `i:${m.item_type}:${m.item_id}`);
 });
 
 test.afterAll(async () => {
@@ -97,71 +102,55 @@ test.afterAll(async () => {
   await api(`saga_routes?id=eq.${routeId}`, { method: "DELETE" });
 });
 
-/** El timeline VISIBLE. Las dos cáscaras (móvil y pie de PC) se montan a la vez
- *  y se ocultan por breakpoint (regla de los dos árboles): sin `:visible` este
- *  locator encuentra dos. */
-function timeline(page: Page) {
-  return page.locator('[data-testid="reading-timeline"]:visible');
+/** El atlas ha pintado su primer layout (saga-atlas.tsx marca `data-ready`). */
+async function atlasReady(page: Page) {
+  await expect(page.locator("[data-ready='true'] [data-atlas-stage]")).toBeVisible();
 }
 
-/** Primer «Nº N» que pinta la columna visible, tal cual. */
-async function firstOrderNo(page: Page): Promise<string | undefined> {
-  const texts = await timeline(page).locator("span.font-mono").allInnerTexts();
-  return texts.map((x) => x.trim()).find((x) => /^Nº \d+$/.test(x));
+/** Abre «Ver como lista» y devuelve sus enlaces, en orden. */
+async function listLinks(page: Page): Promise<Locator> {
+  await atlasReady(page);
+  await page.getByRole("button", { name: "Ver como lista" }).click();
+  const lista = page.getByRole("list", { name: /^Obras de / });
+  await expect(lista).toBeVisible();
+  return lista.getByRole("link");
 }
 
-test.describe("timeline · fase 1", () => {
-  test("móvil, con itinerario activo: la columna son SUS pasos, en su orden", async ({ page }) => {
+test.describe("atlas · pasos y numeración", () => {
+  test("móvil, con itinerario activo: cada paso lleva SU número, en su orden", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await loginAsDevtest(page);
-    await page.goto(`/saga/${UNIVERSO_ID}/como-leerla?ruta=${ROUTE_SLUG}`);
+    await page.goto(`/saga/${UNIVERSO_ID}/mapa?ruta=${ROUTE_SLUG}`);
+    await atlasReady(page);
 
-    const tl = timeline(page);
-    await expect(tl).toBeVisible();
-
-    // El orden del itinerario, que es el INVERSO del curado.
-    const titles = (await tl.locator("span.font-serif").allInnerTexts()).map((x) => x.trim());
-    const found = stepTitles.map((t) => titles.indexOf(t));
-    expect(found.every((i) => i !== -1)).toBe(true);
-    expect([...found].sort((a, b) => a - b)).toEqual(found);
+    // El orden del itinerario, que es el INVERSO del curado: el paso N es la obra N
+    // del itinerario, no la N de la curación.
+    for (const [i, key] of stepKeys.entries()) {
+      await expect(page.locator(`[data-work-key="${key}"]`)).toHaveAttribute("data-step", String(i + 1));
+    }
+    await expect(page.locator("[data-work-key][data-step]")).toHaveCount(stepKeys.length);
   });
 
-  test("móvil, ruta «lectura»: el timeline numera desde 1 y ya no hay «Como lista lineal»", async ({ page }) => {
+  test("móvil, ruta «lectura»: la lista numera desde 1", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await loginAsDevtest(page);
-    await page.goto(`/saga/${UNIVERSO_ID}/como-leerla?ruta=lectura`);
+    await page.goto(`/saga/${UNIVERSO_ID}/mapa?ruta=lectura`);
 
-    await expect(timeline(page)).toBeVisible();
-    // El PRIMER número de la columna, no «que exista un Nº 1»: con la
-    // numeración 0-based que tenía el #220 seguía habiendo un «Nº 1» — el de la
-    // segunda fila — así que una aserción de existencia pasaba con el bug
-    // puesto. Medido con inyección de fallo, no supuesto.
-    await expect(firstOrderNo(page)).resolves.toBe("Nº 1");
-    await expect(page.getByText("Como lista lineal")).toHaveCount(0);
+    // La PRIMERA entrada, no «que exista un 1»: con la numeración 0-based que
+    // tenía el #220 seguía habiendo un «1» — el de la segunda fila — así que una
+    // aserción de existencia pasaba con el bug puesto.
+    await expect((await listLinks(page)).first()).toHaveAccessibleName(/^1\. /);
   });
 
-  test("PC: el mismo timeline al pie del grafo", async ({ page }) => {
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await loginAsDevtest(page);
-    await page.goto(`/saga/${UNIVERSO_ID}/como-leerla?ruta=lectura`);
-
-    await expect(timeline(page)).toBeVisible();
-  });
-
-  // Riesgo 5 de la spec: la ficha es PÚBLICA, y es fácil construir el timeline
-  // mirando solo la vista con sesión. Sin login se tiene que ver ENTERO — sin
-  // estados de lectura, pero con todas sus filas y sus números.
-  test("sin sesión: el timeline se ve igual, con sus filas y su numeración", async ({ browser }) => {
+  // Riesgo 5 de la spec: la ficha es PÚBLICA, y es fácil construir la vista
+  // mirando solo la de con sesión. Sin login se tiene que ver ENTERA — sin
+  // estados de lectura, pero con todas sus obras y sus números.
+  test("sin sesión: la lista se ve igual, con su numeración", async ({ browser }) => {
     const page = await browser.newPage({ storageState: { cookies: [], origins: [] } });
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(`/saga/${UNIVERSO_ID}/como-leerla?ruta=lectura`);
+    await page.goto(`/saga/${UNIVERSO_ID}/mapa?ruta=lectura`);
 
-    await expect(timeline(page)).toBeVisible();
-    // El PRIMER número de la columna, no «que exista un Nº 1»: con la
-    // numeración 0-based que tenía el #220 seguía habiendo un «Nº 1» — el de la
-    // segunda fila — así que una aserción de existencia pasaba con el bug
-    // puesto. Medido con inyección de fallo, no supuesto.
-    await expect(firstOrderNo(page)).resolves.toBe("Nº 1");
+    await expect((await listLinks(page)).first()).toHaveAccessibleName(/^1\. /);
     await page.close();
   });
 });

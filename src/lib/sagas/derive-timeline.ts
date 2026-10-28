@@ -7,7 +7,8 @@ import { windowTrack } from "./window-track";
 // grafo. La columna son los nodos-ítem con orderNo agrupados por subsaga
 // consecutiva; los nodos sin orden cuelgan como ramas de su conexión más
 // temprana (o del final de su sección si están sueltos); los nexos (sin grupo)
-// conectados a la columna se pintan como puente entre secciones. Los
+// conectados a la columna se pintan como puente entre secciones, y lo que no
+// tiene dónde colgar va como puente al final: ningún nodo-ítem se pierde. Los
 // nodos-saga solo viven en el mapa 2D. Las aristas opcional/requisito entre dos
 // nodos DE COLUMNA se ignoran a propósito: la columna ya transmite el orden.
 // El determinismo asume que graph.edges llega en orden estable. Desde la fase 3
@@ -178,7 +179,9 @@ export function deriveTimeline(
   const spine = items
     .filter((n) => n.orderNo !== null)
     .sort((a, b) => (a.orderNo! - b.orderNo!) || a.label.localeCompare(b.label));
-  if (spine.length === 0) return [];
+  // Sin columna NO se devuelve [] de inmediato: las obras sin hueco aún tienen
+  // que salir (como puentes al final, abajo). Con el grafo vacío sigue saliendo
+  // [] porque no hay nada que colocar.
 
   const spineIds = new Set(spine.map((n) => n.id));
   const byId = new Map(graph.nodes.map((n) => [n.id, n]));
@@ -334,15 +337,23 @@ export function deriveTimeline(
     if (placed) placedAsWindow.add(n.id);
   }
 
-  // Nodos-ítem fuera de columna: rama o puente.
+  // Nodos-ítem fuera de columna: rama o puente. Lo que no encuentra ni rama ni
+  // ancla va a `tail`, puentes al final del timeline. Antes se DESCARTABA, y
+  // con él la obra desaparecía del atlas y de la balda (la «Trilogía» de
+  // [QA Sagas v2] Universo: miembro directo sin hueco ni ventana). La spec del
+  // atlas pide todas las obras de la saga.
   const bridges: Array<{ node: SagaGraphNode; afterSectionIdx: number }> = [];
+  const tail: SagaGraphNode[] = [];
   for (const n of items) {
     if (n.orderNo !== null) continue;
     if (placedAsWindow.has(n.id)) continue; // ya es una fila de la columna
     const conn = earliestSpineFor(n.id);
     if (n.groupSagaId === null) {
-      // Nexo: puente tras la sección de su conexión más temprana; sin conexión, fuera del timeline.
-      if (!conn) continue;
+      // Nexo: puente tras la sección de su conexión más temprana; sin conexión, al final.
+      if (!conn) {
+        tail.push(n);
+        continue;
+      }
       const idx = sections.findIndex((s) =>
         s.rows.some(
           (r) =>
@@ -362,7 +373,10 @@ export function deriveTimeline(
     const lastEntry = section?.rows
       .filter((r): r is RowWithBranches => r.kind === "entry" || r.kind === "tandem")
       .at(-1);
-    lastEntry?.branches.push({ node: n, edgeType: "opcional" });
+    // Su subsaga no tiene ninguna obra en la columna (o solo ventanas): no hay
+    // de quién colgar, así que va al final con su cabecera de subsaga.
+    if (lastEntry) lastEntry.branches.push({ node: n, edgeType: "opcional" });
+    else tail.push(n);
   }
 
   // `new Set` porque un tándem tiene DOS claves en `rowByNodeId` apuntando a la
@@ -394,6 +408,26 @@ export function deriveTimeline(
         rows: [{ kind: "bridge" as const, node }],
       })),
     );
+  }
+
+  // Cola: después de TODO, incluidos los puentes conectados a la última sección.
+  // Primero las obras de subsaga (por subsaga y título, para que las de una
+  // misma subsaga queden juntas y la balda las funda en un grupo), después los
+  // nexos por título. Una sección por obra, como los puentes de arriba.
+  tail.sort(
+    (a, b) =>
+      Number(a.groupSagaId === null) - Number(b.groupSagaId === null) ||
+      (a.groupName ?? "").localeCompare(b.groupName ?? "") ||
+      a.label.localeCompare(b.label),
+  );
+  for (const node of tail) {
+    sections.push({
+      groupSagaId: node.groupSagaId,
+      groupName: node.groupSagaId === null ? null : node.groupName,
+      accent: node.groupSagaId === null ? "beige" : node.accent,
+      continuation: false,
+      rows: [{ kind: "bridge", node }],
+    });
   }
 
   return sections;

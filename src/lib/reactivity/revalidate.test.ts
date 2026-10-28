@@ -175,9 +175,9 @@ describe("pasada de revalidación (F1-014/023/030)", () => {
     expect(revalidateTag).toHaveBeenCalledWith("credits:movie:m-1", { expire: 0 });
   });
 
-  it("revalidateSagaPage revalida la ficha y «Cómo leerla»", () => {
+  it("revalidateSagaPage revalida la ficha y el atlas", () => {
     revalidateSagaPage("s-1");
-    expect(calls()).toEqual(["/saga/s-1", "/saga/s-1/como-leerla"]);
+    expect(calls()).toEqual(["/saga/s-1", "/saga/s-1/mapa"]);
   });
 
   // La razón de ser del helper: el «nº X de Y» de CADA miembro cambia cuando

@@ -103,7 +103,7 @@ describe("resolveRoute", () => {
   // borrada — resolveRoute ya distingue ambos casos por sí sola con
   // childNames como fuente de "existe": el bloque debe pintarse con
   // members: [] y no sumar nada al denominador. Este test confirma que
-  // resolveRoute no necesitó cambios: el bug vivía en cómo route-view.tsx
+  // resolveRoute no necesitó cambios: el bug vivía en cómo la vista de itinerario (ya retirada)
   // construía childNames (desde `groups`, que omite hijas sin miembros).
   it("un bloque a una subsaga existente sin miembros se renderiza con members: [] y no infla el total", () => {
     const r = resolveRoute(

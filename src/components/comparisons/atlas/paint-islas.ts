@@ -1,4 +1,4 @@
-import { toScreen } from '@/lib/comparisons/atlas/camera';
+import { toScreen } from '@/lib/atlas/camera';
 import { islandHeaderGeometry, ISLAND_HEADER_WIDTH, ISLAND_TITLE_MAX_PX, type Island, type IslandsLayout } from '@/lib/comparisons/atlas/islands';
 import type { AtlasPerson } from '@/lib/comparisons/atlas/types';
 import { initials } from '../presentation';

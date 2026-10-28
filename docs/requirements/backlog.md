@@ -5,15 +5,20 @@
 - [x] **Rework de sagas · subproyecto 1, fase 1 (ficha de saga para el lector).** Hero
   cinemático, balda de pilas por subsaga, «Te toca», «Sobre la saga» y «Todas las obras»;
   `/saga/[id]/como-leerla` interina y `?tab=mapa` redirige allí. Rama
-  `claude/sagas-rework-11497e` (PR pendiente); [spec](superpowers/specs/2026-10-27-sagas-ficha-lector-design.md),
+  `claude/sagas-rework-11497e` (fusionada en main, #1553); [spec](superpowers/specs/2026-10-27-sagas-ficha-lector-design.md),
   [evidencia](testing/2026-10-27-sagas-ficha-lector-f1.md), decisiones del 2026-10-27.
 - [x] **Fase 2:** «Tu paso», «Subsagas», acceso al mapa, nota media en «La terminaste» y cierre
-  de #761 (#1539). Rama `claude/sagas-ficha-fase-2` (PR pendiente, apilada sobre la fase 1);
+  de #761 (#1539). Rama `claude/sagas-ficha-fase-2` (fusionada en main, #1555);
   [evidencia](testing/2026-10-28-sagas-ficha-lector-f2.md), decisiones del 2026-10-28.
 - [x] **Fase 3:** «Entre amigos» (#1540): seguidos aceptados con pases en la saga, «Va por X», barra y nota
-  media. Rama `claude/sagas-ficha-fase-3` (PR pendiente, apilada sobre la fase 2);
+  media. Rama `claude/sagas-ficha-fase-3` (fusionada en main, #1559);
   [evidencia](testing/2026-10-28-sagas-ficha-lector-f3.md), decisiones del 2026-10-28.
-- [ ] «Cómo leerla» no expande pasos-bloque de un itinerario curado (#1541).
+- [x] **Rework de sagas · subproyecto 2 (atlas de la saga).** `/saga/[id]/mapa` pasa a ser un atlas
+  (lentes Orden · Rol · Publicación, capas Itinerario y Progreso, mini-ficha y lista accesible) que sustituye al
+  grafo y a «Cómo leerla». Rama `claude/sagas-atlas-a6e350` (PR pendiente);
+  [spec](superpowers/specs/2026-10-28-sagas-atlas-design.md),
+  [evidencia](testing/2026-10-28-sagas-atlas.md), decisiones del 2026-10-28 («Atlas de la saga»).
+- [x] El itinerario curado expande sus pasos-bloque en el atlas (#1541); se cierra con la PR del atlas.
 
 ## Moderación administrativa — #1183
 

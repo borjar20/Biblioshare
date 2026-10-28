@@ -1,21 +1,24 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
-// E2E de la fase 6: los cuatro estados dibujados en el grafo 2D. Lo que cubre y
-// las unitarias no pueden:
+// E2E de la fase 6: los cuatro estados (tándem, ventana, rol y lente de rol)
+// dibujados en el mapa. Lo que cubre y las unitarias no pueden:
 //
-//  · que la cápsula y el marco llegan al LIENZO. `map-overlays.test.ts` prueba
-//    la geometría; que se pinten depende del `ViewportPortal`, del z-index y de
-//    que la vista los monte, y eso no lo ve ninguna unitaria.
-//  · que los adornos NO son nodos. Dos e2e (`sagas-v2-mapa`,
-//    `sagas-mapa-derivado`) cuentan las obras del mapa con `.react-flow__node`;
-//    si un adorno entrara en ese recuento, esos tests seguirían pasando pero
-//    protegiendo otra cosa. Aquí se afirma el recuento a propósito.
-//  · que la lente de rol ATENÚA y no filtra: los nodos y las aristas siguen
-//    siendo los mismos. Quitar nodos deja aristas huérfanas y parte la cadena
-//    (issue #238).
-//  · que la ficha PÚBLICA lo enseña entero. No hay `login` en este spec a
+//  · que el tándem y la ventana llegan a la PÁGINA con sus anclas nombradas.
+//  · que los adornos NO son obras: el plano solo tiene un `[data-work-key]` por
+//    obra, y aquí se afirma el recuento a propósito.
+//  · que la lente de rol ATENÚA y no filtra: las obras siguen siendo las mismas.
+//    Quitar obras parte la cadena (issue #238).
+//  · que el atlas PÚBLICO lo enseña entero. No hay `login` en este spec a
 //    propósito: es el riesgo 5 de la spec —construirlo mirando solo la vista
 //    con sesión— y aquí sale gratis comprobarlo.
+//
+// Mudado al atlas (Task 11 del atlas, 2026-10-28): el grafo de React Flow
+// (`graph-tandem-capsule`, `graph-window-frame`, `graph-node-tag`) se retiró.
+// La cápsula y el marco son ahora trazos SVG sin texto; lo que dicen —qué
+// tándem, entre qué anclas— se lee en «Ver como lista» (`atlas-list.tsx`), que
+// es el sustituto accesible del plano, y el rol en el nombre accesible de cada
+// obra. La leyenda condicional («Se leen en tándem») no tiene equivalente: la
+// del dock es fija por lente. Ver `.superpowers/sdd/task-11-report.md`.
 //
 // Mismo patrón de semilla que `sagas-roles.spec.ts` y
 // `sagas-ventana-motivo-track.spec.ts`: `fetch` nativo (no el fixture
@@ -41,7 +44,7 @@ const ISABEL = { id: "79ddcbd0-3342-44dc-84c0-ffa5c635fbfc", title: "Para leer a
 // `ruta=lectura` fija la columna a la curación: sin ella la ruta activa sería la
 // que el lector tenga adoptada, y el test dependería de un estado que no
 // controla.
-const MAPA = `/saga/${UNIVERSO_ID}/como-leerla?ruta=lectura`;
+const MAPA = `/saga/${UNIVERSO_ID}/mapa?ruta=lectura`;
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -66,9 +69,24 @@ type ItemRow = { item_id: string; position: number | null; placement: string | n
  *  toca: mandar una obra a `libre` cambia la forma del bloque. */
 let baseline: ItemRow[] = [];
 
-const nodo = (page: Page, itemId: string) => page.locator(`[data-testid="rf__node-i:book:${itemId}"]`);
-const capsula = (page: Page) => page.getByTestId("graph-tandem-capsule");
-const marco = (page: Page) => page.getByTestId("graph-window-frame");
+/** Una obra del plano por su clave de dominio (`i:<tipo>:<uuid>`). */
+const obra = (page: Page, itemId: string) => page.locator(`[data-work-key="i:book:${itemId}"]`);
+
+/** Abre el atlas y su «Ver como lista»; devuelve la `ol`. */
+async function openList(page: Page) {
+  await page.goto(MAPA);
+  await expect(page.locator("[data-ready='true'] [data-atlas-stage]")).toBeVisible();
+  await page.getByRole("button", { name: "Ver como lista" }).click();
+  const lista = page.getByRole("list", { name: /^Obras de / });
+  await expect(lista).toBeVisible();
+  return lista;
+}
+/** La entrada de una obra por el nombre de SU enlace («N. Título»): filtrar por texto
+ *  casaría también con las entradas que la nombran como ancla o compañera de tándem. */
+const fila = (lista: Locator, title: string) =>
+  lista.getByRole("listitem").filter({
+    has: lista.page().getByRole("link", { name: new RegExp(`^(\\d+\\. )?${title}$`) }),
+  });
 
 test.beforeAll(async () => {
   baseline = (await (
@@ -135,74 +153,51 @@ test.afterAll(async () => {
   }
 });
 
-test("la cápsula envuelve el tándem, dice su modo y no cuenta como nodo", async ({ page }) => {
-  await page.goto(MAPA);
-  await expect(nodo(page, RARO.id)).toBeVisible();
+test("el tándem dice su modo y sus compañeras, y no cuenta como obra", async ({ page }) => {
+  const lista = await openList(page);
+  // El hueco 2 empatado, con el modo curado («simultaneo»), en las dos direcciones.
+  await expect(fila(lista, RARO.title)).toContainText("A la vez que Libro sin valorar");
+  await expect(fila(lista, "Libro sin valorar")).toContainText(`A la vez que ${RARO.title}`);
 
-  await expect(capsula(page)).toHaveCount(1);
-  await expect(capsula(page)).toContainText("A la vez");
-
-  // Envuelve a sus DOS miembros: más alta que el nodo que contiene. Se compara
-  // contra el nodo real y no contra un número fijo porque el lienzo aplica
-  // `fitView`, así que las dos medidas están escaladas por el mismo zoom y solo
-  // la proporción es estable.
-  const cajaCapsula = (await capsula(page).boundingBox())!;
-  const cajaNodo = (await nodo(page, RARO.id).boundingBox())!;
-  expect(cajaCapsula.height).toBeGreaterThan(cajaNodo.height * 2);
-
-  // Los adornos NO son nodos. El Universo QA tiene 7 obras (Era Uno 4 + Era Dos
-  // 2 + 1 directa suelta), el mismo número que afirma `sagas-v2-mapa.spec.ts`:
-  // si la cápsula se colara en este recuento, ese test pasaría a proteger otra
-  // cosa sin que nadie se enterara.
-  await expect(page.locator(".react-flow__node")).toHaveCount(7);
+  // Los adornos NO son obras. El Universo QA tiene 7 obras distintas (Era Uno 4 +
+  // Era Dos 2 + la Trilogía directa, que el atlas enseña desde 7c9fd976; «Para leer a
+  // Isabel Allende» está en Era Uno y en el universo, y cuenta una vez): si el tándem
+  // se colara en este recuento como obra extra, cualquier test que cuente obras
+  // pasaría a proteger otra cosa.
+  await expect(page.locator("[data-work-key]")).toHaveCount(7);
+  await expect(lista.getByRole("listitem")).toHaveCount(7);
 });
 
-test("el sujeto de la ventana lleva marco, con sus dos anclas nombradas", async ({ page }) => {
-  await page.goto(MAPA);
-  await expect(marco(page)).toHaveCount(1);
-  await expect(marco(page)).toContainText("Ventana recomendada");
-  // Los dos títulos NO van en el rótulo visible —serían cuatro veces el ancho
-  // del marco, y las dos aristas ya dibujan el tramo—, pero sí tienen que
-  // llegar: viven en el `title` de la píldora.
-  await expect(marco(page).locator("span[title]")).toHaveAttribute(
-    "title",
-    new RegExp(`después de ${RARO.title}.*antes de ${ISABEL.title}`),
-  );
+test("el sujeto de la ventana nombra sus dos anclas", async ({ page }) => {
+  const lista = await openList(page);
+  // Mismo dato que antes vivía en el `title` de la píldora del marco.
+  await expect(fila(lista, RAYUELA.title)).toContainText(`Encaja entre ${RARO.title} y ${ISABEL.title}`);
+  // El motivo curado (`contexto`) acompaña al tramo.
+  await expect(fila(lista, RAYUELA.title)).toContainText("Dentro de la ventana se entiende mejor");
 });
 
-test("el rol curado se lee bajo el nodo, también dentro del tándem", async ({ page }) => {
+test("el rol curado se lee en la obra, también dentro del tándem", async ({ page }) => {
   await page.goto(MAPA);
-  const etiqueta = nodo(page, RARO.id).getByTestId("graph-node-tag");
-  await expect(etiqueta).toContainText("Relato");
-  // Y una obra sin rol ni nada que decir no pinta etiqueta: 361 de las 367
-  // filas de producción son ese caso, y una tira vacía bajo cada nodo sería el
-  // ruido que la fase evita.
-  await expect(nodo(page, ISABEL.id).getByTestId("graph-node-tag")).toHaveCount(0);
+  await expect(page.locator("[data-ready='true'] [data-atlas-stage]")).toBeVisible();
+  await expect(obra(page, RARO.id)).toHaveAttribute("aria-label", /, Relato(,|$)/);
+  // Y una obra sin rol ni nada que decir no lo pinta: 361 de las 367 filas de
+  // producción son ese caso. Sin sesión y sin itinerario, su nombre es solo el título.
+  await expect(obra(page, ISABEL.id)).toHaveAttribute("aria-label", ISABEL.title);
 });
 
-test("la lente de rol atenúa, no borra: los nodos y las aristas siguen ahí", async ({ page }) => {
+test("la lente de rol atenúa, no borra: las obras siguen ahí", async ({ page }) => {
   await page.goto(MAPA);
-  await expect(nodo(page, RARO.id)).toBeVisible();
-  const nodosAntes = await page.locator(".react-flow__node").count();
-  const aristasAntes = await page.locator(".react-flow__edge").count();
-  expect(aristasAntes).toBeGreaterThan(0);
+  await expect(page.locator("[data-ready='true'] [data-atlas-stage]")).toBeVisible();
+  const antes = await page.locator("[data-work-key]").count();
+  expect(antes).toBeGreaterThan(0);
 
+  // `?rol=` viejo: el atlas lo traduce a la lente Rol con ese resaltado.
   await page.goto(`${MAPA}&rol=relato`);
-  await expect(nodo(page, RARO.id)).toBeVisible();
-
-  expect(await page.locator(".react-flow__node").count()).toBe(nodosAntes);
-  expect(await page.locator(".react-flow__edge").count()).toBe(aristasAntes);
+  await expect(page).toHaveURL(/lente=rol/);
+  await expect(page.locator("[data-ready='true'] [data-atlas-stage]")).toBeVisible();
+  await expect(page.locator("[data-work-key]")).toHaveCount(antes);
 
   // Lo que sí cambia: la obra que no es de ese rol se atenúa.
-  await expect(nodo(page, ISABEL.id).locator("> div").first()).toHaveClass(/opacity-30/);
-  await expect(nodo(page, RARO.id).locator("> div").first()).not.toHaveClass(/opacity-30/);
-});
-
-test("la leyenda nombra las dos formas nuevas, y solo cuando el mapa las dibuja", async ({ page }) => {
-  await page.goto(MAPA);
-  // `visible=true` no es adorno: la leyenda se monta DOS veces —una por
-  // breakpoint, la regla de los dos árboles de este proyecto— y en Desktop
-  // Chrome la primera del DOM es la del móvil, que está oculta.
-  await expect(page.getByText("Se leen en tándem").locator("visible=true")).toBeVisible();
-  await expect(page.getByText("Se leen en tándem").locator("visible=true")).toHaveCount(1);
+  await expect(obra(page, ISABEL.id)).toHaveAttribute("data-dimmed", "true");
+  await expect(obra(page, RARO.id)).not.toHaveAttribute("data-dimmed", /.+/);
 });

@@ -34,8 +34,13 @@ async function gotoFicha(page: Page, query = "") {
 }
 
 const piles = (page: Page) => page.locator('[data-testid^="shelf-pile-"]');
+/** Pilas de las SUBSAGAS. Desde 7c9fd976 la balda también enseña la obra directa sin
+ *  hueco ni conexión (la «Trilogía») como grupo propio, `shelf-pile-root`: es obra de la
+ *  saga y se ve, pero no es una de las dos subsagas que estos tests pliegan y despliegan. */
 const pileIds = async (page: Page) =>
-  (await piles(page).evaluateAll((els) => els.map((e) => e.getAttribute("data-testid")!.replace("shelf-pile-", "")))).sort();
+  (await piles(page).evaluateAll((els) => els.map((e) => e.getAttribute("data-testid")!.replace("shelf-pile-", ""))))
+    .filter((id) => id !== "root")
+    .sort();
 
 const adminHeaders = () => ({ apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` });
 
@@ -161,10 +166,11 @@ test.describe("ficha de saga · lector", () => {
 
     await expect(page).toHaveURL(/\?ruta=publicacion/);
     await expect(chip).toHaveAttribute("aria-current", "true");
-    // Otro itinerario = otra primera portada y otro «N de M» (el denominador
-    // cambia: la publicación incluye la Trilogía, que la curación no cuenta).
+    // Otro itinerario = otra primera portada. El «N de M» ya NO cambia: antes la
+    // curación dejaba fuera la Trilogía (obra directa sin hueco ni conexión) y solo la
+    // publicación la contaba; desde 7c9fd976 las dos cuentan todas las obras de la saga.
     await expect.poll(() => firstCoverHref(page)).not.toBe(antes);
-    expect(await page.getByTestId("shelf-count").innerText()).not.toBe(contadorAntes);
+    await expect(page.getByTestId("shelf-count")).toHaveText(contadorAntes);
   });
 
   test("«Te toca» nombra la obra «ahora» y enlaza a su ficha", async ({ page }) => {
@@ -180,17 +186,16 @@ test.describe("ficha de saga · lector", () => {
     await expect(nextUp.getByRole("link", { name: "Ir a la obra" })).toHaveAttribute("href", nowHref!);
   });
 
-  test("el enlace viejo ?tab=mapa acaba en «Cómo leerla» con su ruta", async ({ page }) => {
+  test("el enlace viejo ?tab=mapa acaba en el atlas con su lente", async ({ page }) => {
     await loginAsDevtest(page);
     await page.goto(`/saga/${UNIVERSO_ID}?tab=mapa&ruta=publicacion`);
 
-    await expect(page).toHaveURL(`/saga/${UNIVERSO_ID}/como-leerla?ruta=publicacion`);
-    // El selector de itinerario de «Cómo leerla» ofrece las rutas y la
-    // publicación se pinta como lista por año (numerada 01, 02…), no como
-    // timeline.
-    await expect(page.getByRole("link", { name: "Publicación", exact: true })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Orden de lectura", exact: true })).toBeVisible();
-    await expect(page.getByRole("link", { name: /^01 / })).toBeVisible();
+    // La pestaña «Mapa» y «Cómo leerla» se retiraron con el atlas (Task 10/11). El
+    // redirect llega en streaming (200 + redirect en cliente): se afirma la URL final.
+    // `ruta=publicacion` ya no es un itinerario sino una lente.
+    await expect(page).toHaveURL(`/saga/${UNIVERSO_ID}/mapa?lente=publicacion`);
+    await expect(page.getByRole("button", { name: "Publicación", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("[data-reading-no]").first()).toBeVisible();
   });
 
   test("sin sesión: no hay «ahora» y «Te toca» dice «Empieza por»", async ({ browser }) => {
@@ -260,18 +265,17 @@ test.describe("ficha de saga · lector", () => {
     expect([...hrefs].sort()).toEqual(esperadas.map((id) => `/saga/${id}`).sort());
   });
 
-  test("el acceso al mapa solo aparece si /mapa tiene grafo y enlaza a /mapa", async ({ page }) => {
+  test("el acceso al mapa solo aparece con el mapa encendido y enlaza a /mapa", async ({ page }) => {
     await loginAsDevtest(page);
-    // La tarjeta sale con `detail.graph !== null` (mapa encendido Y algo curado),
-    // y /mapa redirige a la ficha exactamente cuando el grafo es null: esa
-    // redirección es el oráculo, no solo `show_map`.
-    await page.goto(`/saga/${UNIVERSO_ID}/mapa`);
-    await page.waitForLoadState("domcontentloaded");
-    const hayMapa = new URL(page.url()).pathname === `/saga/${UNIVERSO_ID}/mapa`;
+    // La tarjeta sale con `detail.graph !== null` (mapa encendido Y algo curado).
+    // Antes el oráculo era «/mapa redirige a la ficha»; con el atlas, /mapa ya no
+    // redirige nunca por el interruptor (spec del atlas §3), así que el oráculo es
+    // el propio `show_map`, leído por REST. El universo tiene obras curadas.
+    const [saga] = await rest<Array<{ show_map: boolean }>>(`sagas?id=eq.${UNIVERSO_ID}&select=show_map`);
     await gotoFicha(page);
 
     const teaser = page.getByTestId("atlas-teaser");
-    if (hayMapa) {
+    if (saga.show_map) {
       await expect(teaser).toBeVisible();
       await expect(teaser).toHaveAttribute("href", `/saga/${UNIVERSO_ID}/mapa`);
     } else {

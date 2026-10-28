@@ -7,7 +7,7 @@ import type { SagaItemRole } from "@/lib/sagas/types";
 // un genérico que lo esconda.
 //
 // El gold sobre gold/10 es la paleta reservada de "opcional" en el timeline
-// (ver graph-legend.tsx). La chapa "Requisito" (`./requisite-badge.tsx`)
+// (la leyenda del grafo, ya retirada). La chapa "Requisito" (también retirada)
 // compartía este mismo estilo hasta el #184 — colisionaban visualmente cuando
 // una rama era requisito Y llevaba rol ("REQUISITO PRECUELA" leía como una
 // sola chapa) — así que ahora usa spine, y las dos conviven sin confundirse.

@@ -1,12 +1,21 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
+import { hasMinRole } from "@/lib/auth/roles";
+import { sagaAtlasHref, sagaHref } from "@/lib/catalog/item-href";
 import { getSagaDetail } from "@/lib/sagas/get-saga-detail";
-import { sagaHref } from "@/lib/catalog/item-href";
-import { GraphLegend } from "@/components/saga/graph/graph-legend";
-import { SagaGraphLazy } from "@/components/saga/graph/saga-graph-lazy";
+import { getRouteEntries } from "@/lib/sagas/get-saga-routes";
+import { deriveTimeline } from "@/lib/sagas/derive-timeline";
+import { mainOrderFor, shelfRoutesFor } from "@/lib/sagas/shelf-sections";
+import { resolveActiveRoute } from "@/lib/sagas/resolve-active-route";
+import { deriveAtlas } from "@/lib/sagas/atlas/model";
+import { itinerarySteps } from "@/lib/sagas/atlas/itinerary";
+import { routeCounter } from "@/lib/sagas/atlas/route-counter";
+import { atlasRoutes, legacyAtlasQuery } from "@/lib/sagas/atlas/lens";
+import { SagaAtlas } from "@/components/saga/atlas/saga-atlas";
+import { AtlasSkeleton } from "@/components/saga/atlas/atlas-skeleton";
 
 export async function generateMetadata({
   params,
@@ -16,61 +25,83 @@ export async function generateMetadata({
   const { id } = await params;
   const supabase = await createClient();
   const { data: saga } = await supabase.from("sagas").select("name").eq("id", id).maybeSingle();
-  return { title: saga ? `${saga.name} · Mapa — Biblioshare` : "Biblioshare" };
+  return { title: saga ? `${saga.name} · Atlas — Biblioshare` : "Biblioshare" };
 }
 
-// Mapa a pantalla completa (frame C): pensado para móvil; en PC el grafo ya va
-// embebido en la ficha (frame E), pero la ruta funciona igual si se comparte
-// un link directo. Sin grafo no hay nada que enseñar aquí: redirige a la
-// ficha en vez de dejar el visor vacío. `detail.graph` (no `hasGraph`) es
-// aposta: desde `resolveSagaGraph` (fase 3, Task 4-bis, arreglo tras
-// revisión) `graph` ya es `null` tanto sin nada curado como con el
-// interruptor `show_map` apagado, así que un link directo a esta URL con el
-// interruptor apagado redirige igual que si la saga no tuviera nada que
-// dibujar — el interruptor manda aquí también, sin que este archivo tenga que
-// mirarlo explícitamente.
-export default async function SagaMapPage({
-  params,
-}: {
+type AtlasPageProps = {
   params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-  const t = await getTranslations("saga");
-  const supabase = await createClient();
+  searchParams: Promise<{ lente?: string; ruta?: string; orden?: string; rol?: string }>;
+};
 
+// Atlas de la saga (spec 2026-10-28). Sustituye al grafo y a «Cómo leerla».
+// Sin `use cache` (regla #437): `detail` lleva estados y pases del lector.
+// La página es un shell síncrono: `params`, `searchParams` y la sesión se leen
+// dentro del <Suspense> (Cache Components: fuera de él bloquean la navegación,
+// «uncached data during prerendering»). El fantasma es el suelo del atlas.
+export default function SagaAtlasPage(props: AtlasPageProps) {
+  return (
+    <Suspense fallback={<AtlasSkeleton />}>
+      <SagaAtlasContent {...props} />
+    </Suspense>
+  );
+}
+
+// Los `redirect`/`notFound` de aquí dentro ocurren ya en streaming: Next emite
+// el redirect como meta en cliente y el 404 con el `not-found.tsx` del segmento
+// (docs de `redirect` y `notFound`, Next 16). Solo redirige a la ficha si la
+// saga no tiene obras (`shelfGraph` vacío): ya no mira `detail.graph` ni el
+// interruptor `show_map` (spec §3 y §9).
+async function SagaAtlasContent({ params, searchParams }: AtlasPageProps) {
+  const { id } = await params;
+  const sp = await searchParams;
+  const legacy = legacyAtlasQuery(sp);
+  if (legacy) {
+    // Nunca `/mapa?` con la query vacía (p. ej. `?orden=lectura` se traduce a nada).
+    const base = sagaAtlasHref(id);
+    redirect(legacy.size ? `${base}?${legacy}` : base);
+  }
+
+  const supabase = await createClient();
   const detail = await getSagaDetail(supabase, id);
   if (!detail) notFound();
-  const graph = detail.graph;
-  if (!graph) redirect(sagaHref(id));
+  if (detail.shelfGraph.nodes.length === 0) redirect(sagaHref(id));
+
+  const t = await getTranslations("saga");
+  const routes = atlasRoutes(shelfRoutesFor(detail, t("orderReading")));
+  const activeRoute = resolveActiveRoute({ routes, routeChoice: detail.routeChoice }, { ruta: sp.ruta });
+  const row = routes.find((r) => r.slug === activeRoute && r.id !== undefined);
+  const entries = row?.id ? await getRouteEntries(supabase, row.id) : null;
+
+  const sections = deriveTimeline(detail.shelfGraph, {
+    authenticated: detail.isAuthenticated,
+    showOptional: detail.showOptionalReadings,
+  });
+  const years = new Map(detail.groups.flatMap((g) => g.members).map((m) => [`i:${m.itemType}:${m.itemId}`, m.year] as const));
+  const model = deriveAtlas({
+    sections,
+    authenticated: detail.isAuthenticated,
+    years,
+    steps: entries ? itinerarySteps(entries, mainOrderFor(detail)) : null,
+  });
 
   return (
-    <div className="relative h-dvh w-full">
-      <SagaGraphLazy graph={graph} className="h-full w-full" showZoomControls />
-
-      <header className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center gap-3 bg-gradient-to-b from-black/70 to-transparent p-4">
-        <Link
-          href={sagaHref(id)}
-          aria-label={t("backToSaga")}
-          className="pointer-events-auto grid h-9 w-9 place-items-center rounded-lg bg-white/10 text-base text-[#f0e6d4] backdrop-blur"
-        >
-          ‹
-        </Link>
-        <div className="min-w-0">
-          <p className="truncate font-serif text-[15px] font-semibold text-[#f0e6d4]">{detail.saga.name}</p>
-          <p className="font-mono text-[9px] uppercase tracking-widest text-[#b9a986]">
-            {t("mapTitle", { count: detail.memberCount })}
-          </p>
-        </div>
-      </header>
-
-      <p className="pointer-events-none absolute left-1/2 top-16 z-10 -translate-x-1/2 rounded-full bg-black/50 px-3 py-1.5 font-mono text-[10px] text-[#b9a986] backdrop-blur">
-        {t("mapHint")}
-      </p>
-
-      <div className="absolute inset-x-0 bottom-0 z-10 rounded-t-2xl border-t border-border bg-background/95 px-4 pb-4 pt-2 backdrop-blur">
-        <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-surface-muted" />
-        <GraphLegend graph={graph} />
-      </div>
-    </div>
+    <SagaAtlas
+      sagaId={id}
+      sagaName={detail.saga.name}
+      workCount={detail.memberCount}
+      model={model}
+      authenticated={detail.isAuthenticated}
+      routes={routes.map((r) => ({ slug: r.slug, name: r.name, summary: r.summary, curated: r.id !== undefined }))}
+      activeRoute={activeRoute}
+      adoptedRoute={detail.routeChoice}
+      counter={entries ? routeCounter(detail, entries) : null}
+      canEdit={hasMinRole(detail.viewerRole, "collaborator")}
+      // Sobre `shelfGraph` entero, no sobre `model`: con la preferencia apagada el modelo ya
+      // no trae las opcionales, y el interruptor tiene que seguir ahí para volver a encenderla.
+      optionalCount={detail.shelfGraph.nodes.filter((n) => n.kind === "item" && n.optional).length}
+      showOptional={detail.showOptionalReadings}
+      // «Publicación» no se ofrece como ruta (es una lente): quien la adoptó arranca en esa lente.
+      defaultLens={detail.routeChoice === "publicacion" ? "publicacion" : "orden"}
+    />
   );
 }

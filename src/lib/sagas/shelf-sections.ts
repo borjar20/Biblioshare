@@ -38,9 +38,9 @@ export function publicationSections(graph: SagaGraph, members: DetailMember[]): 
  *  spec 2026-10-27: el interruptor esconde el MAPA, no el orden. Aquí se
  *  antepone «lectura» con la misma forma que la de `buildRouteList`.
  *
- *  Solo para la ficha: `detail.routes` no cambia porque /como-leerla y el
- *  resto sí deben respetar el interruptor (sin mapa no hay vista «lectura»
- *  que enseñar; allí `?ruta=lectura` degrada a la primera ruta). Si ya hay
+ *  Lo usan la ficha y el atlas (`/mapa`, vía `shelfGraph` y `atlasRoutes`):
+ *  `detail.routes` no cambia, así que el resto de consumidores sí respeta el
+ *  interruptor (sin mapa no hay vista «lectura»). Si ya hay
  *  «lectura» o un itinerario designado como orden de lectura, no se toca. */
 export function shelfRoutesFor(
   detail: Pick<SagaDetail, "routes" | "hasGraph" | "shelfGraph">,
@@ -92,6 +92,15 @@ export function expandRouteKeys(routeKeys: string[], mainOrderOf: (sagaId: strin
   return out;
 }
 
+/** Orden principal de cada subsaga (`tipo:id`), el de `createCuratedOrder`: la
+ *  MISMA expansión de bloques que usan la balda, RouteView y el atlas. */
+export function mainOrderFor(
+  detail: Pick<SagaDetail, "groups" | "windows" | "orderSagas" | "orderMemberships">,
+): (sagaId: string) => string[] {
+  const titles = new Map<string, string>(detail.groups.flatMap((g) => g.members).map((m) => [`${m.itemType}:${m.itemId}`, m.title]));
+  return createCuratedOrder(detail.orderSagas, detail.orderMemberships, (k) => titles.get(k) ?? "", detail.windows);
+}
+
 /** Secciones de un itinerario curado. Misma construcción que SagaMapTab (el
  *  grafo derivado con los pasos del itinerario y la columna por PASOS, spine
  *  "route") con una diferencia: los pasos-bloque se expanden ANTES de derivar.
@@ -104,8 +113,7 @@ export function curatedRouteSections(
   routeKeys: string[],
   opts: { authenticated: boolean; showOptional: boolean },
 ): TimelineSection[] {
-  const titles = new Map<string, string>(detail.groups.flatMap((g) => g.members).map((m) => [`${m.itemType}:${m.itemId}`, m.title]));
-  const mainOrder = createCuratedOrder(detail.orderSagas, detail.orderMemberships, (k) => titles.get(k) ?? "", detail.windows);
+  const mainOrder = mainOrderFor(detail);
   const lookup: MapLookup = {
     groupAccent: new Map(detail.groups.map((g) => [g.sagaId, g.accent] as const)),
     groupName: new Map(detail.groups.map((g) => [g.sagaId, g.name] as const)),

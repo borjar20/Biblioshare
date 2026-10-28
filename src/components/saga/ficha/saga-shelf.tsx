@@ -113,8 +113,8 @@ export function SagaShelf({
     links[Math.max(0, Math.min(links.length - 1, i + (e.key === "ArrowRight" ? 1 : -1)))]?.focus();
   }
 
-  // Vacía NO desaparece: la cabecera lleva los chips de itinerario y «Cómo
-  // leerla →», y sin ella el lector no podría salir de una ruta sin obras.
+  // Vacía NO desaparece: la cabecera lleva los chips de itinerario y «Ver en
+  // el mapa →», y sin ella el lector no podría salir de una ruta sin obras.
   const empty = shelf.mode === "empty";
 
   const items: A11yItem[] = shelf.groups.flatMap((g) => [

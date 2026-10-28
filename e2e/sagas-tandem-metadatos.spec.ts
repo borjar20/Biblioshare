@@ -155,8 +155,7 @@ test("la ficha pública dice qué clase de tándem es, y su nota", async ({ page
   try {
     // Semilla por REST: aísla el render de la UI de curación, que ya cubren los
     // dos tests de arriba. El tándem vive en Era Uno, pero se mira en el
-    // UNIVERSO — es el único universo QA con `show_map = true`, y su timeline
-    // incluye las obras de sus hijas.
+    // UNIVERSO, cuyo atlas incluye las obras de sus hijas.
     await api(`saga_items?saga_id=eq.${ERA_UNO_ID}&item_id=eq.d6d61eab-6ef4-4691-a8f0-b89068508fd4`, {
       method: "PATCH",
       body: JSON.stringify({ position: 2, placement: "fijo" }),
@@ -167,12 +166,19 @@ test("la ficha pública dice qué clase de tándem es, y su nota", async ({ page
       body: JSON.stringify({ saga_id: ERA_UNO_ID, position: 2, modo: "indistinto", nota: NOTA }),
     });
 
+    // Mudado al atlas (Task 11): el timeline se retiró; el modo y la nota del hueco
+    // compartido se leen en «Ver como lista», en la entrada de cada miembro.
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(`/saga/${UNIVERSO_ID}/como-leerla?ruta=lectura`);
+    await page.goto(`/saga/${UNIVERSO_ID}/mapa?ruta=lectura`);
+    await expect(page.locator("[data-ready='true'] [data-atlas-stage]")).toBeVisible();
+    await page.getByRole("button", { name: "Ver como lista" }).click();
 
-    const fila = page.locator('[data-testid="timeline-tandem"]:visible').first();
+    const fila = page
+      .getByRole("list", { name: /^Obras de / })
+      .getByRole("listitem")
+      .filter({ has: page.locator('a[href="/libro/d6d61eab-6ef4-4691-a8f0-b89068508fd4"]') });
     await expect(fila).toBeVisible();
-    await expect(fila).toContainText("Cualquier orden");
+    await expect(fila).toContainText("En cualquier orden con Libro sin valorar");
     await expect(fila).toContainText(NOTA);
   } finally {
     await restore(items, block);

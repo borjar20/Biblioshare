@@ -1,4 +1,4 @@
-import { toScreen, toWorld } from '@/lib/comparisons/atlas/camera';
+import { toScreen, toWorld } from '@/lib/atlas/camera';
 import type { TiempoLayout } from '@/lib/comparisons/atlas/tiempo';
 import { YEAR_STEP } from '@/lib/comparisons/atlas/tiempo';
 import type { AtlasPerson } from '@/lib/comparisons/atlas/types';

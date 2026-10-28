@@ -8,9 +8,13 @@
  *
  * `/comunidad/entre-nosotros` es el atlas de Entre nosotros: un mapa a sangre
  * con su propio «← Comunidad».
+ *
+ * `/saga/<id>/mapa` es el atlas de la saga (spec 2026-10-28 §3), con su propio
+ * «‹». `/saga/<id>/mapa/editar` NO: es un redirect al editor, que va con marco.
  */
 export function isFullscreenRoute(pathname: string): boolean {
   return pathname === "/partida" || pathname.startsWith("/partida/")
     || pathname === "/mascota" || pathname.startsWith("/mascota/")
-    || pathname === "/comunidad/entre-nosotros";
+    || pathname === "/comunidad/entre-nosotros"
+    || /^\/saga\/[^/]+\/mapa$/.test(pathname);
 }

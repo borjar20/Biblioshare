@@ -145,6 +145,56 @@ describe("deriveTimeline", () => {
     expect(tl[1].rows[0]).toEqual({ kind: "bridge", node: hub });
   });
 
+  // Bug de la e2e del atlas (task 11): un nexo sin hueco y sin ninguna arista
+  // hacia la columna se DESCARTABA («sin conexión, fuera del timeline»), y con
+  // él desaparecía del atlas y de la balda. Caso real en dev: la «Trilogía» de
+  // [QA Sagas v2] Universo, miembro directo con position = null.
+  it("un nexo sin hueco y sin conexión no se pierde: sale como puente al final", () => {
+    const hub = node("hub", { groupSagaId: null, groupName: null, accent: "beige" });
+    const tl = deriveTimeline(
+      graph([
+        node("a", { orderNo: 0 }),
+        node("c", { orderNo: 1, groupSagaId: "g2", groupName: "Era Dos", accent: "terracota" }),
+        hub,
+      ]),
+    );
+    expect(tl).toHaveLength(3);
+    expect(tl.at(-1)).toEqual({
+      groupSagaId: null, groupName: null, accent: "beige", continuation: false,
+      rows: [{ kind: "bridge", node: hub }],
+    });
+  });
+
+  it("varios nexos sueltos van al final en orden alfabético, tras los puentes conectados", () => {
+    const zeta = node("zeta", { groupSagaId: null, groupName: null, accent: "beige", label: "Zeta" });
+    const alfa = node("alfa", { groupSagaId: null, groupName: null, accent: "beige", label: "Alfa" });
+    const tl = deriveTimeline(graph([node("a", { orderNo: 0 }), zeta, alfa]));
+    expect(tl.map((s) => s.rows[0].kind === "bridge" ? s.rows[0].node.id : "col")).toEqual(["col", "alfa", "zeta"]);
+  });
+
+  it("sin columna, un nexo suelto abre su propia sección raíz en vez de devolver []", () => {
+    const hub = node("hub", { groupSagaId: null, groupName: null, accent: "beige" });
+    const tl = deriveTimeline(graph([hub]));
+    expect(tl).toEqual([
+      { groupSagaId: null, groupName: null, accent: "beige", continuation: false, rows: [{ kind: "bridge", node: hub }] },
+    ]);
+  });
+
+  it("una obra suelta de una subsaga sin sección propia tampoco se pierde", () => {
+    const loose = node("loose", { groupSagaId: "g9", groupName: "Era Nueve", accent: "terracota" });
+    const tl = deriveTimeline(graph([node("a", { orderNo: 0 }), loose]));
+    expect(tl.at(-1)).toEqual({
+      groupSagaId: "g9", groupName: "Era Nueve", accent: "terracota", continuation: false,
+      rows: [{ kind: "bridge", node: loose }],
+    });
+  });
+
+  it("un nexo suelto que el lector esconde (opcional, showOptional=false) sigue escondido", () => {
+    const hub = node("hub", { groupSagaId: null, groupName: null, accent: "beige", optional: true });
+    const tl = deriveTimeline(graph([node("a", { orderNo: 0 }), hub]), { showOptional: false });
+    expect(tl).toHaveLength(1);
+  });
+
   it("los nodos-saga no aparecen en el timeline (solo en el mapa 2D)", () => {
     const tl = deriveTimeline(
       graph([node("a", { orderNo: 1 }), node("s", { kind: "saga", orderNo: 2, groupSagaId: "g2" })]),
