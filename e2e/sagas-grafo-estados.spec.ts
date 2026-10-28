@@ -159,11 +159,13 @@ test("el tándem dice su modo y sus compañeras, y no cuenta como obra", async (
   await expect(fila(lista, RARO.title)).toContainText("A la vez que Libro sin valorar");
   await expect(fila(lista, "Libro sin valorar")).toContainText(`A la vez que ${RARO.title}`);
 
-  // Los adornos NO son obras. El Universo QA tiene 6 obras en el atlas (Era Uno
-  // 4 + Era Dos 2): si el tándem se colara en este recuento como obra extra,
-  // cualquier test que cuente obras pasaría a proteger otra cosa.
-  await expect(page.locator("[data-work-key]")).toHaveCount(6);
-  await expect(lista.getByRole("listitem")).toHaveCount(6);
+  // Los adornos NO son obras. El Universo QA tiene 7 obras distintas (Era Uno 4 +
+  // Era Dos 2 + la Trilogía directa, que el atlas enseña desde 7c9fd976; «Para leer a
+  // Isabel Allende» está en Era Uno y en el universo, y cuenta una vez): si el tándem
+  // se colara en este recuento como obra extra, cualquier test que cuente obras
+  // pasaría a proteger otra cosa.
+  await expect(page.locator("[data-work-key]")).toHaveCount(7);
+  await expect(lista.getByRole("listitem")).toHaveCount(7);
 });
 
 test("el sujeto de la ventana nombra sus dos anclas", async ({ page }) => {

@@ -34,8 +34,13 @@ async function gotoFicha(page: Page, query = "") {
 }
 
 const piles = (page: Page) => page.locator('[data-testid^="shelf-pile-"]');
+/** Pilas de las SUBSAGAS. Desde 7c9fd976 la balda también enseña la obra directa sin
+ *  hueco ni conexión (la «Trilogía») como grupo propio, `shelf-pile-root`: es obra de la
+ *  saga y se ve, pero no es una de las dos subsagas que estos tests pliegan y despliegan. */
 const pileIds = async (page: Page) =>
-  (await piles(page).evaluateAll((els) => els.map((e) => e.getAttribute("data-testid")!.replace("shelf-pile-", "")))).sort();
+  (await piles(page).evaluateAll((els) => els.map((e) => e.getAttribute("data-testid")!.replace("shelf-pile-", ""))))
+    .filter((id) => id !== "root")
+    .sort();
 
 const adminHeaders = () => ({ apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` });
 
@@ -161,10 +166,11 @@ test.describe("ficha de saga · lector", () => {
 
     await expect(page).toHaveURL(/\?ruta=publicacion/);
     await expect(chip).toHaveAttribute("aria-current", "true");
-    // Otro itinerario = otra primera portada y otro «N de M» (el denominador
-    // cambia: la publicación incluye la Trilogía, que la curación no cuenta).
+    // Otro itinerario = otra primera portada. El «N de M» ya NO cambia: antes la
+    // curación dejaba fuera la Trilogía (obra directa sin hueco ni conexión) y solo la
+    // publicación la contaba; desde 7c9fd976 las dos cuentan todas las obras de la saga.
     await expect.poll(() => firstCoverHref(page)).not.toBe(antes);
-    expect(await page.getByTestId("shelf-count").innerText()).not.toBe(contadorAntes);
+    await expect(page.getByTestId("shelf-count")).toHaveText(contadorAntes);
   });
 
   test("«Te toca» nombra la obra «ahora» y enlaza a su ficha", async ({ page }) => {

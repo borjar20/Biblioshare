@@ -13,8 +13,7 @@ import { submitLogin } from "./support/visible-form";
 // se retiró y sus filas viven ahora en «Ver como lista» del atlas, que pinta la
 // misma píldora «Saltar»/«Deshacer» (`atlas/skip-optional-button.tsx`). La
 // mini-ficha del plano la cubre sagas-atlas.spec.ts (test 7). El interruptor
-// «Ver/ocultar opcionales» (test 3 de antes) no tiene equivalente en el atlas y
-// se borró: ver `.superpowers/sdd/task-11-report.md`.
+// «Ver/ocultar opcionales» es ahora la píldora del dock (`atlas/optional-toggle.tsx`).
 //
 // Mismo patrón de sesión y limpieza que `sagas-ventana-motivo-track.spec.ts`:
 // `fetch` nativo (no el fixture `request`, que muere con el contexto y dejaría
@@ -75,6 +74,11 @@ async function resetLector() {
     method: "PATCH",
     body: JSON.stringify({ show_optional_readings: true }),
   });
+}
+
+/** El atlas ha pintado su primer layout (saga-atlas.tsx marca `data-ready`). */
+async function atlasReadyHere(page: Page) {
+  await expect(page.locator("[data-ready='true'] [data-atlas-stage]")).toBeVisible();
 }
 
 /** Abre «Ver como lista» del atlas y devuelve la `ol` de obras. */
@@ -174,9 +178,41 @@ test("2 · saltar persiste tras recargar; deshacer la devuelve", async ({ page }
   ).toHaveLength(0);
 });
 
-// El test 3 de antes («el interruptor esconde las opcionales, y la barra sigue
-// estando para volver») se borró con el timeline: el atlas no tiene interruptor
-// de opcionales (`setShowOptionalReadings` se quedó sin consumidores en la UI).
+test("3 · el interruptor esconde las opcionales, y sigue estando para volver", async ({ page }) => {
+  // El interruptor del atlas (`atlas-optional-toggle`, junto a la leyenda del dock)
+  // escribe `profiles.show_optional_readings`. La preferencia la deja como estaba el
+  // `afterAll` (y `beforeEach` la pone a `true`), así que el test puede apagarla.
+  await loginAsDevtest(page);
+  await page.goto(MAPA);
+  await atlasReadyHere(page);
+  const obra = page.locator(`[data-work-key="i:book:${OPCIONAL_ID}"]`);
+  const toggle = page.getByTestId("atlas-optional-toggle");
+  await expect(obra).toHaveCount(1);
+  await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  await expect(toggle).toContainText("visibles");
+
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-pressed", "false");
+  // La recarga es la prueba: escondida de verdad y persistida en el perfil.
+  await page.reload();
+  await atlasReadyHere(page);
+  await expect(obra).toHaveCount(0);
+  const perfil = (await (
+    await api(`profiles?user_id=eq.${userId}&select=show_optional_readings`)
+  ).json()) as Array<{ show_optional_readings: boolean }>;
+  expect(perfil[0].show_optional_readings).toBe(false);
+
+  // El interruptor NO desaparece con lo que esconde: si contara las opcionales sobre lo
+  // visible en vez de sobre toda la saga, apagarlo se llevaría por delante la vuelta.
+  await expect(toggle).toHaveAttribute("aria-pressed", "false");
+  await expect(toggle).toContainText("ocultas");
+
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  await page.reload();
+  await atlasReadyHere(page);
+  await expect(obra).toHaveCount(1);
+});
 
 // El contador «N de M» de la balda de la ficha (`shelf-count`): el progreso del
 // itinerario ACTIVO. Sustituye a `saga-hero-progress`, que contaba el universo
