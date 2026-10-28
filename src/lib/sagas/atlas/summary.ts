@@ -43,9 +43,13 @@ export function summarize(model: AtlasModel, lens: Lens): AtlasSummary {
     case "start": {
       const title = model.nextTitle ?? model.works.find((w) => !w.optional)?.title ?? "";
       if (model.mode === "start") return { key: "ordenStart", values: { title } };
+      // Con ruta curada (#1567) cuenta la ruta, no el plano entero: es lo que dice la ficha.
       const counted = model.works.filter((w) => !w.optional);
-      const done = counted.filter((w) => w.state === "done").length;
-      return { key: "ordenNext", values: { done, total: counted.length, title } };
+      const { done, total } = model.progress ?? {
+        done: counted.filter((w) => w.state === "done").length,
+        total: counted.length,
+      };
+      return { key: "ordenNext", values: { done, total, title } };
     }
     case "finished":
       return { key: "ordenFinished", values: {} };

@@ -8,7 +8,8 @@ import { sagaAtlasHref, sagaHref } from "@/lib/catalog/item-href";
 import { getSagaDetail } from "@/lib/sagas/get-saga-detail";
 import { getRouteEntries } from "@/lib/sagas/get-saga-routes";
 import { deriveTimeline } from "@/lib/sagas/derive-timeline";
-import { mainOrderFor, shelfRoutesFor } from "@/lib/sagas/shelf-sections";
+import { curatedRouteSections, mainOrderFor, shelfRoutesFor } from "@/lib/sagas/shelf-sections";
+import { keyOfRouteEntry } from "@/lib/sagas/hydrate-route-draft";
 import { resolveActiveRoute } from "@/lib/sagas/resolve-active-route";
 import { deriveAtlas } from "@/lib/sagas/atlas/model";
 import { itinerarySteps } from "@/lib/sagas/atlas/itinerary";
@@ -72,16 +73,16 @@ async function SagaAtlasContent({ params, searchParams }: AtlasPageProps) {
   const row = routes.find((r) => r.slug === activeRoute && r.id !== undefined);
   const entries = row?.id ? await getRouteEntries(supabase, row.id) : null;
 
-  const sections = deriveTimeline(detail.shelfGraph, {
-    authenticated: detail.isAuthenticated,
-    showOptional: detail.showOptionalReadings,
-  });
+  const opts = { authenticated: detail.isAuthenticated, showOptional: detail.showOptionalReadings };
+  const sections = deriveTimeline(detail.shelfGraph, opts);
   const years = new Map(detail.groups.flatMap((g) => g.members).map((m) => [`i:${m.itemType}:${m.itemId}`, m.year] as const));
   const model = deriveAtlas({
     sections,
     authenticated: detail.isAuthenticated,
     years,
     steps: entries ? itinerarySteps(entries, mainOrderFor(detail)) : null,
+    // «Ahora» y el avance de la ruta activa, las mismas secciones que la balda de la ficha (#1567).
+    routeSections: entries ? curatedRouteSections(detail, entries.map(keyOfRouteEntry), opts) : null,
   });
 
   return (

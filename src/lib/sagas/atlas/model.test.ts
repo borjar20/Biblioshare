@@ -109,4 +109,30 @@ describe("deriveAtlas", () => {
     // Cuenta para la región raíz: no es opcional.
     expect(m.regions.find((r) => r.key === "root")).toMatchObject({ counted: 1, completed: 0 });
   });
+
+  // #1567: con un itinerario curado activo, «ahora», el modo y el avance salen
+  // de la ruta (como «Te toca» en la ficha); el plano sigue en el orden principal.
+  it("ruta curada: «ahora», nextTitle y avance siguen a la ruta", () => {
+    const main = [sec([entry(n("a"), 1), entry(n("b"), 2), entry(n("c", { status: "completed" }), 3)], "s1", "Uno")];
+    // La ruta solo recorre C y B, en ese orden: C está leída, así que toca B.
+    const route = [sec([entry(n("c", { status: "completed" }), 1), entry(n("b"), 2)], "s1", "Uno")];
+    const m = deriveAtlas({ ...base, sections: main, routeSections: route });
+    expect(m.works.map((w) => [w.key, w.readingIndex, w.state])).toEqual([
+      ["i:book:a", 0, "todo"], ["i:book:b", 1, "now"], ["i:book:c", 2, "done"],
+    ]);
+    expect(m.nowKey).toBe("i:book:b");
+    expect(m.nextTitle).toBe("B");
+    expect(m.progress).toEqual({ done: 1, total: 2 });
+    expect(m.regions.find((r) => r.key === "s1")?.state).toBe("current");
+  });
+
+  it("ruta curada terminada: nadie es «ahora» aunque el orden principal siga abierto", () => {
+    const main = [sec([entry(n("a"), 1), entry(n("b", { status: "completed" }), 2)], "s1", "Uno")];
+    const route = [sec([entry(n("b", { status: "completed" }), 1)], "s1", "Uno")];
+    const m = deriveAtlas({ ...base, sections: main, routeSections: route });
+    expect(m.nowKey).toBeNull();
+    expect(m.mode).toBe("finished");
+    expect(m.works.every((w) => w.state !== "now")).toBe(true);
+    expect(m.regions.find((r) => r.key === "s1")?.state).toBe("future");
+  });
 });

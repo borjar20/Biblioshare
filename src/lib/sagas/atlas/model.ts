@@ -1,5 +1,5 @@
 import type { SagaAccentToken } from "../accents";
-import { deriveShelf, type ShelfMode, type ShelfSlot, type ShelfWork } from "../derive-shelf";
+import { deriveShelf, type Shelf, type ShelfMode, type ShelfSlot, type ShelfWork } from "../derive-shelf";
 import type { TimelineRow, TimelineSection } from "../derive-timeline";
 import type { SagaGraphNode } from "../map-types";
 import type { SagaItemRole, TandemMode, WindowReason } from "../types";
@@ -51,16 +51,24 @@ export type AtlasModel = {
   mode: ShelfMode;
   nextTitle: string | null;
   hasItinerary: boolean;
+  /** Avance de la ruta curada activa (#1567). Ausente: cuentan las obras del plano. */
+  progress?: { done: number; total: number };
 };
 
 // Modelo del atlas de la saga (spec 2026-10-28 §4.1). Puro. NO decide nada que
 // ya decida la balda: «ahora», estados de región y anclas salen de `deriveShelf`;
 // aquí solo se aplana en una lista de obras con lo que el lienzo necesita.
+//
+// `routeSections` (#1567): las secciones del itinerario curado activo, las de
+// `curatedRouteSections`, las mismas con las que la ficha decide «Te toca». El
+// plano sigue en el orden principal (`sections`); de la ruta salen solo «ahora»,
+// el modo, «te toca» y el avance, para que atlas y ficha digan lo mismo.
 export function deriveAtlas(input: {
   sections: TimelineSection[];
   authenticated: boolean;
   years: Map<string, number | null>;
   steps: ItineraryStep[] | null;
+  routeSections?: TimelineSection[] | null;
 }): AtlasModel {
   const shelf = deriveShelf(input.sections, { authenticated: input.authenticated });
 
@@ -105,14 +113,41 @@ export function deriveAtlas(input: {
     for (const w of g.extras) push(w, g.key, true, null);
   }
 
-  return {
+  const regions: AtlasRegion[] = shelf.groups.map((g) => ({
+    key: g.key, name: g.name, accent: g.accent, state: g.state, counted: g.counted, completed: g.completed,
+  }));
+  const model: AtlasModel = {
     works,
-    regions: shelf.groups.map((g) => ({
-      key: g.key, name: g.name, accent: g.accent, state: g.state, counted: g.counted, completed: g.completed,
-    })),
+    regions,
     nowKey: works.find((w) => w.state === "now")?.key ?? null,
     mode: shelf.mode,
     nextTitle: shelf.nextUp?.work.title ?? null,
     hasItinerary: input.steps !== null,
+  };
+  return input.routeSections ? followRoute(model, deriveShelf(input.routeSections, { authenticated: input.authenticated })) : model;
+}
+
+/** Reasigna «ahora» según la balda de la ruta: la obra que era «ahora» en el
+ *  orden principal pasa a pendiente y la región que la contiene deja de ser la
+ *  actual. «Leída» no depende del orden, así que no cambia. */
+function followRoute(model: AtlasModel, route: Shelf): AtlasModel {
+  const routeWorks = route.groups.flatMap((g) => [...g.slots.flatMap((s) => (s.kind === "tandem" ? s.works : [s.work])), ...g.extras]);
+  const nowKey = routeWorks.find((w) => w.state === "now")?.key ?? null;
+  const works = model.works.map((w): AtlasWork => {
+    const state: AtlasWorkState = w.key === nowKey ? "now" : w.state === "now" ? "todo" : w.state;
+    return state === w.state ? w : { ...w, state };
+  });
+  const regions = model.regions.map((r): AtlasRegion => {
+    if (works.some((w) => w.regionKey === r.key && w.state === "now")) return { ...r, state: "current" };
+    if (r.state !== "current") return r;
+    return { ...r, state: r.counted > 0 && r.completed === r.counted ? "done" : "future" };
+  });
+  const done = route.groups.reduce((n, g) => n + g.completed, 0);
+  const total = route.groups.reduce((n, g) => n + g.counted, 0);
+  return {
+    ...model, works, regions, nowKey,
+    mode: route.mode,
+    nextTitle: route.nextUp?.work.title ?? null,
+    progress: { done, total },
   };
 }
