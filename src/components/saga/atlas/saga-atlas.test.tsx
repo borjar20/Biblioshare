@@ -16,7 +16,9 @@ vi.mock("next/navigation", () => ({
 }));
 // Server actions de Adoptar: en jsdom no se pueden importar (importan el cliente de servidor).
 vi.mock("@/lib/sagas/route-actions", () => ({ adoptRoute: vi.fn(async () => ({})), dropRoute: vi.fn(async () => ({})) }));
-vi.mock("@/lib/sagas/optional-actions", () => ({ skipOptional: vi.fn(async () => {}), unskipOptional: vi.fn(async () => {}) }));
+vi.mock("@/lib/sagas/optional-actions", () => ({
+  skipOptional: vi.fn(async () => {}), unskipOptional: vi.fn(async () => {}), setShowOptionalReadings: vi.fn(async () => {}),
+}));
 vi.mock("next/image", () => ({
   // eslint-disable-next-line @next/next/no-img-element
   default: (p: { alt: string }) => <img alt={p.alt} />,
@@ -519,5 +521,40 @@ describe("capas Itinerario y Progreso, y hoja de itinerarios", () => {
     expect(now()).toBeNull();
     expect(screen.getByRole("button", { name: "C" })).toBeTruthy();
     expect((document.querySelector('[data-work-key="c"]') as HTMLElement).style.getPropertyValue("--dim")).toBe("1");
+  });
+});
+
+// Interruptor de opcionales (preferencia global `show_optional_readings`): sin él, quien la
+// apagaba no tenía cómo volver a ver sus opcionales en el atlas.
+describe("SagaAtlas · interruptor de opcionales", () => {
+  const toggle = () => screen.queryByTestId("atlas-optional-toggle");
+
+  it("sin sesión no se pinta", () => {
+    view({ authenticated: false, optionalCount: 3, showOptional: true });
+    expect(toggle()).toBeNull();
+  });
+
+  it("sin opcionales en la saga no se pinta", () => {
+    view({ optionalCount: 0, showOptional: false });
+    expect(toggle()).toBeNull();
+  });
+
+  it("aria-pressed y el texto reflejan la preferencia", () => {
+    view({ optionalCount: 3, showOptional: true });
+    expect(toggle()!.getAttribute("aria-pressed")).toBe("true");
+    expect(toggle()!.textContent).toContain("Opcionales (3): visibles");
+    cleanup();
+    view({ optionalCount: 3, showOptional: false });
+    expect(toggle()!.getAttribute("aria-pressed")).toBe("false");
+    expect(toggle()!.textContent).toContain("Opcionales (3): ocultas");
+  });
+
+  it("enviarlo llama a la acción con el valor contrario y la ficha a revalidar", async () => {
+    const { setShowOptionalReadings } = await import("@/lib/sagas/optional-actions");
+    vi.mocked(setShowOptionalReadings).mockClear();
+    view({ optionalCount: 3, showOptional: false });
+    fireEvent.click(toggle()!);
+    await waitFor(() => expect(setShowOptionalReadings).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(setShowOptionalReadings).mock.calls[0].slice(0, 2)).toEqual([true, "s1"]);
   });
 });

@@ -96,6 +96,10 @@ async function SagaAtlasContent({ params, searchParams }: AtlasPageProps) {
       adoptedRoute={detail.routeChoice}
       counter={entries ? routeCounter(detail, entries) : null}
       canEdit={hasMinRole(detail.viewerRole, "collaborator")}
+      // Sobre `shelfGraph` entero, no sobre `model`: con la preferencia apagada el modelo ya
+      // no trae las opcionales, y el interruptor tiene que seguir ahí para volver a encenderla.
+      optionalCount={detail.shelfGraph.nodes.filter((n) => n.kind === "item" && n.optional).length}
+      showOptional={detail.showOptionalReadings}
     />
   );
 }

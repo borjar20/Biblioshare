@@ -119,6 +119,12 @@
 .listToggle[aria-pressed='true'] { background: var(--fg); color: var(--ground); }
 .listToggle svg { width: 16px; height: 16px; flex: none; }
 .listToggle:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+/* Leyenda + interruptor de opcionales: se envuelven bajo la leyenda si no caben. */
+.legendRow { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; justify-content: center; pointer-events: none; }
+.optionalForm { pointer-events: auto; margin: 0; }
+.optionalForm .chip { min-height: 44px; font-size: 12.5px; background: color-mix(in srgb, var(--panel) 90%, transparent); backdrop-filter: blur(8px); }
+.optionalForm .chip[aria-pressed='true'] { background: var(--fg); color: var(--ground); }
+.optionalForm .chip:disabled { opacity: .6; }
 
 /* Obra con la mini-ficha abierta: anillo que no depende solo del color (borde además del brillo). */
 .work[data-selected] .cover { outline: 2px solid var(--fg); outline-offset: 3px; }

@@ -11,6 +11,7 @@ import { summarize } from "@/lib/sagas/atlas/summary";
 import { inVisibleArea } from "@/lib/sagas/atlas/visible-camera";
 import { AtlasList } from "./atlas-list";
 import { AtlasPlane } from "./atlas-plane";
+import { OptionalToggle } from "./optional-toggle";
 import { AtlasDock, AtlasTopBar, AtlasZoom, LENS_LABEL, LENSES, ProgressToggle } from "./atlas-chrome";
 import { ItinerarySheet, type AtlasRoute } from "./itinerary-sheet";
 import { useAtlasCamera, useChromeInsets, useViewport } from "./use-atlas-camera";
@@ -24,6 +25,9 @@ export type SagaAtlasProps = {
   activeRoute: string; adoptedRoute: string | null;
   counter: { completed: number; total: number } | null; // ruta activa curada
   canEdit: boolean;
+  /** Obras opcionales de la saga (contadas en el servidor sobre el grafo entero, también las
+   *  escondidas) y la preferencia global de enseñarlas. Sin opcionales no hay interruptor. */
+  optionalCount?: number; showOptional?: boolean;
 };
 
 const bold = (chunks: ReactNode) => <b>{chunks}</b>;
@@ -34,6 +38,7 @@ const bold = (chunks: ReactNode) => <b>{chunks}</b>;
  *  URL del cliente; la ruta activa, de la prop (cambiarla vuelve a pedir datos al servidor). */
 export function SagaAtlas({
   sagaId, sagaName, workCount, model, authenticated, routes, activeRoute, adoptedRoute, counter, canEdit,
+  optionalCount = 0, showOptional = true,
 }: SagaAtlasProps) {
   const t = useTranslations("saga");
   const pathname = usePathname();
@@ -224,7 +229,9 @@ export function SagaAtlas({
       )}
       <AtlasTopBar sagaId={sagaId} sagaName={sagaName} workCount={workCount} summary={summaryRich} actions={actions} ref={topRef} />
       {!listOn && <AtlasZoom onZoomIn={() => zoomBy(1.25)} onZoomOut={() => zoomBy(0.8)} onFit={fitAll} />}
-      <AtlasDock lens={lens} onLens={changeLens} listOn={listOn} onList={() => {
+      <AtlasDock lens={lens} onLens={changeLens} listOn={listOn}
+        extra={authenticated && optionalCount > 0 ? <OptionalToggle sagaId={sagaId} count={optionalCount} shown={showOptional} /> : null}
+        onList={() => {
         setListOn((on) => !on);
         setSelectedKey(null);
       }} ref={dockRef} />

@@ -2337,6 +2337,7 @@
       "legendRol": "Un carril por rol · el hilo une cada obra con la principal de la que cuelga",
       "legendPublicacion": "Eje de años · la cifra es su puesto de lectura",
       "progress": "Progreso",
+      "optionalToggle": "Opcionales ({count})", "optionalShown": "visibles", "optionalHidden": "ocultas",
       "itinerary": "Itinerario: {name}",
       "itineraryTitle": "Elige itinerario",
       "itineraryManage": "Gestionar itinerarios",

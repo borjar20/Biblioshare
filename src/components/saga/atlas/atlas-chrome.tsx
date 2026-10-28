@@ -39,9 +39,10 @@ export function AtlasTopBar({ sagaId, sagaName, workCount, summary, actions, ref
   );
 }
 
-export function AtlasDock({ lens, onLens, listOn, onList, ref }: {
+export function AtlasDock({ lens, onLens, listOn, onList, extra, ref }: {
   lens: Lens; onLens: (lens: Lens) => void;
   listOn: boolean; onList: () => void; // «Ver como lista»: la lista sustituye al plano
+  extra?: ReactNode; // junto a la leyenda: el interruptor de opcionales, cuando toca
   ref?: Ref<HTMLDivElement>;
 }) {
   const t = useTranslations("saga");
@@ -64,7 +65,12 @@ export function AtlasDock({ lens, onLens, listOn, onList, ref }: {
           <span aria-hidden="true">{t("atlas.list")}</span>
         </button>
       </div>
-      <p className={styles.legend}>{t(LENS_LEGEND[lens])}</p>
+      {/* El interruptor va en la línea de la leyenda y no en la fila de lentes: en móvil esa
+          fila ya va justa, y la leyenda es la que explica qué se está viendo. */}
+      <div className={styles.legendRow}>
+        <p className={styles.legend}>{t(LENS_LEGEND[lens])}</p>
+        {extra}
+      </div>
     </div>
   );
 }
