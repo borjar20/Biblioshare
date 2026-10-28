@@ -1,39 +1,39 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { submitLogin } from "./support/visible-form";
 
-// E2E de la fase 4: saltar una lectura opcional, deshacerlo, y el interruptor
-// que las esconde todas. Lo que cubre y las unitarias no pueden:
+// E2E de la fase 4: saltar una lectura opcional y deshacerlo. Lo que cubre y
+// las unitarias no pueden:
 //
 //  · que el salto llega a `saga_optional_skips` y SOBREVIVE a una recarga —
 //    las unitarias prueban `markSkipped`, no que el server action escriba;
-//  · que el interruptor persiste en `profiles` y esconde de verdad;
-//  · que la barra del interruptor SIGUE en pantalla con las opcionales
-//    escondidas, que es lo único que permite volver (y con ellas, deshacer un
-//    salto: con el interruptor apagado la fila no está, así que su «Deshacer»
-//    tampoco);
 //  · que saltar NO mueve el progreso. Es el límite duro de la spec, y es lo
 //    que impide que un futuro «ya que estamos» reabra el denominador.
+//
+// Mudado al atlas (Task 11 del atlas, 2026-10-28): el timeline de «Cómo leerla»
+// se retiró y sus filas viven ahora en «Ver como lista» del atlas, que pinta la
+// misma píldora «Saltar»/«Deshacer» (`atlas/skip-optional-button.tsx`). La
+// mini-ficha del plano la cubre sagas-atlas.spec.ts (test 7). El interruptor
+// «Ver/ocultar opcionales» (test 3 de antes) no tiene equivalente en el atlas y
+// se borró: ver `.superpowers/sdd/task-11-report.md`.
 //
 // Mismo patrón de sesión y limpieza que `sagas-ventana-motivo-track.spec.ts`:
 // `fetch` nativo (no el fixture `request`, que muere con el contexto y dejaría
 // filas huérfanas en un timeout), `res.ok` comprobado en cada escritura
 // (#180/#182) y la semilla devuelta exactamente a como estaba.
 //
-// Universo QA: "[QA Sagas v2] Universo" — el único con `show_map = true`, sin
-// el cual `resolveSagaGraph` devuelve `graph = null` y no hay timeline que
-// mirar. La obra que se marca opcional vive en Era Uno (una subsaga), a
-// propósito: así el salto se guarda con `ownerSagaId = ERA_UNO_ID`, que NO es
-// la ficha visitada, y el test recorre la distinción que sostiene todo esto.
+// Universo QA: "[QA Sagas v2] Universo". La obra que se marca opcional vive en
+// Era Uno (una subsaga), a propósito: así el salto se guarda con
+// `ownerSagaId = ERA_UNO_ID`, que NO es la ficha visitada, y el test recorre la
+// distinción que sostiene todo esto.
 const UNIVERSO_ID = "69c07496-9b1a-4203-b3da-15d22a09c039";
 const ERA_UNO_ID = "53118dd4-ccd9-4a9d-8241-5899816a9eab";
 const OPCIONAL_ID = "4c076a65-4888-4715-913e-2157374cd227"; // «Libro sin valorar», hueco 2 de Era Uno
 const OPCIONAL_TITLE = "Libro sin valorar";
 
-// La ficha abre en «Info»; el timeline vive en la página «Cómo leerla»,
-// que es `/como-leerla`. Y `ruta=lectura` fija la columna a la
-// curación: sin ella la ruta activa sería la que el lector tenga adoptada, y
-// el test dependería de un estado que no controla.
-const MAPA = `/saga/${UNIVERSO_ID}/como-leerla?ruta=lectura`;
+// `ruta=lectura` fija el atlas a la curación: sin ella la ruta activa sería la
+// que el lector tenga adoptada, y el test dependería de un estado que no
+// controla.
+const MAPA = `/saga/${UNIVERSO_ID}/mapa?ruta=lectura`;
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
@@ -77,12 +77,15 @@ async function resetLector() {
   });
 }
 
-// Los dos árboles (móvil y PC) se montan A LA VEZ y se ocultan por breakpoint,
-// así que sin `:visible` toda consulta es ambigua. El proyecto corre en Desktop
-// Chrome, o sea que lo visible es el pie del grafo de PC.
-const timeline = (page: Page) => page.locator('[data-testid="reading-timeline"]:visible');
-const filaOpcional = (page: Page) =>
-  timeline(page).locator("div").filter({ hasText: OPCIONAL_TITLE }).last();
+/** Abre «Ver como lista» del atlas y devuelve la `ol` de obras. */
+async function openList(page: Page) {
+  await expect(page.locator("[data-ready='true'] [data-atlas-stage]")).toBeVisible();
+  await page.getByRole("button", { name: "Ver como lista" }).click();
+  const lista = page.getByRole("list", { name: /^Obras de / });
+  await expect(lista).toBeVisible();
+  return lista;
+}
+const filaOpcional = (lista: Locator) => lista.getByRole("listitem").filter({ hasText: OPCIONAL_TITLE });
 
 test.beforeAll(async () => {
   const perfiles = (await (
@@ -124,31 +127,33 @@ test.beforeEach(async () => {
   await resetLector();
 });
 
-test("1 · una obra opcional trae su chapa y su píldora «Saltar»", async ({ page }) => {
+test("1 · una obra opcional trae su píldora «Saltar», y una que no lo es no", async ({ page }) => {
   await loginAsDevtest(page);
   await page.goto(MAPA);
+  const lista = await openList(page);
 
-  await expect(timeline(page).getByText(OPCIONAL_TITLE)).toBeVisible();
-  await expect(filaOpcional(page).getByTestId("optional-tag")).toHaveText("Opcional");
-  await expect(filaOpcional(page).getByTestId("skip-optional")).toBeVisible();
-  // Y la barra del interruptor, que solo aparece si la saga TIENE opcionales.
-  await expect(timeline(page).getByTestId("optional-bar")).toBeVisible();
+  await expect(filaOpcional(lista)).toHaveCount(1);
+  await expect(filaOpcional(lista).getByTestId("skip-optional")).toBeVisible();
+  await expect(filaOpcional(lista).getByTestId("skip-optional")).toHaveAccessibleName(`Saltar «${OPCIONAL_TITLE}»`);
+  // Una sola píldora en toda la lista: el resto de obras del seed no son opcionales.
+  await expect(lista.getByTestId("skip-optional")).toHaveCount(1);
 });
 
-test("2 · saltar tacha la fila y persiste tras recargar; deshacer la devuelve", async ({ page }) => {
+test("2 · saltar persiste tras recargar; deshacer la devuelve", async ({ page }) => {
   await loginAsDevtest(page);
   await page.goto(MAPA);
-  await filaOpcional(page).getByTestId("skip-optional").click();
+  await filaOpcional(await openList(page)).getByTestId("skip-optional").click();
+  await expect(filaOpcional(page.getByRole("list", { name: /^Obras de / })).getByTestId("unskip-optional")).toBeVisible();
 
   // La recarga es el test de verdad: sin ella esto solo probaría que React
   // repintó algo. El salto tiene que estar en BD.
   await page.reload();
-  await expect(filaOpcional(page).getByTestId("optional-tag")).toHaveText("Oculto del recorrido");
-  await expect(filaOpcional(page).getByTestId("unskip-optional")).toBeVisible();
-
-  // Y la fila SIGUE ahí: saltar tacha, no esconde — si escondiera, «Deshacer»
-  // no tendría dónde vivir.
-  await expect(timeline(page).getByText(OPCIONAL_TITLE)).toBeVisible();
+  let lista = await openList(page);
+  await expect(filaOpcional(lista).getByTestId("unskip-optional")).toBeVisible();
+  // Y la obra SIGUE ahí: saltar tacha, no esconde — si escondiera, «Deshacer»
+  // no tendría dónde vivir. El plano la marca como saltada.
+  await expect(filaOpcional(lista)).toHaveCount(1);
+  await expect(page.locator(`[data-work-key="i:book:${OPCIONAL_ID}"]`)).toHaveAttribute("data-skipped", "true");
 
   const guardado = (await (
     await api(
@@ -159,42 +164,19 @@ test("2 · saltar tacha la fila y persiste tras recargar; deshacer la devuelve",
   // La saga guardada es la DUEÑA de la fila de saga_items, no la ficha visitada.
   expect(guardado[0].saga_id).toBe(ERA_UNO_ID);
 
-  await filaOpcional(page).getByTestId("unskip-optional").click();
+  await filaOpcional(lista).getByTestId("unskip-optional").click();
+  await expect(filaOpcional(lista).getByTestId("skip-optional")).toBeVisible();
   await page.reload();
-  await expect(filaOpcional(page).getByTestId("skip-optional")).toBeVisible();
+  lista = await openList(page);
+  await expect(filaOpcional(lista).getByTestId("skip-optional")).toBeVisible();
   expect(
     await (await api(`saga_optional_skips?user_id=eq.${userId}&select=item_id`)).json(),
   ).toHaveLength(0);
 });
 
-test("3 · el interruptor esconde las opcionales, y la barra sigue estando para volver", async ({
-  page,
-}) => {
-  await loginAsDevtest(page);
-  await page.goto(MAPA);
-  await expect(timeline(page).getByText(OPCIONAL_TITLE)).toBeVisible();
-
-  await timeline(page).getByTestId("toggle-optional").click();
-  await page.reload();
-
-  // Escondida de verdad, y persistida en el perfil.
-  await expect(timeline(page).getByText(OPCIONAL_TITLE)).toHaveCount(0);
-  const perfil = (await (
-    await api(`profiles?user_id=eq.${userId}&select=show_optional_readings`)
-  ).json()) as Array<{ show_optional_readings: boolean }>;
-  expect(perfil[0].show_optional_readings).toBe(false);
-
-  // La barra NO desaparece con lo que esconde: si se calculara sobre las filas
-  // visibles en vez de sobre el grafo, apagar el interruptor se llevaría por
-  // delante el propio interruptor y no habría forma de volver.
-  const barra = timeline(page).getByTestId("optional-bar");
-  await expect(barra).toBeVisible();
-  await expect(barra.getByTestId("toggle-optional")).toHaveText("Ver opcionales");
-
-  await barra.getByTestId("toggle-optional").click();
-  await page.reload();
-  await expect(timeline(page).getByText(OPCIONAL_TITLE)).toBeVisible();
-});
+// El test 3 de antes («el interruptor esconde las opcionales, y la barra sigue
+// estando para volver») se borró con el timeline: el atlas no tiene interruptor
+// de opcionales (`setShowOptionalReadings` se quedó sin consumidores en la UI).
 
 // El contador «N de M» de la balda de la ficha (`shelf-count`): el progreso del
 // itinerario ACTIVO. Sustituye a `saga-hero-progress`, que contaba el universo
@@ -211,15 +193,15 @@ test("4 · saltar NO mueve el progreso", async ({ page }) => {
   // pide lo contrario en dos sitios («desaparece del cómputo»); se descarta a
   // sabiendas, porque reabrir el denominador es la familia del #91 y el #185.
   await loginAsDevtest(page);
-  // El contador vive en la balda de la ficha, no en /como-leerla: se lee allí
+  // El contador vive en la balda de la ficha, no en el atlas: se lee allí
   // antes y después, en la MISMA ruta (`lectura`, la de MAPA).
   await page.goto(`/saga/${UNIVERSO_ID}?ruta=lectura`);
   const antes = await shelfCountText(page);
 
   await page.goto(MAPA);
-  await filaOpcional(page).getByTestId("skip-optional").click();
+  await filaOpcional(await openList(page)).getByTestId("skip-optional").click();
   await page.reload();
-  await expect(filaOpcional(page).getByTestId("unskip-optional")).toBeVisible();
+  await expect(filaOpcional(await openList(page)).getByTestId("unskip-optional")).toBeVisible();
 
   await page.goto(`/saga/${UNIVERSO_ID}?ruta=lectura`);
   expect(await shelfCountText(page)).toBe(antes);

@@ -153,13 +153,19 @@ test("quitar la última ancla se lleva el motivo por delante", async ({ page }) 
   }
 });
 
-test("la ficha pública pinta el tramo, y SIN sesión no marca posición", async ({ browser }) => {
+// Mudado al atlas (Task 11 del atlas, 2026-10-28): el timeline y su mini-track
+// (`window-track`, `window-track-you`, `window-notice`) se retiraron. El atlas
+// dibuja la ventana como un arco sin texto, y lo que dice —anclas y motivo— se
+// lee en «Ver como lista». El test «con sesión, la misma ventana sí marca
+// posición y avisa» se borró: el atlas ya no tiene marcador de posición dentro
+// del tramo ni avisos «antes/pasada»; solo «Ahora encaja» cuando el lector está
+// dentro, y eso depende de los pases de devtest, que otros specs mueven.
+test("el atlas público dice el tramo y su motivo, y SIN sesión no afirma posición", async ({ browser }) => {
   const items = await fetchItems();
   try {
     // Semilla por REST: aísla el render de la UI de curación, que ya cubren los
     // dos tests de arriba. La ventana vive en Era Uno, pero se mira en el
-    // UNIVERSO — el único universo QA con `show_map`, y su timeline incluye las
-    // obras de sus hijas.
+    // UNIVERSO, cuyo atlas incluye las obras de sus hijas.
     await api(`saga_items?saga_id=eq.${ERA_UNO_ID}&item_id=eq.${RARO_ID}`, {
       method: "PATCH",
       body: JSON.stringify({ position: null, placement: "libre" }),
@@ -179,55 +185,24 @@ test("la ficha pública pinta el tramo, y SIN sesión no marca posición", async
 
     // Contexto NUEVO y sin sesión: la ficha es pública, y esta es la vista por
     // defecto de cualquiera que llegue de fuera, no una variante secundaria.
-    const anon = await browser.newContext();
+    const anon = await browser.newContext({ storageState: { cookies: [], origins: [] } });
     const page = await anon.newPage();
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(`/saga/${UNIVERSO_ID}/como-leerla?ruta=lectura`);
+    await page.goto(`/saga/${UNIVERSO_ID}/mapa?ruta=lectura`);
+    await expect(page.locator("[data-ready='true'] [data-atlas-stage]")).toBeVisible();
+    await page.getByRole("button", { name: "Ver como lista" }).click();
 
-    const fila = page.locator('[data-testid="timeline-window"]:visible').first();
+    const fila = page
+      .getByRole("list", { name: /^Obras de / })
+      .getByRole("listitem")
+      .filter({ has: page.locator(`a[href="/libro/${RARO_ID}"]`) });
     await expect(fila).toBeVisible();
-    await expect(fila.locator('[data-testid="window-track"]')).toBeVisible();
-    await expect(fila.locator('[data-testid="window-reason-note"]')).toContainText("spoilers");
-    // Lo que NO se pinta sin sesión. Por cuenta, no por texto: es lo que
-    // demuestra que no hay ninguna vía de que aparezcan.
-    await expect(fila.locator('[data-testid="window-track-you"]')).toHaveCount(0);
-    await expect(fila.locator('[data-testid="window-notice"]')).toHaveCount(0);
+    await expect(fila).toContainText(`Encaja después de ${RAYUELA_TITLE}`);
+    await expect(fila).toContainText("spoilers");
+    // Lo que NO se afirma sin sesión: ni el aviso de que ahora encaja ni un estado del lector.
+    await expect(fila).not.toContainText("Ahora encaja");
+    await expect(fila).not.toContainText(/leída|pendiente|ahora/);
     await anon.close();
-  } finally {
-    await restore(items);
-  }
-});
-
-test("con sesión, la misma ventana sí marca posición y avisa", async ({ page }) => {
-  const items = await fetchItems();
-  try {
-    await api(`saga_items?saga_id=eq.${ERA_UNO_ID}&item_id=eq.${RARO_ID}`, {
-      method: "PATCH",
-      body: JSON.stringify({ position: null, placement: "libre" }),
-    });
-    await api("saga_placement_windows", {
-      method: "POST",
-      headers: { Prefer: "return=minimal" },
-      body: JSON.stringify({
-        saga_id: ERA_UNO_ID,
-        item_type: "book",
-        item_id: RARO_ID,
-        after_item_type: "book",
-        after_item_id: RAYUELA_ID,
-        motivo: "contexto",
-      }),
-    });
-
-    await loginAsDevtest(page);
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto(`/saga/${UNIVERSO_ID}/como-leerla?ruta=lectura`);
-
-    const fila = page.locator('[data-testid="timeline-window"]:visible').first();
-    await expect(fila).toBeVisible();
-    // La otra mitad del par: el mismo dato, con sesión, SÍ trae marcador y
-    // aviso. Sin este test, borrar el flag `authenticated` no tumbaría nada.
-    await expect(fila.locator('[data-testid="window-track-you"]')).toHaveCount(1);
-    await expect(fila.locator('[data-testid="window-notice"]')).toHaveCount(1);
   } finally {
     await restore(items);
   }

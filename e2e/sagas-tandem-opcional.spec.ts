@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import { submitLogin } from "./support/visible-form";
 
 // E2E de la issue #233: la píldora «Saltar» de una obra opcional DENTRO de un
@@ -11,6 +11,11 @@ import { submitLogin } from "./support/visible-form";
 // `sagas-opcionales-saltables.spec.ts`) con «Libro raro sin match», y marca
 // SOLO la primera como opcional.
 //
+// Mudado al atlas (Task 11 del atlas, 2026-10-28): el timeline y su fila de
+// tándem se retiraron. En el atlas cada obra del hueco compartido tiene su
+// propia entrada en «Ver como lista», y la píldora vive en la entrada de la
+// opcional; la de su pareja la nombra como compañera de tándem.
+//
 // Mismo patrón de sesión/limpieza que `sagas-tandem-metadatos.spec.ts` y
 // `sagas-opcionales-saltables.spec.ts`: `fetch` nativo, `res.ok` comprobado en
 // cada escritura (#180/#182), semilla devuelta a como estaba.
@@ -21,7 +26,7 @@ const OPCIONAL_TITLE = "Libro sin valorar";
 const PAREJA_ID = "d6d61eab-6ef4-4691-a8f0-b89068508fd4"; // «Libro raro sin match», hueco 3 → se mueve al 2
 const PAREJA_TITLE = "Libro raro sin match";
 
-const MAPA = `/saga/${UNIVERSO_ID}/como-leerla?ruta=lectura`;
+const MAPA = `/saga/${UNIVERSO_ID}/mapa?ruta=lectura`;
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
@@ -51,7 +56,27 @@ async function loginAsDevtest(page: Page) {
 
 let userId: string;
 
-const tandem = (page: Page) => page.locator('[data-testid="timeline-tandem"]:visible').first();
+/** El atlas ha pintado su primer layout (saga-atlas.tsx marca `data-ready`). */
+async function atlasReady(page: Page) {
+  await expect(page.locator("[data-ready='true'] [data-atlas-stage]")).toBeVisible();
+}
+
+/** Abre «Ver como lista» del atlas (el sustituto accesible del plano y del timeline
+ *  retirado) y devuelve la `ol` de obras. */
+async function openList(page: Page) {
+  await atlasReady(page);
+  await page.getByRole("button", { name: "Ver como lista" }).click();
+  const lista = page.getByRole("list", { name: /^Obras de / });
+  await expect(lista).toBeVisible();
+  return lista;
+}
+
+/** La entrada de una obra por el nombre de SU enlace («N. Título»): filtrar por texto
+ *  casaría también con las entradas que la nombran como ancla o compañera de tándem. */
+const fila = (lista: Locator, title: string) =>
+  lista.getByRole("listitem").filter({
+    has: lista.page().getByRole("link", { name: new RegExp(`^(\\d+\\. )?${title}$`) }),
+  });
 
 test.beforeAll(async () => {
   const perfiles = (await (
@@ -89,26 +114,23 @@ test.beforeEach(async () => {
   await api(`saga_optional_skips?user_id=eq.${userId}`, { method: "DELETE" });
 });
 
-test("1 · la obra opcional del tándem trae su propia píldora «Saltar», junto a su título", async ({
+test("1 · la obra opcional del tándem trae su propia píldora «Saltar», y su pareja no", async ({
   page,
 }) => {
   await loginAsDevtest(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(MAPA);
+  const lista = await openList(page);
 
-  const fila = tandem(page);
-  await expect(fila).toBeVisible();
-  await expect(fila).toContainText(OPCIONAL_TITLE);
-  await expect(fila).toContainText(PAREJA_TITLE);
+  // Las dos obras del hueco compartido, cada una con su entrada, y se nombran entre sí.
+  await expect(fila(lista, OPCIONAL_TITLE)).toContainText(PAREJA_TITLE);
+  await expect(fila(lista, PAREJA_TITLE)).toContainText(OPCIONAL_TITLE);
 
-  // La píldora vive junto al ÍTEM opcional, no en el número/corchete
-  // compartido: una sola en toda la fila, aunque haya dos obras.
-  await expect(fila.getByTestId("skip-optional")).toHaveCount(1);
-
-  // Y no cuelga de la obra no-opcional: el <li> de "Libro raro sin match" no
-  // lleva píldora propia.
-  const filaPareja = fila.locator("li").filter({ hasText: PAREJA_TITLE });
-  await expect(filaPareja.getByTestId("skip-optional")).toHaveCount(0);
+  // La píldora vive junto a la obra opcional: una sola en toda la lista.
+  await expect(fila(lista, OPCIONAL_TITLE).getByTestId("skip-optional")).toHaveCount(1);
+  await expect(lista.getByTestId("skip-optional")).toHaveCount(1);
+  // Y no cuelga de la obra no opcional.
+  await expect(fila(lista, PAREJA_TITLE).getByTestId("skip-optional")).toHaveCount(0);
 });
 
 test("2 · saltarla dentro del tándem persiste tras recargar", async ({ page }) => {
@@ -116,13 +138,17 @@ test("2 · saltarla dentro del tándem persiste tras recargar", async ({ page })
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(MAPA);
 
-  await tandem(page).getByTestId("skip-optional").click();
+  await fila(await openList(page), OPCIONAL_TITLE).getByTestId("skip-optional").click();
+  await expect(
+    fila(page.getByRole("list", { name: /^Obras de / }), OPCIONAL_TITLE).getByTestId("unskip-optional"),
+  ).toBeVisible();
   await page.reload();
 
-  await expect(tandem(page).getByTestId("unskip-optional")).toBeVisible();
-  // La fila SIGUE mostrando las dos obras: saltar tacha, no esconde.
-  await expect(tandem(page)).toContainText(OPCIONAL_TITLE);
-  await expect(tandem(page)).toContainText(PAREJA_TITLE);
+  const lista = await openList(page);
+  await expect(fila(lista, OPCIONAL_TITLE).getByTestId("unskip-optional")).toBeVisible();
+  // Las dos obras SIGUEN ahí: saltar tacha, no esconde.
+  await expect(fila(lista, OPCIONAL_TITLE)).toHaveCount(1);
+  await expect(fila(lista, PAREJA_TITLE)).toHaveCount(1);
 
   const guardado = (await (
     await api(`saga_optional_skips?user_id=eq.${userId}&item_id=eq.${OPCIONAL_ID}&select=saga_id`)
