@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { approach, fit, MAX_ZOOM, MIN_ZOOM, panBy, stepCamera, toScreen, toWorld, zoomAt, zoomToward } from './camera';
-import { nearest } from './hit';
 
 const vp = { width: 800, height: 600 };
 const cam = { x: 120, y: -40, k: 0.7 };
@@ -53,13 +52,5 @@ describe('cámara', () => {
   it('approach interpola y se asienta en el objetivo', () => {
     expect(approach(0, 10, 0.1, 0.3)).toEqual({ value: 1, settled: false });
     expect(approach(9.8, 10, 0.1, 0.3)).toEqual({ value: 10, settled: true });
-  });
-});
-
-describe('nearest', () => {
-  it('devuelve el más cercano dentro del radio, o null', () => {
-    const items = [{ x: 0, y: 0, id: 'a' }, { x: 5, y: 0, id: 'b' }];
-    expect(nearest(items, { x: 4, y: 0 }, 3)?.id).toBe('b');
-    expect(nearest(items, { x: 40, y: 0 }, 3)).toBeNull();
   });
 });

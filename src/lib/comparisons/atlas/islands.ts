@@ -1,6 +1,6 @@
 import type { WorkKey } from '../types';
 import { comparable, spiral, workState } from './layout';
-import { MIN_ZOOM } from './camera';
+import { MIN_ZOOM } from '@/lib/atlas/camera';
 import type { AtlasPerson, AtlasWork, Camera, Extent, Point, Viewport } from './types';
 
 export type IslandMode = 'type' | 'genre' | 'creator';

@@ -1,4 +1,4 @@
-import { toScreen } from '@/lib/comparisons/atlas/camera';
+import { toScreen } from '@/lib/atlas/camera';
 import { AGREE_MAX, FRAME_MAX, FRAME_MIN, RATING_STEP, ratingX } from '@/lib/comparisons/atlas/opinion';
 import type { PaintView } from './atlas-palette';
 

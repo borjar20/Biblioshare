@@ -9,7 +9,7 @@ import { layoutTiempo } from '@/lib/comparisons/atlas/tiempo';
 import { layoutIslands } from '@/lib/comparisons/atlas/islands';
 import type { AtlasPerson, AtlasWork } from '@/lib/comparisons/atlas/types';
 import { buildScene, type Lens, type SceneTarget } from '@/lib/comparisons/atlas/scene';
-import { fit } from '@/lib/comparisons/atlas/camera';
+import { fit } from '@/lib/atlas/camera';
 import { Activity, createRef } from 'react';
 import { AtlasCanvas, type AtlasCanvasHandle } from './atlas-canvas';
 import { paintIslasBack } from './paint-islas';
