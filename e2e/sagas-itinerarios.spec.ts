@@ -140,6 +140,10 @@ test.describe("itinerarios de lectura", () => {
 
     // Y la hoja de itinerarios del atlas fija el contador propio de la ruta curada.
     await page.goto(`/saga/${UNIVERSO_ID}/mapa?ruta=la-guardia`);
+    // La barra superior del atlas cuenta la misma ruta que la balda (#1567), no el universo.
+    if (esperado.guardia.completed < esperado.guardia.total) {
+      await expect(page.getByText(`Llevas ${esperado.guardia.completed} de ${esperado.guardia.total} · te toca`)).toBeVisible();
+    }
     const hoja = await openItineraries(page);
     await expect(
       hoja.getByText(`Llevas ${esperado.guardia.completed} de ${esperado.guardia.total} de esta ruta`),

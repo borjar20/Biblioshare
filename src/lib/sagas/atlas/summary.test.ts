@@ -52,4 +52,8 @@ describe("summarize", () => {
   it("publicacion sin años", () => {
     expect(summarize(model([work(0)]), "publicacion")).toEqual({ key: "publicacionSinAnos", values: {} });
   });
+  it("ordenNext: con avance de ruta (#1567) cuenta el de la ruta, no el de las obras", () => {
+    const m = model([work(0, { state: "done" }), work(1), work(2)], { progress: { done: 1, total: 2 } });
+    expect(summarize(m, "orden")).toEqual({ key: "ordenNext", values: { done: 1, total: 2, title: "T1" } });
+  });
 });
