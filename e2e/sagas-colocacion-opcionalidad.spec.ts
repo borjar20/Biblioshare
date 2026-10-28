@@ -30,7 +30,7 @@ const ERA_UNO_ID = "53118dd4-ccd9-4a9d-8241-5899816a9eab"; // [QA Sagas v2] Era 
 // Padre de Era Uno — solo lo usa el Test 5 (abajo): la cabecera de grupo de
 // "Era Uno" (tick + nombre + contador) SOLO se pinta vista desde aquí, nunca
 // en `/saga/${ERA_UNO_ID}` a secas (ahí es `isSoleDirectGroup` y la cabecera
-// se omite, ver comentario en saga-info.tsx).
+// se omite, ver comentario en ficha/saga-all-works.tsx).
 const SAGA_UNIVERSO = "69c07496-9b1a-4203-b3da-15d22a09c039"; // [QA Sagas v2] Universo
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
@@ -71,7 +71,7 @@ async function devtestId(): Promise<string> {
 // countedKeys + computeProgress (progress.ts / group-members.ts): denominador
 // = miembros directos con `optional=false`; numerador = cuántos de esos
 // tienen, para devtest, un pase con `status='completed'`.
-async function fetchEraUnoProgress(): Promise<{ total: number; completed: number; pct: number }> {
+async function fetchEraUnoProgress(): Promise<{ total: number; completed: number }> {
   const itemsRes = await fetch(
     `${SUPABASE_URL}/rest/v1/saga_items?saga_id=eq.${ERA_UNO_ID}&select=item_type,item_id,optional`,
     { headers: adminHeaders() },
@@ -79,7 +79,7 @@ async function fetchEraUnoProgress(): Promise<{ total: number; completed: number
   const items = (await itemsRes.json()) as { item_type: string; item_id: string; optional: boolean }[];
   const counted = items.filter((i) => !i.optional);
   const total = counted.length;
-  if (total === 0) return { total: 0, completed: 0, pct: 0 };
+  if (total === 0) return { total: 0, completed: 0 };
 
   const userId = await devtestId();
   const byType = new Map<string, string[]>();
@@ -100,16 +100,16 @@ async function fetchEraUnoProgress(): Promise<{ total: number; completed: number
   }
 
   const completed = completedKeys.size;
-  return { total, completed, pct: Math.round((completed / total) * 100) };
+  return { total, completed };
 }
 
-async function heroPct(page: Page): Promise<number> {
-  const hero = page.getByTestId("saga-hero-progress");
-  await expect(hero).toBeVisible();
-  const text = (await hero.textContent()) ?? "";
-  const match = /(\d+)%/.exec(text);
-  if (!match) throw new Error(`hero sin pct reconocible: "${text}"`);
-  return Number(match[1]);
+// El contador «N de M» de la balda de la ficha. Cuenta el itinerario activo
+// (aquí, el de Era Uno), no un porcentaje: sustituye al `saga-hero-progress`
+// del hero viejo.
+async function shelfCount(page: Page): Promise<string> {
+  const count = page.getByTestId("shelf-count");
+  await expect(count).toBeVisible();
+  return (await count.innerText()).trim();
 }
 
 // Localiza la fila por el título del miembro, escopada a la cáscara VISIBLE:
@@ -259,22 +259,22 @@ test("el CHECK de BD rechaza «hueco fijo» sin número (placement=fijo, positio
 
 // ─────────────────────────────────────────────────────────────────────────
 // Test 3 (la aserción que de verdad importa): marcar "No cuenta en el
-// progreso" en un miembro baja el DENOMINADOR del hero exactamente en 1, sin
+// progreso" en un miembro baja el DENOMINADOR de la balda exactamente en 1, sin
 // tocar el numerador. Miembro: "Libro sin valorar" — devtest no tiene ningún
 // pase sobre él, así que queda fuera del cálculo de "completado" y el cambio
-// de pct solo puede venir del denominador.
+// del contador solo puede venir del denominador.
 // ─────────────────────────────────────────────────────────────────────────
-test("marcar «No cuenta en el progreso» baja el denominador del hero en 1", async ({ page }) => {
+test("marcar «No cuenta en el progreso» baja el denominador de la balda en 1", async ({ page }) => {
   await loginAsDevtest(page);
 
   const before = await fetchEraUnoProgress();
   expect(before.total).toBeGreaterThan(1); // si esto falla, el seed cambió y el resto del test no es fiable.
 
   await page.goto(`/saga/${ERA_UNO_ID}`);
-  const pctBefore = await heroPct(page);
+  const countBefore = await shelfCount(page);
   // La UI tiene que coincidir con el recálculo por REST: si no coincidiera ya
   // aquí, el resto del test estaría prediciendo sobre un modelo equivocado.
-  expect(pctBefore).toBe(before.pct);
+  expect(countBefore).toBe(`${before.completed} de ${before.total}`);
 
   await page.goto(`/saga/${ERA_UNO_ID}/editar`);
   const itemsBefore = await fetchEraUnoItems();
@@ -295,12 +295,10 @@ test("marcar «No cuenta en el progreso» baja el denominador del hero en 1", as
     expect(after.completed).toBe(before.completed);
 
     await page.goto(`/saga/${ERA_UNO_ID}`);
-    const pctAfter = await heroPct(page);
-    expect(pctAfter).toBe(after.pct);
-    // pct estrictamente distinto de antes: con el mismo numerador y un
-    // denominador menor, no puede quedar igual salvo un empate de redondeo
-    // (que el seed actual no produce).
-    expect(pctAfter).not.toBe(pctBefore);
+    const countAfter = await shelfCount(page);
+    expect(countAfter).toBe(`${after.completed} de ${after.total}`);
+    // Mismo numerador, denominador en 1 menos: el texto cambia sí o sí.
+    expect(countAfter).not.toBe(countBefore);
   } finally {
     await restoreEraUno(itemsBefore, null);
   }
@@ -353,7 +351,7 @@ test("el contador de la cabecera de un grupo coincide con su grid, incluso con u
   // localizarlo por rol, así que se acota por texto puramente numérico
   // dentro de la MISMA fila que el `<h3>`, el único nodo así en esa fila).
   // La grid es el `<ul>` hermano inmediatamente siguiente a esa fila
-  // (estructura de saga-info.tsx: `GroupBody` se pinta justo después del
+  // (estructura de ficha/saga-all-works.tsx: `GroupBody` se pinta justo después del
   // `<div>` de cabecera dentro del mismo grupo).
   const eraUnoHeading = page.getByRole("heading", {
     level: 3,
@@ -395,7 +393,7 @@ test("el contador de la cabecera de un grupo coincide con su grid, incluso con u
     // A diferencia de `eraUnoGrid` (donde `GroupBody` es el propio `<ul>`,
     // hermano directo de la fila de cabecera), la sección «Cuando quieras»
     // envuelve sus listas en un `<div className="flex flex-col gap-5">`
-    // (saga-info.tsx, fix issue #198: acoge tanto obras sueltas como bloques
+    // (ficha/saga-all-works.tsx, fix issue #198: acoge tanto obras sueltas como bloques
     // libres enteros) — el `<ul>` de los miembros sueltos es DESCENDIENTE de
     // ese div, no hermano directo del `<h2>`. `following-sibling::ul[1]`
     // nunca lo encuentra (hallazgo 2026-07-27, al correr la suite de sagas
@@ -439,8 +437,11 @@ test("el sr-only del contorno punteado sale sin sesión, solo en la obra sin hue
   // quien mira, no solo "en teoría" sino en esta misma carga de página.
   await expect(page.getByText(/obras? sin clasificar/)).toHaveCount(0);
 
+  // Las celdas de «Todas las obras» llevan `data-type`: sin ese filtro el
+  // locator también engancha la fila de `shelf-a11y-list` (la lista accesible
+  // de la balda), que repite el título de cada obra.
   const unclassifiedItem = page
-    .locator("li")
+    .locator("li[data-type]")
     .filter({ hasText: "Trilogía La casa de los espíritus" });
   await expect(unclassifiedItem).toBeVisible();
   await expect(unclassifiedItem.locator("div").first()).toHaveClass(/outline-dashed/);
@@ -451,7 +452,7 @@ test("el sr-only del contorno punteado sale sin sesión, solo en la obra sin hue
   // Control negativo: un miembro `fijo` normal (Rayuela, en la grid de Era
   // Uno) no lleva ni el contorno ni el sr-only — el hint es condicional, no
   // un texto que se cuela en toda celda.
-  const classifiedItem = page.locator("li").filter({ hasText: "Rayuela" });
+  const classifiedItem = page.locator("li[data-type]").filter({ hasText: "Rayuela" });
   await expect(classifiedItem).toBeVisible();
   await expect(classifiedItem.locator("div").first()).not.toHaveClass(/outline-dashed/);
   await expect(classifiedItem.getByText(NO_SLOT_TEXT, { exact: true })).toHaveCount(0);

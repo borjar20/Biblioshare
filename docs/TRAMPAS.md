@@ -498,3 +498,11 @@ y de ahí lo intermitente.
 del efecto** o con un getter que el efecto llama, nunca con un valor calculado al renderizar. Para
 probarlo: `<Activity mode="hidden">` y luego `"visible"` en el test (ver `atlas-canvas.test.tsx`).
 Guía de Next: `node_modules/next/dist/docs/01-app/02-guides/preserving-ui-state.md`.
+
+**Variante con `<dialog>` modal:** un `<dialog>` abierto con `showModal()` que contiene un `<Link>`
+a otra página no se desmonta al navegar: queda oculto pero **sigue en la top layer** y deja inerte
+el resto del documento. En la página nueva nada recibe clics (Playwright: «`<html>` intercepts
+pointer events»). Pasó con el «⋯» de curación de la ficha de saga: en `/saga/[id]/editar`
+«Guardar cambios» no disparaba el POST. **Regla:** cierra el diálogo al pulsar el enlace y,
+como red, en la limpieza de un `useLayoutEffect` (ver `saga-curator-menu.tsx` y su test con
+`<Activity mode="hidden">`).

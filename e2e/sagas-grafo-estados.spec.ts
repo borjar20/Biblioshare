@@ -41,7 +41,7 @@ const ISABEL = { id: "79ddcbd0-3342-44dc-84c0-ffa5c635fbfc", title: "Para leer a
 // `ruta=lectura` fija la columna a la curación: sin ella la ruta activa sería la
 // que el lector tenga adoptada, y el test dependería de un estado que no
 // controla.
-const MAPA = `/saga/${UNIVERSO_ID}?tab=mapa&ruta=lectura`;
+const MAPA = `/saga/${UNIVERSO_ID}/como-leerla?ruta=lectura`;
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;

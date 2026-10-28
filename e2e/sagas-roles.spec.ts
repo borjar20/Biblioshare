@@ -33,11 +33,11 @@ const PRECUELA_A = { id: "b397333b-7f8c-40a2-b62e-2aa3eb6bf64a", title: "Rayuela
 const PRECUELA_B = { id: "79ddcbd0-3342-44dc-84c0-ffa5c635fbfc", title: "Para leer a Isabel Allende" };
 const RELATO = { id: "d6d61eab-6ef4-4691-a8f0-b89068508fd4", title: "Libro raro sin match" };
 
-// La ficha abre en «Info»; el timeline vive en «Mapa de lectura» (`?tab=mapa`),
+// La ficha abre en «Info»; el timeline vive en «Cómo leerla» (`/como-leerla`),
 // y `ruta=lectura` fija la columna a la curación — sin ella la ruta activa sería
 // la que el lector tenga adoptada y el test dependería de un estado que no
 // controla.
-const MAPA = `/saga/${UNIVERSO_ID}?tab=mapa&ruta=lectura`;
+const MAPA = `/saga/${UNIVERSO_ID}/como-leerla?ruta=lectura`;
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
@@ -151,14 +151,25 @@ test("la cinta dice el rol sobre la portada de una obra con hueco", async ({ pag
   await expect(cinta).toHaveText(/Precuela/i);
 });
 
-test("filtrar NO mueve el progreso del hero", async ({ page }) => {
+test("filtrar NO mueve el progreso de la balda", async ({ page }) => {
   // El límite duro de la spec, otra vez: `progress.ts` sale de la fase como
   // entró. El mockup pide lo contrario en dos sitios y se descarta a sabiendas
   // — reabrir el denominador es la familia de fallo del #91 y el #185.
   await loginAsDevtest(page);
-  await page.goto(MAPA);
-  const antes = await page.getByTestId("saga-hero-progress").innerText();
+  // El contador «N de M» vive en la balda de la ficha, no en /como-leerla: se
+  // lee allí, y la lente se aplica en /como-leerla (la ficha también acepta
+  // ?rol= sin cambiar el contador). Siempre en la misma ruta (`lectura`).
+  await page.goto(`/saga/${UNIVERSO_ID}?ruta=lectura`);
+  const count = page.getByTestId("shelf-count");
+  await expect(count).toBeVisible();
+  const antes = (await count.innerText()).trim();
 
+  // La lente se aplica de verdad en /como-leerla: una precuela se ve y el relato no.
   await page.goto(`${MAPA}&rol=precuela`);
-  expect(await page.getByTestId("saga-hero-progress").innerText()).toBe(antes);
+  await expect(timeline(page).getByText(PRECUELA_A.title)).toBeVisible();
+  await expect(timeline(page).getByText(RELATO.title)).toHaveCount(0);
+
+  // Y el contador de la balda, en la ficha, sigue igual.
+  await page.goto(`/saga/${UNIVERSO_ID}?ruta=lectura&rol=precuela`);
+  await expect(page.getByTestId("shelf-count")).toHaveText(antes);
 });

@@ -8,7 +8,7 @@ import { getRouteEntries } from "@/lib/sagas/get-saga-routes";
 import { keyOfRouteEntry } from "@/lib/sagas/hydrate-route-draft";
 import type { SagaGraph } from "@/lib/sagas/map-types";
 import type { SagaItemRole } from "@/lib/sagas/types";
-import { sagaHref } from "@/lib/catalog/item-href";
+import { sagaHref, sagaReadingHref } from "@/lib/catalog/item-href";
 import { createClient } from "@/lib/supabase/server";
 import { GraphLegend } from "./graph/graph-legend";
 import { SagaGraphLazy } from "./graph/saga-graph-lazy";
@@ -77,11 +77,11 @@ export async function SagaMapTab({
   const roleCounts = graph === null ? [] : countRoles(graph);
   // Los enlaces del filtro conservan la pestaña y la ruta activa: la lente no
   // puede sacarte del mapa ni cambiarte de itinerario.
-  const baseHref = `${base}?tab=mapa&ruta=${encodeURIComponent(activeRoute)}`;
+  const baseHref = `${sagaReadingHref(detail.saga.id)}?ruta=${encodeURIComponent(activeRoute)}`;
 
   return (
     <div className="flex flex-col gap-4 px-4 pb-10">
-      <RouteSelector base={base} routes={detail.routes} active={activeRoute} />
+      <RouteSelector base={sagaReadingHref(detail.saga.id)} routes={detail.routes} active={activeRoute} />
 
       {activeRoute === "publicacion" ? (
         <ol className="divide-y divide-border border-t border-border">

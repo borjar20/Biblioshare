@@ -7986,3 +7986,56 @@ El contrato cubre ambos sentidos de navegación con ruta retenida, con sesión
 resuelta o pendiente, además de los controles originales. Las pruebas de React
 DOM controlan el orden de entrega; el streaming y la navegación reales de Next
 mantienen su gate separado. [Evidencia y límites de verificación](../testing/2026-10-14-entre-nosotros-ci-1533-1534.md).
+
+## 2026-10-27 — Ficha de saga para el lector, fase 1: balda de pilas, sin pestañas
+
+Primera fase del rework de sagas (subproyecto 1, [spec](../superpowers/specs/2026-10-27-sagas-ficha-lector-design.md)).
+Cinco decisiones de forma y tres de comportamiento, para que nadie las deshaga sin saber el porqué.
+
+1. **La ficha es una balda de pilas por subsaga, no un timeline.** El orden de lectura se ve de
+   un vistazo y se despliega por grupos; el detalle del timeline queda en «Cómo leerla».
+2. **Las pestañas Info y Mapa desaparecen de la ficha.** Su contenido detallado (timeline, grafo
+   embebido, adoptar un itinerario, saltar opcionales, lente `?rol=`) se muda sin cambios a
+   `/saga/[id]/como-leerla`, página interina hasta el atlas (subproyecto 2). `?tab=mapa`
+   redirige allí conservando `ruta`, `orden` y `rol`. Cambio respecto a la spec aprobada, que
+   redirigía a `/saga/[id]/mapa`: esa ruta no tiene el timeline, adoptar ni saltar, que solo
+   vivían en la pestaña.
+3. **La balda usa el grafo derivado aunque `show_map` esté apagado** (`SagaDetail.shelfGraph`):
+   el interruptor esconde el mapa, no el orden.
+4. **Cambia la semántica del contador.** El hero ya no muestra el progreso del universo entero
+   (invariante #91 retirado a propósito) y el «N de M» de la balda es el del **itinerario
+   activo**: dos rutas de una misma saga pueden dar denominadores distintos. El e2e de
+   itinerarios compara ahora ese contador entre rutas en lugar de exigir que no cambie.
+5. **«Te toca» (`deriveShelf`):** nunca ofrece un sujeto de ventana mientras quede otra obra
+   pendiente; si solo quedan ventanas, la ventana es lo siguiente. Un salto huérfano (fila de
+   `saga_optional_skips` que apunta a una obra que cuenta) no la saca de «Te toca». En modo
+   `next` siempre hay `nextUp`.
+6. **La balda expande los pasos-bloque de un itinerario curado** en las obras de la subsaga,
+   en su orden curado (`getShelfSections` → `curatedRouteSections` / `expandRouteKeys` en
+   `src/lib/sagas/shelf-sections.ts`), sin tocar `deriveSagaMap` ni «Cómo leerla». Sin ello, un
+   itinerario cuyo único paso es un bloque dejaba la balda vacía. «Cómo leerla» conserva el
+   fallo (#1541): expandir allí cambiaría también el mapa 2D.
+7. **La balda vacía conserva su cabecera** (título, chips de ruta, «Cómo leerla →») y pinta
+   «Este itinerario todavía no tiene obras en la balda.»; si no, el lector no podía cambiar de
+   ruta desde una ruta vacía.
+8. **Sin `use cache`** en nada de la ficha (regla #437): todo depende de la sesión. Estado del
+   lector desde `passes`, nunca `library_entries`. Sin cambios de esquema.
+
+Hallazgo de proceso: con `cacheComponents` el `<dialog>` modal de `SagaCuratorMenu` quedaba
+abierto e invisible bajo `<Activity>` y dejaba inerte `/editar` (arreglo `7aa80d36`, TRAMPAS
+§26). Otros ~10 diálogos pueden tener lo mismo: #1542.
+
+Fases siguientes, sin hacer: fase 2 en #1539 y fase 3 («Entre amigos») en #1540. Evidencia y
+límites de verificación en
+[el informe de la fase 1](../testing/2026-10-27-sagas-ficha-lector-f1.md). Fallos e2e
+preexistentes hallados de paso: #1543, #1544, #1545, #1546; sagas «[QA Curación]» huérfanas
+en dev: #1547.
+
+## 2026-10-27 — La balda ofrece «Orden de lectura» con el mapa apagado
+
+Complementa el punto 3 de la entrada anterior. Usar `shelfGraph` no bastaba: con `show_map=false`
+`buildRouteList` no incluye la ruta sintética «lectura», así que la balda nunca la elegía y caía en
+un itinerario curado o en «Publicación». La ficha antepone ahora «lectura» a sus rutas
+(`shelfRoutesFor`) cuando hay orden curado y no existe ya una «lectura» ni un itinerario designado.
+`detail.routes` no cambia: «Cómo leerla» y el resto siguen respetando el interruptor, y allí
+`?ruta=lectura` degrada a la primera ruta.

@@ -72,6 +72,11 @@ export type SagaDetail = {
    *  `lectura` del selector — la intención de esos tres sitios es "¿esta saga
    *  ENSEÑA su mapa?", no "¿hay un `SagaGraph`?", aunque hoy respondan igual. */
   hasGraph: boolean;
+  /** El grafo derivado SIN el interruptor `show_map` (spec 2026-10-27 §4): la
+   *  balda de la ficha pinta el orden aunque el curador haya escondido el
+   *  MAPA. Puede llegar con 0 nodos (saga vacía). Para «¿se enseña el mapa?»
+   *  sigue mandando `graph`. */
+  shelfGraph: SagaGraph;
   /** Rol del usuario que visita, o null sin sesión (botones de edición del grafo). */
   viewerRole: UserRole | null;
   /** Itinerarios disponibles: sintéticas (lectura/publicación) + curadas. */
@@ -248,7 +253,8 @@ export function resolveWindows(
  *  borra la fila de `saga_placement_windows`, ver el comentario de `windows` en
  *  `SagaDetail`), así que comprueba `placement` ella misma antes de mirar el mapa, en
  *  vez de confiar en que la lista que recibe ya está filtrada. Extraída de
- *  `saga-info.tsx` (revisión Task 6) para poder probarla sin renderizar React
+ *  la antigua `saga-info.tsx` (revisión Task 6; hoy la usa
+ *  `ficha/saga-all-works.tsx`) para poder probarla sin renderizar React
  *  — es la única guarda que sostiene esta colocabilidad, y ningún constraint de BD
  *  puede imponerla. */
 export function freeItemWindow(
@@ -748,6 +754,7 @@ export async function getSagaDetail(
     isAuthenticated: Boolean(user),
     graph,
     hasGraph,
+    shelfGraph: derivedGraph,
     viewerRole: (roleRow as { data: { role: UserRole } | null }).data?.role ?? null,
     routes,
     routeChoice,

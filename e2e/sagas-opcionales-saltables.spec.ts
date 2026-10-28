@@ -29,11 +29,11 @@ const ERA_UNO_ID = "53118dd4-ccd9-4a9d-8241-5899816a9eab";
 const OPCIONAL_ID = "4c076a65-4888-4715-913e-2157374cd227"; // «Libro sin valorar», hueco 2 de Era Uno
 const OPCIONAL_TITLE = "Libro sin valorar";
 
-// La ficha abre en «Info»; el timeline vive en la pestaña «Mapa de lectura»,
-// que se selecciona por `?tab=mapa`. Y `ruta=lectura` fija la columna a la
+// La ficha abre en «Info»; el timeline vive en la página «Cómo leerla»,
+// que es `/como-leerla`. Y `ruta=lectura` fija la columna a la
 // curación: sin ella la ruta activa sería la que el lector tenga adoptada, y
 // el test dependería de un estado que no controla.
-const MAPA = `/saga/${UNIVERSO_ID}?tab=mapa&ruta=lectura`;
+const MAPA = `/saga/${UNIVERSO_ID}/como-leerla?ruta=lectura`;
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
@@ -196,17 +196,31 @@ test("3 · el interruptor esconde las opcionales, y la barra sigue estando para 
   await expect(timeline(page).getByText(OPCIONAL_TITLE)).toBeVisible();
 });
 
+// El contador «N de M» de la balda de la ficha (`shelf-count`): el progreso del
+// itinerario ACTIVO. Sustituye a `saga-hero-progress`, que contaba el universo
+// entero; ese invariante («no cambia al cambiar de ruta») ya no existe, así que
+// aquí se compara siempre sobre la MISMA ruta.
+async function shelfCountText(page: Page): Promise<string> {
+  const count = page.getByTestId("shelf-count");
+  await expect(count).toBeVisible();
+  return (await count.innerText()).trim();
+}
+
 test("4 · saltar NO mueve el progreso", async ({ page }) => {
   // El límite duro de la spec, comprobado donde el lector lo vería. El mockup
   // pide lo contrario en dos sitios («desaparece del cómputo»); se descarta a
   // sabiendas, porque reabrir el denominador es la familia del #91 y el #185.
   await loginAsDevtest(page);
-  await page.goto(MAPA);
-  const antes = await page.getByTestId("saga-hero-progress").innerText();
+  // El contador vive en la balda de la ficha, no en /como-leerla: se lee allí
+  // antes y después, en la MISMA ruta (`lectura`, la de MAPA).
+  await page.goto(`/saga/${UNIVERSO_ID}?ruta=lectura`);
+  const antes = await shelfCountText(page);
 
+  await page.goto(MAPA);
   await filaOpcional(page).getByTestId("skip-optional").click();
   await page.reload();
   await expect(filaOpcional(page).getByTestId("unskip-optional")).toBeVisible();
 
-  expect(await page.getByTestId("saga-hero-progress").innerText()).toBe(antes);
+  await page.goto(`/saga/${UNIVERSO_ID}?ruta=lectura`);
+  expect(await shelfCountText(page)).toBe(antes);
 });

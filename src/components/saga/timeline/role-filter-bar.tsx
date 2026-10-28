@@ -27,7 +27,7 @@ export function RoleFilterBar({
 }: {
   counts: Array<{ role: SagaItemRole; count: number }>;
   active: SagaItemRole | null;
-  /** URL de la ficha CON sus parámetros ya puestos (`?tab=mapa&ruta=…`): la
+  /** URL de `/como-leerla` CON sus parámetros ya puestos (`?ruta=…`): la
    *  lente no puede sacarte del mapa ni cambiarte de itinerario. */
   baseHref: string;
   labels: {

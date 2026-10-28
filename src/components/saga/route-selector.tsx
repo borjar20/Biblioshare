@@ -14,7 +14,7 @@ export function RouteSelector({
   routes: SagaRoute[];
   active: string;
 }) {
-  const href = (slug: string) => `${base}?tab=mapa&ruta=${slug}`;
+  const href = (slug: string) => `${base}?ruta=${slug}`;
 
   if (routes.length <= 2) {
     const cls = (on: boolean) =>

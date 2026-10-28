@@ -205,7 +205,7 @@ test("una saga curada y sin grafo dibujado a mano enseña mapa con el interrupto
   try {
     await patchShowMap(ITINERARIOS_UNIVERSO_ID, true);
     await loginAsDevtest(page);
-    await page.goto(`/saga/${ITINERARIOS_UNIVERSO_ID}?tab=mapa&ruta=lectura`);
+    await page.goto(`/saga/${ITINERARIOS_UNIVERSO_ID}/como-leerla?ruta=lectura`);
 
     // La ruta sintética «lectura» solo se ofrece con `hasGraph` (buildRouteList):
     // que esté en el selector ya demuestra que el interruptor encendido +
@@ -244,7 +244,7 @@ test("con el interruptor apagado no hay mapa, ni para «lectura» ni para una ru
     // excluye sin `hasGraph`), page.tsx degrada a la primera ruta real
     // (`la-guardia`) en vez de dar página en blanco — se comprueba esa
     // degradación de paso.
-    await page.goto(`/saga/${ITINERARIOS_UNIVERSO_ID}?tab=mapa&ruta=lectura`);
+    await page.goto(`/saga/${ITINERARIOS_UNIVERSO_ID}/como-leerla?ruta=lectura`);
 
     await expect(page.getByRole("link", { name: "Orden de lectura", exact: true })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "La Guardia" })).toBeVisible();
@@ -302,7 +302,7 @@ test("el generador crea un itinerario recorrible a partir de la curación", asyn
 
     // Recorrible: la ficha, en la ruta generada, ofrece los 3 pasos como
     // enlaces a sus obras — no una pantalla vacía ni un itinerario fantasma.
-    await page.goto(`/saga/${ITINERARIOS_UNIVERSO_ID}?tab=mapa&ruta=orden-curado`);
+    await page.goto(`/saga/${ITINERARIOS_UNIVERSO_ID}/como-leerla?ruta=orden-curado`);
     await expect(page.getByRole("heading", { name: "Orden curado" })).toBeVisible();
     await expect(page.getByRole("link", { name: /Ronda de noche/ })).toBeVisible();
     await expect(page.getByRole("link", { name: /¡Guardias! ¡Guardias!/ })).toBeVisible();
@@ -371,7 +371,7 @@ test("una entrada libre con ventana produce la arista que cruza en el mapa", asy
     // VISIBLE (regla de los dos árboles) o el locator encuentra el doble.
     await page.setViewportSize({ width: 390, height: 844 });
     await loginAsDevtest(page);
-    await page.goto(`/saga/${SAGAS_V2_UNIVERSO_ID}?tab=mapa&ruta=lectura`);
+    await page.goto(`/saga/${SAGAS_V2_UNIVERSO_ID}/como-leerla?ruta=lectura`);
 
     // La fila de ventana que contiene el enlace a la ficha de Isabel (href
     // estable, de itemHref), y que además nombra el ancla. Que diga «Rayuela»

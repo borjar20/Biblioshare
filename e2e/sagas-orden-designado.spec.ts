@@ -99,7 +99,7 @@ test.afterAll(async () => {
 
 /** Chips del selector de rutas de la ficha. `RouteSelector` no lleva testid
  *  propio y pinta dos variantes según cuántas rutas haya (toggle con ≤2, tira
- *  de chips con 3+), pero las dos son `<Link>` al mismo `?tab=mapa&ruta=<slug>`:
+ *  de chips con 3+), pero las dos son `<Link>` al mismo `/como-leerla?ruta=<slug>`:
  *  ese href es el único selector estable que vale para las dos, sin inventar un
  *  testid nuevo en el componente.
  *
@@ -173,7 +173,7 @@ test("designar un itinerario le da el puesto y la etiqueta de «Orden de lectura
   await loginAsDevtest(page);
   await designar(page, ROUTE_NAME);
 
-  await page.goto(`/saga/${UNIVERSO_ID}?tab=mapa`);
+  await page.goto(`/saga/${UNIVERSO_ID}/como-leerla`);
   const chips = routeChips(page);
   // El primero, no «alguno»: el puesto es parte de lo que se designa.
   await expect(chips.first()).toHaveText("Orden de lectura");
@@ -196,7 +196,7 @@ test("desdesignar devuelve la ruta sintética y el nombre propio del itinerario"
   await designar(page, ROUTE_NAME);
   await designar(page, MAPA_GENERADO);
 
-  await page.goto(`/saga/${UNIVERSO_ID}?tab=mapa`);
+  await page.goto(`/saga/${UNIVERSO_ID}/como-leerla`);
   const chips = routeChips(page);
   await expect(chips.filter({ hasText: "Orden de lectura" })).toHaveCount(1);
   await expect(chips.filter({ hasText: ROUTE_NAME })).toHaveCount(1);

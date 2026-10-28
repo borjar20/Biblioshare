@@ -17,15 +17,11 @@ import { submitLogin } from "./support/visible-form";
 // ofrece la ruta sintética "lectura", así que el selector queda en exactamente
 // DOS rutas (la-guardia + publicacion) — el caso "toggle" de `RouteSelector`.
 //
-// El tercer libro directo es la pieza que hace el test anti-#91 (más abajo)
-// capaz de detectar la regresión de verdad: si solo hubiera las 2 obras de La
-// Guardia, el denominador del universo (countedKeys del Universo, spec
-// 2026-07-25 — pertenencia del subárbol, ya no `mainOrder`) y el de la ruta
-// curada coincidirían (2 = 2) y un hero mal enganchado a la ruta activa daría
-// el mismo número por COINCIDENCIA. Con la obra directa, el universo tiene
-// denominador 3 (1 completada = 33%) y la ruta "la-guardia" tiene denominador
-// 2 (0 completadas = 0%): valores distintos a propósito, así que solo el
-// hero CORRECTO (ligado siempre al universo) se queda quieto.
+// El tercer libro directo da denominadores DISTINTOS entre «Publicación» (3
+// obras, 1 leída) y «La Guardia» (2, 0 leídas), de modo que el test del
+// contador de la balda (más abajo) detecta uno copiado de la ruta equivocada
+// en vez de coincidir por casualidad numérica. (Antes era la red anti-#91 del
+// hero, que contaba el universo; ese invariante ya no existe, ver el test.)
 //
 // Los UUID se sembraron una vez a mano en dev vía `mcp__supabase-dev__execute_sql`
 // (ver `.superpowers/sdd/task-10-report.md`) — mismo patrón que el seed QA de
@@ -87,9 +83,40 @@ async function clearRouteChoice(sagaId: string) {
   if (!res.ok) throw new Error(`clearRouteChoice: ${res.status} ${res.statusText} — ${await res.text()}`);
 }
 
+// Cuentas esperadas por REST (service role): obras de «La Guardia» (subsaga
+// del paso curado) frente a todas las del universo, y cuántas tiene leídas el
+// colaborador. Ninguna opcional en este seed.
+async function expectedCounts() {
+  const h = { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` };
+  const get = async (path: string) => {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: h });
+    if (!res.ok) throw new Error(`${path}: ${res.status} ${await res.text()}`);
+    return res.json();
+  };
+  const subs = (await get(`saga_routes?saga_id=eq.${UNIVERSO_ID}&slug=eq.la-guardia&select=saga_route_entries(child_saga_id)`)) as Array<{
+    saga_route_entries: Array<{ child_saga_id: string | null }>;
+  }>;
+  const childId = subs[0]?.saga_route_entries.find((e) => e.child_saga_id)?.child_saga_id;
+  if (!childId) throw new Error("expectedCounts: La Guardia ya no tiene un paso-bloque; ¿cambió el seed?");
+  const universo = (await get(`saga_items?saga_id=in.(${UNIVERSO_ID},${childId})&select=saga_id,item_type,item_id`)) as Array<{
+    saga_id: string; item_type: string; item_id: string;
+  }>;
+  const guardia = universo.filter((r) => r.saga_id === childId);
+  const ids = [...new Set(universo.map((r) => r.item_id))];
+  const pases = (await get(
+    `passes?user_id=eq.${COLLAB_USER_ID}&status=eq.completed&item_id=in.(${ids.join(",")})&select=item_id`,
+  )) as Array<{ item_id: string }>;
+  const leidas = new Set(pases.map((p) => p.item_id));
+  const count = (rows: typeof universo) => ({
+    total: new Set(rows.map((r) => r.item_id)).size,
+    completed: [...new Set(rows.map((r) => r.item_id))].filter((id) => leidas.has(id)).length,
+  });
+  return { guardia: count(guardia), publicacion: count(universo) };
+}
+
 test.describe("itinerarios de lectura", () => {
   test("el selector lista las rutas y la elegida muestra su cabecera", async ({ page }) => {
-    await page.goto(`/saga/${UNIVERSO_ID}?tab=mapa`);
+    await page.goto(`/saga/${UNIVERSO_ID}/como-leerla`);
 
     await page.getByRole("link", { name: "La Guardia" }).click();
 
@@ -98,46 +125,59 @@ test.describe("itinerarios de lectura", () => {
     await expect(page.getByText(/Llevas \d+ de \d+ de esta ruta/)).toBeVisible();
   });
 
-  // Red contra el #91: si alguien reimplementa el contador y lo engancha al
-  // hero, el número del universo empezaría a bailar según la pestaña. Arranca
-  // deliberadamente en «Publicación» (no en la ruta curada, que además es la
-  // que cae por defecto sin adopción) para que el clic sí cambie de ruta de
-  // verdad, y el seed deja denominadores DISTINTOS entre universo (3) y ruta
-  // (2) para que un enganche incorrecto no pase colado por coincidencia
-  // numérica — ver comentario de cabecera.
-  test("el progreso del hero NO cambia al cambiar de ruta", async ({ page }) => {
+  // Antes era una red contra el #91 («el progreso del hero NO cambia al cambiar
+  // de ruta»): el hero viejo contaba el UNIVERSO entero. Ese invariante es
+  // falso a propósito con la ficha nueva: el hero ya no enseña progreso y el
+  // «N de M» de la balda cuenta el itinerario ACTIVO. Aquí se prueba justo eso,
+  // comparando dos rutas con denominadores DISTINTOS (La Guardia: 2 obras,
+  // Publicación: las 3), de modo que un contador copiado de la otra ruta no
+  // pase colado por coincidencia numérica. Los números se leen de REST, no se
+  // suponen: el seed puede variar.
+  test("el contador de la balda cuenta la ruta activa, no el universo", async ({ page }) => {
     await loginAsCollaborator(page);
-    await page.goto(`/saga/${UNIVERSO_ID}?tab=mapa&orden=publicacion`);
+    const esperado = await expectedCounts();
+    expect(esperado.guardia.total).not.toBe(esperado.publicacion.total);
 
-    const hero = page.getByTestId("saga-hero-progress");
-    await expect(hero).toBeVisible();
-    const before = await hero.innerText();
-    expect(before).toBe("33%"); // 1 de 3 (Ronda de noche completada) — fija el baseline, no solo la igualdad
+    // La Guardia: su único paso es un bloque-subsaga, que la balda expande a
+    // las obras de la subsaga. Balda y chips tienen que estar.
+    await page.goto(`/saga/${UNIVERSO_ID}?ruta=la-guardia`);
+    const balda = page.getByTestId("saga-shelf");
+    await expect(balda).toBeVisible();
+    await expect(balda.getByRole("link", { name: "La Guardia", exact: true })).toBeVisible();
+    await expect(balda.getByRole("link", { name: "Publicación", exact: true })).toBeVisible();
+    const lista = page.getByTestId("shelf-a11y-list");
+    await expect(lista.locator("li")).toHaveCount(esperado.guardia.total);
+    await expect(lista).toContainText("Guardias! ¡Guardias!");
+    await expect(lista).toContainText("Pies de barro");
+    const contador = page.getByTestId("shelf-count");
+    await expect(contador).toHaveText(`${esperado.guardia.completed} de ${esperado.guardia.total}`);
 
-    await page.getByRole("link", { name: "La Guardia" }).click();
-    await expect(page.getByRole("heading", { name: "La Guardia" })).toBeVisible();
-    // La ruta SÍ tiene un denominador distinto (0 de 2 = 0%) — si el hero
-    // hubiera copiado ese número, esta comparación fallaría.
-    await expect(page.getByText("Llevas 0 de 2 de esta ruta")).toBeVisible();
+    // Publicación: las tres obras, con su propia cuenta.
+    await page.goto(`/saga/${UNIVERSO_ID}?ruta=publicacion`);
+    await expect(contador).toHaveText(`${esperado.publicacion.completed} de ${esperado.publicacion.total}`);
 
-    expect(await hero.innerText()).toBe(before);
+    // Y /como-leerla fija el contador propio de la ruta curada.
+    await page.goto(`/saga/${UNIVERSO_ID}/como-leerla?ruta=la-guardia`);
+    await expect(
+      page.getByText(`Llevas ${esperado.guardia.completed} de ${esperado.guardia.total} de esta ruta`),
+    ).toBeVisible();
   });
 
   test("adoptar una ruta hace que la ficha abra por ella", async ({ page }) => {
     await clearRouteChoice(UNIVERSO_ID);
     await loginAsCollaborator(page);
-    await page.goto(`/saga/${UNIVERSO_ID}?tab=mapa&ruta=la-guardia`);
+    await page.goto(`/saga/${UNIVERSO_ID}/como-leerla?ruta=la-guardia`);
 
     await page.getByRole("button", { name: "Leer por aquí" }).click();
     await expect(page.getByRole("button", { name: "Leyendo por aquí" })).toBeVisible();
 
     // Sin searchParams: debe abrir por la adoptada.
-    await page.goto(`/saga/${UNIVERSO_ID}?tab=mapa`);
+    await page.goto(`/saga/${UNIVERSO_ID}/como-leerla`);
     await expect(page.getByRole("heading", { name: "La Guardia" })).toBeVisible();
   });
 
   test("los enlaces viejos con ?orden=publicacion siguen funcionando", async ({ page }) => {
-    await page.goto(`/saga/${UNIVERSO_ID}?tab=mapa&orden=publicacion`);
+    await page.goto(`/saga/${UNIVERSO_ID}/como-leerla?orden=publicacion`);
 
     // La lista por año se reconoce por su numeración 01, 02…
     await expect(page.getByText("01", { exact: true })).toBeVisible();
@@ -145,7 +185,7 @@ test.describe("itinerarios de lectura", () => {
 
   // Antes de este test, el único enlace a /rutas vivía en RouteView, que solo
   // se monta cuando la ruta ACTIVA ya es una curada. Aterrizar en la ficha sin
-  // parámetros (pestaña Info, la que carga por defecto) deja la ruta activa
+  // parámetros (la ficha, sin /como-leerla) deja la ruta activa
   // fuera de la ecuación: si el enlace de saga-info.tsx no existiera, no
   // habría ningún elemento con este rol/nombre en la página y el test
   // fallaría por timeout. Sin teclear `/rutas` en la barra de direcciones:
@@ -154,12 +194,15 @@ test.describe("itinerarios de lectura", () => {
     await loginAsCollaborator(page);
     await page.goto(`/saga/${UNIVERSO_ID}`);
 
-    // Nombre exacto (con el icono "✎"): el título de una de las obras
+    // Nombre exacto y dentro del diálogo: el título de una de las obras
     // sembradas es literalmente "[QA Itinerarios] Ronda de noche", así que
     // una coincidencia parcial (/Itinerarios/) también engancha su portada y
     // el test se vuelve ambiguo (strict mode violation) tanto en verde como
-    // en rojo.
-    await page.getByRole("link", { name: "✎ Itinerarios", exact: true }).click();
+    // en rojo. El icono «✎» va en un <span aria-hidden>: no forma parte del
+    // nombre accesible.
+    // El enlace vive en el menú «Opciones de curación» del hero.
+    await page.getByRole("button", { name: "Opciones de curación" }).click();
+    await page.getByRole("dialog").getByRole("link", { name: "Itinerarios", exact: true }).click();
 
     await expect(page).toHaveURL(`/saga/${UNIVERSO_ID}/rutas`);
     await expect(page.getByRole("heading", { name: "Itinerarios de lectura" })).toBeVisible();

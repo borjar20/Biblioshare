@@ -169,7 +169,9 @@ test("una obra sin clasificar aparece en la grid de su grupo con su rol", async 
     // Lo que de verdad afirma este test: pertenencia (visible en la grid,
     // marcada como sin clasificar por el contorno) Y decoración (chip),
     // ambas sobre la fila de ESTE ítem.
-    const item = page.locator("li").filter({ hasText: LOOSE_ITEM_TITLE });
+    // `li[data-type]`: solo las celdas de «Todas las obras»; sin él también casa la
+    // fila de `shelf-a11y-list`, que repite el título de cada obra.
+    const item = page.locator("li[data-type]").filter({ hasText: LOOSE_ITEM_TITLE });
     await expect(item).toBeVisible();
     // El contorno punteado dorado es la ÚNICA señal de "sin clasificar" en la
     // grid (MemberCell, `m.placement === null`, saga-info.tsx:76).
@@ -207,7 +209,9 @@ test("una obra sin clasificar Y sin rol sale en la grid, pero sin chip", async (
 
     await page.goto(`/saga/${UNIVERSO_ID}`);
 
-    const item = page.locator("li").filter({ hasText: LOOSE_ITEM_TITLE });
+    // `li[data-type]`: solo las celdas de «Todas las obras»; sin él también casa la
+    // fila de `shelf-a11y-list`, que repite el título de cada obra.
+    const item = page.locator("li[data-type]").filter({ hasText: LOOSE_ITEM_TITLE });
     await expect(item).toBeVisible();
     await expect(item.locator("div").first()).toHaveClass(/outline-dashed/);
     for (const label of ["Precuela", "Spin-off", "Relato", "Paralela"]) {
@@ -218,22 +222,23 @@ test("una obra sin clasificar Y sin rol sale en la grid, pero sin chip", async (
   }
 });
 
-test("el progreso del hero NO se mueve al marcar un rol", async ({ page }) => {
+test("el progreso de la balda NO se mueve al marcar un rol", async ({ page }) => {
   // Red contra el #91: el rol es puramente semántico y no toca el
   // denominador. `saga_items.role`, que es lo único que toca este test, es un
   // campo totalmente distinto de `optional` — no hay manera de que marcar un
   // rol lo mueva.
   //
-  // OJO: el hero imprime un PORCENTAJE (`{progress.pct}%`,
-  // `saga-hero.tsx:102`), no "N de M". No fijamos aquí el valor baseline (a
+  // El progreso lo enseña ahora el contador «N de M» de la balda
+  // (`shelf-count`), que cuenta el itinerario activo; se lee antes y después
+  // en la MISMA ruta (`lectura`). No fijamos aquí el valor baseline (a
   // diferencia de itinerarios): esta saga puede ganar o perder pases
   // completados entre corridas por otros specs/QA manual, así que la
   // aserción es "no cambió", no "vale tal cosa".
   await loginAsCollaborator(page);
-  await page.goto(`/saga/${UNIVERSO_ID}`);
-  const hero = page.getByTestId("saga-hero-progress");
-  await expect(hero).toBeVisible();
-  const before = await hero.textContent();
+  await page.goto(`/saga/${UNIVERSO_ID}?ruta=lectura`);
+  const count = page.getByTestId("shelf-count");
+  await expect(count).toBeVisible();
+  const before = (await count.innerText()).trim();
 
   await page.goto(`/saga/${ERA_UNO_ID}/editar`);
   const itemsBefore = await fetchEraUnoItems();
@@ -253,8 +258,8 @@ test("el progreso del hero NO se mueve al marcar un rol", async ({ page }) => {
 
     await save(page);
 
-    await page.goto(`/saga/${UNIVERSO_ID}`);
-    await expect(page.getByTestId("saga-hero-progress")).toHaveText(before ?? "");
+    await page.goto(`/saga/${UNIVERSO_ID}?ruta=lectura`);
+    await expect(page.getByTestId("shelf-count")).toHaveText(before);
   } finally {
     // No toca zonas, así que no hace falta restaurar el bloque — solo el rol.
     await restoreEraUno(itemsBefore, null);

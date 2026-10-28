@@ -437,7 +437,11 @@ test("días mixtos conservan Información limitada y la ficha conserva el contex
   const loginPath = new URL((await focused.getByRole("link", { name: "Añadir a Pendiente", exact: true }).getAttribute("href"))!, page.url());
   const next = new URL(loginPath.searchParams.get("next")!, page.url());
   expect(next.searchParams.get("lanzamiento")).toBe(limitedId);
-  expect(next.searchParams.get("mes")).toBe(month);
+  // Un clic en «Mes siguiente» avanza un mes de calendario. No vale `month`
+  // (hoy + 35 días): los últimos días de un mes de 31 ya cae dos meses después (#1554).
+  const [year, monthNo] = today.slice(0, 7).split("-").map(Number);
+  const nextMonth = monthNo === 12 ? `${year + 1}-01` : `${year}-${String(monthNo + 1).padStart(2, "0")}`;
+  expect(next.searchParams.get("mes")).toBe(nextMonth);
   expect(await countPasses(actors.a.id)).toBe(0);
 });
 

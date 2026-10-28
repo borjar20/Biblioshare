@@ -96,15 +96,20 @@ test("ficha de universo sin sesión: jerarquía, sin seguir/progreso, sin duplic
   await expect(
     page.getByRole("button", { name: /Seguir esta saga|Siguiendo/ }),
   ).toHaveCount(0);
-  await expect(page.getByText("Tu progreso")).toHaveCount(0);
+  // El progreso del lector (antes «Tu progreso» en el hero) es ahora el
+  // contador «N de M» de la balda, que solo se pinta con sesión.
+  await expect(page.getByTestId("saga-shelf")).toBeVisible();
+  await expect(page.getByTestId("shelf-count")).toHaveCount(0);
 
   // El ítem con doble membresía (Era Uno + directo al Universo) se dedupea a
-  // favor de la subsaga: una sola tarjeta (un solo enlace a su ficha) en toda
-  // la página. Contar por texto sería un falso positivo: la tarjeta sin
-  // portada pinta el título DOS veces dentro de la MISMA tarjeta (placeholder
-  // + leyenda), así que se cuenta el enlace a su ficha en vez del texto.
+  // favor de la subsaga: una sola tarjeta (un solo enlace a su ficha) en
+  // «Todas las obras». Contar por texto sería un falso positivo: la tarjeta
+  // sin portada pinta el título DOS veces dentro de la MISMA tarjeta
+  // (placeholder + leyenda), así que se cuenta el enlace a su ficha. Se
+  // acota a las celdas de la grid (`li[data-type]`): la balda, su lista
+  // accesible y el mosaico del hero repiten la obra a propósito.
   await expect(
-    page.locator(`a[href="/libro/${BOOK_ISABEL_ALLENDE}"]`),
+    page.locator(`li[data-type] a[href="/libro/${BOOK_ISABEL_ALLENDE}"]`),
   ).toHaveCount(1);
 });
 
@@ -127,7 +132,9 @@ test("ficha de universo con sesión: progreso visible y ciclo de seguir persiste
     await page.goto(`/saga/${SAGA_UNIVERSO}`);
     await page.waitForLoadState("networkidle").catch(() => {});
 
-    await expect(page.getByText("Tu progreso")).toBeVisible({
+    // El progreso con sesión es el contador «N de M» de la balda (sustituye
+    // al «Tu progreso» del hero viejo).
+    await expect(page.getByTestId("shelf-count")).toBeVisible({
       timeout: 15_000,
     });
 
@@ -208,8 +215,10 @@ test("ficha de obra miembro sigue mostrando su sección de saga", async ({
   await page.goto(`/saga/${SAGA_ERA_UNO}`);
   await page.waitForLoadState("networkidle").catch(() => {});
 
+  // Celda de «Todas las obras» (`li[data-type]`): el primer enlace a Rayuela
+  // en el DOM es ahora el de `shelf-a11y-list`, que es sr-only y no se ve.
   const rayuelaLink = page
-    .locator('a[href^="/libro/"]')
+    .locator('li[data-type] a[href^="/libro/"]')
     .filter({ hasText: "Rayuela" })
     .first();
   await expect(rayuelaLink).toBeVisible();
