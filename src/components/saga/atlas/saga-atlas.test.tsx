@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import messages from "../../../../messages/es.json";
@@ -7,7 +7,12 @@ import type { AtlasModel, AtlasWork } from "@/lib/sagas/atlas/model";
 import { SagaAtlas, type SagaAtlasProps } from "./saga-atlas";
 
 const replace = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }), usePathname: () => "/saga/s1/mapa" }));
+let search = "";
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace }),
+  usePathname: () => "/saga/s1/mapa",
+  useSearchParams: () => new URLSearchParams(search),
+}));
 vi.mock("next/image", () => ({
   // eslint-disable-next-line @next/next/no-img-element
   default: (p: { alt: string }) => <img alt={p.alt} />,
@@ -26,6 +31,7 @@ beforeAll(() => {
 });
 afterEach(() => {
   cleanup();
+  search = "";
   replace.mockReset();
   sessionStorage.clear();
   window.history.replaceState(null, "", "/");
@@ -65,6 +71,18 @@ describe("SagaAtlas", () => {
     view({ initialLens: "publicacion" });
     expect(screen.getByRole("button", { name: "Publicación" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: "Orden" }).getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("la lente sale de la URL del cliente aunque el payload cacheado diga otra", () => {
+    search = "lente=rol";
+    view({ initialLens: "orden" });
+    expect(screen.getByRole("button", { name: "Rol" }).getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("data-ready aparece solo tras medir el viewport y pintar", async () => {
+    view();
+    const root = document.querySelector<HTMLElement>("[data-progress]")!;
+    await waitFor(() => expect(root.getAttribute("data-ready")).toBe("true"));
   });
 
   it("pulsar «Rol» cambia la URL con replaceState, sin pasar por el router", () => {

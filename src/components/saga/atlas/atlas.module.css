@@ -29,7 +29,9 @@
 .island:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
 
 /* Obras: posición y escala en el mundo; el cambio de lente las anima. */
-.work { position: absolute; left: 0; top: 0; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; transition: transform 450ms cubic-bezier(.2, .7, .2, 1); }
+.work { position: absolute; left: 0; top: 0; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; }
+/* Solo tras el primer layout medido: evita el vuelo inicial de horizontal a vertical. */
+.root[data-ready='true'] .work { transition: transform 450ms cubic-bezier(.2, .7, .2, 1); }
 .cover { position: relative; display: block; width: 100%; height: 100%; border-radius: 3px; overflow: hidden; background: var(--panel); box-shadow: 0 2px 8px rgba(0, 0, 0, .45); }
 .cover img { object-fit: cover; }
 .spine { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 4px; color: var(--ground); font-size: 8px; font-weight: 700; line-height: 1.1; text-align: center; writing-mode: vertical-rl; overflow: hidden; }
@@ -73,5 +75,5 @@
   .title { font-size: 17px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .work, .plane[data-animated='true'] { transition: none; }
+  .root[data-ready='true'] .work, .plane[data-animated='true'] { transition: none; }
 }

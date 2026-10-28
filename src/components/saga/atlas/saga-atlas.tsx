@@ -1,10 +1,11 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import type { SagaItemRole } from "@/lib/sagas/roles";
 import { layoutAtlas, type Lens, type Orientation } from "@/lib/sagas/atlas/layout";
 import type { AtlasModel } from "@/lib/sagas/atlas/model";
+import { parseLens } from "@/lib/sagas/atlas/lens";
 import { summarize } from "@/lib/sagas/atlas/summary";
 import { AtlasPlane } from "./atlas-plane";
 import { AtlasDock, AtlasTopBar, AtlasZoom, LENS_LABEL, LENSES } from "./atlas-chrome";
@@ -31,7 +32,21 @@ export function SagaAtlas({ sagaId, sagaName, workCount, model, authenticated, i
   const pathname = usePathname();
   const stageRef = useRef<HTMLDivElement>(null);
   const viewport = useViewport(stageRef);
-  const [lens, setLens] = useState<Lens>(initialLens);
+  // La lente se siembra de la URL del CLIENTE: al volver atrás, Next restaura el payload RSC
+  // cacheado con el `initialLens` viejo, pero la URL (sincronizada con replaceState) manda.
+  const searchParams = useSearchParams();
+  const [lens, setLens] = useState<Lens>(() => {
+    const raw = searchParams.get("lente");
+    return raw !== null ? parseLens(raw) : initialLens;
+  });
+  // Sin transición de las obras hasta medir el viewport y pintar el primer layout con la
+  // orientación real: si no, en móvil «vuelan» de horizontal a vertical al cargar.
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (ready || viewport.width === 0) return;
+    const id = requestAnimationFrame(() => setReady(true));
+    return () => cancelAnimationFrame(id);
+  }, [ready, viewport.width]);
   const orientation: Orientation = viewport.width >= viewport.height ? "h" : "v";
   const layout = useMemo(() => layoutAtlas(model, lens, orientation), [model, lens, orientation]);
 
@@ -95,7 +110,7 @@ export function SagaAtlas({ sagaId, sagaName, workCount, model, authenticated, i
   }
 
   return (
-    <div className={`${styles.root} h-dvh w-full overflow-hidden`} data-progress={authenticated ? "on" : "off"}>
+    <div className={`${styles.root} h-dvh w-full overflow-hidden`} data-progress={authenticated ? "on" : "off"} data-ready={ready ? "true" : undefined}>
       <div
         ref={stageRef}
         className={styles.stage}
