@@ -99,13 +99,21 @@ export function expandRouteKeys(routeKeys: string[], mainOrderOf: (sagaId: strin
  *  nodo del mapa), así que un itinerario hecho solo de bloques dejaba la balda
  *  sin una obra y en modo `empty`. Consecuencia: aquí el `step` cuenta obras,
  *  no pasos del itinerario — la balda no pinta ese número. */
+/** Orden principal de cada subsaga (`tipo:id`), el de `createCuratedOrder`: la
+ *  MISMA expansión de bloques que usan la balda, RouteView y el atlas. */
+export function mainOrderFor(
+  detail: Pick<SagaDetail, "groups" | "windows" | "orderSagas" | "orderMemberships">,
+): (sagaId: string) => string[] {
+  const titles = new Map<string, string>(detail.groups.flatMap((g) => g.members).map((m) => [`${m.itemType}:${m.itemId}`, m.title]));
+  return createCuratedOrder(detail.orderSagas, detail.orderMemberships, (k) => titles.get(k) ?? "", detail.windows);
+}
+
 export function curatedRouteSections(
   detail: Pick<SagaDetail, "groups" | "windows" | "orderSagas" | "orderMemberships">,
   routeKeys: string[],
   opts: { authenticated: boolean; showOptional: boolean },
 ): TimelineSection[] {
-  const titles = new Map<string, string>(detail.groups.flatMap((g) => g.members).map((m) => [`${m.itemType}:${m.itemId}`, m.title]));
-  const mainOrder = createCuratedOrder(detail.orderSagas, detail.orderMemberships, (k) => titles.get(k) ?? "", detail.windows);
+  const mainOrder = mainOrderFor(detail);
   const lookup: MapLookup = {
     groupAccent: new Map(detail.groups.map((g) => [g.sagaId, g.accent] as const)),
     groupName: new Map(detail.groups.map((g) => [g.sagaId, g.name] as const)),
