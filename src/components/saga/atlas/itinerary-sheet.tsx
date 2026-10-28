@@ -1,10 +1,11 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useEffect, useId, useOptimistic, useRef, useState, useTransition, type FocusEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useOptimistic, useRef, useState, useTransition, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { sagaHref } from "@/lib/catalog/item-href";
 import { AdoptRouteButton } from "./adopt-route-button";
+import { useDismissable } from "./use-dismissable";
 import styles from "./atlas.module.css";
 
 export type AtlasRoute = { slug: string; name: string; summary: string | null; curated: boolean };
@@ -55,21 +56,10 @@ export function ItinerarySheet({ sagaId, routes, activeRoute, adoptedRoute, coun
   }, []);
 
   useEffect(() => {
-    if (!open) return;
-    dialogRef.current?.querySelector<HTMLInputElement>("input:checked")?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close(true);
-    };
-    const onDown = (e: PointerEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) close(false);
-    };
-    document.addEventListener("keydown", onKey);
-    document.addEventListener("pointerdown", onDown);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.removeEventListener("pointerdown", onDown);
-    };
-  }, [open, close]);
+    if (open) dialogRef.current?.querySelector<HTMLInputElement>("input:checked")?.focus();
+  }, [open]);
+  // Escape, tocar fuera y, en móvil, el foco que sale de la hoja.
+  const onBlur = useDismissable({ open, ref: wrapRef, close });
 
   function choose(slug: string) {
     setBrowsing(null);
@@ -97,13 +87,6 @@ export function ItinerarySheet({ sagaId, routes, activeRoute, adoptedRoute, coun
       arrowed.current = false;
       setBrowsing(slug);
     } else choose(slug);
-  }
-
-  /** Móvil: la hoja es modal de hecho (fondo encima del atlas); si el foco sale, se cierra. */
-  function onBlur(e: FocusEvent<HTMLDivElement>) {
-    const next = e.relatedTarget as Node | null;
-    if (!open || !next || wrapRef.current?.contains(next)) return;
-    if (window.matchMedia?.("(max-width: 640px)").matches) close(false);
   }
 
   if (!expandable) {
