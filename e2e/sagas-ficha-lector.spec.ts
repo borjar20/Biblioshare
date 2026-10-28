@@ -78,6 +78,27 @@ async function completedWorksOfDevtest(): Promise<number> {
   return new Set(passes.map((p) => `${p.item_type}:${p.item_id}`).filter((k) => inSaga.has(k))).size;
 }
 
+/** Personas con follow aceptado de devtest que tienen algún pase en las obras
+ *  del universo (lo que «Entre amigos» cuenta). Se lee por REST, no se asume. */
+async function friendsWithPassesOfDevtest(): Promise<number> {
+  const [profile] = await rest<Array<{ user_id: string }>>(
+    `profiles?username=eq.${encodeURIComponent(USERNAME)}&select=user_id`,
+  );
+  if (!profile) throw new Error(`no se encontró el perfil de ${USERNAME}`);
+  const follows = await rest<Array<{ followee_id: string }>>(
+    `follows?follower_id=eq.${profile.user_id}&status=eq.accepted&select=followee_id`,
+  );
+  if (follows.length === 0) return 0;
+  const items = await rest<Array<{ item_type: string; item_id: string }>>(
+    `saga_items?saga_id=in.(${UNIVERSO_ID},${ERA_UNO_ID},${ERA_DOS_ID})&select=item_type,item_id`,
+  );
+  const inSaga = new Set(items.map((i) => `${i.item_type}:${i.item_id}`));
+  const passes = await rest<Array<{ user_id: string; item_type: string; item_id: string }>>(
+    `passes?user_id=in.(${follows.map((x) => x.followee_id).join(",")})&select=user_id,item_type,item_id`,
+  );
+  return new Set(passes.filter((p) => inSaga.has(`${p.item_type}:${p.item_id}`)).map((p) => p.user_id)).size;
+}
+
 /** href de la primera portada enlazable de la balda, en el orden del DOM. */
 const firstCoverHref = (page: Page) => page.locator("a[data-shelf-link]").first().getAttribute("href");
 
@@ -275,6 +296,34 @@ test.describe("ficha de saga · lector", () => {
         // Solo el recuento («4 obras»): sin sesión no hay «x de y».
         await expect(cards.nth(i).getByTestId("door-progress")).toHaveText(/^\D*\d+ obras?$/);
       }
+    } finally {
+      await context.close();
+    }
+  });
+
+  test("con sesión: «Entre amigos» solo existe si alguien que sigues tiene pases en la saga", async ({ page }) => {
+    const friends = await friendsWithPassesOfDevtest();
+    await loginAsDevtest(page);
+    await gotoFicha(page, "?ruta=lectura");
+
+    const bloque = page.getByTestId("friends-on-saga");
+    if (friends === 0) {
+      await expect(bloque).toHaveCount(0);
+      return;
+    }
+    await expect(bloque).toBeVisible();
+    await expect(bloque.locator("ul > li")).toHaveCount(Math.min(friends, 4));
+    await expect(bloque.locator("a[href^='/u/']").first()).toBeVisible();
+  });
+
+  test("sin sesión: no hay «Entre amigos»", async ({ browser }) => {
+    const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+    try {
+      const page = await context.newPage();
+      await page.goto(`/saga/${UNIVERSO_ID}`);
+      await expect(page.getByTestId("saga-shelf")).toBeVisible();
+      await expect(page.getByTestId("friends-on-saga")).toHaveCount(0);
+      await expect(page.getByTestId("friends-on-saga-skeleton")).toHaveCount(0);
     } finally {
       await context.close();
     }
