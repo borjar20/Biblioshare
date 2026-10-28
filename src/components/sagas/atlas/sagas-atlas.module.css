@@ -1,0 +1,92 @@
+/* Atlas de sagas y universos (spec 2026-10-28 índice §5). Siempre oscuro: los mismos tokens que el
+   atlas de la saga (src/components/saga/atlas/atlas.module.css). */
+.root {
+  --ground: #1d1713; --panel: #2a221d; --line: #4a3d34; --fg: #f1e7dd; --muted: #b2a293; --faint: #7d6e62; --glow: #f2c27b;
+  --zone: #241d18;
+  position: fixed; inset: 0; overflow: hidden; background: var(--ground); color: var(--fg); color-scheme: dark;
+  font-family: var(--font-geist-sans), sans-serif;
+}
+
+/* Lienzo: toma los gestos. */
+.stage { position: absolute; inset: 0; overflow: hidden; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+.stage:active { cursor: grabbing; }
+.stage:focus { outline: none; }
+
+.plane { position: absolute; left: 0; top: 0; width: 0; height: 0; will-change: transform; }
+/* Solo tras el primer layout medido (`data-ready`): evita el vuelo inicial. */
+.root[data-ready='true'] .plane[data-animated='true'] { transition: transform 300ms ease; }
+
+/* Zonas: fondo un tono por encima del lienzo. «En curso» con el dorado del «ahora». */
+.zone { position: absolute; border-radius: 28px; background: var(--zone); border: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
+.zone[data-zone='en-curso'] { border-color: color-mix(in srgb, var(--glow) 65%, transparent); }
+.zoneLabel { position: absolute; left: 28px; top: 12px; transform-origin: 0 0; white-space: nowrap; pointer-events: none;
+  font-size: 11px; font-weight: 700; letter-spacing: .08em; font-variant-caps: all-small-caps; color: var(--muted); }
+.zone[data-zone='en-curso'] .zoneLabel { color: var(--glow); }
+/* De lejos solo se ven las zonas: el rótulo se contraescala para seguir legible. */
+.plane[data-level='zones'] .zoneLabel { transform: scale(calc(1 / var(--k, 1))); font-size: 14px; }
+
+/* Comarcas de «Por descubrir» e islas de universo. */
+.comarcaLabel { position: absolute; transform: translateY(-50%); white-space: nowrap; pointer-events: none;
+  font-size: 10px; font-weight: 600; letter-spacing: .06em; font-variant-caps: all-small-caps; color: var(--faint); }
+.plane[data-level='zones'] .comarcaLabel { visibility: hidden; }
+.island { position: absolute; border-radius: 12px; pointer-events: none;
+  border: 1.5px solid color-mix(in srgb, var(--saga-accent, var(--line)) 55%, transparent); }
+.islandMore { position: absolute; right: 6px; bottom: 4px; font-size: 9px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* Sagas: posición y escala en el mundo (subsagas a 1/3). */
+.saga { position: absolute; left: 0; top: 0; padding: 0; border: 0; background: none; color: inherit; cursor: pointer; display: block; }
+.root[data-ready='true'] .saga { transition: transform 450ms cubic-bezier(.2, .7, .2, 1), opacity 200ms ease; }
+/* Área táctil ≥ 44 px de pantalla a cualquier zoom, sin cambiar el tamaño visible. */
+.saga::before { content: ''; position: absolute; left: 50%; top: 50%; width: 100%; height: 100%; transform: translate(-50%, -50%);
+  min-width: calc(44px / (var(--k, 1) * var(--s, 1))); min-height: calc(44px / (var(--k, 1) * var(--s, 1))); }
+.saga[data-dimmed] { opacity: .25; }
+.cover { position: relative; display: block; width: 100%; height: 100%; border-radius: 3px; overflow: hidden; background: var(--panel); box-shadow: 0 2px 8px rgba(0, 0, 0, .45); }
+.cover img { object-fit: cover; }
+.initials { display: grid; place-items: center; width: 100%; height: 100%; color: var(--ground); font-family: var(--font-serif), serif;
+  font-size: 22px; font-weight: 700; letter-spacing: .02em; }
+.saga:focus-visible .cover { outline: 2px solid var(--glow); outline-offset: 2px; }
+.saga[data-selected] .cover { outline: 2px solid var(--fg); outline-offset: 3px; }
+.caption { position: absolute; left: 50%; top: calc(100% + 4px); width: 84px; transform: translateX(-50%); display: grid; gap: 2px;
+  justify-items: center; text-align: center; pointer-events: none; }
+.captionTitle { font-size: 9px; font-weight: 700; line-height: 1.15; color: var(--fg); overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.captionMeta { font-size: 6.5px; color: var(--muted); }
+.bar { display: block; width: 48px; height: 2px; border-radius: 1px; background: var(--line); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--glow); }
+
+/* Barra superior: el contenedor no toma punteros, sus hijos sí. */
+.top { position: absolute; left: 0; right: 0; top: 0; z-index: 3; display: flex; gap: 12px; align-items: flex-start;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) calc(16px + env(safe-area-inset-right, 0px)) 32px calc(16px + env(safe-area-inset-left, 0px));
+  background: linear-gradient(to bottom, var(--ground) calc(100% - 32px), transparent); pointer-events: none; }
+.top > * { pointer-events: auto; }
+.back { display: grid; place-items: center; flex: none; width: 44px; height: 44px; border-radius: 12px; background: var(--panel); font-size: 20px; color: var(--fg); }
+.heading { min-width: 0; flex: 1; }
+.actions { flex: none; display: flex; gap: 8px; align-items: center; }
+.eyebrow { margin: 0; font-family: var(--font-geist-mono), monospace; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--glow); }
+.title { margin: 2px 0 0; font-family: var(--font-serif), serif; font-size: 20px; font-weight: 600; line-height: 1.2; }
+.summary { margin: 4px 0 0; font-size: 14px; line-height: 1.4; color: var(--muted); max-width: 52ch; }
+.summary b { color: var(--glow); font-weight: 700; }
+
+/* Dock (buscador y filtros, Task 7): vacío por ahora; la cámara ya lo mide. */
+.dock { position: absolute; left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
+.dock > * { pointer-events: auto; }
+
+.zoom { position: absolute; right: calc(16px + env(safe-area-inset-right, 0px)); bottom: calc(96px + env(safe-area-inset-bottom, 0px)); z-index: 2; display: flex; flex-direction: column; gap: 6px; }
+.zoom button { width: 44px; height: 44px; border-radius: 12px; background: var(--panel); display: grid; place-items: center; color: var(--fg); font-size: 18px; font-weight: 600; }
+.back:focus-visible, .zoom button:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+
+/* Fantasma (SagasAtlasSkeleton): barras y manchas del color del panel. */
+.skeletonLine { border-radius: 999px; background: var(--panel); }
+.skeletonZones { position: absolute; left: 16px; right: 16px; top: 50%; transform: translateY(-50%); display: flex; gap: 24px; justify-content: center; }
+.skeletonZone { flex: 0 1 280px; height: 220px; border-radius: 28px; background: var(--panel); }
+
+@media (max-width: 639.98px) {
+  .zoom { gap: 4px; right: calc(12px + env(safe-area-inset-right, 0px)); }
+  .zoom button { border-radius: 10px; font-size: 16px; }
+  .title { font-size: 17px; }
+  .skeletonZones { flex-direction: column; align-items: center; }
+  .skeletonZone { flex: none; width: 100%; max-width: 320px; height: 160px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .root[data-ready='true'] .saga, .root[data-ready='true'] .plane[data-animated='true'] { transition: none; }
+}

@@ -2769,6 +2769,26 @@
   },
   "sagaIndex": {
     "title": "Sagas",
+    "atlas": {
+      "eyebrow": "Atlas · {count, plural, =1 {1 saga} other {# sagas}}",
+      "summary": {
+        "enCurso": "En curso: <b>{name}</b>{more, plural, =0 {} other { y # más}} · sigues {followed}",
+        "sinCurso": "Sigues {followed} · {discover} por descubrir",
+        "anonimo": "{sagas, plural, =1 {1 saga} other {# sagas}} · {universes, plural, =1 {1 universo} other {# universos}}",
+        "sinCoincidencias": "Ninguna saga cumple los filtros"
+      },
+      "zone": {
+        "en-curso": "En curso", "sigues": "Sigues", "terminadas": "Terminadas", "por-descubrir": "Por descubrir",
+        "libros": "Libros", "peliculas": "Películas", "series": "Series", "mixtas": "Mixtas"
+      },
+      "zoneCount": "{name} · {count}",
+      "zoomIn": "Acercar", "zoomOut": "Alejar", "fit": "Ver todo el mapa",
+      "planeLabel": "Mapa de sagas",
+      "sagaLabel": "{name}, {count, plural, =1 {1 título} other {# títulos}}",
+      "universeLabel": "{name}, universo de {count, plural, =1 {1 saga} other {# sagas}}",
+      "moreChildren": "+{count}",
+      "back": "Inicio"
+    },
     "new": "Nueva saga",
     "newTitle": "Nueva saga",
     "newSubtitle": "Crea el contenedor y rellénalo después: miembros y grafo desde su ficha.",
