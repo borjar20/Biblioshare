@@ -243,3 +243,44 @@ describe("buildSagaIndex", () => {
     expect(cards.find((c) => c.id === "v")?.isFollowed).toBe(false);
   });
 });
+
+describe("started y lastTouchedAt", () => {
+  const extras = (passes: Array<{ item_type: string; item_id: string; status: string; updated_at?: string }>) => ({
+    isAuthenticated: true, routes: [], passes, routeChoices: [], followedIds: new Set<string>(),
+  });
+
+  it("una obra en curso o leída la marca empezada; planeada, no", () => {
+    const sagas = [saga("a", "A"), saga("b", "B"), saga("c", "C")];
+    const ms = [member("a", "book", "a1"), member("b", "book", "b1"), member("c", "book", "c1")];
+    const cards = buildSagaIndex(sagas, ms, "", extras([
+      { item_type: "book", item_id: "a1", status: "in_progress", updated_at: "2026-10-01T00:00:00Z" },
+      { item_type: "book", item_id: "b1", status: "completed", updated_at: "2026-10-05T00:00:00Z" },
+      { item_type: "book", item_id: "c1", status: "planned", updated_at: "2026-10-09T00:00:00Z" },
+    ]));
+    expect(cards.map((c) => [c.name, c.started, c.lastTouchedAt])).toEqual([
+      ["A", true, "2026-10-01T00:00:00Z"],
+      ["B", true, "2026-10-05T00:00:00Z"],
+      ["C", false, null],
+    ]);
+  });
+
+  it("solo cuentan las obras contadas: una opcional empezada no la empieza", () => {
+    const cards = buildSagaIndex([saga("a", "A")], [member("a", "book", "x", true), member("a", "book", "y")], "",
+      extras([{ item_type: "book", item_id: "x", status: "in_progress", updated_at: "2026-10-01T00:00:00Z" }]));
+    expect(cards[0].started).toBe(false);
+  });
+
+  it("lastTouchedAt es el pase más reciente del subárbol, también de una subsaga", () => {
+    const cards = buildSagaIndex([saga("u", "U"), saga("h", "H", "u")], [member("u", "book", "u1"), member("h", "book", "h1")], "",
+      extras([
+        { item_type: "book", item_id: "u1", status: "completed", updated_at: "2026-09-01T00:00:00Z" },
+        { item_type: "book", item_id: "h1", status: "in_progress", updated_at: "2026-10-02T00:00:00Z" },
+      ]));
+    expect(cards[0]).toMatchObject({ started: true, lastTouchedAt: "2026-10-02T00:00:00Z" });
+  });
+
+  it("sin sesión: nunca empezada", () => {
+    const cards = buildSagaIndex([saga("a", "A")], [member("a", "book", "a1")]);
+    expect(cards[0]).toMatchObject({ started: false, lastTouchedAt: null });
+  });
+});

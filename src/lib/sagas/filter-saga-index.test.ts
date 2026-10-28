@@ -24,6 +24,8 @@ const card = (overrides: Partial<SagaIndexCard>): SagaIndexCard => ({
   progress: null,
   ownedCount: 0,
   isFollowed: false,
+  started: false,
+  lastTouchedAt: null,
   ...overrides,
 });
 

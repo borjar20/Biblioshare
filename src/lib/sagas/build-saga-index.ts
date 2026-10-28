@@ -21,7 +21,7 @@ export type SagaIndexMembershipRow = {
 };
 
 export type SagaIndexRouteRow = { saga_id: string; slug: string; name: string };
-export type SagaIndexPassRow = { item_type: string; item_id: string; status: string };
+export type SagaIndexPassRow = { item_type: string; item_id: string; status: string; updated_at?: string | null };
 export type SagaIndexRouteChoiceRow = { saga_id: string; route_slug: string };
 export type SagaIndexCreditRow = { item_type: string; item_id: string; name: string };
 
@@ -57,6 +57,10 @@ export type SagaIndexCard = {
   progress: SagaIndexProgress | null;
   ownedCount: number;
   isFollowed: boolean;
+  /** alguna obra contada con pase `in_progress` o `completed` (spec 2026-10-28 índice §4) */
+  started: boolean;
+  /** `updated_at` más reciente de esos pases; null si no está empezada */
+  lastTouchedAt: string | null;
 };
 
 export type SagaIndexExtras = {
@@ -128,6 +132,14 @@ export function buildSagaIndex(
   const completedKeys = new Set(
     extras.passes.filter((p) => p.status === "completed").map((p) => `${p.item_type}:${p.item_id}`),
   );
+  // Pase más reciente por obra empezada (en curso o leída). `planned` no empieza nada.
+  const touchedAt = new Map<string, string>();
+  for (const p of extras.passes) {
+    if (p.status !== "in_progress" && p.status !== "completed") continue;
+    const key = `${p.item_type}:${p.item_id}`;
+    const at = p.updated_at ?? "";
+    if (!touchedAt.has(key) || at > touchedAt.get(key)!) touchedAt.set(key, at);
+  }
   const ownedKeys = new Set(extras.passes.map((p) => `${p.item_type}:${p.item_id}`));
 
   // Un ítem puede tener varios créditos de autoría (coautoría, director +
@@ -232,10 +244,15 @@ export function buildSagaIndex(
     }
 
     let progress: SagaIndexProgress | null = null;
+    let started = false;
+    let lastTouchedAt: string | null = null;
     if (extras.isAuthenticated) {
       const counted = countedKeys(root.id, progressSagas, progressMemberships);
       const completed = counted.filter((k) => completedKeys.has(k)).length;
       const total = counted.length;
+      const touched = counted.map((k) => touchedAt.get(k)).filter((v): v is string => v !== undefined);
+      started = touched.length > 0;
+      lastTouchedAt = started ? touched.reduce((a, b) => (b > a ? b : a)) || null : null;
       progress = {
         completed,
         total,
@@ -258,6 +275,8 @@ export function buildSagaIndex(
       progress,
       ownedCount: extras.isAuthenticated ? [...titles].filter((k) => ownedKeys.has(k)).length : 0,
       isFollowed: extras.followedIds.has(root.id),
+      started,
+      lastTouchedAt,
     });
   }
 
