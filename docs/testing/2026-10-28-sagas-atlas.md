@@ -45,6 +45,19 @@ Node 22 (fnm).
 
 Varias de estas specs dependían de «Cómo leerla» o del grafo y se mudaron al atlas. La e2e `sagas-orden-designado` reintenta el clic de «Usar como orden de lectura» por una carrera previa a la hidratación (ver «Pendiente»).
 
+### Segunda tanda, tras la revisión final de rama
+
+Build nuevo con los arreglos de la revisión final (`69e28556`), `next start`, `--retries=0`. Son las specs que leen la balda de la ficha, afectada por el cambio de `deriveTimeline`, más el atlas y la ficha otra vez:
+
+| Spec | Resultado |
+|---|---|
+| `sagas-v2`, `sagas-v2-biblioteca`, `sagas-v2-curacion` | 8/8 |
+| `sagas-rol-narrativo`, `sagas-colocacion-bloques` | todo verde |
+| `sagas-colocacion-opcionalidad` | 2 fallos ya conocidos: #1543 (los CHECK de BD responden 409 y el test espera 400) |
+| `sagas-ventanas`, `sagas-ventana-anidada` | todo verde |
+| `sagas-editor-secuencia` | 2 fallos ya conocidos: #1544 (zonas y borrador desfasados; esta rama no toca el editor) |
+| `sagas-atlas`, `sagas-ficha-lector` | 25/25 |
+
 ## Puntos de control visuales
 
 Visto bueno del usuario en los dos:
