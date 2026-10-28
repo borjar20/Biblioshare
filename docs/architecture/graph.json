@@ -300,13 +300,17 @@
       "label": "/sagas · /saga/[id]",
       "layer": "route",
       "kind": "route",
-      "summary": "Índice, ficha (balda de pilas, sin pestañas), Cómo leerla (interina hasta el atlas: timeline, grafo, adoptar itinerario), editor, mapa 2D e itinerarios de saga. El mapa es DERIVADO desde la fase 3 (ya no hay lienzo curado a mano). `?tab=mapa` redirige a /como-leerla.",
+      "summary": "Índice, ficha (balda de pilas, sin pestañas), atlas de la saga (/saga/[id]/mapa: lentes Orden · Rol · Publicación, capas Itinerario y Progreso, mini-ficha y lista accesible), editor e itinerarios de saga. El orden es DERIVADO (ya no hay lienzo curado a mano). `/como-leerla` y `?tab=mapa` redirigen al atlas.",
       "files": [
         "src/app/sagas",
         "src/app/saga/[id]",
         "src/app/saga/[id]/mapa",
         "src/app/saga/[id]/como-leerla",
         "src/app/saga/[id]/rutas"
+      ],
+      "gotchas": [
+        "/saga/[id]/mapa es un shell síncrono con <Suspense fallback={<AtlasSkeleton/>}>; todo lo que lee sesión va dentro, SIN `use cache` (regla #437). Los redirects legados (`/como-leerla`, `?ruta=publicacion`, `?orden=publicacion`) llegan como redirect de cliente en streaming: HTTP 200, no 307.",
+        "`show_map` NO condiciona el atlas: solo decide si la ficha enseña la tarjeta AtlasTeaser. El atlas se pinta con shelfGraph aunque el interruptor esté apagado."
       ]
     },
     {
@@ -522,18 +526,22 @@
       "label": "components/saga",
       "layer": "ui",
       "kind": "ui",
-      "summary": "Vista 2D del mapa (React Flow / @xyflow), el componente ÚNICO de orden de lectura (timeline con cuatro formas de fila), editor de secuencia y de itinerarios.",
+      "summary": "Ficha (balda de pilas), atlas de la saga (plano DOM+SVG con cámara pura compartida, lentes, capas, hojas y lista accesible), editor de secuencia y de itinerarios.",
       "files": [
         "src/components/saga/ficha",
-        "src/components/saga/graph",
-        "src/components/saga/timeline",
+        "src/components/saga/atlas",
         "src/components/saga/editor",
         "src/components/saga/sequence"
       ],
       "gotchas": [
-        "El mapa consume coordenadas en PÍXELES tal cual (position de React Flow); devolver índices apila todos los nodos.",
+        "Atlas (src/components/saga/atlas + src/lib/sagas/atlas): plano DOM+SVG, no canvas, con la cámara pura de src/lib/atlas/camera.ts (la misma que el atlas de Entre nosotros). Lente y rol viajan en la URL con history.replaceState (sin viaje al servidor) y `ruta` con router.replace; solo se siembran al montar, así que atrás/adelante no los resincroniza. La cámara se guarda en sessionStorage por saga + lente + orientación.",
+        "`step` cuenta OBRAS, no pasos del itinerario: un paso-bloque (s:<uuid>) se expande a sus obras y cada una lleva su número (#1541). La insignia y el hilo del itinerario salen de ahí, no de la ruta cruda.",
+        "deriveTimeline ya no descarta obras sin hueco ni conexión: pasan a filas puente al final. Sin eso el atlas (y la balda) perdían obras miembro directas sin position y una saga sin posiciones caía en el estado vacío.",
+        "La opacidad de cada obra se compone en UN sitio (work-dim.ts): rol 0,35 · fuera de ruta 0,3 · saltada 0,3 · pendiente 0,4; el estado del lector no cuenta como filtro para `data-dimmed`. El interruptor de opcionales vive en el atlas (pastilla en la línea de la leyenda del dock).",
+        "La mini-ficha y la lista comparten work-facts.ts. La hoja de itinerarios solo enseña el resumen bajo la ruta activa (la spec decía cada entrada: issue abierta).",
+        "Umbrales del zoom semántico (0,5 / 1,6) y encuadre inicial (FIT_MIN_K 0,9) ajustados solo con datos de dev: pendiente de contrastar con sagas de prod.",
         "La ficha (`ficha/`) es una balda de pilas por subsaga (SagaShelf, isla cliente) + NextUpCard («Te toca»); el hero ya no muestra el progreso del universo: el «N de M» es el del itinerario activo. Fase 2: YourPassage (isla async detrás de <Suspense>, solo con sesión y pases), SubsagaDoors, AtlasTeaser (solo si detail.graph !== null) y YourAverage dentro de «La terminaste». SagaCuratorMenu abre un <dialog> modal: con cacheComponents debe cerrarse al navegar o deja inerte la página siguiente (TRAMPAS §26).",
-        "El timeline se monta en CUATRO sitios con el mismo componente (móvil «lectura», móvil itinerario dentro de RouteView, y al pie del grafo en PC en las dos). Dos componentes se desincronizarían: si tocas una fila, la tocas para los cuatro."
+        "Retirados con el atlas: saga-map-tab, route-view, route-selector, route-block, reading-timeline, timeline/*, map-cta, graph/*, requisite-badge y @xyflow/react. Si ves esos nombres en un doc, está viejo."
       ]
     },
     {
@@ -822,8 +830,15 @@
         "src/lib/sagas/resolve-route.ts",
         "src/lib/sagas/progress.ts",
         "src/lib/sagas/roles.ts",
-        "src/lib/sagas/count-roles.ts",
-        "src/lib/sagas/map-overlays.ts",
+        "src/lib/sagas/atlas/model.ts",
+        "src/lib/sagas/atlas/layout.ts",
+        "src/lib/sagas/atlas/lens.ts",
+        "src/lib/sagas/atlas/itinerary.ts",
+        "src/lib/sagas/atlas/summary.ts",
+        "src/lib/sagas/atlas/route-counter.ts",
+        "src/lib/sagas/atlas/list-order.ts",
+        "src/lib/sagas/atlas/visible-camera.ts",
+        "src/lib/sagas/atlas/camera-storage.ts",
         "src/lib/sagas/graph-metrics.ts",
         "src/lib/sagas/layout-map.ts",
         "src/lib/sagas/curated-order.ts",
@@ -841,8 +856,6 @@
         "El salto de una opcional se guarda con la saga DUENA de la fila de saga_items (ownerSagaId), no con la ficha visitada ni con groupSagaId: divergen a partir de profundidad 2. Lo sostiene markSkipped (get-saga-detail.ts), pura y probada, porque ningun tipo lo impone.",
         "deriveTimeline lleva ya TRES lentes: spine, showOptional (fase 4) y roleFilter (fase 5). Las tres filtran sobre `items` y NINGUNA redefine cantidades derivadas: no renumeran -el numero sale de orderNo/step calculados sobre el grafo entero- y no mueven el tramo de la ventana -windowTrack sigue recibiendo el grafo completo-. Dos lectores con lentes distintas no pueden ver numeros ni tramos distintos para la misma saga.",
         "El vocabulario de roles vive en UNA lista (roles.ts), no en la union de types.ts: estaba escrito tres veces -types.ts y dos arrays ROLES del editor- y roles.test.ts es lo que lo ata al enum de la BD via Constants de database.types.ts. `principal` NO es un valor: es role = null, asi que filtrar por cualquier rol esconde la linea principal, y por eso la barra ofrece siempre «Todos».",
-        "countRoles cuenta sobre el GRAFO y no sobre las filas visibles, igual que optionalCount: contadas sobre lo visible, filtrar por un rol dejaria la barra con un solo chip y no habria forma de volver.",
-        "map-overlays.ts (fase 6) es DIBUJO del lienzo 2D y de nadie mas: la capsula del tandem y el marco del sujeto de una ventana se derivan de las coordenadas que el grafo ya trae, y SagaGraph no gana campos. Un nodo sintetico de capsula en graph.nodes se colaria en countRoles, en el optionalCount de la pestana y en deriveTimeline, que iteran el mismo array.",
         "La capsula agrupa por EMPATE DE orderNo, no por la fila de saga_tandems: node.tandem es null cuando el curador no declaro metadatos, y un tandem sin curar sigue siendo un tandem. Misma regla que usa deriveTimeline para fundir su fila.",
         "El marco de ventana solo lo lleva un sujeto con orderNo === null. Un sujeto-BLOQUE lo resuelve deriveSagaMap a la primera obra del bloque, que es una fila normal de la cadena: marcarla diria que esa obra tiene ventana propia. Mismo limite con el que deriveSagaMap se niega a colgarle el windowReason (issue #221).",
         "Una ventana dentro de un bloque puede partir el timeline en dos TimelineSection del mismo grupo: continuation solo marca el segundo, conserva etiqueta/acento/numeración y no reemplaza filas. Para ramas sueltas, findLast debe buscar el ÚLTIMO segmento del grupo; usar el primero las cuelga antes de la ventana."
@@ -2320,7 +2333,7 @@
         "src/lib/comparisons/derive.ts",
         "src/lib/comparisons/order.ts",
         "src/lib/comparisons/with-person.ts",
-        "src/lib/comparisons/atlas/camera.ts",
+        "src/lib/atlas/camera.ts",
         "src/lib/comparisons/atlas/color.ts",
         "src/lib/comparisons/atlas/hit.ts",
         "src/lib/comparisons/atlas/image-cache.ts",
@@ -4076,10 +4089,10 @@
       "entrypoint": "src/app/saga/[id]/page.tsx",
       "notes": [
         "La balda usa el grafo derivado aunque show_map esté apagado (SagaDetail.shelfGraph): el interruptor esconde el mapa, no el orden.",
-        "Un itinerario curado expande sus pasos-bloque (s:<uuid>) en las obras de la subsaga en getShelfSections (expandRouteKeys); deriveSagaMap y «Cómo leerla» NO lo hacen (issue #1541).",
+        "Un itinerario curado expande sus pasos-bloque (s:<uuid>) en las obras de la subsaga en getShelfSections (expandRouteKeys); deriveSagaMap NO lo hace, pero el atlas sí (atlas/itinerary.ts, #1541).",
         "deriveShelf: «Te toca» no ofrece una ventana mientras queden otras obras; un salto huérfano en una obra que cuenta no la saca de «Te toca».",
-        "La balda vacía conserva cabecera, chips de ruta y enlace a Cómo leerla.",
-        "`?tab=mapa` redirige a /saga/[id]/como-leerla conservando ruta, orden y rol.",
+        "La balda vacía conserva cabecera, chips de ruta y enlace al atlas.",
+        "`?tab=mapa` redirige a /saga/[id]/mapa (el atlas) conservando ruta y rol; `orden=publicacion` pasa a `lente=publicacion`.",
         "Fase 2: «Tu paso» (getSagaPassage → derivePassage) lee passes filtrando por user_id y va detrás de <Suspense>; sin sesión o sin pases no se pinta. Un pase terminado con finishedOn nulo cuenta como más antiguo que cualquiera con fecha. «Subsagas» (deriveSubsagaDoors) no depende del itinerario; el acceso al mapa solo existe si detail.graph !== null.",
         "Fase 3: «Entre amigos» (getSagaFriends → deriveFriends) va a la derecha de «Te toca», sin await y con .catch, detrás de <Suspense>. Amigos = follows aceptados del lector con pases en las obras de la saga; la visibilidad la decide RLS de passes (can_view_profile). Límite: quien sigue la saga sin pases no cuenta porque saga_follows es solo-dueño. Reutiliza UserAvatar."
       ],
@@ -4116,8 +4129,8 @@
         },
         {
           "node": "r-sagas",
-          "action": "«Cómo leerla →» lleva a la página interina con el timeline, adoptar y saltar opcionales",
-          "file": "src/app/saga/[id]/como-leerla"
+          "action": "«Ver en el mapa» lleva al atlas de la saga (lentes, capas, adoptar itinerario y saltar opcionales)",
+          "file": "src/app/saga/[id]/mapa"
         }
       ]
     },
@@ -4494,16 +4507,15 @@
     },
     {
       "id": "flow-saga-map",
-      "name": "Mapa de saga (derivado, no curado)",
+      "name": "Atlas de la saga (derivado, no curado)",
       "category": "sagas",
-      "summary": "Desde la fase 3 (2026-07-27) el mapa se DERIVA de lo ya curado — secuencia, bloques y ventanas de colocación. saga_nodes/saga_edges y save_saga_graph fueron retirados.",
+      "summary": "El atlas (2026-10-28) sustituye a /mapa (React Flow) y a /como-leerla. Desde la fase 3 (2026-07-27) el mapa se DERIVA de lo ya curado — secuencia, bloques y ventanas de colocación. saga_nodes/saga_edges y save_saga_graph fueron retirados.",
       "entrypoint": "src/lib/sagas/derive-map.ts",
       "notes": [
-        "deriveSagaMap devuelve coordenadas en PÍXELES (NODE_STEP_X 180, NODE_STEP_Y 220) porque la vista 2D las pasa tal cual como position de React Flow. Devolver índices apila todos los nodos.",
+        "deriveSagaMap devuelve coordenadas en PÍXELES (NODE_STEP_X 180, NODE_STEP_Y 220); el atlas NO las usa: parte de deriveTimeline y recoloca con src/lib/sagas/atlas/layout.ts. Las coordenadas del grafo siguen alimentando la minitarjeta de la ficha (mini-map.ts).",
         "Un nodo es SIEMPRE una obra individual; un bloque es agrupación visual, no nodo.",
         "El determinismo lo garantiza quien llama: groups y members deben llegar YA en el orden final de pintado (el que entrega groupMembers).",
-        "Fase 6: los adornos del grafo (capsula de tandem, marco de ventana) van en un ViewportPortal de @xyflow/react, NO como nodos. `.react-flow__node` es el localizador con el que dos e2e cuentan las OBRAS del mapa (sagas-v2-mapa: 7, sagas-mapa-derivado: 3), y un adorno colado en ese recuento los deja protegiendo otra cosa; ademas un nodo recibiria el onNodeClick que navega a una ficha.",
-        "Fase 6: la ventana NO se dibuja como zona entre sus dos anclas. MEDIDO contra el layout real, esa caja envolvente ocupa el 45 % del lienzo en el mapa mas pequeno de produccion y el 60 % en Cosmere, con 12 nodos ajenos de 20 — el sujeto es siempre una obra libre y vive en la fila de sueltas, debajo de la cadena donde estan sus anclas. Se marca el sujeto; el tramo lo cuentan las dos aristas."
+        "Fase 6: la ventana NO se dibuja como zona entre sus dos anclas (medido: la caja envolvente ocupa el 45 % del mapa más pequeño de producción y el 60 % en Cosmere). Se marca el sujeto; el tramo lo cuentan las dos aristas. El atlas conserva esa decisión."
       ],
       "steps": [
         {
@@ -4557,8 +4569,8 @@
         },
         {
           "node": "c-saga",
-          "action": "La vista 2D (@xyflow/react) y el mini-preview del CTA consumen el SagaGraph; el timeline consume las filas derivadas, con el MISMO componente en móvil y al pie del grafo en PC",
-          "file": "src/components/saga/timeline"
+          "action": "buildAtlasModel (lib/sagas/atlas/model.ts) parte de las filas de deriveTimeline, aplica itinerario (expande bloques) y estado del lector, y layoutAtlas coloca cada lente; SagaAtlas pinta el plano DOM+SVG con la cámara pura de lib/atlas/camera.ts",
+          "file": "src/components/saga/atlas/saga-atlas.tsx"
         }
       ]
     },

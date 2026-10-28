@@ -1,7 +1,7 @@
 ---
 title: Atlas de la saga (rework de sagas, subproyecto 2)
 date: 2026-10-28
-status: diseño aprobado (brainstorming 2026-10-28), pendiente de implementar
+status: implementado (rama claude/sagas-atlas-a6e350, PR pendiente)
 area: sagas / ui
 ---
 
@@ -300,3 +300,15 @@ Una PR contra `main`. Al cerrarla:
 - `docs/architecture/graph.json`, regenerado.
 - Evidencia en `docs/testing/`.
 - Cierre de #1541. Issues para lo que quede pendiente.
+
+## Ajustes durante la implementación
+
+Desviaciones respecto al diseño original, ya reflejadas en la entrada «Atlas de la saga» de
+`decisiones.md`:
+
+- **Interruptor de opcionales:** se muda al atlas, como pastilla en la línea de la leyenda del dock.
+- **Suspense:** `/mapa` es un shell síncrono con `<Suspense>` y `AtlasSkeleton` (Cache Components), sin `use cache`.
+- **Cámara por lente:** la cámara guardada en `sessionStorage` es por saga + lente + orientación, no solo por saga.
+- **Resumen del itinerario:** la hoja solo lo enseña bajo la ruta activa, no en cada entrada (issue abierta para decidir).
+- **Nexos sueltos al final:** las obras sin hueco ni conexión ya no se descartan; pasan a filas puente al final de
+  `deriveTimeline`.

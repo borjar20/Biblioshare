@@ -13,7 +13,12 @@
 - [x] **Fase 3:** «Entre amigos» (#1540): seguidos aceptados con pases en la saga, «Va por X», barra y nota
   media. Rama `claude/sagas-ficha-fase-3` (PR pendiente, apilada sobre la fase 2);
   [evidencia](testing/2026-10-28-sagas-ficha-lector-f3.md), decisiones del 2026-10-28.
-- [ ] «Cómo leerla» no expande pasos-bloque de un itinerario curado (#1541).
+- [x] **Rework de sagas · subproyecto 2 (atlas de la saga).** `/saga/[id]/mapa` pasa a ser un atlas
+  (lentes Orden · Rol · Publicación, capas Itinerario y Progreso, mini-ficha y lista accesible) que sustituye al
+  grafo y a «Cómo leerla». Rama `claude/sagas-atlas-a6e350` (PR pendiente);
+  [spec](superpowers/specs/2026-10-28-sagas-atlas-design.md),
+  [evidencia](testing/2026-10-28-sagas-atlas.md), decisiones del 2026-10-28 («Atlas de la saga»).
+- [x] El itinerario curado expande sus pasos-bloque en el atlas (#1541); se cierra con la PR del atlas.
 
 ## Moderación administrativa — #1183
 
