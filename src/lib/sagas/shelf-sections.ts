@@ -92,13 +92,6 @@ export function expandRouteKeys(routeKeys: string[], mainOrderOf: (sagaId: strin
   return out;
 }
 
-/** Secciones de un itinerario curado. Misma construcción que SagaMapTab (el
- *  grafo derivado con los pasos del itinerario y la columna por PASOS, spine
- *  "route") con una diferencia: los pasos-bloque se expanden ANTES de derivar.
- *  `deriveSagaMap` ignora a propósito una clave `s:<uuid>` (un bloque nunca es
- *  nodo del mapa), así que un itinerario hecho solo de bloques dejaba la balda
- *  sin una obra y en modo `empty`. Consecuencia: aquí el `step` cuenta obras,
- *  no pasos del itinerario — la balda no pinta ese número. */
 /** Orden principal de cada subsaga (`tipo:id`), el de `createCuratedOrder`: la
  *  MISMA expansión de bloques que usan la balda, RouteView y el atlas. */
 export function mainOrderFor(
@@ -108,6 +101,13 @@ export function mainOrderFor(
   return createCuratedOrder(detail.orderSagas, detail.orderMemberships, (k) => titles.get(k) ?? "", detail.windows);
 }
 
+/** Secciones de un itinerario curado. Misma construcción que SagaMapTab (el
+ *  grafo derivado con los pasos del itinerario y la columna por PASOS, spine
+ *  "route") con una diferencia: los pasos-bloque se expanden ANTES de derivar.
+ *  `deriveSagaMap` ignora a propósito una clave `s:<uuid>` (un bloque nunca es
+ *  nodo del mapa), así que un itinerario hecho solo de bloques dejaba la balda
+ *  sin una obra y en modo `empty`. Consecuencia: aquí el `step` cuenta obras,
+ *  no pasos del itinerario — la balda no pinta ese número. */
 export function curatedRouteSections(
   detail: Pick<SagaDetail, "groups" | "windows" | "orderSagas" | "orderMemberships">,
   routeKeys: string[],
