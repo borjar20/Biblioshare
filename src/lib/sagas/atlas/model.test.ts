@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { TimelineRow, TimelineSection } from "../derive-timeline";
+import { deriveTimeline, type TimelineRow, type TimelineSection } from "../derive-timeline";
 import type { SagaGraphNode } from "../map-types";
 import { deriveAtlas } from "./model";
 
@@ -88,5 +88,25 @@ describe("deriveAtlas", () => {
       ["i:book:a", 2, null, null], ["i:book:b", null, null, 1999], ["i:book:c", 1, "empieza aquí", null],
     ]);
     expect(deriveAtlas({ ...base, sections }).hasItinerary).toBe(false);
+  });
+
+  // Bug de la e2e del atlas (task 11): el atlas pintaba 6 de 7 obras porque
+  // `deriveTimeline` descartaba el nexo sin hueco ni conexión. Va por la tubería
+  // real (deriveTimeline → deriveShelf → deriveAtlas), no con secciones a mano.
+  it("una obra directa sin hueco ni conexión sale en el atlas, sin número y sin ser extra", () => {
+    const sections = deriveTimeline({
+      nodes: [
+        n("a", { orderNo: 0, groupSagaId: "s1", groupName: "Uno" }),
+        n("b", { orderNo: 1, groupSagaId: "s1", groupName: "Uno" }),
+        n("trilogia", { orderNo: null, label: "Trilogía" }),
+      ],
+      edges: [],
+    }, { authenticated: true });
+    const m = deriveAtlas({ ...base, sections });
+    expect(m.works.map((w) => w.key)).toEqual(["i:book:a", "i:book:b", "i:book:trilogia"]);
+    const t = m.works.find((w) => w.key === "i:book:trilogia")!;
+    expect(t).toMatchObject({ readingNo: null, extra: false, regionKey: "root", readingIndex: 2 });
+    // Cuenta para la región raíz: no es opcional.
+    expect(m.regions.find((r) => r.key === "root")).toMatchObject({ counted: 1, completed: 0 });
   });
 });
