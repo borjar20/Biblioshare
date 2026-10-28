@@ -1,7 +1,7 @@
 ---
 title: Ficha de saga para el lector (rework de sagas, subproyecto 1)
 date: 2026-10-27
-status: fase 1 implementada (rama claude/sagas-rework-11497e, PR pendiente)
+status: fase 1 implementada (rama claude/sagas-rework-11497e, PR pendiente); fase 2 implementada (rama claude/sagas-ficha-fase-2, PR pendiente); fase 3 implementada (rama claude/sagas-ficha-fase-3, PR pendiente)
 area: sagas / ui
 ---
 

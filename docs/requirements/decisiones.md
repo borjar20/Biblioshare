@@ -8039,3 +8039,71 @@ un itinerario curado o en «Publicación». La ficha antepone ahora «lectura» 
 (`shelfRoutesFor`) cuando hay orden curado y no existe ya una «lectura» ni un itinerario designado.
 `detail.routes` no cambia: «Cómo leerla» y el resto siguen respetando el interruptor, y allí
 `?ruta=lectura` degrada a la primera ruta.
+
+## 2026-10-28 — Ficha de saga para el lector, fase 2: Tu paso, Subsagas y acceso al mapa
+
+Se añade a `/saga/[id]` lo que la spec describía en una línea cada bloque. Concreciones:
+
+1. **«Tu paso por la saga» solo con sesión y con al menos un pase** en las obras de la saga. Muestra
+   desde cuándo (pase más antiguo), obras terminadas y en curso, páginas y minutos (solo tallas
+   conocidas del catálogo, diciendo sobre cuántas; las series no suman tiempo), tu favorita (nota más
+   alta; el empate lo gana la terminada más reciente), tu nota media, la curva de notas y «Te saltaste
+   X de Y opcionales».
+2. **La curva sigue el orden de la balda activa**: un punto por obra terminada con nota; las obras sin
+   nota no se dibujan pero tampoco colapsan el eje (X = posición en la balda).
+3. **«Subsagas» no depende del itinerario**: una puerta por hija directa con miembros, en el orden de
+   `detail.groups`; progreso = no opcionales terminadas sobre el total, igual que la pila de la balda.
+   Sin hijas no se pinta. Sin sesión enseña el recuento de obras, no «0 de N».
+4. **Acceso al mapa** solo si `detail.graph !== null` (mapa encendido y curado); enlaza a
+   `/saga/[id]/mapa` con vista previa SVG de los nodos. Sin grafo no se pinta.
+5. **«La terminaste»** añade «Tu nota media» cuando hay alguna nota en las obras que cuentan.
+6. **#761 se cierra con esta fase**: el progreso de cada saga es el contador de la balda; la
+   proporción de opcionales saltadas va en «Tu paso»; el listado de sagas seguidas con su porcentaje ya
+   existía en `saga-library-card.tsx`.
+7. **Decisión del controlador:** un pase terminado con `finishedOn` nulo (importaciones de historial)
+   cuenta como anterior a cualquier pase con fecha, tanto para la favorita como para la nota «última».
+
+Sin migraciones, sin `use cache` (regla #437: todo depende de la sesión; las lecturas van detrás de
+`<Suspense>`). Evidencia y límites en
+[el informe de la fase 2](../testing/2026-10-28-sagas-ficha-lector-f2.md).
+
+## 2026-10-28 — Ficha de saga, fase 2: «opcionales saltadas» de toda la saga y «La terminaste» sobre obras que cuentan
+
+Dos correcciones de la revisión final de la fase 2 (matizan las decisiones 1 y 5 de la entrada anterior):
+
+1. **«Te saltaste X de Y opcionales» es una cifra de la saga entera**, calculada desde los miembros de
+   `detail.groups` (dedupe por `tipo:id`; saltada si algún miembro lo está), no desde la balda. La balda
+   oculta las opcionales con `profiles.show_optional_readings = false` y cambia con el itinerario; una
+   cifra derivada de ella desaparecería justo en quien las esconde, y #761 pide ese contraste («las
+   esconde y además las salta»). Es independiente de la preferencia y del itinerario.
+2. **«Tu nota media» de «La terminaste» usa solo obras que cuentan** (no opcionales), como el resto del
+   estado «terminada» (`Passage.countedAverage`). «Tu media» dentro de «Tu paso» sigue siendo sobre todas
+   las obras con nota (`Passage.average`).
+
+Además, `getSagaPassage` propaga los errores de cada consulta (la página ya degrada a «sin Tu paso») y
+las notas se pintan con su escala («4,5/5»).
+
+## 2026-10-28 — Ficha de saga para el lector, fase 3: «Entre amigos»
+
+1. **«Amigos» son las personas que sigues con el follow aceptado** (`follows.follower_id = yo`,
+   `status = 'accepted'`). No se incluye a quien te sigue a ti.
+2. **Solo cuentan los que tienen pases visibles en las obras de la saga.** La spec también hablaba de «quien
+   sigue la saga», pero `saga_follows` tiene RLS de solo dueño: no se puede leer si otra persona sigue una saga
+   sin una migración, y esta fase no toca el esquema. **Límite asumido**: quien sigue la saga pero aún no tiene
+   pases en ella no aparece. Si se quiere, hará falta una vista o función `security definer` que exponga ese
+   dato solo a quien lo sigue aceptado.
+3. **La visibilidad la decide RLS sobre `passes`** (`can_view_profile`). La lectura no filtra a mano por perfil
+   público o privado: lo que la base no devuelve no aparece. Las notas ya eran legibles para la media comunitaria.
+4. **Qué se enseña por amigo:** avatar y nombre con enlace a `/u/<username>`; «Va por X» (obra en curso) o, si no
+   hay, «Terminó X» (la terminada más avanzada en el orden de la balda); «La terminó» si cerró todas las obras
+   que cuentan; barra de terminadas sobre las que cuentan; nota media sobre sus últimos pases terminados con nota,
+   en puntos. Orden por actividad reciente; se ven 4 y el resto es «y N más».
+5. **El orden es el de la balda** (la misma lista `order` de «Tu paso»), así «por dónde va» se mide igual que
+   «Te toca».
+6. **Sin sesión, o sin amigos con pases, el bloque no se pinta** y no hay estado vacío. La lectura va sin
+   `await` en la página, con `.catch` que devuelve lista vacía, detrás de `<Suspense>`; sin `use cache`
+   (regla #437).
+7. **Se reutiliza el `UserAvatar` compartido** (`src/components/social/user-avatar.tsx`, con degradado y
+   iniciales) en lugar de un avatar propio de la ficha.
+
+Sin migraciones. Evidencia en [el informe de la fase 3](../testing/2026-10-28-sagas-ficha-lector-f3.md).

@@ -1,10 +1,42 @@
 import Image from "next/image";
+import { createContext, Suspense, use } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { SAGA_ACCENT, type SagaAccentToken } from "@/lib/sagas/accents";
 import type { ShelfGroup, ShelfSlot, ShelfWork } from "@/lib/sagas/derive-shelf";
 
 // Piezas presentacionales de la balda (spec 2026-10-27 §2). Sin estado propio.
+
+/** Promesa con tus notas (1–10) por clave de nodo; null sin sesión. */
+export const ShelfRatingsContext = createContext<Promise<Record<string, number>> | null>(null);
+
+/** Tu nota bajo una portada leída: cinco puntos, los llenos redondeados al
+ *  entero más cercano de la escala de 5. Llega por Suspense cuando termina la
+ *  lectura de tus pases, sin frenar la balda. */
+function CoverRating({ workKey }: { workKey: string }) {
+  const promise = use(ShelfRatingsContext);
+  if (!promise) return null;
+  return (
+    <Suspense fallback={null}>
+      <RatingDotsRow promise={promise} workKey={workKey} />
+    </Suspense>
+  );
+}
+
+function RatingDotsRow({ promise, workKey }: { promise: Promise<Record<string, number>>; workKey: string }) {
+  const t = useTranslations("saga");
+  const rating = use(promise)[workKey];
+  if (rating === undefined) return null;
+  const filled = Math.round(rating / 2);
+  return (
+    <span data-testid="shelf-rating" className="flex gap-1" title={t("shelfYourRating", { rating: (rating / 2).toLocaleString("es-ES", { maximumFractionDigits: 1 }) })}>
+      {[1, 2, 3, 4, 5].map((k) => (
+        <span key={k} aria-hidden className={`block h-2 w-2 rounded-full ${k <= filled ? "bg-gold" : "bg-surface-3"}`} />
+      ))}
+      <span className="sr-only">{t("shelfYourRating", { rating: (rating / 2).toLocaleString("es-ES", { maximumFractionDigits: 1 }) })}</span>
+    </span>
+  );
+}
 
 export function Pile({ group, label, onOpen }: { group: ShelfGroup; label: string; onOpen: () => void }) {
   const tick = group.state === "done" ? " ✓" : "";
@@ -123,7 +155,10 @@ function Cover({ work, ring, small, accent }: { work: ShelfWork; ring?: string; 
     work.state === "now" ? "outline-[3px] outline-accent" : work.state === "done" ? "outline-2 outline-green" : "opacity-55";
   // Tándem y ventana mandan sobre el contorno de estado; «ahora» y «leída»
   // siguen distinguiéndose por la etiqueta y el ✓, que no dependen del contorno.
+  // Debajo, una fila de 4 px para tu nota: existe en TODAS las portadas para
+  // que las leídas no queden más altas que el resto (la fila es items-end).
   return (
+    <div className="flex shrink-0 flex-col items-center gap-1.5">
     <Link
       href={work.href}
       data-shelf-link
@@ -164,5 +199,7 @@ function Cover({ work, ring, small, accent }: { work: ShelfWork; ring?: string; 
         </span>
       )}
     </Link>
+      <span className="flex h-2 items-center">{work.state === "done" && <CoverRating workKey={work.key} />}</span>
+    </div>
   );
 }

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { Shelf, ShelfWork } from "@/lib/sagas/derive-shelf";
 import { SagaShelf } from "./saga-shelf";
@@ -218,5 +218,21 @@ describe("SagaShelf", () => {
       if (saved.sw) Object.defineProperty(HTMLElement.prototype, "scrollWidth", saved.sw); else delete proto.scrollWidth;
       delete proto.scrollBy;
     }
+  });
+
+  it("bajo una portada leída pinta tu nota en puntos cuando llega la promesa; sin nota no pinta nada", async () => {
+    const rated = Promise.resolve({ a: 7 });
+    await act(async () => {
+      render(<SagaShelf {...props} shelf={{ ...shelf, openGroupKey: "s1" }} ratings={rated} />);
+    });
+    const dots = await screen.findByTestId("shelf-rating");
+    expect(dots.querySelectorAll(".bg-gold")).toHaveLength(4); // 7/10 = 3,5 → 4 puntos
+    expect(dots.textContent).toContain('shelfYourRating:{"rating":"3,5"}');
+    cleanup();
+    const none = Promise.resolve({});
+    await act(async () => {
+      render(<SagaShelf {...props} shelf={{ ...shelf, openGroupKey: "s1" }} ratings={none} />);
+    });
+    expect(screen.queryByTestId("shelf-rating")).toBeNull();
   });
 });

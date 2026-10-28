@@ -45,4 +45,11 @@ describe("NextUpCard", () => {
     render(await NextUpCard({ shelf: { ...base, nextUp: { work, groupName: "Crónicas", fitsNow: win } } }));
     expect(screen.getByRole("link", { name: "nextUpFitsNow" }).getAttribute("href")).toBe("/libro/w");
   });
+  it("finishedExtra se pinta en finished y no en next", async () => {
+    render(await NextUpCard({ shelf: { ...base, mode: "finished", nextUp: null }, finishedExtra: <p>extra</p> }));
+    expect(screen.getByText("extra")).toBeTruthy();
+    cleanup();
+    render(await NextUpCard({ shelf: base, finishedExtra: <p>extra</p> }));
+    expect(screen.queryByText("extra")).toBeNull();
+  });
 });
