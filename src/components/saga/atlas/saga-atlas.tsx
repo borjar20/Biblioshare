@@ -28,6 +28,9 @@ export type SagaAtlasProps = {
   /** Obras opcionales de la saga (contadas en el servidor sobre el grafo entero, también las
    *  escondidas) y la preferencia global de enseñarlas. Sin opcionales no hay interruptor. */
   optionalCount?: number; showOptional?: boolean;
+  /** Lente de partida cuando la URL no trae `lente` (p. ej. «publicacion» si el lector adoptó
+   *  esa ruta, que el atlas no ofrece como itinerario). */
+  defaultLens?: Lens;
 };
 
 const bold = (chunks: ReactNode) => <b>{chunks}</b>;
@@ -38,7 +41,7 @@ const bold = (chunks: ReactNode) => <b>{chunks}</b>;
  *  URL del cliente; la ruta activa, de la prop (cambiarla vuelve a pedir datos al servidor). */
 export function SagaAtlas({
   sagaId, sagaName, workCount, model, authenticated, routes, activeRoute, adoptedRoute, counter, canEdit,
-  optionalCount = 0, showOptional = true,
+  optionalCount = 0, showOptional = true, defaultLens = "orden",
 }: SagaAtlasProps) {
   const t = useTranslations("saga");
   const pathname = usePathname();
@@ -50,7 +53,7 @@ export function SagaAtlas({
   // Lente y rol salen de la URL del CLIENTE: al volver atrás, Next restaura el payload RSC
   // cacheado con los `initial*` viejos, pero la URL (sincronizada con replaceState) manda.
   const searchParams = useSearchParams();
-  const [lens, setLens] = useState<Lens>(() => parseLens(searchParams.get("lente") ?? undefined));
+  const [lens, setLens] = useState<Lens>(() => (searchParams.has("lente") ? parseLens(searchParams.get("lente") ?? undefined) : defaultLens));
   const [role, setRole] = useState<SagaItemRole | null>(() => parseRole(searchParams.get("rol") ?? undefined));
   // Capa Progreso: encendida por defecto con sesión; sin sesión no hay estado que enseñar.
   const [progressOn, setProgressOn] = useState(authenticated);
@@ -121,7 +124,11 @@ export function SagaAtlas({
     fitted.current = key;
   }, [lens, orientation, viewport.width, fitAll]);
 
-  const summary = summarize(model, lens);
+  const base = summarize(model, lens);
+  // Modelo vacío porque las opcionales están ocultas: no es una saga sin obras.
+  const summary = base.key === "empty" && optionalCount > 0 && !showOptional
+    ? ({ key: "allHidden", values: {} } as const)
+    : base;
   let summaryRich: ReactNode;
   let summaryPlain: string;
   if (summary.key === "rol") {

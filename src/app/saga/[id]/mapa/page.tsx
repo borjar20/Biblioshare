@@ -100,6 +100,8 @@ async function SagaAtlasContent({ params, searchParams }: AtlasPageProps) {
       // no trae las opcionales, y el interruptor tiene que seguir ahí para volver a encenderla.
       optionalCount={detail.shelfGraph.nodes.filter((n) => n.kind === "item" && n.optional).length}
       showOptional={detail.showOptionalReadings}
+      // «Publicación» no se ofrece como ruta (es una lente): quien la adoptó arranca en esa lente.
+      defaultLens={detail.routeChoice === "publicacion" ? "publicacion" : "orden"}
     />
   );
 }

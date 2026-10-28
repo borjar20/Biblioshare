@@ -312,3 +312,8 @@ Desviaciones respecto al diseño original, ya reflejadas en la entrada «Atlas d
 - **Resumen del itinerario:** la hoja solo lo enseña bajo la ruta activa, no en cada entrada (issue abierta para decidir).
 - **Nexos sueltos al final:** las obras sin hueco ni conexión ya no se descartan; pasan a filas puente al final de
   `deriveTimeline`.
+- **Lente, rol y ruta en la URL:** lente y rol se escriben con `window.history.replaceState` (sin viaje al servidor);
+  la ruta usa `router.replace`.
+- **Encuadre inicial:** encaja la saga entera si cabe con `k ≥ 0.9`; si no, centra «ahora».
+- **Resumen y «ahora» con itinerario curado:** siguen el orden de lectura principal aunque haya un itinerario activo
+  (la hoja enseña el contador propio de la ruta). Incoherencia con la ficha registrada en #1567.

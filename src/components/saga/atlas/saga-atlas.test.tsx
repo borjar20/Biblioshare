@@ -73,6 +73,24 @@ describe("SagaAtlas", () => {
     expect(document.querySelectorAll("[data-work-key]")).toHaveLength(3);
   });
 
+  it("defaultLens abre esa lente solo si la URL no trae lente", () => {
+    view({ defaultLens: "publicacion" });
+    expect(screen.getByRole("button", { name: "Publicación" }).getAttribute("aria-pressed")).toBe("true");
+    cleanup();
+    search = "lente=rol";
+    view({ defaultLens: "publicacion" });
+    expect(screen.getByRole("button", { name: "Publicación" }).getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("con todas las obras opcionales ocultas no dice que la saga está vacía", () => {
+    view({
+      model: { ...model, works: [], regions: [], nowKey: null, mode: "empty", nextTitle: null },
+      optionalCount: 2, showOptional: false,
+    });
+    expect(screen.queryByText("Esta saga aún no tiene obras")).toBeNull();
+    expect(screen.getByText("Las obras de esta saga son opcionales y las tienes ocultas")).toBeTruthy();
+  });
+
   it("la lente activa tiene aria-pressed=true", () => {
     search = "lente=publicacion";
     view();

@@ -8128,7 +8128,10 @@ Sin migraciones. Evidencia en [el informe de la fase 3](../testing/2026-10-28-sa
    Se siembran al montar: atrás/adelante entre estados del atlas no los resincroniza (issue abierta). La cámara se
    guarda en `sessionStorage` por saga + lente + orientación.
 7. **`deriveTimeline` ya no descarta obras sin hueco ni conexión**: pasan a filas puente al final. Así la balda de la
-   ficha también las enseña y una saga cuyas obras no tienen `position` deja de caer en el estado vacío.
+   ficha también las enseña y una saga cuyas obras no tienen `position` deja de caer en el estado vacío. Efectos en
+   la ficha: «Te toca» puede apuntar ahora a esa obra, el modo «terminada» exige haberla leído, cambia el contador
+   «N de M», cambia el orden de «Tu paso» y de «Entre amigos», y las sagas sin posiciones ya no enseñan el estado
+   vacío.
 8. **El interruptor de opcionales se muda al atlas** (pastilla en la línea de la leyenda del dock).
 9. **`/mapa` es un shell fino con `<Suspense>` + `AtlasSkeleton`** (Next 16, Cache Components) y sin `use cache`
    (regla #437: depende de la sesión). Las redirecciones legadas llegan como redirect de cliente en streaming

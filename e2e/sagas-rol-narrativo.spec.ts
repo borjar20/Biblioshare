@@ -278,7 +278,7 @@ test("el progreso de la balda NO se mueve al marcar un rol", async ({ page }) =>
 // "Trilogía": `saga_items.saga_id === Universo`, ver `directChildFor` en
 // get-saga-detail.ts) se pinta como PUENTE. Esa única arista `requisito`
 // produce, hoy, un puente — nunca una rama con `edgeType: "requisito"` — así
-// que no hay forma de ejercer el badge `branchRequisite` (reading-timeline.tsx)
+// que no hay forma de ejercer el badge `branchRequisite` (retirado con el timeline antiguo)
 // leyendo el seed tal cual.
 //
 // El editor de grafo se retiró en la fase 2a (Task 11, `/mapa/editar`

@@ -38,9 +38,9 @@ export function publicationSections(graph: SagaGraph, members: DetailMember[]): 
  *  spec 2026-10-27: el interruptor esconde el MAPA, no el orden. Aquí se
  *  antepone «lectura» con la misma forma que la de `buildRouteList`.
  *
- *  Solo para la ficha: `detail.routes` no cambia porque /como-leerla y el
- *  resto sí deben respetar el interruptor (sin mapa no hay vista «lectura»
- *  que enseñar; allí `?ruta=lectura` degrada a la primera ruta). Si ya hay
+ *  Lo usan la ficha y el atlas (`/mapa`, vía `shelfGraph` y `atlasRoutes`):
+ *  `detail.routes` no cambia, así que el resto de consumidores sí respeta el
+ *  interruptor (sin mapa no hay vista «lectura»). Si ya hay
  *  «lectura» o un itinerario designado como orden de lectura, no se toca. */
 export function shelfRoutesFor(
   detail: Pick<SagaDetail, "routes" | "hasGraph" | "shelfGraph">,
