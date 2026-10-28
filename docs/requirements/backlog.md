@@ -10,7 +10,9 @@
 - [x] **Fase 2:** «Tu paso», «Subsagas», acceso al mapa, nota media en «La terminaste» y cierre
   de #761 (#1539). Rama `claude/sagas-ficha-fase-2` (PR pendiente, apilada sobre la fase 1);
   [evidencia](testing/2026-10-28-sagas-ficha-lector-f2.md), decisiones del 2026-10-28.
-- [ ] **Fase 3:** «Entre amigos» (#1540).
+- [x] **Fase 3:** «Entre amigos» (#1540): seguidos aceptados con pases en la saga, «Va por X», barra y nota
+  media. Rama `claude/sagas-ficha-fase-3` (PR pendiente, apilada sobre la fase 2);
+  [evidencia](testing/2026-10-28-sagas-ficha-lector-f3.md), decisiones del 2026-10-28.
 - [ ] «Cómo leerla» no expande pasos-bloque de un itinerario curado (#1541).
 
 ## Moderación administrativa — #1183

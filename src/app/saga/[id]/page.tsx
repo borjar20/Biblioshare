@@ -9,6 +9,7 @@ import { sagaHref, sagaReadingHref } from "@/lib/catalog/item-href";
 import { getSagaDetail } from "@/lib/sagas/get-saga-detail";
 import { deriveShelf } from "@/lib/sagas/derive-shelf";
 import { getSagaPassage } from "@/lib/sagas/get-saga-passage";
+import { getSagaFriends } from "@/lib/sagas/get-saga-friends";
 import { parseItemKey } from "@/lib/sagas/derive-map";
 import { deriveSubsagaDoors } from "@/lib/sagas/subsaga-doors";
 import { miniMapPoints } from "@/lib/sagas/mini-map";
@@ -23,6 +24,7 @@ import { SagaAbout } from "@/components/saga/ficha/saga-about";
 import { SagaAllWorks } from "@/components/saga/ficha/saga-all-works";
 import { YourAverage } from "@/components/saga/ficha/your-average";
 import { YourPassage, YourPassageSkeleton } from "@/components/saga/ficha/your-passage";
+import { FriendsOnSaga, FriendsOnSagaSkeleton } from "@/components/saga/ficha/friends-on-saga";
 import { SubsagaDoors } from "@/components/saga/ficha/subsaga-doors";
 import { AtlasTeaser } from "@/components/saga/ficha/atlas-teaser";
 
@@ -90,6 +92,14 @@ export default async function SagaDetailPage({
     console.error("getSagaPassage", e);
     return null;
   });
+  // Misma regla que «Tu paso»: sin await (la ficha no espera) y si la lectura
+  // falla, el bloque no se pinta y la ficha sigue.
+  const friends = detail.isAuthenticated
+    ? getSagaFriends(supabase, detail, order).catch((e) => {
+        console.error("getSagaFriends", e);
+        return [];
+      })
+    : Promise.resolve([]);
   // Tus notas por obra para los puntos bajo las portadas de la balda, con la
   // clave de nodo de la balda (`i:<tipo>:<uuid>`). Misma promesa: la balda se
   // pinta ya y los puntos llegan cuando termina la lectura.
@@ -124,7 +134,9 @@ export default async function SagaDetailPage({
               </Suspense>
             }
           />
-          {/* Columna derecha reservada a «Entre amigos» (fase 3). */}
+          <Suspense fallback={detail.isAuthenticated ? <FriendsOnSagaSkeleton /> : null}>
+            <FriendsOnSaga friends={friends} />
+          </Suspense>
         </div>
         <SagaAbout detail={detail} canConfigure={canCurate} />
         <Suspense fallback={detail.isAuthenticated ? <YourPassageSkeleton /> : null}>

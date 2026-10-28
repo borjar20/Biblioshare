@@ -54,7 +54,7 @@ const day = (r: PassRow) => r.startedOn ?? r.finishedOn ?? r.createdAt.slice(0, 
 
 /** true si `a` terminó después que `b` (fin nulo = anterior a cualquier fecha:
  *  importaciones de historial sin fecha). */
-function laterFinish(a: PassRow, b: PassRow): boolean {
+export function laterFinish(a: Pick<PassRow, "finishedOn" | "createdAt">, b: Pick<PassRow, "finishedOn" | "createdAt">): boolean {
   if (a.finishedOn !== b.finishedOn) {
     if (a.finishedOn === null) return false;
     if (b.finishedOn === null) return true;
