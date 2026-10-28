@@ -129,6 +129,15 @@ export function SagaAtlas({
     e.preventDefault();
   }
 
+  // Derecha de la barra superior: chip de itinerario y, con sesión, el interruptor de Progreso.
+  const actions = (
+    <>
+      <ItinerarySheet sagaId={sagaId} routes={routes} activeRoute={activeRoute} adoptedRoute={adoptedRoute}
+        counter={counter} authenticated={authenticated} canEdit={canEdit} />
+      {authenticated && <ProgressToggle on={progressOn} onToggle={() => setProgressOn((on) => !on)} />}
+    </>
+  );
+
   return (
     <div className={`${styles.root} h-dvh w-full overflow-hidden`} data-progress={progress ? "on" : "off"} data-ready={ready ? "true" : undefined}>
       <div
@@ -152,11 +161,7 @@ export function SagaAtlas({
           }}
         />
       </div>
-      <AtlasTopBar sagaId={sagaId} sagaName={sagaName} workCount={workCount} summary={summaryRich} actions={<>
-        <ItinerarySheet sagaId={sagaId} routes={routes} activeRoute={activeRoute} adoptedRoute={adoptedRoute}
-          counter={counter} authenticated={authenticated} canEdit={canEdit} />
-        {authenticated && <ProgressToggle on={progressOn} onToggle={() => setProgressOn((on) => !on)} />}
-      </>} />
+      <AtlasTopBar sagaId={sagaId} sagaName={sagaName} workCount={workCount} summary={summaryRich} actions={actions} />
       <AtlasZoom onZoomIn={() => zoomBy(1.25)} onZoomOut={() => zoomBy(0.8)} onFit={fitAll} />
       <AtlasDock lens={lens} onLens={changeLens} />
     </div>

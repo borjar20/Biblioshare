@@ -7,12 +7,12 @@ import type { AtlasLevel } from "./atlas-work";
 import styles from "./atlas.module.css";
 
 /** Fondo de la lente Orden: regiones y arcos de ventana; en `islands`, un botón por región. */
-export function BackdropOrden({ layout, model, level, sagaName, authenticated, onIsland }: {
+export function BackdropOrden({ layout, model, level, sagaName, progress, onIsland }: {
   layout: AtlasLayout;
   model: AtlasModel;
   level: AtlasLevel;
   sagaName: string;
-  authenticated: boolean;
+  progress: boolean; // capa Progreso encendida (y con sesión)
   onIsland: (island: { x: number; y: number }) => void;
 }) {
   const regionOf = new Map(model.regions.map((r) => [r.key, r] as const));
@@ -25,7 +25,7 @@ export function BackdropOrden({ layout, model, level, sagaName, authenticated, o
           return (
             <IslandButton key={i.key} region={region} name={region.name ?? sagaName} x={i.x} y={i.y} r={i.r}
               works={model.works.filter((w) => w.regionKey === i.key).length}
-              authenticated={authenticated} onClick={() => onIsland(i)} />
+              progress={progress} onClick={() => onIsland(i)} />
           );
         })}
       </>
@@ -53,13 +53,13 @@ export function BackdropOrden({ layout, model, level, sagaName, authenticated, o
   );
 }
 
-function IslandButton({ region, name, x, y, r, works, authenticated, onClick }: {
-  region: AtlasRegion; name: string; x: number; y: number; r: number; works: number; authenticated: boolean; onClick: () => void;
+function IslandButton({ region, name, x, y, r, works, progress, onClick }: {
+  region: AtlasRegion; name: string; x: number; y: number; r: number; works: number; progress: boolean; onClick: () => void;
 }) {
   const t = useTranslations("saga.atlas");
-  const progress = authenticated && region.counted > 0;
-  const finished = progress && region.completed >= region.counted;
-  const figure = finished ? `${region.counted}✓` : progress && region.completed > 0 ? `${region.completed}/${region.counted}` : String(works);
+  const counted = progress && region.counted > 0;
+  const finished = counted && region.completed >= region.counted;
+  const figure = finished ? `${region.counted}✓` : counted && region.completed > 0 ? `${region.completed}/${region.counted}` : String(works);
   const color = SAGA_ACCENT[region.accent].cssVar;
   const current = region.state === "current";
   return (
@@ -68,7 +68,7 @@ function IslandButton({ region, name, x, y, r, works, authenticated, onClick }: 
       className={styles.island}
       data-state={region.state}
       aria-label={[
-        progress ? t("islandAria", { name, completed: region.completed, total: region.counted }) : t("islandAriaCount", { name, count: works }),
+        counted ? t("islandAria", { name, completed: region.completed, total: region.counted }) : t("islandAriaCount", { name, count: works }),
         current ? t("islandCurrent") : null,
       ].filter(Boolean).join(", ")}
       style={{

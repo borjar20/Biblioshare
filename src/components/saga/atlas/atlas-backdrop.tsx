@@ -36,5 +36,5 @@ function LensBackdrop({ lens, orientation, layout, model, level, sagaName, progr
 }) {
   if (lens === "rol") return <BackdropRol layout={layout} orientation={orientation} role={role} onRole={onRole} />;
   if (lens === "publicacion") return <BackdropPublicacion layout={layout} orientation={orientation} />;
-  return <BackdropOrden layout={layout} model={model} level={level} sagaName={sagaName} authenticated={progress} onIsland={onIsland} />;
+  return <BackdropOrden layout={layout} model={model} level={level} sagaName={sagaName} progress={progress} onIsland={onIsland} />;
 }
