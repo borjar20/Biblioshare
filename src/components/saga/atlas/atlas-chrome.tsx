@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { useTranslations } from "next-intl";
 import { sagaHref } from "@/lib/catalog/item-href";
 import type { Lens } from "@/lib/sagas/atlas/layout";
@@ -19,13 +19,15 @@ const LENS_ICON: Record<Lens, ReactNode> = {
   publicacion: <><path d="M1 12h14" /><path d="M3 10v4M8 10v4M13 10v4" /><path d="M3 7 8 3l5 4" /></>,
 };
 
-export function AtlasTopBar({ sagaId, sagaName, workCount, summary, actions }: {
+// `ref` en la barra y el dock: la cámara mide lo que tapan (useChromeInsets).
+export function AtlasTopBar({ sagaId, sagaName, workCount, summary, actions, ref }: {
   sagaId: string; sagaName: string; workCount: number; summary: ReactNode;
   actions?: ReactNode; // a la derecha: chip de itinerario e interruptor de Progreso
+  ref?: Ref<HTMLElement>;
 }) {
   const t = useTranslations("saga");
   return (
-    <header className={styles.top}>
+    <header ref={ref} className={styles.top} data-atlas-chrome="top">
       <Link href={sagaHref(sagaId)} aria-label={t("atlas.back")} className={styles.back}>‹</Link>
       <div className={styles.heading}>
         <p className={styles.eyebrow}>{t("atlas.eyebrow", { count: workCount })}</p>
@@ -37,10 +39,10 @@ export function AtlasTopBar({ sagaId, sagaName, workCount, summary, actions }: {
   );
 }
 
-export function AtlasDock({ lens, onLens }: { lens: Lens; onLens: (lens: Lens) => void }) {
+export function AtlasDock({ lens, onLens, ref }: { lens: Lens; onLens: (lens: Lens) => void; ref?: Ref<HTMLDivElement> }) {
   const t = useTranslations("saga");
   return (
-    <div className={styles.dock}>
+    <div ref={ref} className={styles.dock} data-atlas-chrome="dock">
       <div className={styles.lens} role="group" aria-label={t("atlas.lensGroup")}>
         {LENSES.map((l) => (
           <button key={l} type="button" aria-pressed={l === lens} aria-label={t(LENS_LABEL[l])} onClick={() => onLens(l)}>

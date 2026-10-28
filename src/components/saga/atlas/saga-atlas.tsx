@@ -10,7 +10,7 @@ import { summarize } from "@/lib/sagas/atlas/summary";
 import { AtlasPlane } from "./atlas-plane";
 import { AtlasDock, AtlasTopBar, AtlasZoom, LENS_LABEL, LENSES, ProgressToggle } from "./atlas-chrome";
 import { ItinerarySheet, type AtlasRoute } from "./itinerary-sheet";
-import { useAtlasCamera, useViewport } from "./use-atlas-camera";
+import { useAtlasCamera, useChromeInsets, useViewport } from "./use-atlas-camera";
 import styles from "./atlas.module.css";
 
 export type SagaAtlasProps = {
@@ -34,6 +34,9 @@ export function SagaAtlas({
   const pathname = usePathname();
   const stageRef = useRef<HTMLDivElement>(null);
   const viewport = useViewport(stageRef);
+  const topRef = useRef<HTMLElement>(null);
+  const dockRef = useRef<HTMLDivElement>(null);
+  const insets = useChromeInsets(stageRef, topRef, dockRef);
   // Lente y rol salen de la URL del CLIENTE: al volver atrás, Next restaura el payload RSC
   // cacheado con los `initial*` viejos, pero la URL (sincronizada con replaceState) manda.
   const searchParams = useSearchParams();
@@ -60,7 +63,7 @@ export function SagaAtlas({
     return p ? { x: p.x, y: p.y } : null;
   }, [model, layout]);
   const { camera, animated, zoomBy, fitAll, focusOn, bind } = useAtlasCamera({
-    ref: stageRef, viewport, extent: layout.extent, focus, sagaId, lens, orientation,
+    ref: stageRef, viewport, insets, extent: layout.extent, focus, sagaId, lens, orientation,
   });
 
   // Cambiar de lente (o girar el móvil) recoloca todo: se encaja de nuevo. La primera
@@ -161,9 +164,9 @@ export function SagaAtlas({
           }}
         />
       </div>
-      <AtlasTopBar sagaId={sagaId} sagaName={sagaName} workCount={workCount} summary={summaryRich} actions={actions} />
+      <AtlasTopBar sagaId={sagaId} sagaName={sagaName} workCount={workCount} summary={summaryRich} actions={actions} ref={topRef} />
       <AtlasZoom onZoomIn={() => zoomBy(1.25)} onZoomOut={() => zoomBy(0.8)} onFit={fitAll} />
-      <AtlasDock lens={lens} onLens={changeLens} />
+      <AtlasDock lens={lens} onLens={changeLens} ref={dockRef} />
     </div>
   );
 }

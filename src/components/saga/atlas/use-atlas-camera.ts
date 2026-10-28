@@ -1,15 +1,15 @@
 "use client";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
-import { clamp, fit, MAX_ZOOM, MIN_ZOOM, panBy, zoomAt, zoomToward } from "@/lib/atlas/camera";
+import { clamp, MAX_ZOOM, MIN_ZOOM, panBy, zoomAt, zoomToward } from "@/lib/atlas/camera";
 import type { Camera, Extent, Point, Viewport } from "@/lib/atlas/types";
 import { readCamera, writeCamera, type CameraContext } from "@/lib/sagas/atlas/camera-storage";
 import type { Lens, Orientation } from "@/lib/sagas/atlas/layout";
+import { centreIn, fitVisible, NO_INSETS, type Insets } from "@/lib/sagas/atlas/visible-camera";
 
 // Cámara del atlas de la saga (spec 2026-10-28 §7). Toda la geometría sale de
 // `@/lib/atlas/camera`; aquí solo hay estado, gestos y persistencia.
 const DRAG_THRESHOLD = 5;
-const FIT_PAD: Point = { x: 48, y: 200 };
 const FALLBACK: Camera = { x: 0, y: 0, k: 1 };
 /** Por debajo de este zoom, encajar la saga entera deja portadas demasiado pequeñas. */
 const FIT_MIN_K = 0.9;
@@ -39,17 +39,52 @@ export function useViewport(ref: RefObject<HTMLElement | null>): Viewport {
 }
 
 /**
+ * Lo que tapan la barra superior y el dock, medido (no supuesto): en móvil la barra baja el
+ * chip a otra fila y mide el doble. Se mide al montar y con cada cambio de tamaño de las
+ * tres piezas. 0 hasta medir (y en el servidor).
+ */
+export function useChromeInsets(
+  stage: RefObject<HTMLElement | null>,
+  top: RefObject<HTMLElement | null>,
+  dock: RefObject<HTMLElement | null>,
+): Insets {
+  const [insets, setInsets] = useState<Insets>(NO_INSETS);
+  useLayoutEffect(() => {
+    const s = stage.current;
+    if (!s) return;
+    const measure = () => {
+      const box = s.getBoundingClientRect();
+      const t = top.current?.getBoundingClientRect();
+      const d = dock.current?.getBoundingClientRect();
+      const next = {
+        top: t ? Math.max(0, t.bottom - box.top) : 0,
+        bottom: d ? Math.max(0, box.bottom - d.top) : 0,
+      };
+      setInsets((v) => (v.top === next.top && v.bottom === next.bottom ? v : next));
+    };
+    measure();
+    if (typeof ResizeObserver !== "function") return;
+    const observer = new ResizeObserver(measure);
+    for (const el of [s, top.current, dock.current]) if (el) observer.observe(el);
+    return () => observer.disconnect();
+  }, [stage, top, dock]);
+  return insets;
+}
+
+/**
  * Cámara, gestos y persistencia. Recibe el viewport ya medido (`useViewport`) porque la
  * orientación del layout depende de él: el layout se calcula entre las dos llamadas.
  *
  * Mientras nadie mueve la cámara, es la inicial DERIVADA: la guardada en sessionStorage; si
  * no hay, encajar toda la saga (hasta 2×) cuando cabe a k ≥ 0,9; si no cabe, la obra «ahora»
- * (o la primera) a k = 1. Así sigue al layout (giro del móvil) sin efectos.
+ * (o la primera) a k = 1. Así sigue al layout (giro del móvil) sin efectos. Encajar y
+ * centrar usan la zona libre entre la barra y el dock (`insets`), no el viewport entero.
  * Lo que se guarda es solo la cámara que alguien movió.
  */
-export function useAtlasCamera({ ref, viewport, extent, focus, sagaId, lens, orientation }: {
+export function useAtlasCamera({ ref, viewport, insets = NO_INSETS, extent, focus, sagaId, lens, orientation }: {
   ref: RefObject<HTMLElement | null>;
   viewport: Viewport;
+  insets?: Insets;
   extent: Extent;
   focus: Point | null;
   sagaId: string;
@@ -65,16 +100,16 @@ export function useAtlasCamera({ ref, viewport, extent, focus, sagaId, lens, ori
     const saved = readCamera(sagaId, { lens, orientation });
     if (saved) return saved;
     // Saga corta: se ve entera y grande. Saga larga: se lee desde donde vas, a tamaño real.
-    const whole = fit(extent, viewport, FIT_PAD, 2);
+    const whole = fitVisible(extent, viewport, insets, 2);
     if (whole.k >= FIT_MIN_K || !focus) return whole;
-    return { x: focus.x, y: focus.y, k: 1 };
-  }, [ready, sagaId, lens, orientation, focus, extent, viewport]);
+    return centreIn(focus, 1, insets);
+  }, [ready, sagaId, lens, orientation, focus, extent, viewport, insets]);
   const camera = moved ?? initial ?? FALLBACK;
 
   // Los listeners nativos (rueda) y los updaters leen lo último sin re-suscribirse.
-  const live = useRef({ camera, viewport });
+  const live = useRef({ camera, viewport, insets });
   useLayoutEffect(() => {
-    live.current = { camera, viewport };
+    live.current = { camera, viewport, insets };
   });
   const update = useCallback((f: (c: Camera) => Camera, smooth: boolean) => {
     setAnimated(smooth);
@@ -230,9 +265,12 @@ export function useAtlasCamera({ ref, viewport, extent, focus, sagaId, lens, ori
     (f: number) => update((c) => zoomAt(c, live.current.viewport, middle(live.current.viewport), f), true),
     [update],
   );
-  const fitAll = useCallback(() => update(() => fit(extent, live.current.viewport, FIT_PAD), true), [update, extent]);
+  const fitAll = useCallback(
+    () => update(() => fitVisible(extent, live.current.viewport, live.current.insets, 4), true),
+    [update, extent],
+  );
   const focusOn = useCallback(
-    (p: Point, k?: number) => update((c) => ({ x: p.x, y: p.y, k: clamp(k ?? c.k, MIN_ZOOM, MAX_ZOOM) }), true),
+    (p: Point, k?: number) => update((c) => centreIn(p, clamp(k ?? c.k, MIN_ZOOM, MAX_ZOOM), live.current.insets), true),
     [update],
   );
 

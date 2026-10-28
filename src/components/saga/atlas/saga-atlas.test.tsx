@@ -136,6 +136,26 @@ describe("SagaAtlas", () => {
     expect(plane().style.transform).toBe("translate(-1080px, 400px) scale(1)");
   });
 
+  it("cámara inicial: «ahora» se centra en la zona libre entre la barra y el dock medidos", () => {
+    // Barra de 150 px arriba y dock que empieza a 700 (100 px abajo) en un lienzo de 800.
+    const rect = (top: number, bottom: number) => ({ top, bottom, left: 0, right: 1200, width: 1200, height: bottom - top, x: 0, y: top, toJSON() {} }) as DOMRect;
+    const spy = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      const chrome = this.getAttribute("data-atlas-chrome");
+      if (chrome === "top") return rect(0, 150);
+      if (chrome === "dock") return rect(700, 784);
+      if (this.getAttribute("role") === "group" && this.tabIndex === 0) return rect(0, 800);
+      return rect(0, 0);
+    });
+    try {
+      const works = Array.from({ length: 40 }, (_, i) => work(`w${i}`, i, i < 20 ? "done" : i === 20 ? "now" : "todo"));
+      view({ model: { ...model, works, nowKey: "w20" }, workCount: 40 });
+      // Centro de la zona libre: 150 + (700 − 150) / 2 = 425 (antes, 400: bajo la barra en móvil).
+      expect(plane().style.transform).toBe("translate(-1080px, 425px) scale(1)");
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it("un ratón soltado fuera antes del umbral no deja el puntero pegado (buttons = 0)", () => {
     view();
     const before = plane().style.transform;
