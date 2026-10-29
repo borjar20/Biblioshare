@@ -11,10 +11,13 @@
  *
  * `/saga/<id>/mapa` es el atlas de la saga (spec 2026-10-28 §3), con su propio
  * «‹». `/saga/<id>/mapa/editar` NO: es un redirect al editor, que va con marco.
+ *
+ * `/sagas` es el atlas de sagas y universos (spec 2026-10-28 índice §3); `/sagas/nueva` no.
  */
 export function isFullscreenRoute(pathname: string): boolean {
   return pathname === "/partida" || pathname.startsWith("/partida/")
     || pathname === "/mascota" || pathname.startsWith("/mascota/")
     || pathname === "/comunidad/entre-nosotros"
-    || /^\/saga\/[^/]+\/mapa$/.test(pathname);
+    || /^\/saga\/[^/]+\/mapa$/.test(pathname)
+    || pathname === "/sagas";
 }

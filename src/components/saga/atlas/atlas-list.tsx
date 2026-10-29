@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import type { Insets } from "@/lib/sagas/atlas/visible-camera";
+import type { Insets } from "@/lib/atlas/visible-camera";
 import type { Lens } from "@/lib/sagas/atlas/layout";
 import { listOrder } from "@/lib/sagas/atlas/list-order";
 import type { AtlasModel } from "@/lib/sagas/atlas/model";

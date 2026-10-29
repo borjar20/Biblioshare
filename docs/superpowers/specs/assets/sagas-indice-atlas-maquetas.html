@@ -1,0 +1,187 @@
+<!-- Maquetas del brainstorming del atlas de /sagas (2026-10-28): fragmentos del compañero visual, sin el marco. -->
+<style>
+  .scr{background:#14110e;border-radius:12px;position:relative;overflow:hidden;color:#e8dcc6;font-size:12px;height:340px}
+  .top{position:absolute;left:12px;right:12px;top:10px;display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+  .pill{background:#26211b;border-radius:99px;padding:5px 10px;font-size:11px;white-space:nowrap}
+  .sum{font-size:11px;color:#a89a82;margin-top:3px}
+  .sum b{color:#e9c46a}
+  .ttl{font-family:Georgia,serif;font-size:15px;font-weight:600}
+  .eb{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#a89a82}
+  .canvas{position:absolute;inset:0;width:100%;height:100%}
+  .note{font-size:12px;color:#8a7d68;margin-top:8px;line-height:1.45}
+  svg text{font-family:system-ui,sans-serif}
+</style>
+
+<h2>¿Qué forma tiene el atlas de /sagas?</h2>
+<p class="subtitle">Las tres organizan por tu relación con cada saga (lo que elegiste). Cada rectángulo es la portada de una saga; los universos son islas con sus subsagas dentro. Sin sesión, las mismas zonas pasan a ser Libros · Películas · Series · Mixtas.</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Órbitas: lo que lees en el centro, el catálogo hacia fuera</h3>
+      <div class="scr">
+        <svg class="canvas" viewBox="0 0 640 340" preserveAspectRatio="xMidYMid meet">
+          <circle cx="320" cy="185" r="62" fill="none" stroke="#3a332b" stroke-dasharray="3 4"/>
+          <circle cx="320" cy="185" r="112" fill="none" stroke="#3a332b" stroke-dasharray="3 4"/>
+          <circle cx="320" cy="185" r="160" fill="none" stroke="#2c2620" stroke-dasharray="3 4"/>
+          <text x="320" y="122" fill="#7d715e" font-size="8" text-anchor="middle" letter-spacing="1">LEYENDO</text>
+          <text x="320" y="72" fill="#7d715e" font-size="8" text-anchor="middle" letter-spacing="1">SIGUES</text>
+          <text x="320" y="24" fill="#7d715e" font-size="8" text-anchor="middle" letter-spacing="1">POR DESCUBRIR</text>
+          <!-- centro -->
+          <rect x="294" y="166" width="22" height="32" rx="2" fill="#c9a56a" stroke="#e9c46a" stroke-width="2"/>
+          <rect x="324" y="170" width="22" height="32" rx="2" fill="#7f9a7a"/>
+          <!-- sigues -->
+          <rect x="216" y="160" width="18" height="26" rx="2" fill="#9b6b5a"/>
+          <rect x="400" y="196" width="18" height="26" rx="2" fill="#6b7f9b"/>
+          <g transform="translate(360 92)"><ellipse cx="22" cy="18" rx="34" ry="24" fill="#201b16" stroke="#5b8dbf" stroke-opacity=".6"/>
+            <rect x="4" y="8" width="12" height="18" rx="1.5" fill="#5b8dbf"/><rect x="18" y="6" width="12" height="18" rx="1.5" fill="#7aa0c8"/><rect x="32" y="10" width="12" height="18" rx="1.5" fill="#4a75a3"/>
+            <text x="22" y="52" fill="#a89a82" font-size="8" text-anchor="middle">Cosmere</text></g>
+          <!-- por descubrir -->
+          <g fill="#3a332b"><rect x="140" y="100" width="14" height="20" rx="1.5"/><rect x="170" y="250" width="14" height="20" rx="1.5"/><rect x="470" y="120" width="14" height="20" rx="1.5"/><rect x="480" y="250" width="14" height="20" rx="1.5"/><rect x="150" y="190" width="14" height="20" rx="1.5"/><rect x="250" y="300" width="14" height="20" rx="1.5"/><rect x="380" y="300" width="14" height="20" rx="1.5"/><rect x="500" y="185" width="14" height="20" rx="1.5"/><rect x="200" y="60" width="14" height="20" rx="1.5"/><rect x="430" y="50" width="14" height="20" rx="1.5"/></g>
+        </svg>
+        <div class="top"><div><div class="eb">Atlas · 107 sagas</div><div class="ttl">Sagas</div><div class="sum">Te toca <b>Mort</b> en Mundodisco · sigues 4</div></div><span class="pill">⌕ Buscar</span></div>
+      </div>
+      <p class="note">Lo más «tuyo» de un vistazo; el catálogo queda como halo. Pega: con 100 sagas sin empezar, el anillo exterior es largo y la posición dentro de él no significa nada.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Territorios: zonas con nombre, de izquierda a derecha (recomendado)</h3>
+      <div class="scr">
+        <svg class="canvas" viewBox="0 0 640 340" preserveAspectRatio="xMidYMid meet">
+          <path d="M20 90 Q60 70 120 82 Q170 92 180 150 Q186 230 120 270 Q60 290 26 250 Q8 170 20 90Z" fill="#231d17" stroke="#e9c46a" stroke-opacity=".5"/>
+          <text x="100" y="104" fill="#e9c46a" font-size="9" text-anchor="middle" letter-spacing="1">LEYENDO</text>
+          <rect x="62" y="130" width="24" height="34" rx="2" fill="#c9a56a" stroke="#e9c46a" stroke-width="2"/><rect x="98" y="150" width="24" height="34" rx="2" fill="#7f9a7a"/>
+          <path d="M200 70 Q260 56 320 70 Q350 120 340 200 Q320 270 250 280 Q196 270 196 200 Q190 120 200 70Z" fill="#1e1a15" stroke="#5b8dbf" stroke-opacity=".4"/>
+          <text x="268" y="88" fill="#a89a82" font-size="9" text-anchor="middle" letter-spacing="1">SIGUES</text>
+          <rect x="220" y="110" width="20" height="28" rx="2" fill="#9b6b5a"/><rect x="290" y="200" width="20" height="28" rx="2" fill="#6b7f9b"/>
+          <g transform="translate(236 160)"><ellipse cx="28" cy="16" rx="40" ry="22" fill="#14110e" stroke="#5b8dbf" stroke-opacity=".6"/>
+            <rect x="8" y="6" width="12" height="18" rx="1.5" fill="#5b8dbf"/><rect x="22" y="4" width="12" height="18" rx="1.5" fill="#7aa0c8"/><rect x="36" y="8" width="12" height="18" rx="1.5" fill="#4a75a3"/>
+            <text x="28" y="50" fill="#a89a82" font-size="8" text-anchor="middle">Cosmere</text></g>
+          <path d="M360 60 Q420 50 470 64 Q486 120 470 160 Q420 176 370 160 Q352 110 360 60Z" fill="#1b1814" stroke="#3a332b"/>
+          <text x="416" y="78" fill="#7d715e" font-size="9" text-anchor="middle" letter-spacing="1">TERMINADAS</text>
+          <g fill="#5a5145"><rect x="384" y="96" width="16" height="24" rx="1.5"/><rect x="408" y="104" width="16" height="24" rx="1.5"/><rect x="432" y="96" width="16" height="24" rx="1.5"/></g>
+          <path d="M360 186 Q440 176 620 190 Q630 260 600 310 Q470 322 380 306 Q350 250 360 186Z" fill="#181511" stroke="#2c2620"/>
+          <text x="490" y="204" fill="#7d715e" font-size="9" text-anchor="middle" letter-spacing="1">POR DESCUBRIR · 98</text>
+          <g fill="#3a332b"><rect x="380" y="220" width="14" height="20" rx="1.5"/><rect x="400" y="226" width="14" height="20" rx="1.5"/><rect x="420" y="218" width="14" height="20" rx="1.5"/><rect x="440" y="230" width="14" height="20" rx="1.5"/><rect x="460" y="222" width="14" height="20" rx="1.5"/><rect x="480" y="228" width="14" height="20" rx="1.5"/><rect x="500" y="220" width="14" height="20" rx="1.5"/><rect x="520" y="226" width="14" height="20" rx="1.5"/><rect x="540" y="222" width="14" height="20" rx="1.5"/><rect x="560" y="230" width="14" height="20" rx="1.5"/><rect x="390" y="258" width="14" height="20" rx="1.5"/><rect x="410" y="264" width="14" height="20" rx="1.5"/><rect x="430" y="256" width="14" height="20" rx="1.5"/><rect x="450" y="266" width="14" height="20" rx="1.5"/><rect x="470" y="258" width="14" height="20" rx="1.5"/><rect x="490" y="264" width="14" height="20" rx="1.5"/><rect x="510" y="258" width="14" height="20" rx="1.5"/><rect x="530" y="266" width="14" height="20" rx="1.5"/><rect x="550" y="258" width="14" height="20" rx="1.5"/><rect x="570" y="264" width="14" height="20" rx="1.5"/></g>
+        </svg>
+        <div class="top"><div><div class="eb">Atlas · 107 sagas</div><div class="ttl">Sagas</div><div class="sum">Te toca <b>Mort</b> en Mundodisco · sigues 4</div></div><span class="pill">⌕ Buscar</span></div>
+      </div>
+      <p class="note">Cuatro zonas con nombre y tamaño según cuántas sagas tienen. «Por descubrir» se ordena dentro (por tipo o tamaño) y es el territorio grande al que se viaja. En móvil se lee de arriba abajo, como el atlas de la saga en vertical.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Camino: un sendero de lo que lees hacia lo que te queda</h3>
+      <div class="scr">
+        <svg class="canvas" viewBox="0 0 640 340" preserveAspectRatio="xMidYMid meet">
+          <path d="M40 260 C140 240 160 150 260 150 S420 230 600 120" stroke="#3a332b" stroke-width="3" fill="none"/>
+          <rect x="60" y="226" width="24" height="34" rx="2" fill="#c9a56a" stroke="#e9c46a" stroke-width="2"/><text x="72" y="276" fill="#e9c46a" font-size="8" text-anchor="middle">leyendo</text>
+          <rect x="120" y="210" width="22" height="32" rx="2" fill="#7f9a7a"/>
+          <rect x="220" y="128" width="20" height="28" rx="2" fill="#9b6b5a"/><text x="230" y="172" fill="#a89a82" font-size="8" text-anchor="middle">sigues</text>
+          <g transform="translate(290 152)"><ellipse cx="22" cy="16" rx="32" ry="20" fill="#201b16" stroke="#5b8dbf" stroke-opacity=".6"/>
+            <rect x="4" y="6" width="12" height="18" rx="1.5" fill="#5b8dbf"/><rect x="18" y="4" width="12" height="18" rx="1.5" fill="#7aa0c8"/><rect x="32" y="8" width="12" height="18" rx="1.5" fill="#4a75a3"/></g>
+          <g fill="#3a332b"><rect x="400" y="190" width="14" height="20" rx="1.5"/><rect x="430" y="180" width="14" height="20" rx="1.5"/><rect x="460" y="168" width="14" height="20" rx="1.5"/><rect x="490" y="156" width="14" height="20" rx="1.5"/><rect x="520" y="144" width="14" height="20" rx="1.5"/><rect x="550" y="132" width="14" height="20" rx="1.5"/><rect x="420" y="240" width="14" height="20" rx="1.5"/><rect x="460" y="232" width="14" height="20" rx="1.5"/><rect x="500" y="222" width="14" height="20" rx="1.5"/><rect x="540" y="210" width="14" height="20" rx="1.5"/><rect x="580" y="196" width="14" height="20" rx="1.5"/></g>
+          <text x="500" y="110" fill="#7d715e" font-size="9" letter-spacing="1">POR DESCUBRIR →</text>
+        </svg>
+        <div class="top"><div><div class="eb">Atlas · 107 sagas</div><div class="ttl">Sagas</div><div class="sum">Te toca <b>Mort</b> en Mundodisco · sigues 4</div></div><span class="pill">⌕ Buscar</span></div>
+      </div>
+      <p class="note">Repite la metáfora del atlas de la saga (un hilo), pero aquí el orden entre sagas no existe: el sendero sugiere una secuencia que nadie ha definido.</p>
+    </div>
+  </div>
+</div>
+<hr>
+<style>
+  .scr{background:#14110e;border-radius:12px;position:relative;overflow:hidden;color:#e8dcc6;font-size:12px}
+  .desk{height:380px;flex:1}
+  .mob{height:380px;width:190px;flex:none}
+  .top{position:absolute;left:12px;right:12px;top:10px;display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+  .pill{background:#26211b;border-radius:99px;padding:5px 10px;font-size:11px;white-space:nowrap}
+  .sum{font-size:11px;color:#a89a82;margin-top:3px}
+  .sum b{color:#e9c46a}
+  .ttl{font-family:Georgia,serif;font-size:15px;font-weight:600}
+  .eb{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#a89a82}
+  .canvas{position:absolute;inset:0;width:100%;height:100%}
+  .dock{position:absolute;left:0;right:0;bottom:12px;display:flex;justify-content:center}
+  .chips{display:flex;gap:4px;background:#26211b;border-radius:99px;padding:3px}
+  .chips span{padding:5px 10px;border-radius:99px;font-size:10.5px;color:#a89a82}
+  .chips span.on{background:#e8dcc6;color:#14110e}
+  .zoomb{position:absolute;right:12px;bottom:12px;display:flex;flex-direction:column;gap:4px}
+  .zoomb span{width:24px;height:24px;border-radius:6px;background:#26211b;display:grid;place-items:center;font-size:11px}
+  .card{position:absolute;background:#201b16;border-radius:10px;padding:10px;width:190px;box-shadow:0 8px 24px #0008;font-size:10.5px;line-height:1.45}
+  .sheet{position:absolute;left:0;right:0;bottom:0;background:#201b16;border-radius:14px 14px 0 0;padding:10px;font-size:10px;line-height:1.45}
+  .btn{display:inline-block;background:#e8dcc6;color:#14110e;border-radius:99px;padding:3px 9px;margin:6px 4px 0 0;font-size:10px}
+  .btn.g{background:#26211b;color:#e8dcc6}
+  .bar{height:3px;background:#3a332b;border-radius:2px;margin:5px 0}
+  .bar i{display:block;height:3px;width:45%;background:#e9c46a;border-radius:2px}
+  .wrap{display:flex;gap:14px;align-items:flex-start}
+  svg text{font-family:system-ui,sans-serif}
+</style>
+
+<h2>Composición del atlas de /sagas</h2>
+<p class="subtitle">Así encaja todo lo acordado: territorios, mini-ficha, buscador y dock de filtros. Escritorio con la mini-ficha de Mundodisco abierta; móvil en vertical con la hoja inferior.</p>
+
+<div class="wrap">
+  <div class="scr desk">
+    <svg class="canvas" viewBox="0 0 720 380" preserveAspectRatio="xMidYMid meet">
+      <path d="M18 92 Q70 74 150 86 Q196 100 200 170 Q204 260 140 292 Q60 306 24 262 Q6 180 18 92Z" fill="#231d17" stroke="#e9c46a" stroke-opacity=".5"/>
+      <text x="108" y="106" fill="#e9c46a" font-size="9" text-anchor="middle" letter-spacing="1">EN CURSO · 3</text>
+      <g transform="translate(40 128)"><ellipse cx="40" cy="22" rx="52" ry="30" fill="#14110e" stroke="#c9a56a" stroke-opacity=".8" stroke-width="1.5"/>
+        <rect x="10" y="6" width="18" height="26" rx="1.5" fill="#c9a56a" stroke="#e9c46a" stroke-width="1.5"/><rect x="32" y="10" width="13" height="19" rx="1.5" fill="#a88a58"/><rect x="48" y="12" width="13" height="19" rx="1.5" fill="#8c7448"/><rect x="64" y="10" width="13" height="19" rx="1.5" fill="#b0925e"/>
+        <text x="40" y="66" fill="#e8dcc6" font-size="8.5" text-anchor="middle">Mundodisco</text></g>
+      <rect x="60" y="214" width="22" height="32" rx="2" fill="#7f9a7a"/><rect x="112" y="220" width="22" height="32" rx="2" fill="#9b6b5a"/>
+      <path d="M216 78 Q280 64 344 78 Q370 130 360 210 Q340 282 268 292 Q212 282 212 210 Q206 130 216 78Z" fill="#1e1a15" stroke="#5b8dbf" stroke-opacity=".4"/>
+      <text x="286" y="96" fill="#a89a82" font-size="9" text-anchor="middle" letter-spacing="1">SIGUES · 4</text>
+      <g transform="translate(244 118)"><ellipse cx="30" cy="16" rx="40" ry="22" fill="#14110e" stroke="#5b8dbf" stroke-opacity=".6"/>
+        <rect x="10" y="6" width="12" height="18" rx="1.5" fill="#5b8dbf"/><rect x="24" y="4" width="12" height="18" rx="1.5" fill="#7aa0c8"/><rect x="38" y="8" width="12" height="18" rx="1.5" fill="#4a75a3"/>
+        <text x="30" y="50" fill="#a89a82" font-size="8" text-anchor="middle">Cosmere</text></g>
+      <rect x="240" y="196" width="20" height="28" rx="2" fill="#9b6b5a"/><rect x="300" y="210" width="20" height="28" rx="2" fill="#6b7f9b"/>
+      <path d="M380 70 Q440 60 494 74 Q508 130 494 170 Q440 186 390 170 Q372 120 380 70Z" fill="#1b1814" stroke="#3a332b"/>
+      <text x="438" y="88" fill="#7d715e" font-size="9" text-anchor="middle" letter-spacing="1">TERMINADAS · 6</text>
+      <g fill="#5a5145"><rect x="400" y="104" width="16" height="24" rx="1.5"/><rect x="422" y="110" width="16" height="24" rx="1.5"/><rect x="444" y="104" width="16" height="24" rx="1.5"/><rect x="466" y="110" width="16" height="24" rx="1.5"/></g>
+      <path d="M380 196 Q470 184 704 198 Q714 280 690 340 Q520 354 396 338 Q366 270 380 196Z" fill="#181511" stroke="#2c2620"/>
+      <text x="540" y="214" fill="#7d715e" font-size="9" text-anchor="middle" letter-spacing="1">POR DESCUBRIR · 94</text>
+      <text x="420" y="234" fill="#5f5546" font-size="7.5">LIBROS</text><text x="500" y="234" fill="#5f5546" font-size="7.5">PELÍCULAS</text><text x="590" y="234" fill="#5f5546" font-size="7.5">SERIES</text><text x="650" y="234" fill="#5f5546" font-size="7.5">MIXTAS</text>
+      <g fill="#3a332b"><rect x="400" y="242" width="13" height="19" rx="1.5"/><rect x="416" y="242" width="13" height="19" rx="1.5"/><rect x="432" y="242" width="13" height="19" rx="1.5"/><rect x="400" y="266" width="13" height="19" rx="1.5"/><rect x="416" y="266" width="13" height="19" rx="1.5"/><rect x="432" y="266" width="13" height="19" rx="1.5"/>
+      <rect x="490" y="242" width="13" height="19" rx="1.5"/><rect x="506" y="242" width="13" height="19" rx="1.5"/><rect x="522" y="242" width="13" height="19" rx="1.5"/><rect x="538" y="242" width="13" height="19" rx="1.5"/><rect x="554" y="242" width="13" height="19" rx="1.5"/><rect x="490" y="266" width="13" height="19" rx="1.5"/><rect x="506" y="266" width="13" height="19" rx="1.5"/><rect x="522" y="266" width="13" height="19" rx="1.5"/><rect x="538" y="266" width="13" height="19" rx="1.5"/><rect x="490" y="290" width="13" height="19" rx="1.5"/><rect x="506" y="290" width="13" height="19" rx="1.5"/>
+      <rect x="586" y="242" width="13" height="19" rx="1.5"/><rect x="602" y="242" width="13" height="19" rx="1.5"/><rect x="586" y="266" width="13" height="19" rx="1.5"/><rect x="650" y="242" width="13" height="19" rx="1.5"/><rect x="666" y="242" width="13" height="19" rx="1.5"/></g>
+    </svg>
+    <div class="top"><div><div class="eb">Atlas · 107 sagas</div><div class="ttl">Sagas</div><div class="sum">Te toca <b>Mort</b> en Mundodisco · sigues 4</div></div><div style="display:flex;gap:6px"><span class="pill">⌕ Buscar sagas</span><span class="pill">☰ Lista</span><span class="pill">+ Nueva</span></div></div>
+    <div class="card" style="left:200px;top:120px">
+      <div class="eb">Universo · 5 sagas · 26 libros</div>
+      <div class="ttl" style="font-size:13px">Mundodisco</div>
+      <div style="color:#a89a82">Terry Pratchett</div>
+      <div class="bar"><i></i></div>
+      <div>Llevas <b style="color:#e9c46a">7 de 24</b> · te toca <b style="color:#e9c46a">Mort</b></div>
+      <div style="margin-top:4px;color:#a89a82">La Guardia · La Muerte · Las brujas · Rincewind · …</div>
+      <span class="btn">Abrir ficha</span><span class="btn g">Ver atlas</span><span class="btn g">✓ Sigues</span>
+    </div>
+    <div class="dock"><div class="chips"><span>Libros</span><span>Películas</span><span>Series</span><span>Con itinerarios</span><span>En tu colección</span><span>≥ 5</span></div></div>
+    <div class="zoomb"><span>+</span><span>−</span><span>⤢</span></div>
+  </div>
+
+  <div class="scr mob">
+    <svg class="canvas" viewBox="0 0 190 380" preserveAspectRatio="xMidYMid meet">
+      <rect x="10" y="78" width="170" height="80" rx="18" fill="#231d17" stroke="#e9c46a" stroke-opacity=".5"/>
+      <text x="95" y="92" fill="#e9c46a" font-size="7" text-anchor="middle" letter-spacing="1">EN CURSO · 3</text>
+      <ellipse cx="56" cy="122" rx="34" ry="22" fill="#14110e" stroke="#c9a56a"/><rect x="40" y="110" width="12" height="18" rx="1" fill="#c9a56a" stroke="#e9c46a"/><rect x="54" y="112" width="9" height="14" rx="1" fill="#a88a58"/><rect x="65" y="112" width="9" height="14" rx="1" fill="#8c7448"/>
+      <rect x="108" y="108" width="15" height="22" rx="1.5" fill="#7f9a7a"/><rect x="132" y="108" width="15" height="22" rx="1.5" fill="#9b6b5a"/>
+      <rect x="10" y="168" width="170" height="64" rx="18" fill="#1e1a15" stroke="#5b8dbf" stroke-opacity=".4"/>
+      <text x="95" y="182" fill="#a89a82" font-size="7" text-anchor="middle" letter-spacing="1">SIGUES · 4</text>
+      <g fill="#6b7f9b"><rect x="30" y="192" width="14" height="20" rx="1.5"/><rect x="60" y="192" width="14" height="20" rx="1.5"/><rect x="90" y="192" width="14" height="20" rx="1.5"/><rect x="120" y="192" width="14" height="20" rx="1.5"/></g>
+    </svg>
+    <div class="top" style="left:10px;right:10px"><div><div class="eb">Atlas · 107</div><div class="ttl" style="font-size:13px">Sagas</div><div class="sum" style="font-size:9.5px">Te toca <b>Mort</b></div></div><span class="pill" style="font-size:10px">⌕</span></div>
+    <div class="sheet">
+      <div class="eb">Universo · 26 libros</div>
+      <div class="ttl" style="font-size:12px">Mundodisco</div>
+      <div class="bar"><i></i></div>
+      <div>Llevas <b style="color:#e9c46a">7 de 24</b> · te toca <b style="color:#e9c46a">Mort</b></div>
+      <span class="btn">Abrir ficha</span><span class="btn g">Ver atlas</span>
+    </div>
+  </div>
+</div>

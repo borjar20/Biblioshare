@@ -8138,3 +8138,31 @@ Sin migraciones. Evidencia en [el informe de la fase 3](../testing/2026-10-28-sa
    (HTTP 200, no 307).
 
 Sin migraciones. Evidencia en [el informe del atlas](../testing/2026-10-28-sagas-atlas.md).
+
+## 2026-10-28 — Atlas de sagas y universos (rework de sagas, subproyecto 3)
+
+1. **Los territorios son la relación del lector con la saga, no la jerarquía.** En producción hay 120 sagas,
+   107 raíces y solo 4 universos, con un único nivel: la jerarquía no da estructura para un mapa. Con sesión,
+   cuatro zonas: En curso · Sigues · Terminadas · Por descubrir. Sin sesión, las mismas zonas pero por tipo de
+   obra (Libros · Películas · Series · Mixtas); dentro de «Por descubrir», comarcas por tipo con más obras
+   primero.
+2. **La rejilla se retira y los filtros atenúan.** `/sagas` deja de ser una rejilla con «Cargar más»: es un
+   atlas a pantalla completa. Tipo, itinerarios, colección y «5+ títulos» atenúan en vez de filtrar, y «Ver como
+   lista» es la vía accesible. Se borran `saga-index-card`, `saga-index-filters`, `saga-load-more` y
+   `filter-saga-index`.
+3. **Sin «Te toca» por saga en el índice.** Calcularlo exige derivar el orden completo de cada una de las 107
+   raíces. El atlas muestra el avance («7 de 24») y deja «Te toca» a la ficha, a un toque.
+4. **`?vista` pasa a ser foco, no filtro.** `vista=sigo` y `vista=universos` son enlaces viejos que llevan el
+   encuadre inicial a Sigues o a la primera isla de universo; `vista=todas` y `n` se ignoran.
+5. **La búsqueda deja de filtrar en el servidor.** La página pinta el catálogo entero y el cliente atenúa y abre
+   la lista de coincidencias; `?q=` lo lee el componente. Por eso la URL se escribe con
+   `History.prototype.replaceState` conservando `history.state`: con `window.history.replaceState` a secas el
+   router de Next re-montaba la página en cada tecla y el buscador perdía lo escrito.
+6. **La infraestructura de cámara y hojas es compartida.** `visible-camera`, `camera-storage`,
+   `use-atlas-camera` y `use-dismissable` viven en `src/lib/atlas` y `src/components/atlas` (antes bajo
+   `saga/`), con la clave de `sessionStorage` completa pasada por cada atlas. La comparten Entre nosotros, el
+   atlas de la saga y el índice.
+7. **Sin `use cache` (regla #437).** Las tarjetas llevan seguidas, avance y colección del lector; la sesión se
+   lee dentro de `<Suspense>`.
+
+Sin migraciones. Evidencia en [el informe del índice](../testing/2026-10-28-sagas-indice-atlas.md).
