@@ -8138,3 +8138,18 @@ Sin migraciones. Evidencia en [el informe de la fase 3](../testing/2026-10-28-sa
    (HTTP 200, no 307).
 
 Sin migraciones. Evidencia en [el informe del atlas](../testing/2026-10-28-sagas-atlas.md).
+
+## 2026-10-29 — Después de sagas: rework visual, no más atlas; el perfil va primero
+
+1. **Lo que se hereda del rework de sagas es el objetivo visual, no el atlas.** Una app más visual y llamativa,
+   menos plana: la portada como material, el color sacado de las obras, cifras grandes en Fraunces y baldas
+   en vez de rejillas. El lienzo con zoom queda para lo que de verdad es un mapa (Entre nosotros, sagas). Una
+   primera propuesta que llevaba el atlas a Persona, Biblioteca y Estadísticas se descartó por eso.
+2. **Orden de candidatas:** Perfil, Inicio, Biblioteca, Persona, Retos y objetivos. Estadísticas (se solapa
+   con Crónicas y Wrap) y la lectura conjunta del club (privacidad de la posición de otros) quedan fuera de
+   la tanda.
+3. **El siguiente es el perfil** (`/u/[username]`): banner con destacados, cifras grandes, «leyendo ahora»,
+   su año y la actividad como muro de portadas. No cambia qué se ve, solo cómo.
+
+Sin migraciones. Ranking, fichas y prototipo en
+[la spec de candidatas](../superpowers/specs/2026-10-29-candidatos-rework-design.md).
