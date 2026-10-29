@@ -7,7 +7,8 @@ export const NARROW_QUERY = "(max-width: 639.98px)";
 
 /**
  * Cierre común de las hojas del atlas (itinerarios y mini-ficha): Escape cierra y pide
- * devolver el foco (`close(true)`); un `pointerdown` fuera de `ref` cierra sin moverlo
+ * devolver el foco (`close(true)`), salvo si otro control ya lo consumió (`preventDefault`,
+ * como el buscador del índice con texto); un `pointerdown` fuera de `ref` cierra sin moverlo
  * (`close(false)`), salvo en lo que `ignore` acepte. Devuelve el `onBlur` del contenedor:
  * si el foco sale de la hoja se cierra, solo en móvil (`blur: "narrow"`, así no se escapa
  * tras el fondo) o a cualquier ancho (`"always"`, devolviendo el foco al origen); con
@@ -23,7 +24,8 @@ export function useDismissable({ open, ref, close, ignore, blur = "narrow" }: {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close(true);
+      // Un Escape que ya consumió un control (el buscador del índice) no es para la hoja.
+      if (e.key === "Escape" && !e.defaultPrevented) close(true);
     };
     const onDown = (e: PointerEvent) => {
       const target = e.target as Node;

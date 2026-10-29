@@ -52,7 +52,12 @@ export const IndexSearch = memo(function IndexSearch({ sagas, query, onQuery, on
         pick(options[current]);
       }
     } else if (e.key === "Escape") {
-      onQuery("");
+      // Con texto, Escape es del buscador: `preventDefault` para que la mini-ficha abierta
+      // (useDismissable, que escucha en `document`) no se cierre a la vez. Vacío, pasa de largo.
+      if (query) {
+        e.preventDefault();
+        onQuery("");
+      }
       setClosed(false);
     }
   }

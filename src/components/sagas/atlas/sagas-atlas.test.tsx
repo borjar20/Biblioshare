@@ -144,6 +144,18 @@ describe("SagasAtlas", () => {
       fireEvent.keyDown(input, { key: "Enter" });
       expect(screen.getByRole("dialog", { name: "Mundodisco" })).toBeTruthy();
     });
+    it("Escape en el buscador con la ficha abierta vacía la búsqueda sin cerrar la ficha", () => {
+      renderSagasAtlas({ cards: [card("a", { name: "Dune" })], authenticated: true });
+      fireEvent.click(screen.getByRole("button", { name: "Dune, 3 títulos" }));
+      const input = screen.getByRole("combobox") as HTMLInputElement;
+      fireEvent.change(input, { target: { value: "du" } });
+      fireEvent.keyDown(input, { key: "Escape" });
+      expect(input.value).toBe("");
+      expect(screen.getByRole("dialog", { name: "Dune" })).toBeTruthy();
+      // Con el buscador ya vacío, Escape vuelve a cerrar la ficha.
+      fireEvent.keyDown(input, { key: "Escape" });
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
     it("sin coincidencias, la barra ofrece quitar filtros", () => {
       renderSagasAtlas({ cards: [card("a")], authenticated: true, search: "tipo=serie" });
       const top = document.querySelector('header[data-atlas-chrome="top"]') as HTMLElement;
