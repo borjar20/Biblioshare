@@ -158,11 +158,22 @@ async function clearFollow(sagaId: string) {
  *  la cámara hasta que las portadas aparecen. Enfocarla fuera del viewport sí vale (es el mismo
  *  camino que el clic y no depende de dónde cayó la cámara). */
 async function reveal(page: Page, id: string) {
+  const visibility = () => saga(page, id).evaluate((el) => getComputedStyle(el).visibility);
   for (let i = 0; i < 8; i++) {
-    const visibility = await saga(page, id).evaluate((el) => getComputedStyle(el).visibility);
-    if (visibility !== "hidden") return;
+    if ((await visibility()) !== "hidden") return;
     await page.getByRole("button", { name: "Acercar", exact: true }).click();
-    await page.waitForTimeout(350);
+    // Espera a que el nivel de zoom cambie (o se agote este intento) en vez de dormir a ciegas.
+    await expect.poll(visibility, { timeout: 2_000 }).not.toBe("hidden").catch(() => {});
+  }
+  if ((await visibility()) === "hidden") throw new Error(`la saga ${id} sigue oculta tras 8 acercamientos`);
+}
+
+/** Borra un seguimiento sin enmascarar el fallo original del test que lo usa. */
+async function clearFollowSafe(sagaId: string) {
+  try {
+    await clearFollow(sagaId);
+  } catch (e) {
+    console.warn(`no se pudo borrar el seguimiento de ${sagaId}:`, e);
   }
 }
 
@@ -180,13 +191,13 @@ async function openSheet(page: Page, id: string) {
 const READER_ORDER = ["en-curso", "sigues", "terminadas", "por-descubrir"];
 
 const VIEWPORTS = [
-  { name: "escritorio", viewport: null },
+  { name: "escritorio", viewport: { width: 1280, height: 800 } },
   { name: "móvil", viewport: { width: 390, height: 844 } },
 ] as const;
 
 for (const { name, viewport } of VIEWPORTS) {
   test.describe(`atlas del índice · ${name}`, () => {
-    if (viewport) test.use({ viewport });
+    test.use({ viewport });
 
     test("mini-ficha y ficha", async ({ page }) => {
       await gotoIndex(page);
@@ -194,7 +205,7 @@ for (const { name, viewport } of VIEWPORTS) {
       const abrir = dialog.getByRole("link", { name: "Abrir ficha" });
       await expect(abrir).toBeVisible();
 
-      if (viewport) {
+      if (viewport.width < 640) {
         // En móvil la mini-ficha es una hoja inferior: su borde de abajo es el del viewport.
         await expect
           .poll(async () => {
@@ -247,6 +258,8 @@ for (const { name, viewport } of VIEWPORTS) {
 }
 
 test.describe("atlas del índice · escritorio", () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+
   test("con sesión: cada saga en su zona", async ({ page }) => {
     await loginAsCollaborator(page);
     await gotoIndex(page);
@@ -330,7 +343,7 @@ test.describe("atlas del índice · escritorio", () => {
       await gotoIndex(page);
       await expect(saga(page, id)).toHaveAttribute("data-zone-of", "sigues");
     } finally {
-      await clearFollow(id);
+      await clearFollowSafe(id);
     }
   });
 
@@ -355,23 +368,43 @@ test.describe("atlas del índice · escritorio", () => {
     try {
       await seedFollow(id);
       await loginAsCollaborator(page);
-      await gotoIndex(page, "/sagas?vista=sigo");
 
-      const zona = page.locator('[data-zone="sigues"]');
-      await expect(zona).toHaveCount(1);
-      // La cámara inicial enfoca Sigues: el centro de la zona cae dentro del viewport.
+      // Distancia del centro de la zona Sigues al centro del viewport, con la cámara ya quieta.
+      // La cámara persiste en sessionStorage: se borra para medir el encuadre inicial limpio.
+      const offset = async (url: string) => {
+        await page.goto("/sagas");
+        await page.evaluate(() => sessionStorage.removeItem("sagas-atlas"));
+        await gotoIndex(page, url);
+        const vp = page.viewportSize()!;
+        let last = "";
+        let d = Infinity;
+        await expect
+          .poll(async () => {
+            const b = await page.locator('[data-zone="sigues"]').boundingBox();
+            if (!b) return false;
+            d = Math.hypot(b.x + b.width / 2 - vp.width / 2, b.y + b.height / 2 - vp.height / 2);
+            const now = d.toFixed(1);
+            const still = now === last;
+            last = now;
+            return still;
+          })
+          .toBe(true);
+        return d;
+      };
+
+      const sinParam = await offset("/sagas");
+      const conParam = await offset("/sagas?vista=sigo");
+      await expect(saga(page, id)).toHaveAttribute("data-zone-of", "sigues");
+      // `vista=sigo` centra la cámara en Sigues; sin él manda «En curso» o encajar todo.
+      expect(conParam, `con vista=sigo ${conParam.toFixed(0)} px, sin él ${sinParam.toFixed(0)} px`).toBeLessThan(sinParam);
       const vp = page.viewportSize()!;
-      await expect
-        .poll(async () => {
-          const b = await zona.boundingBox();
-          if (!b) return false;
-          const cx = b.x + b.width / 2;
-          const cy = b.y + b.height / 2;
-          return cx >= 0 && cx <= vp.width && cy >= 0 && cy <= vp.height;
-        })
-        .toBe(true);
+      const b = (await page.locator('[data-zone="sigues"]').boundingBox())!;
+      expect(b.x + b.width / 2).toBeGreaterThanOrEqual(0);
+      expect(b.x + b.width / 2).toBeLessThanOrEqual(vp.width);
+      expect(b.y + b.height / 2).toBeGreaterThanOrEqual(0);
+      expect(b.y + b.height / 2).toBeLessThanOrEqual(vp.height);
     } finally {
-      await clearFollow(id);
+      await clearFollowSafe(id);
     }
   });
 });
