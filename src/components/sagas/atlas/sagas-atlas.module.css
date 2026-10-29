@@ -54,8 +54,9 @@
 .bar { display: block; width: 48px; height: 2px; border-radius: 1px; background: var(--line); overflow: hidden; }
 .bar i { display: block; height: 100%; background: var(--glow); }
 
-/* Barra superior: el contenedor no toma punteros, sus hijos sí. */
-.top { position: absolute; left: 0; right: 0; top: 0; z-index: 3; display: flex; gap: 12px; align-items: flex-start;
+/* Barra superior: el contenedor no toma punteros, sus hijos sí. z-index 4: su desplegable del
+   buscador queda sobre la tarjeta flotante (3); en móvil, fondo y hoja (5 y 6) la tapan, como antes. */
+.top { position: absolute; left: 0; right: 0; top: 0; z-index: 4; display: flex; gap: 12px; align-items: flex-start;
   padding: calc(12px + env(safe-area-inset-top, 0px)) calc(16px + env(safe-area-inset-right, 0px)) 32px calc(16px + env(safe-area-inset-left, 0px));
   background: linear-gradient(to bottom, var(--ground) calc(100% - 32px), transparent); pointer-events: none; }
 .top > * { pointer-events: auto; }
@@ -126,8 +127,8 @@
 .shClose:focus-visible, .shPrimary:focus-visible, .shGhost:focus-visible, .shChildLink:focus-visible, .shMap:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
 
 @media (max-width: 639.98px) {
-  .sheetBackdrop { display: block; position: fixed; inset: 0; z-index: 3; background: rgba(0, 0, 0, .5); }
-  .sheet { position: fixed; left: 0; right: 0; top: auto; bottom: 0; z-index: 4; width: auto; max-height: 75dvh; border-radius: 16px 16px 0 0;
+  .sheetBackdrop { display: block; position: fixed; inset: 0; z-index: 5; background: rgba(0, 0, 0, .5); }
+  .sheet { position: fixed; left: 0; right: 0; top: auto; bottom: 0; z-index: 6; width: auto; max-height: 75dvh; border-radius: 16px 16px 0 0;
     padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)); border-width: 1px 0 0; }
 }
 
