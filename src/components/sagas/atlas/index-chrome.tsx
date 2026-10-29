@@ -37,3 +37,13 @@ export function IndexZoom({ onZoomIn, onZoomOut, onFit }: { onZoomIn: () => void
     </div>
   );
 }
+
+/** Alterna entre el plano y la lista accesible (§5.4). */
+export function IndexListToggle({ pressed, onToggle }: { pressed: boolean; onToggle: () => void }) {
+  const t = useTranslations("sagaIndex.atlas.list");
+  return (
+    <button type="button" className={styles.listToggle} aria-pressed={pressed} onClick={onToggle}>
+      {pressed ? t("hide") : t("show")}
+    </button>
+  );
+}

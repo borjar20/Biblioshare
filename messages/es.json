@@ -2783,6 +2783,7 @@
       },
       "search": { "label": "Buscar sagas", "placeholder": "Buscar sagas…", "noMatches": "Ninguna saga coincide", "inUniverse": "en {name}" },
       "filters": { "label": "Filtros", "libro": "Libros", "pelicula": "Películas", "serie": "Series", "itinerarios": "Con itinerarios", "coleccion": "En tu colección", "min5": "≥ 5 títulos", "clear": "Quitar filtros" },
+      "list": { "show": "Ver como lista", "hide": "Ver el mapa", "label": "Sagas en lista", "notMatching": "(no coincide con los filtros)" },
       "zoneCount": "{name} · {count}",
       "zoomIn": "Acercar", "zoomOut": "Alejar", "fit": "Ver todo el mapa",
       "planeLabel": "Mapa de sagas",

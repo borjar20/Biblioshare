@@ -120,6 +120,39 @@ describe("SagasAtlas", () => {
     });
   });
 
+  describe("vista de lista", () => {
+    const plane = () => document.querySelector("[data-atlas-stage]") as HTMLElement;
+    it("«Ver como lista» muestra la lista, aria-pressed y deja el plano inerte; otra pulsación vuelve", () => {
+      renderSagasAtlas({ cards: [card("a")], authenticated: true });
+      expect(screen.queryByRole("region", { name: "Sagas en lista" })).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: "Ver como lista" }));
+      expect(screen.getByRole("region", { name: "Sagas en lista" })).toBeTruthy();
+      expect(plane().hasAttribute("inert")).toBe(true);
+      const back = screen.getByRole("button", { name: "Ver el mapa" });
+      expect(back.getAttribute("aria-pressed")).toBe("true");
+      fireEvent.click(back);
+      expect(screen.queryByRole("region", { name: "Sagas en lista" })).toBeNull();
+      expect(plane().hasAttribute("inert")).toBe(false);
+    });
+    it("abrir la lista cierra la mini-ficha", () => {
+      renderSagasAtlas({ cards: [card("a")], authenticated: true });
+      fireEvent.click(screen.getByRole("button", { name: "Saga a, 3 títulos" }));
+      expect(screen.getByRole("dialog")).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Ver como lista" }));
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+    it("Tab desde la barra superior llega a la primera saga en orden de lista", () => {
+      renderSagasAtlas({ cards: [card("a"), card("b", { started: true })], authenticated: true });
+      // jsdom no mueve el foco con Tab: se comprueba el orden de tabulación (orden DOM sin tabindex negativo).
+      const tabbable = [...document.querySelectorAll<HTMLElement>("a[href], button, input")].filter((e) => e.tabIndex >= 0);
+      const lastOfTop = tabbable.filter((e) => e.closest('header[data-atlas-chrome="top"]')).pop()!;
+      const next = tabbable[tabbable.indexOf(lastOfTop) + 1];
+      expect(next.dataset.sagaId).toBe("b"); // «En curso» va antes que «Por descubrir»
+      const sagasInOrder = tabbable.filter((e) => e.matches("button[data-saga-id]")).map((e) => e.dataset.sagaId);
+      expect(sagasInOrder).toEqual(["b", "a"]);
+    });
+  });
+
   describe("sin sagas", () => {
     it("muestra el estado vacío y, con permiso, «Nueva saga»", () => {
       renderSagasAtlas({ cards: [], authenticated: true, canCurate: true });

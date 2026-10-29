@@ -16,7 +16,8 @@ import { toScreen } from "@/lib/atlas/camera";
 import { inVisibleArea } from "@/lib/atlas/visible-camera";
 import { useAtlasCamera, useChromeInsets, useViewport } from "@/components/atlas/use-atlas-camera";
 import { IndexPlane } from "./index-plane";
-import { IndexTopBar, IndexZoom } from "./index-chrome";
+import { IndexListToggle, IndexTopBar, IndexZoom } from "./index-chrome";
+import { IndexList } from "./index-list";
 import { IndexSheet } from "./index-sheet";
 import { IndexSearch, type IndexPick } from "./index-search";
 import { IndexFilters } from "./index-filters";
@@ -28,7 +29,7 @@ const bold = (chunks: ReactNode) => <b>{chunks}</b>;
 /** Isla cliente del atlas de sagas y universos (spec 2026-10-28 índice §5). Deriva modelo y
  *  layout de las tarjetas; su estado es la cámara, la saga abierta en la mini-ficha y los
  *  seguimientos optimistas, el buscador y los filtros (que atenúan, no ocultan). `canCurate`
- *  muestra «Nueva saga»; la vista de lista llega en la tarea siguiente. */
+ *  muestra «Nueva saga». «Ver como lista» sustituye el plano por una lista (§5.4). */
 export function SagasAtlas(props: SagasAtlasProps) {
   const { cards, authenticated, canCurate } = props;
   const t = useTranslations("sagaIndex");
@@ -82,6 +83,12 @@ export function SagasAtlas(props: SagasAtlasProps) {
 
   // Mini-ficha (§5.2): tocar una saga la abre; con subsagas, además acerca la cámara a su isla.
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Lista accesible (§5.4): abrirla cierra la ficha y deja el plano `inert`.
+  const [asList, setAsList] = useState(false);
+  function toggleList() {
+    setSelectedId(null);
+    setAsList((v) => !v);
+  }
   const selected = useMemo(
     () => (selectedId ? model.zones.flatMap((z) => z.sagas).find((s) => s.id === selectedId) ?? null : null),
     [model, selectedId],
@@ -179,10 +186,22 @@ export function SagasAtlas(props: SagasAtlasProps) {
   };
   return (
     <div className={styles.root} data-sagas-atlas data-ready={ready || undefined}>
+      {/* La barra va antes que el plano en el DOM: Tab pasa de ella a las sagas. Su z-index la mantiene encima. */}
+      <IndexTopBar ref={topRef} count={model.sagaCount}
+        summary={t.rich(`atlas.summary.${summary.key}`, { ...summary.values, b: bold })}
+        actions={!empty && (
+          <>
+            {noMatches && <button type="button" className={styles.newLink} onClick={clearAll}>{t("atlas.filters.clear")}</button>}
+            <IndexSearch sagas={sagas} query={query} onQuery={changeQuery} onPick={pick} />
+            {canCurate && <Link href="/sagas/nueva" className={styles.newLink}>{t("new")}</Link>}
+            <IndexListToggle pressed={asList} onToggle={toggleList} />
+          </>
+        )} />
       <div
         ref={stageRef}
         className={styles.stage}
         data-atlas-stage
+        inert={asList}
         role="region"
         aria-label={t("atlas.planeLabel")}
         // El navegador desplaza un `overflow: hidden` para enseñar lo enfocado; la cámara ya lo hace.
@@ -204,24 +223,16 @@ export function SagasAtlas(props: SagasAtlasProps) {
             action={canCurate ? <Link href="/sagas/nueva" className={styles.newLink}>{t("new")}</Link> : undefined} />
         </div>
       )}
+      {asList && <IndexList model={model} dimmed={dimmed} insets={insets} />}
       {selected && (
         <IndexSheet saga={selected} authenticated={authenticated} anchor={anchor} viewport={viewport} insets={insets}
           pending={pending} error={errorId === selected.id}
           onFollow={(on) => follow(selected.id, on)} onChild={showChild} onClose={closeSheet} />
       )}
-      <IndexTopBar ref={topRef} count={model.sagaCount}
-        summary={t.rich(`atlas.summary.${summary.key}`, { ...summary.values, b: bold })}
-        actions={!empty && (
-          <>
-            {noMatches && <button type="button" className={styles.newLink} onClick={clearAll}>{t("atlas.filters.clear")}</button>}
-            <IndexSearch sagas={sagas} query={query} onQuery={changeQuery} onPick={pick} />
-            {canCurate && <Link href="/sagas/nueva" className={styles.newLink}>{t("new")}</Link>}
-          </>
-        )} />
       <div ref={dockRef} className={styles.dock} data-atlas-chrome="dock">
         {!empty && <IndexFilters filters={filters} onChange={changeFilters} />}
       </div>
-      <IndexZoom onZoomIn={() => zoomBy(1.4)} onZoomOut={() => zoomBy(1 / 1.4)} onFit={fitAll} />
+      {!asList && <IndexZoom onZoomIn={() => zoomBy(1.4)} onZoomOut={() => zoomBy(1 / 1.4)} onFit={fitAll} />}
     </div>
   );
 }
