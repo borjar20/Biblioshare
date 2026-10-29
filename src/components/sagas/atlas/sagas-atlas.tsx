@@ -152,12 +152,16 @@ export function SagasAtlas(props: SagasAtlasProps) {
     });
   }
 
-  // Buscador y filtros (§3): estado local sembrado desde la URL, que se reescribe sin router.
-  const [query, setQuery] = useState(params.q);
-  const [filters, setFilters] = useState<Filters>(params.filters);
+  // Buscador y filtros (§3): estado local sembrado UNA vez desde la URL; la URL solo se escribe,
+  // nunca se relee. El `replaceState` parcheado por Next se integra con su router: cambiar la
+  // query cambia la clave del segmento de página y re-monta la isla (se pierde lo tecleado y el
+  // foco). Se llama al `replaceState` nativo con el `history.state` actual para que el router
+  // conserve su estado en el atrás/adelante pero no se entere del cambio.
+  const [query, setQuery] = useState(() => params.q);
+  const [filters, setFilters] = useState<Filters>(() => params.filters);
   function writeUrl(q: string, f: Filters) {
     const qs = indexQueryString({ q, filters: f });
-    window.history.replaceState(null, "", qs ? `/sagas?${qs}` : "/sagas");
+    History.prototype.replaceState.call(window.history, window.history.state, "", qs ? `/sagas?${qs}` : "/sagas");
   }
   function changeQuery(q: string) {
     setQuery(q);

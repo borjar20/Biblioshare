@@ -91,14 +91,30 @@ describe("SagasAtlas", () => {
       expect(dimmed("p")).toBe(false);
     });
     it("pulsar un filtro escribe la URL sin router", () => {
-      const spy = vi.spyOn(window.history, "replaceState");
+      const spy = vi.spyOn(History.prototype, "replaceState");
       renderSagasAtlas({ cards: [card("a"), card("p", { typeBreakdown: movie })], authenticated: true });
       fireEvent.click(screen.getByRole("button", { name: "Películas" }));
       expect(spy).toHaveBeenCalledWith(null, "", "/sagas?tipo=pelicula");
+      expect(window.location.search).toBe("?tipo=pelicula");
       expect(dimmed("a")).toBe(true);
       fireEvent.click(screen.getByRole("button", { name: "Quitar filtros" }));
       expect(spy).toHaveBeenLastCalledWith(null, "", "/sagas");
       spy.mockRestore();
+    });
+    it("teclear carácter a carácter conserva todo el texto, también en la URL", () => {
+      renderSagasAtlas({ cards: [card("a", { name: "Dune" })], authenticated: true });
+      const input = screen.getByRole("combobox") as HTMLInputElement;
+      let text = "";
+      for (const ch of "guard") {
+        text += ch;
+        fireEvent.change(input, { target: { value: text } });
+      }
+      expect(input.value).toBe("guard");
+      expect(window.location.search).toBe("?q=guard");
+      fireEvent.click(screen.getByRole("button", { name: "Libros" }));
+      fireEvent.click(screen.getByRole("button", { name: "≥ 5 títulos" }));
+      expect(window.location.search).toBe("?q=guard&tipo=libro&min5=1");
+      expect(input.value).toBe("guard");
     });
     it("escribir en el buscador atenúa y elegir abre la ficha de la raíz", () => {
       renderSagasAtlas({

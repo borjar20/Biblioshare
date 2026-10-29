@@ -9,11 +9,10 @@ import { SagasAtlas } from "./sagas-atlas";
 // Los `vi.mock` de aquí se elevan en ESTE módulo, antes de importar `SagasAtlas`. Viewport
 // fijo de 1200×800 con un ResizeObserver de mentira.
 
-let search = "";
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
   usePathname: () => "/sagas",
-  useSearchParams: () => new URLSearchParams(search),
+  useSearchParams: () => new URLSearchParams(window.location.search),
 }));
 vi.mock("next/image", () => ({
   // eslint-disable-next-line @next/next/no-img-element
@@ -36,7 +35,7 @@ export function renderSagasAtlas({ cards, authenticated, canCurate = false, sear
   cards: SagaIndexCard[]; authenticated: boolean; canCurate?: boolean; search?: string;
 }) {
   cleanup();
-  search = s;
+  window.history.replaceState(null, "", s ? `/sagas?${s}` : "/sagas");
   stubResizeObserver();
   return render(
     <NextIntlClientProvider locale="es" messages={messages}>
