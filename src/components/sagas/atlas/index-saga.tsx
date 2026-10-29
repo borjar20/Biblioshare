@@ -10,11 +10,12 @@ import styles from "./sagas-atlas.module.css";
 
 const isRoot = (s: IndexAtlasSaga | IndexAtlasChild): s is IndexAtlasSaga => "zone" in s;
 
-/** Iniciales de portada sin imagen: la primera letra o dígito de cada palabra (se saltan las
- *  que no tienen), dos como máximo: «La Rueda del Tiempo» → «LR», «[QA Sagas] Universo» → «QS». */
+/** Iniciales de portada sin imagen: solo letras, la primera de cada palabra (se saltan las
+ *  que no tienen), dos como máximo: «La Rueda del Tiempo» → «LR», «[QA Sagas] Universo» → «QS»,
+ *  «2001 Odisea» → «O». Sin ninguna letra, el primer carácter no blanco del nombre. */
 export function sagaInitials(name: string): string {
   const letters = name.split(/\s+/)
-    .map((w) => w.match(/[\p{L}\p{N}]/u)?.[0])
+    .map((w) => w.match(/\p{L}/u)?.[0])
     .filter((c): c is string => !!c)
     .slice(0, 2);
   return letters.length > 0 ? letters.join("").toUpperCase() : (name.trim()[0] ?? "").toUpperCase();

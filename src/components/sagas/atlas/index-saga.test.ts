@@ -8,6 +8,8 @@ describe("sagaInitials", () => {
     ["¡Mamma Mia! - Colección", "MM"],
     ["X - Colección", "XC"],
     ["###", "#"],
+    ["2001 Odisea", "O"],
+    ["1984", "1"],
   ])("%s → %s", (name, expected) => {
     expect(sagaInitials(name)).toBe(expected);
   });
