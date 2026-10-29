@@ -81,8 +81,10 @@ export function layoutIndexAtlas(model: IndexAtlasModel, orientation: Orientatio
     const ox = orientation === "h" ? cursor : 0;
     const oy = orientation === "h" ? 0 : cursor;
     const { w, h } = packZone(groups, columnsFor(z.key, orientation), ox, oy, out);
-    out.zones.push({ key: z.key, x: ox, y: oy, w, h });
-    cursor += (orientation === "h" ? w : h) + ZONE_GAP;
+    // En vertical todas las zonas miden lo mismo (3 columnas) aunque usen menos.
+    const zw = orientation === "v" ? 2 * ZONE_PAD + 3 * CELL_W : w;
+    out.zones.push({ key: z.key, x: ox, y: oy, w: zw, h });
+    cursor += (orientation === "h" ? zw : h) + ZONE_GAP;
   }
   if (out.zones.length > 0) {
     out.extent = {

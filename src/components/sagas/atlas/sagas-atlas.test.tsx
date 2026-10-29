@@ -33,4 +33,17 @@ describe("SagasAtlas", () => {
     renderSagasAtlas({ cards: [card("a")], authenticated: true });
     expect(screen.getByRole("button", { name: "Saga a, 3 títulos" })).toBeTruthy();
   });
+  it("una saga con portada pinta una imagen", () => {
+    renderSagasAtlas({ cards: [card("a", { coverUrl: "https://example.com/a.jpg" })], authenticated: true });
+    expect(document.querySelector('[data-saga-id="a"] img')).toBeTruthy();
+  });
+  it("una subsaga de universo es un enlace fuera del orden de tabulación", () => {
+    renderSagasAtlas({
+      cards: [card("u", { children: [{ id: "k1", name: "Hija", accent: "beige", titleCount: 1 }] })],
+      authenticated: true,
+    });
+    const link = document.querySelector('a[href="/saga/k1"]');
+    expect(link).toBeTruthy();
+    expect(link?.getAttribute("tabindex")).toBe("-1");
+  });
 });

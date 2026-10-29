@@ -10,9 +10,15 @@ import styles from "./sagas-atlas.module.css";
 
 const isRoot = (s: IndexAtlasSaga | IndexAtlasChild): s is IndexAtlasSaga => "zone" in s;
 
-/** Iniciales de las dos primeras palabras: «La Rueda del Tiempo» → «LR». */
-const initials = (name: string) =>
-  name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("");
+/** Iniciales de portada sin imagen: la primera letra o dígito de cada palabra (se saltan las
+ *  que no tienen), dos como máximo: «La Rueda del Tiempo» → «LR», «[QA Sagas] Universo» → «QS». */
+export function sagaInitials(name: string): string {
+  const letters = name.split(/\s+/)
+    .map((w) => w.match(/[\p{L}\p{N}]/u)?.[0])
+    .filter((c): c is string => !!c)
+    .slice(0, 2);
+  return letters.length > 0 ? letters.join("").toUpperCase() : (name.trim()[0] ?? "").toUpperCase();
+}
 
 /** Una saga del plano (spec 2026-10-28 índice §5.1). La raíz es un botón (abre la mini-ficha);
  *  una subsaga, un enlace real fuera del orden de tabulación (se llega a ella por la mini-ficha
@@ -40,7 +46,7 @@ export function IndexSaga({ saga, box, level, dimmed, selected, progress, zoneOf
         <Image src={coverUrl} alt="" fill sizes="160px" />
       ) : (
         <span className={styles.initials} style={{ background: SAGA_ACCENT[saga.accent].cssVar }} aria-hidden="true">
-          {initials(saga.name)}
+          {sagaInitials(saga.name)}
         </span>
       )}
     </span>

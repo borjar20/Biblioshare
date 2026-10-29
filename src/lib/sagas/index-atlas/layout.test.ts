@@ -84,6 +84,13 @@ describe("layoutIndexAtlas", () => {
     });
   }
 
+  it("vertical: todas las zonas comparten x y ancho", () => {
+    const zs = layoutIndexAtlas(deriveIndexAtlas(catalog(), true), "v").zones;
+    expect(zs.length).toBeGreaterThan(1);
+    expect(new Set(zs.map((z) => z.x)).size).toBe(1);
+    expect(new Set(zs.map((z) => z.w)).size).toBe(1);
+  });
+
   it("por descubrir: un rótulo por comarca", () => {
     const l = layoutIndexAtlas(deriveIndexAtlas(catalog(), true), "h");
     expect(l.comarcas.map((c) => c.key)).toEqual(["libros", "peliculas"]);
