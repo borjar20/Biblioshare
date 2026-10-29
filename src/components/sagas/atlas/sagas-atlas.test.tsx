@@ -101,6 +101,22 @@ describe("SagasAtlas", () => {
       expect(spy).toHaveBeenLastCalledWith(null, "", "/sagas");
       spy.mockRestore();
     });
+    it("si el router reescribe la URL del montaje (revalidar tras seguir), se repone la de los filtros", () => {
+      const cards = [card("a"), card("p", { typeBreakdown: movie })];
+      const { rerenderWith } = renderSagasAtlas({ cards, authenticated: true });
+      fireEvent.click(screen.getByRole("button", { name: "Películas" }));
+      expect(window.location.search).toBe("?tipo=pelicula");
+      // Lo que hace `HistoryUpdater` al confirmar el estado revalidado: la URL que conoce el router.
+      History.prototype.replaceState.call(window.history, window.history.state, "", "/sagas");
+      rerenderWith(cards.map((c) => ({ ...c })));
+      expect(window.location.search).toBe("?tipo=pelicula");
+    });
+    it("sin cambios del usuario, la URL del montaje no se toca", () => {
+      const cards = [card("a")];
+      const { rerenderWith } = renderSagasAtlas({ cards, authenticated: true, search: "vista=sigo" });
+      rerenderWith(cards.map((c) => ({ ...c })));
+      expect(window.location.search).toBe("?vista=sigo");
+    });
     it("teclear carácter a carácter conserva todo el texto, también en la URL", () => {
       renderSagasAtlas({ cards: [card("a", { name: "Dune" })], authenticated: true });
       const input = screen.getByRole("combobox") as HTMLInputElement;

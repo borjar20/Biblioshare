@@ -159,10 +159,24 @@ export function SagasAtlas(props: SagasAtlasProps) {
   // conserve su estado en el atrás/adelante pero no se entere del cambio.
   const [query, setQuery] = useState(() => params.q);
   const [filters, setFilters] = useState<Filters>(() => params.filters);
+  // URL que el atlas quiere ver escrita; `null` hasta el primer cambio (manda la del montaje).
+  const wantedUrl = useRef<string | null>(null);
   function writeUrl(q: string, f: Filters) {
     const qs = indexQueryString({ q, filters: f });
-    History.prototype.replaceState.call(window.history, window.history.state, "", qs ? `/sagas?${qs}` : "/sagas");
+    wantedUrl.current = qs ? `/sagas?${qs}` : "/sagas";
+    History.prototype.replaceState.call(window.history, window.history.state, "", wantedUrl.current);
   }
+  // El router no sabe de esa URL: cuando confirma un estado suyo (el `revalidatePath` de seguir),
+  // su `HistoryUpdater` reescribe la del montaje en un `useInsertionEffect`, que corre en la fase
+  // de mutación del mismo commit que trae las tarjetas nuevas, antes que este efecto. Aquí se
+  // repone la buena. Sin dependencias: corre tras cada commit y comparar dos cadenas es gratis.
+  useEffect(() => {
+    const want = wantedUrl.current;
+    if (want === null || window.location.pathname !== "/sagas") return;
+    if (window.location.pathname + window.location.search !== want) {
+      History.prototype.replaceState.call(window.history, window.history.state, "", want);
+    }
+  });
   function changeQuery(q: string) {
     setQuery(q);
     writeUrl(q, filters);

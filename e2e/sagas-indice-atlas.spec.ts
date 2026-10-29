@@ -347,6 +347,29 @@ test.describe("atlas del índice · escritorio", () => {
     }
   });
 
+  test("seguir no borra los filtros de la URL", async ({ page }) => {
+    // Regresión: la URL se escribe sin el router; el `revalidatePath` de seguir hacía que el
+    // router repusiera la URL del montaje (sin `tipo=`) al confirmar las tarjetas nuevas.
+    const id = await pickDiscoverable();
+    try {
+      await loginAsCollaborator(page);
+      await gotoIndex(page);
+      await dock(page).getByRole("button", { name: "Películas", exact: true }).click();
+      await expect.poll(() => page.evaluate(() => location.search)).toContain("tipo=pelicula");
+
+      const dialog = await openSheet(page, id);
+      const action = page.waitForResponse((r) => r.request().method() === "POST" && !!r.request().headers()["next-action"]);
+      await dialog.getByRole("button", { name: "Seguir", exact: true }).click();
+      await action;
+      // El botón se habilita cuando la transición (acción + tarjetas revalidadas) ha terminado.
+      await expect(dialog.getByRole("button", { name: "Sigues", exact: true })).toBeEnabled();
+      await expect.poll(() => page.evaluate(() => location.search)).toContain("tipo=pelicula");
+      await expect(dock(page).getByRole("button", { name: "Películas", exact: true })).toHaveAttribute("aria-pressed", "true");
+    } finally {
+      await clearFollowSafe(id);
+    }
+  });
+
   test("filtro por tipo atenúa", async ({ page }) => {
     const booksOnly = await pickBooksOnlyRoot();
     await gotoIndex(page);

@@ -30,16 +30,19 @@ export function stubResizeObserver(width = 1200, height = 800) {
   } as unknown as typeof ResizeObserver;
 }
 
-/** Monta el atlas limpio (sin el render del test anterior) con la URL `?…` dada. */
+/** Monta el atlas limpio (sin el render del test anterior) con la URL `?…` dada. `rerenderWith`
+ *  vuelve a pintarlo con otras tarjetas, como cuando el servidor manda las nuevas. */
 export function renderSagasAtlas({ cards, authenticated, canCurate = false, search: s = "" }: {
   cards: SagaIndexCard[]; authenticated: boolean; canCurate?: boolean; search?: string;
 }) {
   cleanup();
   window.history.replaceState(null, "", s ? `/sagas?${s}` : "/sagas");
   stubResizeObserver();
-  return render(
+  const ui = (c: SagaIndexCard[]) => (
     <NextIntlClientProvider locale="es" messages={messages}>
-      <SagasAtlas cards={cards} authenticated={authenticated} canCurate={canCurate} />
-    </NextIntlClientProvider>,
+      <SagasAtlas cards={c} authenticated={authenticated} canCurate={canCurate} />
+    </NextIntlClientProvider>
   );
+  const result = render(ui(cards));
+  return { ...result, rerenderWith: (c: SagaIndexCard[]) => result.rerender(ui(c)) };
 }
