@@ -84,8 +84,11 @@ export const IndexSearch = memo(function IndexSearch({ sagas, query, onQuery, on
             {o.universe && <small>{t("inUniverse", { name: o.universe })}</small>}
           </li>
         ))}
-        {open && options.length === 0 && <li role="status" className={styles.searchEmpty}>{t("noMatches")}</li>}
+        {open && options.length === 0 && <li aria-hidden="true" className={styles.searchEmpty}>{t("noMatches")}</li>}
       </ul>
+      {/* El aviso visible vive en el desplegable, pero un listbox solo admite opciones y una región
+          viva que nace ya con texto no se anuncia: la región va fuera y siempre montada. */}
+      <p role="status" className={styles.srOnly}>{open && options.length === 0 ? t("noMatches") : ""}</p>
     </div>
   );
 });
