@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -25,6 +25,16 @@ import styles from "./sagas-atlas.module.css";
 
 export type SagasAtlasProps = { cards: SagaIndexCard[]; authenticated: boolean; canCurate: boolean };
 const bold = (chunks: ReactNode) => <b>{chunks}</b>;
+
+/** Callback de identidad estable que llama a la última `fn` (la de tras el último commit),
+ *  como `live` en useAtlasCamera: así las piezas `memo` no se repintan por fotograma. */
+function useStableCallback<A extends unknown[], R>(fn: (...args: A) => R): (...args: A) => R {
+  const latest = useRef(fn);
+  useLayoutEffect(() => {
+    latest.current = fn;
+  });
+  return useCallback((...args: A) => latest.current(...args), []);
+}
 
 /** Isla cliente del atlas de sagas y universos (spec 2026-10-28 índice §5). Deriva modelo y
  *  layout de las tarjetas; su estado es la cámara, la saga abierta en la mini-ficha y los
@@ -107,12 +117,12 @@ export function SagasAtlas(props: SagasAtlasProps) {
     const s = toScreen(camera, viewport, b);
     return { x: s.x, y: s.y, halfW: (SAGA_W / 2) * camera.k * b.scale, halfH: (SAGA_H / 2) * camera.k * b.scale };
   }, [selected, layout, camera, viewport]);
-  function selectSaga(s: IndexAtlasSaga) {
-    if (s.id === selectedId) return closeSheet(false);
-    setSelectedId(s.id);
-    const island = layout.islands.find((i) => i.id === s.id);
+  const selectSaga = useStableCallback((id: string) => {
+    if (id === selectedId) return closeSheet(false);
+    setSelectedId(id);
+    const island = layout.islands.find((i) => i.id === id);
     if (island) focusOn({ x: island.x + island.w / 2, y: island.y + island.h / 2 }, Math.max(camera.k, 1.2));
-  }
+  });
   function showChild(childId: string) {
     const b = boxOf(childId);
     if (b) focusOn(b, 3);
@@ -130,11 +140,11 @@ export function SagasAtlas(props: SagasAtlasProps) {
       document.removeEventListener("pointerdown", onPointer, true);
     };
   }, []);
-  function followFocus(s: IndexAtlasSaga) {
+  const followFocus = useStableCallback((id: string) => {
     if (!keyboard.current) return;
-    const b = boxOf(s.id);
+    const b = boxOf(id);
     if (b && !inVisibleArea(camera, viewport, insets, b, { x: (SAGA_W / 2) * b.scale, y: (SAGA_H / 2) * b.scale })) focusOn(b); // sin `k`: conserva el zoom
-  }
+  });
 
   // Seguir / dejar de seguir: optimista; si la acción falla, se revierte y se avisa en la ficha.
   const [pending, startTransition] = useTransition();
@@ -177,25 +187,31 @@ export function SagasAtlas(props: SagasAtlasProps) {
       History.prototype.replaceState.call(window.history, window.history.state, "", want);
     }
   });
-  function changeQuery(q: string) {
+  const changeQuery = useStableCallback((q: string) => {
     setQuery(q);
     writeUrl(q, filters);
-  }
-  function changeFilters(f: Filters) {
+  });
+  const changeFilters = useStableCallback((f: Filters) => {
     setFilters(f);
     writeUrl(query, f);
-  }
+  });
   const sagas = useMemo(() => orderedSagas(model), [model]);
-  const dimmed = useCallback((s: IndexAtlasSaga) => !matchesFilters(s, filters) || !matchesQuery(s, query), [filters, query]);
-  const matching = sagas.filter((s) => !dimmed(s)).length;
+  // Atenuadas: se calcula al cambiar sagas, filtros o búsqueda, no en cada fotograma de cámara.
+  const dimmedIds = useMemo(
+    () => new Set(sagas.filter((s) => !matchesFilters(s, filters) || !matchesQuery(s, query)).map((s) => s.id)),
+    [sagas, filters, query],
+  );
+  const dimmed = useCallback((s: IndexAtlasSaga) => dimmedIds.has(s.id), [dimmedIds]);
+  const matching = sagas.length - dimmedIds.size;
   // Elegir una coincidencia: acerca la cámara a su caja (raíz a 1,4; subsaga a 3) y abre la ficha de la raíz.
-  function pick({ sagaId, childId }: IndexPick) {
+  const pick = useStableCallback(({ sagaId, childId }: IndexPick) => {
     setAsList(false); // un resultado siempre aterriza en el mapa, con la ficha encima
     const b = boxOf(childId ?? sagaId);
     if (b) focusOn(b, childId ? 3 : 1.4);
     setSelectedId(sagaId);
-  }
-  const summary = summarizeIndex(model, matching);
+  });
+  const summary = useMemo(() => summarizeIndex(model, matching), [model, matching]);
+  const summaryText = useMemo(() => t.rich(`atlas.summary.${summary.key}`, { ...summary.values, b: bold }), [t, summary]);
   const noMatches = summary.key === "sinCoincidencias";
   const empty = cards.length === 0;
   const clearAll = () => {
@@ -207,7 +223,7 @@ export function SagasAtlas(props: SagasAtlasProps) {
     <div className={styles.root} data-sagas-atlas data-ready={ready || undefined}>
       {/* La barra va antes que el plano en el DOM: Tab pasa de ella a las sagas. Su z-index la mantiene encima. */}
       <IndexTopBar ref={topRef} count={model.sagaCount}
-        summary={t.rich(`atlas.summary.${summary.key}`, { ...summary.values, b: bold })}
+        summary={summaryText}
         actions={!empty && (
           <>
             {noMatches && <button type="button" className={styles.newLink} onClick={clearAll}>{t("atlas.filters.clear")}</button>}
@@ -232,7 +248,7 @@ export function SagasAtlas(props: SagasAtlasProps) {
       >
         {!empty && (
           <IndexPlane model={model} layout={layout} camera={camera} viewport={viewport} animated={animated && ready}
-            dimmed={dimmed} selectedId={selected?.id ?? null} onSelect={selectSaga} onFocusSaga={followFocus} />
+            dimmedIds={dimmedIds} selectedId={selected?.id ?? null} onSelect={selectSaga} onFocusSaga={followFocus} />
         )}
       </div>
       {empty && (

@@ -1,9 +1,9 @@
 "use client";
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import type { Camera, Viewport } from "@/lib/atlas/types";
 import { SAGA_ACCENT } from "@/lib/sagas/accents";
-import type { IndexAtlasModel, IndexAtlasSaga } from "@/lib/sagas/index-atlas/model";
+import type { IndexAtlasModel } from "@/lib/sagas/index-atlas/model";
 import type { IndexLayout, SagaBox } from "@/lib/sagas/index-atlas/layout";
 import { IndexSaga } from "./index-saga";
 import styles from "./sagas-atlas.module.css";
@@ -12,29 +12,21 @@ import styles from "./sagas-atlas.module.css";
 export type IndexLevel = "zones" | "covers" | "detail";
 export const indexZoomLevel = (k: number): IndexLevel => (k < 0.5 ? "zones" : k > 1.6 ? "detail" : "covers");
 
-/** El plano: zonas (fondo), islas de universo y sagas, en el orden de lista (orden de tabulación). */
-export function IndexPlane({ model, layout, camera, viewport, animated, dimmed, selectedId, onSelect, onFocusSaga }: {
-  model: IndexAtlasModel; layout: IndexLayout; camera: Camera; viewport: Viewport; animated: boolean;
-  dimmed: (s: IndexAtlasSaga) => boolean; selectedId: string | null;
-  onSelect: (s: IndexAtlasSaga) => void; onFocusSaga: (s: IndexAtlasSaga) => void;
+type ContentProps = {
+  model: IndexAtlasModel; layout: IndexLayout; level: IndexLevel; dimmedIds: ReadonlySet<string>;
+  selectedId: string | null; onSelect: (id: string) => void; onFocusSaga: (id: string) => void;
+};
+
+/** El plano: zonas (fondo), islas de universo y sagas, en el orden de lista (orden de tabulación).
+ *  Por fotograma de cámara solo cambian `transform` y `--k` de este envoltorio: el contenido va
+ *  en un hijo `memo` que solo se repinta al cambiar de nivel, de atenuación, de selección o de
+ *  layout. `onSelect` y `onFocusSaga` deben ser estables (reciben el id de la saga). */
+export function IndexPlane({ camera, viewport, animated, ...content }: Omit<ContentProps, "level"> & {
+  camera: Camera; viewport: Viewport; animated: boolean;
 }) {
-  const t = useTranslations("sagaIndex.atlas");
   const level = indexZoomLevel(camera.k);
   const tx = viewport.width / 2 - camera.x * camera.k;
   const ty = viewport.height / 2 - camera.y * camera.k;
-  const sagas = model.zones.flatMap((z) => z.sagas);
-  const accentOf = new Map(sagas.map((s) => [s.id, SAGA_ACCENT[s.accent].cssVar] as const));
-  // Índices por id: el plano se repinta en cada fotograma de cámara, no se busca en listas.
-  const { rootBox, childBoxes } = useMemo(() => {
-    const rootBox = new Map<string, SagaBox>();
-    const childBoxes = new Map<string, SagaBox[]>();
-    for (const b of layout.sagas) {
-      if (b.parentId === null) rootBox.set(b.id, b);
-      else childBoxes.set(b.parentId, [...(childBoxes.get(b.parentId) ?? []), b]);
-    }
-    return { rootBox, childBoxes };
-  }, [layout]);
-  const zoneOfModel = useMemo(() => new Map(model.zones.map((z) => [z.key, z] as const)), [model]);
   return (
     <div
       className={styles.plane}
@@ -42,6 +34,31 @@ export function IndexPlane({ model, layout, camera, viewport, animated, dimmed, 
       data-level={level}
       style={{ transform: `translate(${tx}px, ${ty}px) scale(${camera.k})`, transformOrigin: "0 0", ["--k" as string]: camera.k }}
     >
+      <PlaneContent {...content} level={level} />
+    </div>
+  );
+}
+
+const PlaneContent = memo(function PlaneContent({ model, layout, level, dimmedIds, selectedId, onSelect, onFocusSaga }: ContentProps) {
+  const t = useTranslations("sagaIndex.atlas");
+  const { sagas, accentOf, rootBox, childBoxes, zoneOfModel } = useMemo(() => {
+    const sagas = model.zones.flatMap((z) => z.sagas);
+    const rootBox = new Map<string, SagaBox>();
+    const childBoxes = new Map<string, SagaBox[]>();
+    for (const b of layout.sagas) {
+      if (b.parentId === null) rootBox.set(b.id, b);
+      else childBoxes.set(b.parentId, [...(childBoxes.get(b.parentId) ?? []), b]);
+    }
+    return {
+      sagas,
+      accentOf: new Map(sagas.map((s) => [s.id, SAGA_ACCENT[s.accent].cssVar] as const)),
+      rootBox,
+      childBoxes,
+      zoneOfModel: new Map(model.zones.map((z) => [z.key, z] as const)),
+    };
+  }, [model, layout]);
+  return (
+    <>
       {layout.zones.map((z) => {
         const zone = zoneOfModel.get(z.key)!;
         const label = t("zoneCount", { name: t(`zone.${z.key}`), count: zone.count });
@@ -62,17 +79,18 @@ export function IndexPlane({ model, layout, camera, viewport, animated, dimmed, 
       ))}
       {sagas.map((s) => {
         const box = rootBox.get(s.id)!;
+        const dimmed = dimmedIds.has(s.id);
         return (
           <div key={s.id}>
-            <IndexSaga saga={s} box={box} level={level} dimmed={dimmed(s)} selected={selectedId === s.id}
-              progress={s.progress} zoneOf={s.zone} onSelect={() => onSelect(s)} onFocus={() => onFocusSaga(s)} />
+            <IndexSaga saga={s} box={box} level={level} dimmed={dimmed} selected={selectedId === s.id}
+              progress={s.progress} zoneOf={s.zone} onSelect={onSelect} onFocus={onFocusSaga} />
             {(childBoxes.get(s.id) ?? []).map((cb) => {
               const child = s.children.find((c) => c.id === cb.id)!;
-              return <IndexSaga key={cb.id} saga={child} box={cb} level={level} dimmed={dimmed(s)} selected={false} progress={null} />;
+              return <IndexSaga key={cb.id} saga={child} box={cb} level={level} dimmed={dimmed} selected={false} progress={null} />;
             })}
           </div>
         );
       })}
-    </div>
+    </>
   );
-}
+});

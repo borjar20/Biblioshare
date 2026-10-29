@@ -14,9 +14,15 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/sagas",
   useSearchParams: () => new URLSearchParams(window.location.search),
 }));
+/** Cuenta los renders de las portadas: cada uno es un render de la `IndexSaga` que la pinta. */
+const hoisted = vi.hoisted(() => ({ coverRenders: vi.fn() }));
+export const coverRenders = hoisted.coverRenders;
 vi.mock("next/image", () => ({
-  // eslint-disable-next-line @next/next/no-img-element
-  default: (p: { alt: string }) => <img alt={p.alt} />,
+  default: (p: { alt: string }) => {
+    hoisted.coverRenders();
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img alt={p.alt} />;
+  },
 }));
 
 export function stubResizeObserver(width = 1200, height = 800) {

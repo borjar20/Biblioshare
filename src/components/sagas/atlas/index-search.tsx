@@ -1,17 +1,18 @@
 "use client";
-import { useId, useMemo, useState } from "react";
+import { memo, useId, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { IndexAtlasSaga } from "@/lib/sagas/index-atlas/model";
 import { normalizeSearch } from "@/lib/sagas/index-atlas/params";
 import styles from "./sagas-atlas.module.css";
 
 // Buscador del atlas de /sagas (spec 2026-10-28 índice §3): combobox con lista de coincidencias.
-// Es controlado: el texto vive en SagasAtlas, que también atenúa el plano con él.
+// Es controlado: el texto vive en SagasAtlas, que también atenúa el plano con él. `memo`: con
+// `onQuery`/`onPick` estables, un fotograma de cámara no lo vuelve a pintar.
 const MAX_OPTIONS = 8;
 export type IndexPick = { sagaId: string; childId: string | null };
 type Option = IndexPick & { key: string; name: string; universe: string | null };
 
-export function IndexSearch({ sagas, query, onQuery, onPick }: {
+export const IndexSearch = memo(function IndexSearch({ sagas, query, onQuery, onPick }: {
   sagas: IndexAtlasSaga[]; query: string; onQuery: (q: string) => void; onPick: (target: IndexPick) => void;
 }) {
   const t = useTranslations("sagaIndex.atlas.search");
@@ -82,4 +83,4 @@ export function IndexSearch({ sagas, query, onQuery, onPick }: {
       </ul>
     </div>
   );
-}
+});

@@ -1,4 +1,5 @@
 "use client";
+import { memo } from "react";
 import { useTranslations } from "next-intl";
 import { NO_FILTERS, hasFilters, type IndexFilters as Filters, type IndexType } from "@/lib/sagas/index-atlas/params";
 import styles from "./sagas-atlas.module.css";
@@ -7,7 +8,7 @@ import styles from "./sagas-atlas.module.css";
 const TYPES: readonly IndexType[] = ["libro", "pelicula", "serie"];
 const FLAGS = ["itinerarios", "coleccion", "min5"] as const;
 
-export function IndexFilters({ filters, onChange }: { filters: Filters; onChange: (f: Filters) => void }) {
+export const IndexFilters = memo(function IndexFilters({ filters, onChange }: { filters: Filters; onChange: (f: Filters) => void }) {
   const t = useTranslations("sagaIndex.atlas.filters");
   const toggleType = (k: IndexType) =>
     onChange({ ...filters, tipos: filters.tipos.includes(k) ? filters.tipos.filter((x) => x !== k) : [...filters.tipos, k] });
@@ -24,4 +25,4 @@ export function IndexFilters({ filters, onChange }: { filters: Filters; onChange
       )}
     </div>
   );
-}
+});

@@ -1,6 +1,6 @@
 "use client";
 import Image from "next/image";
-import type { CSSProperties } from "react";
+import { memo, type CSSProperties } from "react";
 import { useTranslations } from "next-intl";
 import { SAGA_ACCENT } from "@/lib/sagas/accents";
 import type { IndexAtlasChild, IndexAtlasSaga } from "@/lib/sagas/index-atlas/model";
@@ -23,10 +23,12 @@ export function sagaInitials(name: string): string {
 /** Una saga del plano (spec 2026-10-28 índice §5.1). La raíz es un botón (abre la mini-ficha);
  *  una subsaga, un enlace real fuera del orden de tabulación (se llega a ella por la mini-ficha
  *  y la lista). En `zones` sigue montada con `visibility: hidden`, como las obras del atlas de
- *  la saga: al volver a acercar, cada portada anima desde su sitio. */
-export function IndexSaga({ saga, box, level, dimmed, selected, progress, zoneOf, onSelect, onFocus }: {
+ *  la saga: al volver a acercar, cada portada anima desde su sitio. `memo` y handlers por id
+ *  (estables): un fotograma de cámara que no cambia de nivel no la vuelve a pintar. */
+export const IndexSaga = memo(function IndexSaga({ saga, box, level, dimmed, selected, progress, zoneOf, onSelect, onFocus }: {
   saga: IndexAtlasSaga | IndexAtlasChild; box: SagaBox; level: IndexLevel; dimmed: boolean; selected: boolean;
-  progress: { completed: number; total: number } | null; zoneOf?: string; onSelect?: () => void; onFocus?: () => void;
+  progress: { completed: number; total: number } | null; zoneOf?: string;
+  onSelect?: (id: string) => void; onFocus?: (id: string) => void;
 }) {
   const t = useTranslations("sagaIndex");
   const root = isRoot(saga);
@@ -81,8 +83,8 @@ export function IndexSaga({ saga, box, level, dimmed, selected, progress, zoneOf
       aria-expanded={selected}
       aria-label={label}
       style={style}
-      onClick={onSelect}
-      onFocus={onFocus}
+      onClick={onSelect && (() => onSelect(saga.id))}
+      onFocus={onFocus && (() => onFocus(saga.id))}
     >
       {cover}
       {level !== "zones" && (
@@ -96,4 +98,4 @@ export function IndexSaga({ saga, box, level, dimmed, selected, progress, zoneOf
       )}
     </button>
   );
-}
+});

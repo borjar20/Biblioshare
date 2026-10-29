@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
-import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import type { SagaIndexCard } from "@/lib/sagas/build-saga-index";
 import { followSaga } from "@/lib/sagas/follow-actions";
-import { renderSagasAtlas } from "./sagas-atlas-test-harness.test-utils";
+import { writeCamera } from "@/lib/atlas/camera-storage";
+import { coverRenders, renderSagasAtlas } from "./sagas-atlas-test-harness.test-utils";
 
 vi.mock("@/lib/sagas/follow-actions", () => ({ followSaga: vi.fn(async () => {}), unfollowSaga: vi.fn(async () => {}) }));
 
@@ -149,6 +150,31 @@ describe("SagasAtlas", () => {
       expect(top.textContent).toContain("Ninguna saga cumple los filtros");
       fireEvent.click(within(top).getByRole("button", { name: "Quitar filtros" }));
       expect(dimmed("a")).toBe(false);
+    });
+  });
+
+  describe("rendimiento de la cámara", () => {
+    it("mover la cámara sin cambiar de nivel no vuelve a pintar las sagas", () => {
+      // k = 1 guardado: «Acercar» (×1,4) y «Alejar» se quedan en el nivel de portadas.
+      writeCamera("sagas-atlas", { x: 0, y: 0, k: 1 }, { lens: "indice", orientation: "h" });
+      const cards = ["a", "b", "c"].map((id) => card(id, { coverUrl: `https://example.com/${id}.jpg` }));
+      renderSagasAtlas({ cards, authenticated: true });
+      const plane = () => document.querySelector("[data-level]") as HTMLElement;
+      expect(plane().dataset.level).toBe("covers");
+      const before = plane().style.transform;
+      coverRenders.mockClear();
+      fireEvent.click(screen.getByRole("button", { name: "Acercar" }));
+      expect(plane().style.transform).not.toBe(before);
+      expect(plane().dataset.level).toBe("covers");
+      fireEvent.click(screen.getByRole("button", { name: "Alejar" }));
+      expect(coverRenders).not.toHaveBeenCalled();
+      // Y cambiar de nivel sí las repinta (pasan a mostrar el detalle).
+      fireEvent.click(screen.getByRole("button", { name: "Acercar" }));
+      fireEvent.click(screen.getByRole("button", { name: "Acercar" }));
+      expect(plane().dataset.level).toBe("detail");
+      expect(coverRenders).toHaveBeenCalledTimes(cards.length);
+      cleanup();
+      sessionStorage.removeItem("sagas-atlas");
     });
   });
 
