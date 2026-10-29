@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import type { SagaIndexCard } from "@/lib/sagas/build-saga-index";
 import { followSaga } from "@/lib/sagas/follow-actions";
 import { renderSagasAtlas } from "./sagas-atlas-test-harness.test-utils";
@@ -80,5 +80,60 @@ describe("SagasAtlas", () => {
       await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy());
       expect(zoneOf("a")).toBe("por-descubrir");
     });
+  });
+
+  describe("buscador y filtros", () => {
+    const movie = { book: 0, movie: 3, series: 0 };
+    const dimmed = (id: string) => document.querySelector(`[data-saga-id="${id}"]`)?.hasAttribute("data-dimmed");
+    it("el filtro de la URL atenúa lo que no cumple", () => {
+      renderSagasAtlas({ cards: [card("a"), card("p", { typeBreakdown: movie })], authenticated: true, search: "tipo=pelicula" });
+      expect(dimmed("a")).toBe(true);
+      expect(dimmed("p")).toBe(false);
+    });
+    it("pulsar un filtro escribe la URL sin router", () => {
+      const spy = vi.spyOn(window.history, "replaceState");
+      renderSagasAtlas({ cards: [card("a"), card("p", { typeBreakdown: movie })], authenticated: true });
+      fireEvent.click(screen.getByRole("button", { name: "Películas" }));
+      expect(spy).toHaveBeenCalledWith(null, "", "/sagas?tipo=pelicula");
+      expect(dimmed("a")).toBe(true);
+      fireEvent.click(screen.getByRole("button", { name: "Quitar filtros" }));
+      expect(spy).toHaveBeenLastCalledWith(null, "", "/sagas");
+      spy.mockRestore();
+    });
+    it("escribir en el buscador atenúa y elegir abre la ficha de la raíz", () => {
+      renderSagasAtlas({
+        cards: [card("a", { name: "Dune" }), card("u", { name: "Mundodisco", children: [{ id: "k1", name: "La Guardia", accent: "beige", titleCount: 1 }] })],
+        authenticated: true,
+      });
+      const input = screen.getByRole("combobox");
+      fireEvent.change(input, { target: { value: "guard" } });
+      expect(dimmed("a")).toBe(true);
+      fireEvent.keyDown(input, { key: "Enter" });
+      expect(screen.getByRole("dialog", { name: "Mundodisco" })).toBeTruthy();
+    });
+    it("sin coincidencias, la barra ofrece quitar filtros", () => {
+      renderSagasAtlas({ cards: [card("a")], authenticated: true, search: "tipo=serie" });
+      const top = document.querySelector('header[data-atlas-chrome="top"]') as HTMLElement;
+      expect(top.textContent).toContain("Ninguna saga cumple los filtros");
+      fireEvent.click(within(top).getByRole("button", { name: "Quitar filtros" }));
+      expect(dimmed("a")).toBe(false);
+    });
+  });
+
+  describe("sin sagas", () => {
+    it("muestra el estado vacío y, con permiso, «Nueva saga»", () => {
+      renderSagasAtlas({ cards: [], authenticated: true, canCurate: true });
+      expect(screen.getByText("Sin sagas")).toBeTruthy();
+      expect(screen.getByRole("link", { name: "Nueva saga" }).getAttribute("href")).toBe("/sagas/nueva");
+      expect(document.querySelector("[data-zone]")).toBeNull();
+    });
+    it("sin permiso no hay enlace", () => {
+      renderSagasAtlas({ cards: [], authenticated: true });
+      expect(screen.queryByRole("link", { name: "Nueva saga" })).toBeNull();
+    });
+  });
+  it("con permiso, la barra lleva «Nueva saga»", () => {
+    renderSagasAtlas({ cards: [card("a")], authenticated: true, canCurate: true });
+    expect(screen.getByRole("link", { name: "Nueva saga" }).getAttribute("href")).toBe("/sagas/nueva");
   });
 });

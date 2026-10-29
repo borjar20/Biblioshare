@@ -1,20 +1,25 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { followSaga, unfollowSaga } from "@/lib/sagas/follow-actions";
 import type { SagaIndexCard } from "@/lib/sagas/build-saga-index";
-import { deriveIndexAtlas, type IndexAtlasSaga } from "@/lib/sagas/index-atlas/model";
+import { deriveIndexAtlas, orderedSagas, type IndexAtlasSaga } from "@/lib/sagas/index-atlas/model";
 import { SAGA_H, SAGA_W, layoutIndexAtlas, zoneCentre } from "@/lib/sagas/index-atlas/layout";
 import { summarizeIndex } from "@/lib/sagas/index-atlas/summary";
-import { parseIndexParams } from "@/lib/sagas/index-atlas/params";
+import { NO_FILTERS, indexQueryString, matchesFilters, matchesQuery, parseIndexParams, type IndexFilters as Filters } from "@/lib/sagas/index-atlas/params";
 import type { Orientation } from "@/lib/atlas/types";
+import { EmptyState } from "@/components/ui/empty-state";
+import { LibraryIcon } from "@/components/ui/icons";
 import { toScreen } from "@/lib/atlas/camera";
 import { inVisibleArea } from "@/lib/atlas/visible-camera";
 import { useAtlasCamera, useChromeInsets, useViewport } from "@/components/atlas/use-atlas-camera";
 import { IndexPlane } from "./index-plane";
 import { IndexTopBar, IndexZoom } from "./index-chrome";
 import { IndexSheet } from "./index-sheet";
+import { IndexSearch, type IndexPick } from "./index-search";
+import { IndexFilters } from "./index-filters";
 import styles from "./sagas-atlas.module.css";
 
 export type SagasAtlasProps = { cards: SagaIndexCard[]; authenticated: boolean; canCurate: boolean };
@@ -22,9 +27,10 @@ const bold = (chunks: ReactNode) => <b>{chunks}</b>;
 
 /** Isla cliente del atlas de sagas y universos (spec 2026-10-28 índice §5). Deriva modelo y
  *  layout de las tarjetas; su estado es la cámara, la saga abierta en la mini-ficha y los
- *  seguimientos optimistas. `canCurate` lo usan las tareas siguientes (buscador y filtros, lista). */
+ *  seguimientos optimistas, el buscador y los filtros (que atenúan, no ocultan). `canCurate`
+ *  muestra «Nueva saga»; la vista de lista llega en la tarea siguiente. */
 export function SagasAtlas(props: SagasAtlasProps) {
-  const { cards, authenticated } = props;
+  const { cards, authenticated, canCurate } = props;
   const t = useTranslations("sagaIndex");
   const searchParams = useSearchParams();
   const params = useMemo(() => parseIndexParams((n) => searchParams.get(n)), [searchParams]);
@@ -139,7 +145,38 @@ export function SagasAtlas(props: SagasAtlasProps) {
     });
   }
 
-  const summary = summarizeIndex(model, model.sagaCount);
+  // Buscador y filtros (§3): estado local sembrado desde la URL, que se reescribe sin router.
+  const [query, setQuery] = useState(params.q);
+  const [filters, setFilters] = useState<Filters>(params.filters);
+  function writeUrl(q: string, f: Filters) {
+    const qs = indexQueryString({ q, filters: f });
+    window.history.replaceState(null, "", qs ? `/sagas?${qs}` : "/sagas");
+  }
+  function changeQuery(q: string) {
+    setQuery(q);
+    writeUrl(q, filters);
+  }
+  function changeFilters(f: Filters) {
+    setFilters(f);
+    writeUrl(query, f);
+  }
+  const sagas = useMemo(() => orderedSagas(model), [model]);
+  const dimmed = useCallback((s: IndexAtlasSaga) => !matchesFilters(s, filters) || !matchesQuery(s, query), [filters, query]);
+  const matching = sagas.filter((s) => !dimmed(s)).length;
+  // Elegir una coincidencia: acerca la cámara a su caja (raíz a 1,4; subsaga a 3) y abre la ficha de la raíz.
+  function pick({ sagaId, childId }: IndexPick) {
+    const b = boxOf(childId ?? sagaId);
+    if (b) focusOn(b, childId ? 3 : 1.4);
+    setSelectedId(sagaId);
+  }
+  const summary = summarizeIndex(model, matching);
+  const noMatches = summary.key === "sinCoincidencias";
+  const empty = cards.length === 0;
+  const clearAll = () => {
+    setQuery("");
+    setFilters(NO_FILTERS);
+    writeUrl("", NO_FILTERS);
+  };
   return (
     <div className={styles.root} data-sagas-atlas data-ready={ready || undefined}>
       <div
@@ -155,17 +192,35 @@ export function SagasAtlas(props: SagasAtlasProps) {
         }}
         {...bind}
       >
-        <IndexPlane model={model} layout={layout} camera={camera} viewport={viewport} animated={animated && ready}
-          dimmed={() => false} selectedId={selected?.id ?? null} onSelect={selectSaga} onFocusSaga={followFocus} />
+        {!empty && (
+          <IndexPlane model={model} layout={layout} camera={camera} viewport={viewport} animated={animated && ready}
+            dimmed={dimmed} selectedId={selected?.id ?? null} onSelect={selectSaga} onFocusSaga={followFocus} />
+        )}
       </div>
+      {empty && (
+        // `dark`: EmptyState usa los tokens de la app y este atlas es siempre oscuro.
+        <div className={`dark ${styles.empty}`}>
+          <EmptyState glyph={<LibraryIcon className="h-7 w-7" />} title={t("emptyTitle")}
+            action={canCurate ? <Link href="/sagas/nueva" className={styles.newLink}>{t("new")}</Link> : undefined} />
+        </div>
+      )}
       {selected && (
         <IndexSheet saga={selected} authenticated={authenticated} anchor={anchor} viewport={viewport} insets={insets}
           pending={pending} error={errorId === selected.id}
           onFollow={(on) => follow(selected.id, on)} onChild={showChild} onClose={closeSheet} />
       )}
       <IndexTopBar ref={topRef} count={model.sagaCount}
-        summary={t.rich(`atlas.summary.${summary.key}`, { ...summary.values, b: bold })} actions={null} />
-      <div ref={dockRef} className={styles.dock} data-atlas-chrome="dock" />
+        summary={t.rich(`atlas.summary.${summary.key}`, { ...summary.values, b: bold })}
+        actions={!empty && (
+          <>
+            {noMatches && <button type="button" className={styles.newLink} onClick={clearAll}>{t("atlas.filters.clear")}</button>}
+            <IndexSearch sagas={sagas} query={query} onQuery={changeQuery} onPick={pick} />
+            {canCurate && <Link href="/sagas/nueva" className={styles.newLink}>{t("new")}</Link>}
+          </>
+        )} />
+      <div ref={dockRef} className={styles.dock} data-atlas-chrome="dock">
+        {!empty && <IndexFilters filters={filters} onChange={changeFilters} />}
+      </div>
       <IndexZoom onZoomIn={() => zoomBy(1.4)} onZoomOut={() => zoomBy(1 / 1.4)} onFit={fitAll} />
     </div>
   );

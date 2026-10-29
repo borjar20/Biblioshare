@@ -5,12 +5,12 @@ import { useTranslations } from "next-intl";
 import styles from "./sagas-atlas.module.css";
 
 // Cromo del atlas de /sagas (spec 2026-10-28 índice §5): barra superior y zoom. Sin estado:
-// todo llega de SagasAtlas. El dock (buscador y filtros) llega en la Task 7.
+// todo llega de SagasAtlas (buscador y «Nueva saga» entran por `actions`).
 
 // `ref` en la barra: la cámara mide lo que tapa (useChromeInsets).
 export function IndexTopBar({ count, summary, actions, ref }: {
   count: number; summary: ReactNode;
-  actions?: ReactNode; // a la derecha (tareas siguientes)
+  actions?: ReactNode; // a la derecha: buscador y acciones
   ref?: Ref<HTMLElement>;
 }) {
   const t = useTranslations("sagaIndex");

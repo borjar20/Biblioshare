@@ -67,7 +67,7 @@
 .summary { margin: 4px 0 0; font-size: 14px; line-height: 1.4; color: var(--muted); max-width: 52ch; }
 .summary b { color: var(--glow); font-weight: 700; }
 
-/* Dock (buscador y filtros, Task 7): vacío por ahora; la cámara ya lo mide. */
+/* Dock (filtros): la cámara lo mide. */
 .dock { position: absolute; left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
 .dock > * { pointer-events: auto; }
 
@@ -129,4 +129,37 @@
   .sheetBackdrop { display: block; position: fixed; inset: 0; z-index: 3; background: rgba(0, 0, 0, .5); }
   .sheet { position: fixed; left: 0; right: 0; top: auto; bottom: 0; z-index: 4; width: auto; max-height: 75dvh; border-radius: 16px 16px 0 0;
     padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)); border-width: 1px 0 0; }
+}
+
+/* Buscador (Task 7): combobox en la barra superior con su lista desplegada hacia abajo. */
+.search { position: relative; }
+.searchInput { width: 200px; min-height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel);
+  color: var(--fg); font: inherit; font-size: 14px; }
+.searchInput::placeholder { color: var(--faint); }
+.searchInput:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+.searchList { position: absolute; right: 0; top: calc(100% + 6px); z-index: 4; width: 280px; max-width: calc(100vw - 32px); margin: 0; padding: 4px; list-style: none;
+  border-radius: 14px; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 16px 40px rgba(0, 0, 0, .5); }
+.searchList[hidden] { display: none; }
+.searchOption { display: grid; gap: 2px; min-height: 44px; align-content: center; padding: 4px 12px; border-radius: 10px; font-size: 14px; cursor: pointer; }
+.searchOption[data-active] { background: color-mix(in srgb, var(--glow) 18%, transparent); }
+.searchOption small { font-size: 11px; color: var(--muted); }
+.searchEmpty { padding: 12px; font-size: 13px; color: var(--muted); }
+
+/* Filtros en el dock: píldoras conmutables que se pliegan en filas. */
+.filters { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.filters button, .newLink { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--panel); color: var(--fg); font-size: 13px; font-weight: 600; }
+.filters button[aria-pressed='true'] { border-color: var(--glow); color: var(--glow); }
+.filters .clear { background: transparent; color: var(--muted); }
+.newLink { background: var(--fg); color: var(--ground); border-color: transparent; font-weight: 700; }
+.filters button:focus-visible, .newLink:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+
+/* Sin sagas: el estado vacío ocupa el lugar del plano. */
+.empty { position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; pointer-events: none; }
+.empty > * { pointer-events: auto; }
+
+@media (max-width: 639.98px) {
+  .searchInput { width: 140px; }
+  .top { flex-wrap: wrap; }
+  .actions { flex-wrap: wrap; justify-content: flex-end; }
 }
