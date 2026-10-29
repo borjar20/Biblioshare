@@ -268,14 +268,25 @@ Lo que cambió respecto a lo escrito arriba. Si algo de las secciones 1-9 lo con
 - **URL de búsqueda y filtros.** Se escribe con `History.prototype.replaceState` y se conserva
   `history.state`, para que el router de Next no re-monte la página en cada tecla. Bug real hallado en
   navegador: con `window.history.replaceState` a secas el buscador perdía lo escrito. Hay una e2e que
-  teclea varios caracteres y comprueba valor, foco y `?q=`.
+  teclea varios caracteres y comprueba valor, foco y `?q=`. Como el router no conoce esa URL, al
+  confirmar un estado suyo (el `revalidatePath` de seguir) repone la del montaje; un efecto de
+  `SagasAtlas` vuelve a escribir la buena tras cada commit (e2e «seguir no borra los filtros de la URL»).
+  La URL del montaje no se toca hasta que el usuario cambia búsqueda o filtros. El servidor ya no recibe
+  consulta: `getSagaIndexData(supabase)` devuelve todas las raíces y el cliente atenúa.
 - **Móvil.** El dock va en una fila desplazable; el zoom se pone sobre el dock; la barra superior baja de
   línea para caber en 390 px.
 - **Teclado.** La cámara sigue al foco de teclado. La cabecera va antes del plano en el DOM, para que el
   orden de tabulación empiece por ella. `pick` del buscador cierra la lista.
 - **Punto de control 1 (zonas), con dos retoques del usuario:** las iniciales de las portadas sin imagen
-  usan solo letras (sin dígitos ni signos); en vertical todas las zonas tienen el ancho de 3 columnas.
+  usan solo letras (sin dígitos ni signos: «2001 Odisea» → «O»; un nombre sin ninguna letra usa su primer
+  carácter no blanco); en vertical todas las zonas tienen el ancho de 3 columnas.
 - **Punto de control 2 (mini-ficha, buscador, filtros, lista):** visto bueno sin cambios.
+- **Revisión final.** Un fotograma de cámara solo cambia `transform` y `--k` del plano: su contenido,
+  `IndexSaga`, el buscador y los filtros son `memo` con callbacks estables, y las atenuadas son un `Set`
+  memorizado. Escape en el buscador con texto lo vacía sin cerrar la mini-ficha (`preventDefault`, que
+  `useDismissable` respeta). «En tu colección» solo aparece con sesión (sin ella se ignora `coleccion=1`).
+  Subsagas del plano y lista navegan con `next/link` sin prefetch. La barra superior sube a `z-index: 4`
+  para que el desplegable del buscador quede sobre la tarjeta flotante; en móvil, fondo y hoja pasan a 5 y 6.
 - **Pendiente de lo diseñado:** el nivel de zonas (`k < 0.5`) oculta las portadas y las saca del orden de
   tabulación (#1575); gestos y rendimiento en Android real, sin verificar (#1577).
 - **Descubierto de paso:** `followSaga`/`unfollowSaga` ignoran el error de Supabase y la vuelta atrás
