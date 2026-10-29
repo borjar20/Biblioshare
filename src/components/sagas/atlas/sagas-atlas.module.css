@@ -165,9 +165,14 @@
 .empty > * { pointer-events: auto; }
 
 @media (max-width: 639.98px) {
-  .searchInput { width: 140px; }
+  /* Las acciones pasan a su propia fila a todo el ancho; el buscador toma lo que sobra (mínimo
+     120 px: si no caben, baja de línea en vez de desbordar) y los botones no encogen. */
   .top { flex-wrap: wrap; }
-  .actions { flex-wrap: wrap; justify-content: flex-end; }
+  .actions { flex: 1 1 100%; min-width: 0; flex-wrap: wrap; justify-content: flex-end; }
+  .search { flex: 1 1 120px; min-width: 0; }
+  .searchInput { width: 100%; min-width: 0; }
+  .actions > .newLink, .actions > .listToggle { flex: none; white-space: nowrap; }
+  .searchList { left: 0; right: auto; }
 }
 
 /* Vista de lista (Task 8): capa desplazable entre la barra y el dock (`top`/`bottom` en línea = insets). */
