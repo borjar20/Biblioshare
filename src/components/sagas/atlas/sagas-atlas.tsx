@@ -168,7 +168,8 @@ export function SagasAtlas(props: SagasAtlasProps) {
   // foco). Se llama al `replaceState` nativo con el `history.state` actual para que el router
   // conserve su estado en el atrás/adelante pero no se entere del cambio.
   const [query, setQuery] = useState(() => params.q);
-  const [filters, setFilters] = useState<Filters>(() => params.filters);
+  // Sin sesión no hay colección: un `coleccion=1` de la URL atenuaría todo sin botón que lo quite.
+  const [filters, setFilters] = useState<Filters>(() => (authenticated ? params.filters : { ...params.filters, coleccion: false }));
   // URL que el atlas quiere ver escrita; `null` hasta el primer cambio (manda la del montaje).
   const wantedUrl = useRef<string | null>(null);
   function writeUrl(q: string, f: Filters) {
@@ -265,7 +266,7 @@ export function SagasAtlas(props: SagasAtlasProps) {
           onFollow={(on) => follow(selected.id, on)} onChild={showChild} onClose={closeSheet} />
       )}
       <div ref={dockRef} className={styles.dock} data-atlas-chrome="dock">
-        {!empty && <IndexFilters filters={filters} onChange={changeFilters} />}
+        {!empty && <IndexFilters filters={filters} authenticated={authenticated} onChange={changeFilters} />}
       </div>
       {!asList && <IndexZoom onZoomIn={() => zoomBy(1.4)} onZoomOut={() => zoomBy(1 / 1.4)} onFit={fitAll} />}
     </div>

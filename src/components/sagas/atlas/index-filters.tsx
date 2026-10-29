@@ -5,10 +5,13 @@ import { NO_FILTERS, hasFilters, type IndexFilters as Filters, type IndexType } 
 import styles from "./sagas-atlas.module.css";
 
 // Filtros del atlas de /sagas (§3): botones conmutables que atenúan lo que no cumple, sin ocultarlo.
+// «En tu colección» solo con sesión (sin ella nadie tiene colección).
 const TYPES: readonly IndexType[] = ["libro", "pelicula", "serie"];
 const FLAGS = ["itinerarios", "coleccion", "min5"] as const;
 
-export const IndexFilters = memo(function IndexFilters({ filters, onChange }: { filters: Filters; onChange: (f: Filters) => void }) {
+export const IndexFilters = memo(function IndexFilters({ filters, authenticated, onChange }: {
+  filters: Filters; authenticated: boolean; onChange: (f: Filters) => void;
+}) {
   const t = useTranslations("sagaIndex.atlas.filters");
   const toggleType = (k: IndexType) =>
     onChange({ ...filters, tipos: filters.tipos.includes(k) ? filters.tipos.filter((x) => x !== k) : [...filters.tipos, k] });
@@ -17,7 +20,7 @@ export const IndexFilters = memo(function IndexFilters({ filters, onChange }: { 
       {TYPES.map((k) => (
         <button key={k} type="button" aria-pressed={filters.tipos.includes(k)} onClick={() => toggleType(k)}>{t(k)}</button>
       ))}
-      {FLAGS.map((k) => (
+      {FLAGS.filter((k) => authenticated || k !== "coleccion").map((k) => (
         <button key={k} type="button" aria-pressed={filters[k]} onClick={() => onChange({ ...filters, [k]: !filters[k] })}>{t(k)}</button>
       ))}
       {hasFilters(filters) && (

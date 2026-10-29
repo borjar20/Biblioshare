@@ -156,6 +156,13 @@ describe("SagasAtlas", () => {
       fireEvent.keyDown(input, { key: "Escape" });
       expect(screen.queryByRole("dialog")).toBeNull();
     });
+    it("«En tu colección» solo existe con sesión; sin ella, ?coleccion=1 no atenúa", () => {
+      renderSagasAtlas({ cards: [card("a")], authenticated: true });
+      expect(screen.getByRole("button", { name: "En tu colección" })).toBeTruthy();
+      renderSagasAtlas({ cards: [card("a")], authenticated: false, search: "coleccion=1" });
+      expect(screen.queryByRole("button", { name: "En tu colección" })).toBeNull();
+      expect(dimmed("a")).toBe(false);
+    });
     it("sin coincidencias, la barra ofrece quitar filtros", () => {
       renderSagasAtlas({ cards: [card("a")], authenticated: true, search: "tipo=serie" });
       const top = document.querySelector('header[data-atlas-chrome="top"]') as HTMLElement;

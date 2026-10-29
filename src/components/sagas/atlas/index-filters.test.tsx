@@ -8,9 +8,9 @@ import { IndexFilters } from "./index-filters";
 
 afterEach(cleanup);
 
-function show(filters: Filters) {
+function show(filters: Filters, authenticated = true) {
   const onChange = vi.fn();
-  render(<NextIntlClientProvider locale="es" messages={messages}><IndexFilters filters={filters} onChange={onChange} /></NextIntlClientProvider>);
+  render(<NextIntlClientProvider locale="es" messages={messages}><IndexFilters filters={filters} authenticated={authenticated} onChange={onChange} /></NextIntlClientProvider>);
   return onChange;
 }
 
@@ -26,6 +26,11 @@ describe("IndexFilters", () => {
     expect(b.getAttribute("aria-pressed")).toBe("true");
     fireEvent.click(b);
     expect(onChange).toHaveBeenCalledWith(NO_FILTERS);
+  });
+  it("sin sesión no ofrece «En tu colección»", () => {
+    show(NO_FILTERS, false);
+    expect(screen.queryByRole("button", { name: "En tu colección" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Con itinerarios" })).toBeTruthy();
   });
   it("«Quitar filtros» solo aparece con filtros activos y los vacía", () => {
     show(NO_FILTERS);
