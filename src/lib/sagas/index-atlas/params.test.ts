@@ -39,6 +39,12 @@ describe("matchesFilters", () => {
     expect(matchesFilters(s, { ...NO_FILTERS, coleccion: true })).toBe(true);
     expect(matchesFilters(s, { ...NO_FILTERS, min5: true })).toBe(false);
   });
+  it("los filtros se combinan por AND", () => {
+    const f = { ...NO_FILTERS, tipos: ["libro" as const], coleccion: true };
+    expect(matchesFilters(s, f)).toBe(true);
+    expect(matchesFilters(s, { ...f, itinerarios: true })).toBe(false);
+    expect(matchesFilters({ ...s, ownedCount: 0 }, f)).toBe(false);
+  });
   it("hasFilters", () => {
     expect(hasFilters(NO_FILTERS)).toBe(false);
     expect(hasFilters({ ...NO_FILTERS, coleccion: true })).toBe(true);

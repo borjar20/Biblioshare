@@ -6,11 +6,6 @@
 // dependencias a propósito: un componente de CLIENTE no puede importar de uno de
 // servidor sin arrastrarse el módulo entero al bundle, así que la casa común no
 // puede ser ninguno de los dos componentes.
-//
-// OJO: `saga-index-filters.tsx` tiene su propio `segClass` y NO es este —el suyo
-// es un segmentado a ancho completo (`flex-1`, fondo `bg-surface` con sombra).
-// Son dos diseños distintos que se llaman igual; unificarlos sería un cambio
-// visual, no una limpieza.
 
 /** Píldora de tipo (prominente): la elección más "de un vistazo". */
 export function pillClass(active: boolean) {
