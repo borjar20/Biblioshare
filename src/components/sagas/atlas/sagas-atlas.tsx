@@ -1,30 +1,41 @@
 "use client";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { followSaga, unfollowSaga } from "@/lib/sagas/follow-actions";
 import type { SagaIndexCard } from "@/lib/sagas/build-saga-index";
-import { deriveIndexAtlas } from "@/lib/sagas/index-atlas/model";
-import { layoutIndexAtlas, zoneCentre } from "@/lib/sagas/index-atlas/layout";
+import { deriveIndexAtlas, type IndexAtlasSaga } from "@/lib/sagas/index-atlas/model";
+import { SAGA_H, SAGA_W, layoutIndexAtlas, zoneCentre } from "@/lib/sagas/index-atlas/layout";
 import { summarizeIndex } from "@/lib/sagas/index-atlas/summary";
 import { parseIndexParams } from "@/lib/sagas/index-atlas/params";
 import type { Orientation } from "@/lib/atlas/types";
+import { toScreen } from "@/lib/atlas/camera";
+import { inVisibleArea } from "@/lib/atlas/visible-camera";
 import { useAtlasCamera, useChromeInsets, useViewport } from "@/components/atlas/use-atlas-camera";
 import { IndexPlane } from "./index-plane";
 import { IndexTopBar, IndexZoom } from "./index-chrome";
+import { IndexSheet } from "./index-sheet";
 import styles from "./sagas-atlas.module.css";
 
 export type SagasAtlasProps = { cards: SagaIndexCard[]; authenticated: boolean; canCurate: boolean };
 const bold = (chunks: ReactNode) => <b>{chunks}</b>;
 
 /** Isla cliente del atlas de sagas y universos (spec 2026-10-28 índice §5). Deriva modelo y
- *  layout de las tarjetas; su estado es la cámara. `canCurate`, la selección y la mini-ficha
- *  los usan las tareas siguientes (mini-ficha, buscador y filtros, lista). */
+ *  layout de las tarjetas; su estado es la cámara, la saga abierta en la mini-ficha y los
+ *  seguimientos optimistas. `canCurate` lo usan las tareas siguientes (buscador y filtros, lista). */
 export function SagasAtlas(props: SagasAtlasProps) {
   const { cards, authenticated } = props;
   const t = useTranslations("sagaIndex");
   const searchParams = useSearchParams();
   const params = useMemo(() => parseIndexParams((n) => searchParams.get(n)), [searchParams]);
-  const model = useMemo(() => deriveIndexAtlas(cards, authenticated), [cards, authenticated]);
+  // Seguir es optimista (§5.2): el mapa se deriva de las tarjetas con los cambios pendientes
+  // aplicados, así la saga cambia de zona al instante. Tras un éxito ya es el estado bueno.
+  const [follows, setFollows] = useState<Map<string, boolean>>(new Map());
+  const effective = useMemo(
+    () => (follows.size === 0 ? cards : cards.map((c) => (follows.has(c.id) ? { ...c, isFollowed: follows.get(c.id)! } : c))),
+    [cards, follows],
+  );
+  const model = useMemo(() => deriveIndexAtlas(effective, authenticated), [effective, authenticated]);
 
   const stageRef = useRef<HTMLDivElement>(null);
   const topRef = useRef<HTMLElement>(null);
@@ -50,7 +61,7 @@ export function SagasAtlas(props: SagasAtlasProps) {
     }
     return zoneCentre(layout, "en-curso");
   }, [params.focus, layout]);
-  const { camera, animated, zoomBy, fitAll, bind } = useAtlasCamera({
+  const { camera, animated, zoomBy, fitAll, focusOn, bind } = useAtlasCamera({
     ref: stageRef, viewport, insets, extent: layout.extent, focus, storageKey: "sagas-atlas", lens: "indice", orientation,
   });
 
@@ -62,6 +73,71 @@ export function SagasAtlas(props: SagasAtlasProps) {
     if (fitted.current !== null && fitted.current !== orientation) fitAll();
     fitted.current = orientation;
   }, [orientation, viewport.width, fitAll]);
+
+  // Mini-ficha (§5.2): tocar una saga la abre; con subsagas, además acerca la cámara a su isla.
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = useMemo(
+    () => (selectedId ? model.zones.flatMap((z) => z.sagas).find((s) => s.id === selectedId) ?? null : null),
+    [model, selectedId],
+  );
+  const closeSheet = useCallback((refocus: boolean) => {
+    if (refocus && selectedId) {
+      stageRef.current?.querySelector<HTMLElement>(`[data-saga-id="${selectedId}"]`)?.focus({ preventScroll: true });
+    }
+    setSelectedId(null);
+  }, [selectedId]);
+  const boxOf = (id: string) => layout.sagas.find((b) => b.id === id);
+  // La ficha se ancla a la caja de la saga con el layout vigente: si cambia de zona, la sigue.
+  const anchor = useMemo(() => {
+    const b = selected && layout.sagas.find((x) => x.id === selected.id);
+    if (!b) return null;
+    const s = toScreen(camera, viewport, b);
+    return { x: s.x, y: s.y, halfW: (SAGA_W / 2) * camera.k * b.scale, halfH: (SAGA_H / 2) * camera.k * b.scale };
+  }, [selected, layout, camera, viewport]);
+  function selectSaga(s: IndexAtlasSaga) {
+    if (s.id === selectedId) return closeSheet(false);
+    setSelectedId(s.id);
+    const island = layout.islands.find((i) => i.id === s.id);
+    if (island) focusOn({ x: island.x + island.w / 2, y: island.y + island.h / 2 }, Math.max(camera.k, 1.2));
+  }
+  function showChild(childId: string) {
+    const b = boxOf(childId);
+    if (b) focusOn(b, 3);
+  }
+
+  // La cámara sigue al foco de TECLADO: un foco que llega por puntero no la mueve.
+  const keyboard = useRef(false);
+  useEffect(() => {
+    const onKey = () => (keyboard.current = true);
+    const onPointer = () => (keyboard.current = false);
+    document.addEventListener("keydown", onKey, true);
+    document.addEventListener("pointerdown", onPointer, true);
+    return () => {
+      document.removeEventListener("keydown", onKey, true);
+      document.removeEventListener("pointerdown", onPointer, true);
+    };
+  }, []);
+  function followFocus(s: IndexAtlasSaga) {
+    if (!keyboard.current) return;
+    const b = boxOf(s.id);
+    if (b && !inVisibleArea(camera, viewport, insets, b, { x: (SAGA_W / 2) * b.scale, y: (SAGA_H / 2) * b.scale })) focusOn(b); // sin `k`: conserva el zoom
+  }
+
+  // Seguir / dejar de seguir: optimista; si la acción falla, se revierte y se avisa en la ficha.
+  const [pending, startTransition] = useTransition();
+  const [errorId, setErrorId] = useState<string | null>(null);
+  function follow(id: string, on: boolean) {
+    setErrorId(null);
+    setFollows((m) => new Map(m).set(id, on));
+    startTransition(async () => {
+      try {
+        await (on ? followSaga : unfollowSaga)(id);
+      } catch {
+        setFollows((m) => new Map(m).set(id, !on));
+        setErrorId(id);
+      }
+    });
+  }
 
   const summary = summarizeIndex(model, model.sagaCount);
   return (
@@ -80,8 +156,13 @@ export function SagasAtlas(props: SagasAtlasProps) {
         {...bind}
       >
         <IndexPlane model={model} layout={layout} camera={camera} viewport={viewport} animated={animated && ready}
-          dimmed={() => false} selectedId={null} onSelect={() => {}} onFocusSaga={() => {}} />
+          dimmed={() => false} selectedId={selected?.id ?? null} onSelect={selectSaga} onFocusSaga={followFocus} />
       </div>
+      {selected && (
+        <IndexSheet saga={selected} authenticated={authenticated} anchor={anchor} viewport={viewport} insets={insets}
+          pending={pending} error={errorId === selected.id}
+          onFollow={(on) => follow(selected.id, on)} onChild={showChild} onClose={closeSheet} />
+      )}
       <IndexTopBar ref={topRef} count={model.sagaCount}
         summary={t.rich(`atlas.summary.${summary.key}`, { ...summary.values, b: bold })} actions={null} />
       <div ref={dockRef} className={styles.dock} data-atlas-chrome="dock" />

@@ -90,3 +90,43 @@
 @media (prefers-reduced-motion: reduce) {
   .root[data-ready='true'] .saga, .root[data-ready='true'] .plane[data-animated='true'] { transition: none; }
 }
+
+/* Mini-ficha (Task 6): tarjeta flotante junto a la saga a ≥ 640 px (`--x`/`--y` de cardPosition);
+   abajo, hoja inferior con fondo. Misma forma que `.workSheet` del atlas de la saga. */
+.sheetBackdrop { display: none; }
+.sheet { position: absolute; left: var(--x, 16px); top: var(--y, 96px); z-index: 3; width: 280px; max-height: calc(100% - 32px); overflow: auto;
+  padding: 14px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 16px 40px rgba(0, 0, 0, .5); color: var(--fg);
+  display: grid; gap: 12px; }
+.sheet:focus { outline: none; }
+.sheet:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+.shHead { display: flex; gap: 12px; align-items: flex-start; }
+.shHeading { min-width: 0; flex: 1; display: grid; gap: 4px; align-content: start; }
+.shEyebrow { margin: 0; font-family: var(--font-geist-mono), monospace; font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--glow); }
+.shTitle { margin: 0; font-family: var(--font-serif), serif; font-size: 17px; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
+.shMeta { margin: 0; font-size: 12px; color: var(--muted); }
+.shClose { flex: none; width: 44px; height: 44px; margin: -10px -10px 0 0; border-radius: 12px; display: grid; place-items: center; color: var(--muted); font-size: 16px; }
+.shProgress { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
+.shProgress b { color: var(--fg); font-variant-numeric: tabular-nums; }
+.shBar { display: block; height: 3px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.shBar i { display: block; height: 100%; background: var(--glow); }
+.shActions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.shPrimary, .shGhost { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 999px; font-size: 13px; font-weight: 700; }
+.shPrimary { background: var(--fg); color: var(--ground); }
+.shGhost { border: 1px solid var(--line); background: transparent; color: var(--fg); font-weight: 600; }
+.shGhost[aria-pressed='true'] { border-color: var(--glow); color: var(--glow); }
+.shGhost:disabled { opacity: .6; }
+.shError { margin: 0; font-size: 13px; color: #f0a190; }
+.shChildren { display: grid; gap: 4px; }
+.shChildrenTitle { margin: 0; font-size: 11px; font-weight: 700; letter-spacing: .06em; font-variant-caps: all-small-caps; color: var(--muted); }
+.shChildList { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+.shChild { display: flex; align-items: center; gap: 4px; }
+.shChildLink { flex: 1; min-width: 0; min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--fg); }
+.shChildLink span { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.shMap { flex: none; width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; color: var(--muted); font-size: 16px; }
+.shClose:focus-visible, .shPrimary:focus-visible, .shGhost:focus-visible, .shChildLink:focus-visible, .shMap:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+
+@media (max-width: 639.98px) {
+  .sheetBackdrop { display: block; position: fixed; inset: 0; z-index: 3; background: rgba(0, 0, 0, .5); }
+  .sheet { position: fixed; left: 0; right: 0; top: auto; bottom: 0; z-index: 4; width: auto; max-height: 75dvh; border-radius: 16px 16px 0 0;
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)); border-width: 1px 0 0; }
+}

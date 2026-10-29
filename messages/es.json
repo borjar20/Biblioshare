@@ -2787,7 +2787,19 @@
       "sagaLabel": "{name}, {count, plural, =1 {1 título} other {# títulos}}",
       "universeLabel": "{name}, universo de {count, plural, =1 {1 saga} other {# sagas}}",
       "moreChildren": "+{count}",
-      "back": "Inicio"
+      "back": "Inicio",
+      "sheet": {
+        "universeEyebrow": "Universo · {count, plural, =1 {1 saga} other {# sagas}}",
+        "progress": "Llevas <b>{completed} de {total}</b>",
+        "open": "Abrir ficha", "atlas": "Ver atlas",
+        "follow": "Seguir", "following": "Sigues",
+        "loginToFollow": "Entra para seguirla",
+        "followError": "No se pudo seguir; inténtalo de nuevo",
+        "children": "Sagas del universo",
+        "titleCount": "{count, plural, =1 {1 título} other {# títulos}}",
+        "showInMap": "Ver {name} en el mapa",
+        "close": "Cerrar"
+      }
     },
     "new": "Nueva saga",
     "newTitle": "Nueva saga",
