@@ -1,7 +1,7 @@
 ---
 title: Atlas de sagas y universos (rework de sagas, subproyecto 3)
 date: 2026-10-28
-status: diseño aprobado, pendiente de plan
+status: implementado (rama claude/sagas-indice-atlas, PR pendiente)
 area: sagas / ui
 ---
 
@@ -255,3 +255,28 @@ reales, así que sigue valiendo.
   regenerado, evidencia en `docs/testing/2026-10-28-sagas-indice-atlas.md`, issues para lo
   pendiente.
 - PR contra `main` con la declaración de la regla #437 (sin `use cache` nuevo).
+
+## 10. Ajustes durante la implementación
+
+Lo que cambió respecto a lo escrito arriba. Si algo de las secciones 1-9 lo contradice, manda esta lista.
+
+- **Infraestructura compartida.** La cámara, su almacenamiento y las hojas dejan de ser del atlas de la
+  saga: `visible-camera` y `camera-storage` pasan a `src/lib/atlas/`, y `use-atlas-camera` y
+  `use-dismissable` a `src/components/atlas/`. La clave de `sessionStorage` es completa (la pasa cada
+  atlas: `sagas-atlas` para el índice), no se compone dentro.
+- **Acento.** El índice usa `--saga-accent` en lugar de `--accent`.
+- **URL de búsqueda y filtros.** Se escribe con `History.prototype.replaceState` y se conserva
+  `history.state`, para que el router de Next no re-monte la página en cada tecla. Bug real hallado en
+  navegador: con `window.history.replaceState` a secas el buscador perdía lo escrito. Hay una e2e que
+  teclea varios caracteres y comprueba valor, foco y `?q=`.
+- **Móvil.** El dock va en una fila desplazable; el zoom se pone sobre el dock; la barra superior baja de
+  línea para caber en 390 px.
+- **Teclado.** La cámara sigue al foco de teclado. La cabecera va antes del plano en el DOM, para que el
+  orden de tabulación empiece por ella. `pick` del buscador cierra la lista.
+- **Punto de control 1 (zonas), con dos retoques del usuario:** las iniciales de las portadas sin imagen
+  usan solo letras (sin dígitos ni signos); en vertical todas las zonas tienen el ancho de 3 columnas.
+- **Punto de control 2 (mini-ficha, buscador, filtros, lista):** visto bueno sin cambios.
+- **Pendiente de lo diseñado:** el nivel de zonas (`k < 0.5`) oculta las portadas y las saca del orden de
+  tabulación (#1575); gestos y rendimiento en Android real, sin verificar (#1577).
+- **Descubierto de paso:** `followSaga`/`unfollowSaga` ignoran el error de Supabase y la vuelta atrás
+  optimista no salta (#1573).

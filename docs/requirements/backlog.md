@@ -19,6 +19,13 @@
   [spec](superpowers/specs/2026-10-28-sagas-atlas-design.md),
   [evidencia](testing/2026-10-28-sagas-atlas.md), decisiones del 2026-10-28 («Atlas de la saga»).
 - [x] El itinerario curado expande sus pasos-bloque en el atlas (#1541); se cierra con la PR del atlas.
+- [x] **Rework de sagas · subproyecto 3 (atlas de sagas y universos).** `/sagas` pasa de rejilla a un atlas con
+  cuatro territorios según tu relación con cada saga (En curso · Sigues · Terminadas · Por descubrir; por tipo
+  sin sesión), mini-ficha, buscador y filtros que atenúan, y «Ver como lista». Rama
+  `claude/sagas-indice-atlas` (PR pendiente);
+  [spec](superpowers/specs/2026-10-28-sagas-indice-atlas-design.md),
+  [evidencia](testing/2026-10-28-sagas-indice-atlas.md), decisiones del 2026-10-28 («Atlas de sagas y universos»).
+  Pendiente: #1573, #1574, #1575, #1576, #1577.
 
 ## Moderación administrativa — #1183
 

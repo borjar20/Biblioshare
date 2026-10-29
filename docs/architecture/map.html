@@ -426,7 +426,7 @@
       "label": "/sagas · /saga/[id]",
       "layer": "route",
       "kind": "route",
-      "summary": "Índice, ficha (balda de pilas, sin pestañas), atlas de la saga (/saga/[id]/mapa: lentes Orden · Rol · Publicación, capas Itinerario y Progreso, mini-ficha y lista accesible), editor e itinerarios de saga. El orden es DERIVADO (ya no hay lienzo curado a mano). `/como-leerla` y `?tab=mapa` redirigen al atlas.",
+      "summary": "Índice (atlas a pantalla completa con territorios según la relación del lector), ficha (balda de pilas, sin pestañas), atlas de la saga (/saga/[id]/mapa: lentes Orden · Rol · Publicación, capas Itinerario y Progreso, mini-ficha y lista accesible), editor e itinerarios de saga. El orden es DERIVADO (ya no hay lienzo curado a mano). `/como-leerla` y `?tab=mapa` redirigen al atlas.",
       "files": [
         "src/app/sagas",
         "src/app/saga/[id]",
@@ -436,7 +436,8 @@
       ],
       "gotchas": [
         "/saga/[id]/mapa es un shell síncrono con <Suspense fallback={<AtlasSkeleton/>}>; todo lo que lee sesión va dentro, SIN `use cache` (regla #437). Los redirects legados (`/como-leerla`, `?ruta=publicacion`, `?orden=publicacion`) llegan como redirect de cliente en streaming: HTTP 200, no 307.",
-        "`show_map` NO condiciona el atlas: solo decide si la ficha enseña la tarjeta AtlasTeaser. El atlas se pinta con shelfGraph aunque el interruptor esté apagado."
+        "`show_map` NO condiciona el atlas: solo decide si la ficha enseña la tarjeta AtlasTeaser. El atlas se pinta con shelfGraph aunque el interruptor esté apagado.",
+        "/sagas es un shell síncrono con <Suspense fallback={<SagasAtlasSkeleton/>}> que lee la sesión dentro (getSagaIndexData con consulta vacía), SIN `use cache` (regla #437). Está en fullscreen-routes.ts. La rejilla (saga-index-card, saga-index-filters, saga-load-more, filter-saga-index) está retirada: si ves esos nombres, el doc está viejo."
       ]
     },
     {
@@ -652,12 +653,14 @@
       "label": "components/saga",
       "layer": "ui",
       "kind": "ui",
-      "summary": "Ficha (balda de pilas), atlas de la saga (plano DOM+SVG con cámara pura compartida, lentes, capas, hojas y lista accesible), editor de secuencia y de itinerarios.",
+      "summary": "Ficha (balda de pilas), atlas de la saga (plano DOM+SVG con cámara pura compartida, lentes, capas, hojas y lista accesible), editor de secuencia y de itinerarios. Atlas del índice de sagas (components/sagas/atlas): territorios según la relación del lector, mini-ficha, buscador y filtros que atenúan.",
       "files": [
         "src/components/saga/ficha",
         "src/components/saga/atlas",
         "src/components/saga/editor",
-        "src/components/saga/sequence"
+        "src/components/saga/sequence",
+        "src/components/sagas/atlas",
+        "src/components/atlas"
       ],
       "gotchas": [
         "Atlas (src/components/saga/atlas + src/lib/sagas/atlas): plano DOM+SVG, no canvas, con la cámara pura de src/lib/atlas/camera.ts (la misma que el atlas de Entre nosotros). Lente y rol viajan en la URL con history.replaceState (sin viaje al servidor) y `ruta` con router.replace; solo se siembran al montar, así que atrás/adelante no los resincroniza. La cámara se guarda en sessionStorage por saga + lente + orientación.",
@@ -667,7 +670,10 @@
         "La mini-ficha y la lista comparten work-facts.ts. La hoja de itinerarios solo enseña el resumen bajo la ruta activa (la spec decía cada entrada: issue abierta).",
         "Umbrales del zoom semántico (0,5 / 1,6) y encuadre inicial (FIT_MIN_K 0,9) ajustados solo con datos de dev: pendiente de contrastar con sagas de prod.",
         "La ficha (`ficha/`) es una balda de pilas por subsaga (SagaShelf, isla cliente) + NextUpCard («Te toca»); el hero ya no muestra el progreso del universo: el «N de M» es el del itinerario activo. Fase 2: YourPassage (isla async detrás de <Suspense>, solo con sesión y pases), SubsagaDoors, AtlasTeaser (solo si detail.graph !== null) y YourAverage dentro de «La terminaste». SagaCuratorMenu abre un <dialog> modal: con cacheComponents debe cerrarse al navegar o deja inerte la página siguiente (TRAMPAS §26).",
-        "Retirados con el atlas: saga-map-tab, route-view, route-selector, route-block, reading-timeline, timeline/*, map-cta, graph/*, requisite-badge y @xyflow/react. Si ves esos nombres en un doc, está viejo."
+        "Retirados con el atlas: saga-map-tab, route-view, route-selector, route-block, reading-timeline, timeline/*, map-cta, graph/*, requisite-badge y @xyflow/react. Si ves esos nombres en un doc, está viejo.",
+        "Atlas del índice (/sagas; src/components/sagas/atlas + src/lib/sagas/index-atlas): cuatro zonas según la relación del lector (En curso · Sigues · Terminadas · Por descubrir; por tipo de obra sin sesión). La cámara (src/lib/atlas/camera.ts, visible-camera.ts, camera-storage.ts) y los hooks use-atlas-camera / use-dismissable (src/components/atlas) son compartidos por los tres atlas; cada uno pasa su clave COMPLETA de sessionStorage (`sagas-atlas` en el índice).",
+        "Búsqueda y filtros del índice NO filtran en el servidor: la página pinta el catálogo entero y el cliente atenúa. La URL (`q`, `tipo`, `itinerarios`, `coleccion`, `min5`) se escribe con History.prototype.replaceState conservando history.state; con window.history.replaceState a secas el router de Next re-monta la página en cada tecla y el buscador pierde lo escrito. `vista=sigo|universos` es solo foco inicial.",
+        "El índice usa --saga-accent (no --accent). A nivel de zonas (k<0.5) las portadas son visibility:hidden y salen del orden de Tab (#1575); «Ver como lista» es la vía accesible. followSaga/unfollowSaga ignoran el error de Supabase (#1573): la vuelta atrás optimista no salta con un fallo real; el insert duplicado es un error de PK esperado."
       ]
     },
     {
@@ -963,8 +969,14 @@
         "src/lib/sagas/atlas/summary.ts",
         "src/lib/sagas/atlas/route-counter.ts",
         "src/lib/sagas/atlas/list-order.ts",
-        "src/lib/sagas/atlas/visible-camera.ts",
-        "src/lib/sagas/atlas/camera-storage.ts",
+        "src/lib/atlas/visible-camera.ts",
+        "src/lib/atlas/camera-storage.ts",
+        "src/lib/sagas/get-saga-index.ts",
+        "src/lib/sagas/build-saga-index.ts",
+        "src/lib/sagas/index-atlas/model.ts",
+        "src/lib/sagas/index-atlas/layout.ts",
+        "src/lib/sagas/index-atlas/params.ts",
+        "src/lib/sagas/index-atlas/summary.ts",
         "src/lib/sagas/graph-metrics.ts",
         "src/lib/sagas/layout-map.ts",
         "src/lib/sagas/curated-order.ts",
@@ -4628,6 +4640,56 @@
           "node": "c-social",
           "action": "El feed se renderiza; «cargar más» llama a loadMoreFeed (server action)",
           "file": "src/lib/social/feed-actions.ts:11"
+        }
+      ]
+    },
+    {
+      "id": "flow-sagas-index",
+      "name": "Índice de sagas → atlas de sagas y universos",
+      "category": "sagas",
+      "summary": "/sagas pinta un atlas con cuatro territorios según la relación del lector con cada saga (por tipo de obra sin sesión). Todo depende de la sesión: sin `use cache` (regla #437).",
+      "entrypoint": "src/app/sagas/page.tsx",
+      "notes": [
+        "La búsqueda no filtra en el servidor: getSagaIndexData recibe \"\" y el cliente atenúa. Filtros y q van a la URL con History.prototype.replaceState (si no, Next re-monta la página en cada tecla).",
+        "Sin «Te toca» por saga: exigiría derivar el orden completo de cada una de las 107 raíces; el atlas muestra el avance y deja «Te toca» a la ficha.",
+        "vista=sigo y vista=universos son solo foco inicial de cámara; vista=todas y n se ignoran.",
+        "Cámara y hojas compartidas con los otros atlas (src/lib/atlas, src/components/atlas); la clave de sessionStorage es `sagas-atlas`."
+      ],
+      "steps": [
+        {
+          "node": "r-sagas",
+          "action": "/sagas se abre; la página lee la sesión dentro de Suspense",
+          "file": "src/app/sagas/page.tsx"
+        },
+        {
+          "node": "m-sagas",
+          "action": "getSagaIndexData carga sagas, seguidas, pases y colección del lector",
+          "file": "src/lib/sagas/get-saga-index.ts"
+        },
+        {
+          "node": "m-sagas",
+          "action": "buildSagaIndex produce las tarjetas (avance, tipos, itinerarios)",
+          "file": "src/lib/sagas/build-saga-index.ts"
+        },
+        {
+          "node": "m-sagas",
+          "action": "deriveIndexAtlas asigna cada saga a su zona según la relación del lector (o su tipo sin sesión)",
+          "file": "src/lib/sagas/index-atlas/model.ts"
+        },
+        {
+          "node": "m-sagas",
+          "action": "layoutIndexAtlas coloca zonas, comarcas e islas de universo",
+          "file": "src/lib/sagas/index-atlas/layout.ts"
+        },
+        {
+          "node": "c-saga",
+          "action": "SagasAtlas pinta el plano DOM+SVG con la cámara compartida; buscador, filtros que atenúan, mini-ficha y «Ver como lista»",
+          "file": "src/components/sagas/atlas/sagas-atlas.tsx"
+        },
+        {
+          "node": "a-sagas",
+          "action": "Seguir / dejar de seguir desde la mini-ficha (optimista; ignora el error de Supabase: #1573)",
+          "file": "src/lib/sagas/follow-actions.ts"
         }
       ]
     },
