@@ -172,6 +172,7 @@ export function SagasAtlas(props: SagasAtlasProps) {
   const matching = sagas.filter((s) => !dimmed(s)).length;
   // Elegir una coincidencia: acerca la cámara a su caja (raíz a 1,4; subsaga a 3) y abre la ficha de la raíz.
   function pick({ sagaId, childId }: IndexPick) {
+    setAsList(false); // un resultado siempre aterriza en el mapa, con la ficha encima
     const b = boxOf(childId ?? sagaId);
     if (b) focusOn(b, childId ? 3 : 1.4);
     setSelectedId(sagaId);

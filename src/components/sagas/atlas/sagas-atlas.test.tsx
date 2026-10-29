@@ -141,6 +141,16 @@ describe("SagasAtlas", () => {
       fireEvent.click(screen.getByRole("button", { name: "Ver como lista" }));
       expect(screen.queryByRole("dialog")).toBeNull();
     });
+    it("elegir en el buscador con la lista abierta vuelve al mapa y abre la ficha de esa saga", () => {
+      renderSagasAtlas({ cards: [card("a", { name: "Dune" }), card("b", { name: "Mundodisco" })], authenticated: true });
+      fireEvent.click(screen.getByRole("button", { name: "Ver como lista" }));
+      const input = screen.getByRole("combobox");
+      fireEvent.change(input, { target: { value: "mundo" } });
+      fireEvent.keyDown(input, { key: "Enter" });
+      expect(screen.getByRole("button", { name: "Ver como lista" }).getAttribute("aria-pressed")).toBe("false");
+      expect(screen.queryByRole("region", { name: "Sagas en lista" })).toBeNull();
+      expect(screen.getByRole("dialog", { name: "Mundodisco" })).toBeTruthy();
+    });
     it("Tab desde la barra superior llega a la primera saga en orden de lista", () => {
       renderSagasAtlas({ cards: [card("a"), card("b", { started: true })], authenticated: true });
       // jsdom no mueve el foco con Tab: se comprueba el orden de tabulación (orden DOM sin tabindex negativo).
