@@ -66,13 +66,6 @@ describe("buildSagaIndex", () => {
     expect(cards[0].children[1].accent).toBe("verde");
   });
 
-  it("query filtra por nombre de la raíz o de cualquier descendiente", () => {
-    const rows = [saga("u", "UCM"), saga("c", "Iron Man", "u"), saga("x", "Dune")];
-    expect(buildSagaIndex(rows, [], "iron").map((c) => c.name)).toEqual(["UCM"]);
-    expect(buildSagaIndex(rows, [], "dune").map((c) => c.name)).toEqual(["Dune"]);
-    expect(buildSagaIndex(rows, [], "zzz")).toEqual([]);
-  });
-
   it("huérfana (padre inexistente) se trata como raíz; un ciclo no cuelga", () => {
     expect(buildSagaIndex([saga("h", "Huérfana", "no-existe")], []).map((c) => c.name)).toEqual(["Huérfana"]);
     expect(buildSagaIndex([saga("a", "A", "b"), saga("b", "B", "a")], [])).toEqual([]);
@@ -98,7 +91,7 @@ describe("buildSagaIndex", () => {
   });
 
   it("routeCount cuenta las rutas curadas de esa saga (extras.routes)", () => {
-    const cards = buildSagaIndex([saga("u", "U")], [], "", {
+    const cards = buildSagaIndex([saga("u", "U")], [], {
       isAuthenticated: false,
       routes: [
         { saga_id: "u", slug: "orden-recomendado", name: "Orden recomendado" },
@@ -119,7 +112,7 @@ describe("buildSagaIndex", () => {
     const anon = buildSagaIndex(sagas, memberships);
     expect(anon[0].progress).toBeNull();
 
-    const auth = buildSagaIndex(sagas, memberships, "", {
+    const auth = buildSagaIndex(sagas, memberships, {
       isAuthenticated: true,
       routes: [],
       passes: [
@@ -140,7 +133,7 @@ describe("buildSagaIndex", () => {
     const anon = buildSagaIndex(sagas, memberships);
     expect(anon[0].ownedCount).toBe(0);
 
-    const auth = buildSagaIndex(sagas, memberships, "", {
+    const auth = buildSagaIndex(sagas, memberships, {
       isAuthenticated: true,
       routes: [],
       passes: [
@@ -160,13 +153,13 @@ describe("buildSagaIndex", () => {
       passes: [],
       followedIds: new Set<string>(),
     };
-    const conRuta = buildSagaIndex([saga("u", "U")], [], "", {
+    const conRuta = buildSagaIndex([saga("u", "U")], [], {
       ...base,
       routeChoices: [{ saga_id: "u", route_slug: "orden-recomendado" }],
     });
     expect(conRuta[0].progress?.readingLabel).toBe("Orden recomendado");
 
-    const sintetica = buildSagaIndex([saga("u", "U")], [], "", {
+    const sintetica = buildSagaIndex([saga("u", "U")], [], {
       ...base,
       routeChoices: [{ saga_id: "u", route_slug: "lectura" }],
     });
@@ -194,7 +187,6 @@ describe("buildSagaIndex", () => {
     const cards = buildSagaIndex(
       [saga("u", "Universo"), saga("c", "Hija", "u")],
       [member("u", "book", "b1"), member("u", "book", "b2"), member("c", "book", "b3")],
-      "",
       {
         isAuthenticated: false,
         routes: [],
@@ -217,7 +209,7 @@ describe("buildSagaIndex", () => {
     const sinCreditos = buildSagaIndex([saga("u", "U")], [member("u", "book", "b1")]);
     expect(sinCreditos[0].creator).toBeNull();
 
-    const empate = buildSagaIndex([saga("u", "U")], [member("u", "book", "b1"), member("u", "book", "b2")], "", {
+    const empate = buildSagaIndex([saga("u", "U")], [member("u", "book", "b1"), member("u", "book", "b2")], {
       isAuthenticated: false,
       routes: [],
       passes: [],
@@ -232,7 +224,7 @@ describe("buildSagaIndex", () => {
   });
 
   it("isFollowed refleja extras.followedIds", () => {
-    const cards = buildSagaIndex([saga("u", "U"), saga("v", "V")], [], "", {
+    const cards = buildSagaIndex([saga("u", "U"), saga("v", "V")], [], {
       isAuthenticated: true,
       routes: [],
       passes: [],
@@ -252,7 +244,7 @@ describe("started y lastTouchedAt", () => {
   it("una obra en curso o leída la marca empezada; planeada, no", () => {
     const sagas = [saga("a", "A"), saga("b", "B"), saga("c", "C")];
     const ms = [member("a", "book", "a1"), member("b", "book", "b1"), member("c", "book", "c1")];
-    const cards = buildSagaIndex(sagas, ms, "", extras([
+    const cards = buildSagaIndex(sagas, ms, extras([
       { item_type: "book", item_id: "a1", status: "in_progress", updated_at: "2026-10-01T00:00:00Z" },
       { item_type: "book", item_id: "b1", status: "completed", updated_at: "2026-10-05T00:00:00Z" },
       { item_type: "book", item_id: "c1", status: "planned", updated_at: "2026-10-09T00:00:00Z" },
@@ -265,13 +257,13 @@ describe("started y lastTouchedAt", () => {
   });
 
   it("solo cuentan las obras contadas: una opcional empezada no la empieza", () => {
-    const cards = buildSagaIndex([saga("a", "A")], [member("a", "book", "x", true), member("a", "book", "y")], "",
+    const cards = buildSagaIndex([saga("a", "A")], [member("a", "book", "x", true), member("a", "book", "y")],
       extras([{ item_type: "book", item_id: "x", status: "in_progress", updated_at: "2026-10-01T00:00:00Z" }]));
     expect(cards[0].started).toBe(false);
   });
 
   it("lastTouchedAt es el pase más reciente del subárbol, también de una subsaga", () => {
-    const cards = buildSagaIndex([saga("u", "U"), saga("h", "H", "u")], [member("u", "book", "u1"), member("h", "book", "h1")], "",
+    const cards = buildSagaIndex([saga("u", "U"), saga("h", "H", "u")], [member("u", "book", "u1"), member("h", "book", "h1")],
       extras([
         { item_type: "book", item_id: "u1", status: "completed", updated_at: "2026-09-01T00:00:00Z" },
         { item_type: "book", item_id: "h1", status: "in_progress", updated_at: "2026-10-02T00:00:00Z" },

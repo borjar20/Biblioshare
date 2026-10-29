@@ -84,12 +84,11 @@ const EMPTY_EXTRAS: SagaIndexExtras = {
 
 // Índice de /sagas (spec fase 3.5 §1, ampliado 2026-07-29): tarjetas SOLO de
 // las raíces; las subsagas van como chips de su raíz. Un ítem con membresía
-// en varias sagas del mismo árbol cuenta una vez. `query` deja pasar una raíz
-// si su nombre o el de cualquier descendiente contiene el texto.
+// en varias sagas del mismo árbol cuenta una vez. El buscador del atlas filtra en
+// el cliente: aquí van todas las raíces.
 export function buildSagaIndex(
   sagas: SagaIndexSagaRow[],
   memberships: SagaIndexMembershipRow[],
-  query = "",
   extras: SagaIndexExtras = EMPTY_EXTRAS,
 ): SagaIndexCard[] {
   const byId = new Map(sagas.map((s) => [s.id, s]));
@@ -184,7 +183,6 @@ export function buildSagaIndex(
 
   // Raíz: sin padre, o con padre que no está en el catálogo (defensivo).
   const roots = sagas.filter((s) => s.parent_saga_id === null || !byId.has(s.parent_saga_id));
-  const normalized = query.trim().toLowerCase();
 
   const cards: SagaIndexCard[] = [];
   for (const root of roots) {
@@ -201,7 +199,6 @@ export function buildSagaIndex(
       queue.push(...(byParent.get(node.id) ?? []));
     }
 
-    if (normalized && !tree.some((s) => s.name.toLowerCase().includes(normalized))) continue;
 
     const titles = new Set<string>();
     for (const node of tree) {

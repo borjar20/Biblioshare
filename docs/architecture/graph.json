@@ -311,7 +311,7 @@
       "gotchas": [
         "/saga/[id]/mapa es un shell síncrono con <Suspense fallback={<AtlasSkeleton/>}>; todo lo que lee sesión va dentro, SIN `use cache` (regla #437). Los redirects legados (`/como-leerla`, `?ruta=publicacion`, `?orden=publicacion`) llegan como redirect de cliente en streaming: HTTP 200, no 307.",
         "`show_map` NO condiciona el atlas: solo decide si la ficha enseña la tarjeta AtlasTeaser. El atlas se pinta con shelfGraph aunque el interruptor esté apagado.",
-        "/sagas es un shell síncrono con <Suspense fallback={<SagasAtlasSkeleton/>}> que lee la sesión dentro (getSagaIndexData con consulta vacía), SIN `use cache` (regla #437). Está en fullscreen-routes.ts. La rejilla (saga-index-card, saga-index-filters, saga-load-more, filter-saga-index) está retirada: si ves esos nombres, el doc está viejo."
+        "/sagas es un shell síncrono con <Suspense fallback={<SagasAtlasSkeleton/>}> que lee la sesión dentro (getSagaIndexData, sin consulta), SIN `use cache` (regla #437). Está en fullscreen-routes.ts. La rejilla (saga-index-card, saga-index-filters, saga-load-more, filter-saga-index) está retirada: si ves esos nombres, el doc está viejo."
       ]
     },
     {
@@ -4524,7 +4524,7 @@
       "summary": "/sagas pinta un atlas con cuatro territorios según la relación del lector con cada saga (por tipo de obra sin sesión). Todo depende de la sesión: sin `use cache` (regla #437).",
       "entrypoint": "src/app/sagas/page.tsx",
       "notes": [
-        "La búsqueda no filtra en el servidor: getSagaIndexData recibe \"\" y el cliente atenúa. Filtros y q van a la URL con History.prototype.replaceState (si no, Next re-monta la página en cada tecla).",
+        "La búsqueda no filtra en el servidor: getSagaIndexData no recibe consulta y el cliente atenúa. Filtros y q van a la URL con History.prototype.replaceState (si no, Next re-monta la página en cada tecla); como el router no la conoce, al confirmar un estado suyo (revalidatePath de seguir) repone la del montaje y un efecto de SagasAtlas vuelve a escribir la buena.",
         "Sin «Te toca» por saga: exigiría derivar el orden completo de cada una de las 107 raíces; el atlas muestra el avance y deja «Te toca» a la ficha.",
         "vista=sigo y vista=universos son solo foco inicial de cámara; vista=todas y n se ignoran.",
         "Cámara y hojas compartidas con los otros atlas (src/lib/atlas, src/components/atlas); la clave de sessionStorage es `sagas-atlas`."

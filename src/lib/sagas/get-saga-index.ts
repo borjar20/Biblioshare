@@ -24,7 +24,6 @@ export type SagaIndexData = {
 // progreso/colección, todo derivado, sin tablas nuevas).
 export async function getSagaIndexData(
   supabase: SupabaseServerClient,
-  query: string,
 ): Promise<SagaIndexData> {
   const user = await getCurrentUser();
 
@@ -84,7 +83,7 @@ export async function getSagaIndexData(
   );
 
   return {
-    cards: buildSagaIndex(sagasRes.data ?? [], itemsRes.data ?? [], query, {
+    cards: buildSagaIndex(sagasRes.data ?? [], itemsRes.data ?? [], {
       isAuthenticated: user !== null,
       routes: routesRes.data ?? [],
       passes: passesRes.data ?? [],

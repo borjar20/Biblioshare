@@ -22,7 +22,6 @@ export default function SagasIndexPage() {
 
 async function SagasAtlasContent() {
   const supabase = await createClient();
-  // `""`: sin filtro de nombre en buildSagaIndex (solo filtra con una consulta no vacía).
-  const data = await getSagaIndexData(supabase, "");
+  const data = await getSagaIndexData(supabase);
   return <SagasAtlas cards={data.cards} authenticated={data.isAuthenticated} canCurate={hasMinRole(data.viewerRole, "collaborator")} />;
 }
