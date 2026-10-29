@@ -40,7 +40,7 @@ describe("IndexSearch", () => {
   });
   it("sin coincidencias avisa y no elige nada", () => {
     const { onPick } = show("zzz");
-    expect(screen.getByText("Ninguna saga coincide")).toBeTruthy();
+    expect(screen.getByRole("status").textContent).toBe("Ninguna saga coincide");
     fireEvent.keyDown(screen.getByRole("combobox"), { key: "Enter" });
     expect(onPick).not.toHaveBeenCalled();
   });

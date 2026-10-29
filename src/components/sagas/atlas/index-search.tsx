@@ -84,7 +84,7 @@ export const IndexSearch = memo(function IndexSearch({ sagas, query, onQuery, on
             {o.universe && <small>{t("inUniverse", { name: o.universe })}</small>}
           </li>
         ))}
-        {open && options.length === 0 && <li role="presentation" className={styles.searchEmpty}>{t("noMatches")}</li>}
+        {open && options.length === 0 && <li role="status" className={styles.searchEmpty}>{t("noMatches")}</li>}
       </ul>
     </div>
   );
