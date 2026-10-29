@@ -108,9 +108,9 @@ export function IndexSheet({ saga, authenticated, anchor, viewport, insets, pend
             <ul className={styles.shChildList}>
               {saga.children.map((c) => (
                 <li key={c.id} className={styles.shChild}>
-                  <a href={c.href} className={styles.shChildLink}>
+                  <Link href={c.href} className={styles.shChildLink}>
                     {c.name}<span>{t("atlas.sheet.titleCount", { count: c.titleCount })}</span>
-                  </a>
+                  </Link>
                   <button type="button" className={styles.shMap} aria-label={t("atlas.sheet.showInMap", { name: c.name })}
                     onClick={() => onChild(c.id)}>◎</button>
                 </li>

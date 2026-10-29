@@ -1,5 +1,6 @@
 "use client";
 import Image from "next/image";
+import Link from "next/link";
 import { memo, type CSSProperties } from "react";
 import { useTranslations } from "next-intl";
 import { SAGA_ACCENT } from "@/lib/sagas/accents";
@@ -22,8 +23,8 @@ export function sagaInitials(name: string): string {
 }
 
 /** Una saga del plano (spec 2026-10-28 índice §5.1). La raíz es un botón (abre la mini-ficha);
- *  una subsaga, un enlace real fuera del orden de tabulación (se llega a ella por la mini-ficha
- *  y la lista). En `zones` sigue montada con `visibility: hidden`, como las obras del atlas de
+ *  una subsaga, un enlace real (sin prefetch: hay decenas en el plano) fuera del orden de
+ *  tabulación (se llega a ella por la mini-ficha y la lista). En `zones` sigue montada con `visibility: hidden`, como las obras del atlas de
  *  la saga: al volver a acercar, cada portada anima desde su sitio. `memo` y handlers por id
  *  (estables): un fotograma de cámara que no cambia de nivel no la vuelve a pintar. */
 export const IndexSaga = memo(function IndexSaga({ saga, box, level, dimmed, selected, progress, zoneOf, onSelect, onFocus }: {
@@ -57,10 +58,10 @@ export const IndexSaga = memo(function IndexSaga({ saga, box, level, dimmed, sel
 
   if (!root) {
     return (
-      <a href={saga.href} className={styles.saga} data-saga-id={saga.id} data-child="" data-dimmed={dimmed || undefined}
+      <Link href={saga.href} prefetch={false} className={styles.saga} data-saga-id={saga.id} data-child="" data-dimmed={dimmed || undefined}
         aria-label={t("atlas.sagaLabel", { name: saga.name, count: saga.titleCount })} tabIndex={-1} style={style}>
         {cover}
-      </a>
+      </Link>
     );
   }
 

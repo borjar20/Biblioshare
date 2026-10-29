@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useId, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import type { IndexAtlasModel, IndexAtlasSaga } from "@/lib/sagas/index-atlas/model";
@@ -9,7 +10,8 @@ const bold = (chunks: ReactNode) => <b>{chunks}</b>;
 
 /** Vista de lista del atlas (spec 2026-10-28 índice §5.4): la misma información que el plano, en
  *  enlaces normales y en el mismo orden. Una saga que no cumple búsqueda o filtros se atenúa y
- *  lo dice en texto oculto, pero no desaparece. Se coloca entre la barra y el dock con `insets`. */
+ *  lo dice en texto oculto, pero no desaparece. Se coloca entre la barra y el dock con `insets`.
+ *  Sin prefetch: son todas las sagas del catálogo a la vez. */
 export function IndexList({ model, dimmed, insets }: {
   model: IndexAtlasModel; dimmed: (s: IndexAtlasSaga) => boolean; insets: Insets;
 }) {
@@ -20,22 +22,22 @@ export function IndexList({ model, dimmed, insets }: {
     const off = dimmed(s);
     return (
       <li key={s.id} className={styles.listItem} data-saga-id={s.id} data-dimmed={off || undefined}>
-        <a href={s.href} className={styles.listLink}>
+        <Link href={s.href} prefetch={false} className={styles.listLink}>
           <span className={styles.listName}>{s.name}</span>
           <span className={styles.listMeta}>
             {t("atlas.sheet.titleCount", { count: s.titleCount })}
             {progress && <> · {t.rich("atlas.sheet.progress", { completed: progress.completed, total: progress.total, b: bold })}</>}
           </span>
           {off && <span className={styles.srOnly}>{t("atlas.list.notMatching")}</span>}
-        </a>
+        </Link>
         {s.children.length > 0 && (
           <ul className={styles.listChildren}>
             {s.children.map((c) => (
               <li key={c.id}>
-                <a href={c.href} className={styles.listLink}>
+                <Link href={c.href} prefetch={false} className={styles.listLink}>
                   <span className={styles.listName}>{c.name}</span>
                   <span className={styles.listMeta}>{t("atlas.sheet.titleCount", { count: c.titleCount })}</span>
-                </a>
+                </Link>
               </li>
             ))}
           </ul>
