@@ -91,31 +91,40 @@ export default function PublicProfilePage(props: PublicProfileProps) {
   );
 }
 
-// Fantasma del shell del perfil: cabecera (avatar 60/84 + nombre + chips),
-// pestañas y el esqueleto genérico de sección. Mismo contenedor que el real
-// para que el intercambio no mueva nada (CLS, #284).
+// Rejilla del perfil, compartida por el árbol real y su esqueleto para que no
+// se desincronicen (CLS, #284).
+const PROFILE_LAYOUT_CLASS = `relative mx-auto -mt-12 grid w-full ${SHELL_APP} gap-6 px-4 sm:px-6 lg:-mt-[70px] lg:grid-cols-[340px_minmax(0,1fr)] lg:gap-11 lg:px-8`;
+
+// Fantasma del shell del perfil: replica el árbol de ProfileContent (cabecera,
+// rejilla con columna de identidad y columna de pestañas) para que el
+// intercambio no mueva nada (CLS, #284).
 function ProfileShellSkeleton() {
   return (
-    <div className={`mx-auto flex w-full ${SHELL_APP} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}>
-      <div className="flex flex-col gap-3 lg:gap-4">
-        <div className="flex items-start gap-4 lg:gap-[18px]">
-          <Skeleton className="h-[60px] w-[60px] shrink-0 rounded-full lg:h-[84px] lg:w-[84px]" />
-          <div className="flex min-w-0 flex-1 flex-col">
-            <Skeleton className="h-7 w-44 rounded-md lg:h-8" />
-            <SkeletonLine className="mt-2 h-3 w-28" />
+    <div className="flex w-full flex-col pb-8">
+      <HeroSkeleton />
+      <div className={PROFILE_LAYOUT_CLASS}>
+        <aside className="flex min-w-0 flex-col gap-5">
+          <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-3 lg:grid-cols-1 lg:gap-y-4">
+            <div className="col-start-1 row-start-1 w-fit rounded-full border-4 border-background">
+              <Skeleton className="h-[84px] w-[84px] rounded-full lg:h-[104px] lg:w-[104px]" />
+            </div>
+            <div className="col-span-2 row-start-2 min-w-0 lg:col-span-1">
+              <Skeleton className="h-[29px] w-44 rounded-md lg:h-[36px]" />
+              <SkeletonLine className="mt-1 h-3 w-28" />
+            </div>
           </div>
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {["w-20", "w-24", "w-20", "w-28"].map((w, i) => (
-            <Skeleton key={i} className={`h-6 rounded-full ${w}`} />
-          ))}
+          <FiguresSkeleton />
+          <NowSkeleton />
+          <YearSkeleton />
+        </aside>
+        <div className="flex min-w-0 flex-col gap-6 lg:pt-[86px]">
+          <div className="flex gap-6 border-b border-border pb-3">
+            <SkeletonLine className="w-20" />
+            <SkeletonLine className="w-24" />
+          </div>
+          <ProfileSectionSkeleton />
         </div>
       </div>
-      <div className="flex gap-6 border-b border-border pb-3">
-        <SkeletonLine className="w-20" />
-        <SkeletonLine className="w-24" />
-      </div>
-      <ProfileSectionSkeleton />
     </div>
   );
 }
@@ -202,10 +211,7 @@ async function ProfileContent({ params, searchParams }: PublicProfileProps) {
       <Suspense fallback={<HeroSkeleton />}>
         <ProfileHero userId={profile.userId} name={name} />
       </Suspense>
-      <div
-        data-testid="profile-layout"
-        className={`relative mx-auto -mt-12 grid w-full ${SHELL_APP} gap-6 px-4 sm:px-6 lg:-mt-[70px] lg:grid-cols-[340px_minmax(0,1fr)] lg:gap-11 lg:px-8`}
-      >
+      <div data-testid="profile-layout" className={PROFILE_LAYOUT_CLASS}>
         <aside className="flex min-w-0 flex-col gap-5">
           <ProfileIdentity
             profile={profile}

@@ -93,4 +93,15 @@ describe("composición del perfil visual", () => {
       expect(findElement(result, name), name).toBeDefined();
     }
   });
+
+  it("al visitante le pasa el botón de seguir y las acciones de seguridad; al dueño no", async () => {
+    mocks.user = { id: "visitor" };
+    const visitor = findElement(await profileContent(), "ProfileIdentity") as ReactElement<Record<string, unknown>>;
+    expect(visitor.props.followButton).toBeDefined();
+    expect(visitor.props.safetyActions).toBeDefined();
+
+    mocks.user = { id: "owner" };
+    const owner = findElement(await profileContent(), "ProfileIdentity") as ReactElement<Record<string, unknown>>;
+    expect(owner.props.followButton).toBeUndefined();
+  });
 });
