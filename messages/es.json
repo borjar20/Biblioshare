@@ -905,6 +905,28 @@
     }
   },
   "profile": {
+    "visual": {
+      "fanLabel": "Destacados de {name}",
+      "memberSinceInline": "desde {year}",
+      "figures": {
+        "books": "{count, plural, one {libro} other {libros}}",
+        "movies": "{count, plural, one {película} other {películas}}",
+        "series": "{count, plural, one {serie} other {series}}",
+        "rating": "nota media",
+        "noRating": "—",
+        "noRatingHint": "Aún no hay notas suficientes"
+      },
+      "now": { "title": "Leyendo ahora", "also": "También en curso" },
+      "year": {
+        "title": "Su {year}",
+        "titleOwn": "Tu {year}",
+        "works": "{count, plural, one {obra} other {obras}}",
+        "bestMonth": "Su mejor mes, {month}: {count, plural, one {# obra} other {# obras}}.",
+        "bestMonthOwn": "Tu mejor mes, {month}: {count, plural, one {# obra} other {# obras}}.",
+        "topRated": "La mejor valorada: <title>{name}</title>.",
+        "chartLabel": "Obras terminadas por mes en {year}"
+      }
+    },
     "compareWith": "Comparar",
     "compareWithHint": "Ver qué obras compartís en Entre nosotros",
     "empty": "Este perfil todavía no ha añadido nada a su biblioteca.",
