@@ -19,7 +19,11 @@ vi.mock("@/lib/social/follows", () => ({
 }));
 vi.mock("@/lib/social/block-state", () => ({ getBlockState: async () => "none" }));
 vi.mock("@/lib/library/get-library-stats", () => ({ getLibraryStats: async () => ({}) }));
-vi.mock("@/components/profile-header", () => ({ ProfileHeader: () => null }));
+vi.mock("@/components/profile/profile-hero", () => ({ ProfileHero: function ProfileHero() { return null; } }));
+vi.mock("@/components/profile/profile-identity", () => ({ ProfileIdentity: function ProfileIdentity() { return null; } }));
+vi.mock("@/components/profile/profile-figures-server", () => ({ ProfileFigures: function ProfileFigures() { return null; } }));
+vi.mock("@/components/profile/profile-now-server", () => ({ ProfileNow: function ProfileNow() { return null; } }));
+vi.mock("@/components/profile/profile-year-server", () => ({ ProfileYear: function ProfileYear() { return null; } }));
 vi.mock("@/components/section-tabs", () => ({ SectionTabs: () => null }));
 vi.mock("@/components/social/follow-button", () => ({ FollowButton: () => null }));
 vi.mock("@/components/social/notify-bell", () => ({ NotifyBell: () => null }));
@@ -79,5 +83,14 @@ describe("contexto de quien mira las Experiencias del perfil", () => {
 
     expect(tab).toBeDefined();
     expect(tab!.props).toMatchObject({ userId: "owner", viewerId });
+  });
+});
+
+describe("composición del perfil visual", () => {
+  it("monta cabecera, identidad, cifras, leyendo ahora y su año", async () => {
+    const result = await profileContent();
+    for (const name of ["ProfileHero", "ProfileIdentity", "ProfileFigures", "ProfileNow", "ProfileYear"]) {
+      expect(findElement(result, name), name).toBeDefined();
+    }
   });
 });

@@ -22,7 +22,17 @@ import { FollowRequests } from "@/components/social/follow-requests";
 import { PrivateProfileStub } from "@/components/social/private-profile-stub";
 import { getLibraryStats } from "@/lib/library/get-library-stats";
 import type { ItemType } from "@/lib/catalog/types";
-import { ProfileHeader } from "@/components/profile-header";
+import { ProfileHero } from "@/components/profile/profile-hero";
+import { ProfileIdentity } from "@/components/profile/profile-identity";
+import { ProfileFigures } from "@/components/profile/profile-figures-server";
+import { ProfileNow } from "@/components/profile/profile-now-server";
+import { ProfileYear } from "@/components/profile/profile-year-server";
+import {
+  FiguresSkeleton,
+  HeroSkeleton,
+  NowSkeleton,
+  YearSkeleton,
+} from "@/components/profile/profile-skeletons";
 import { SectionTabs, type SectionTab } from "@/components/section-tabs";
 import {
   Skeleton,
@@ -186,77 +196,93 @@ async function ProfileContent({ params, searchParams }: PublicProfileProps) {
       ? await getFollowNotify(supabase, user?.id ?? null, profile.userId)
       : [];
 
+  const name = profile.displayName || profile.username;
   return (
-    <div className={`mx-auto flex w-full ${SHELL_APP} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}>
-      <ProfileHeader
-        profile={profile}
-        stats={stats}
-        isOwner={isOwner}
-        counts={counts}
-        followButton={
-          !isOwner && blockState === "none" ? (
-            <div className="flex flex-wrap items-start gap-2">
-              <FollowButton
-                targetUserId={profile.userId}
-                targetIsPublic={profile.isPublic}
-                state={followState}
-                viewerLoggedIn={!!user}
-              />
-              {followState === "accepted" && (
-                <NotifyBell
-                  targetUserId={profile.userId}
-                  username={profile.username}
-                  initial={notifyEvents}
-                />
-              )}
-              {/* Entre nosotros sin guardar grupo (#1484): solo con seguimiento aceptado. */}
-              {followState === "accepted" && (
-                <CompareWithLink userId={profile.userId} />
-              )}
-            </div>
-          ) : undefined
-        }
-        safetyActions={
-          user && !isOwner && blockState !== "blocked_by" ? (
-            <ProfileSafetyActions targetUserId={profile.userId} initialState={blockState} />
-          ) : undefined
-        }
-      />
-
-      {/* Solicitudes de seguimiento: en el mockup v2 se mudan al desplegable de
-          Notificaciones (P1/D3), que es del plan 07. Hasta entonces siguen
-          aquí. Visibilidad y admin ya viven en /ajustes (⚙ de la cabecera). */}
-      {isOwner && <FollowRequests requests={pendingRequests} />}
-
-      <SectionTabs active={tab} basePath={basePath} isOwner={isOwner} />
-      {tab==="experiencias"&&<Suspense fallback={<ProfileSectionSkeleton/>}><ExperiencesTab userId={profile.userId} viewerId={user?.id??null} basePath={basePath} params={parsedParams} isOwner={isOwner}/></Suspense>}
-
-      {tab === "actividad" && (
-        <Suspense fallback={<ProfileSectionSkeleton />}>
-          <ActivityTab
-            userId={profile.userId}
-            viewerLoggedIn={!!user}
+    <div className="flex w-full flex-col pb-8">
+      <Suspense fallback={<HeroSkeleton />}>
+        <ProfileHero userId={profile.userId} name={name} />
+      </Suspense>
+      <div
+        data-testid="profile-layout"
+        className={`relative mx-auto -mt-12 grid w-full ${SHELL_APP} gap-6 px-4 sm:px-6 lg:-mt-[70px] lg:grid-cols-[340px_minmax(0,1fr)] lg:gap-11 lg:px-8`}
+      >
+        <aside className="flex min-w-0 flex-col gap-5">
+          <ProfileIdentity
+            profile={profile}
             isOwner={isOwner}
+            counts={counts}
+            followButton={
+              !isOwner && blockState === "none" ? (
+                <div className="flex flex-wrap items-start gap-2">
+                  <FollowButton
+                    targetUserId={profile.userId}
+                    targetIsPublic={profile.isPublic}
+                    state={followState}
+                    viewerLoggedIn={!!user}
+                  />
+                  {followState === "accepted" && (
+                    <NotifyBell
+                      targetUserId={profile.userId}
+                      username={profile.username}
+                      initial={notifyEvents}
+                    />
+                  )}
+                  {/* Entre nosotros sin guardar grupo (#1484): solo con seguimiento aceptado. */}
+                  {followState === "accepted" && (
+                    <CompareWithLink userId={profile.userId} />
+                  )}
+                </div>
+              ) : undefined
+            }
+            safetyActions={
+              user && !isOwner && blockState !== "blocked_by" ? (
+                <ProfileSafetyActions targetUserId={profile.userId} initialState={blockState} />
+              ) : undefined
+            }
           />
-        </Suspense>
-      )}
+          <Suspense fallback={<FiguresSkeleton />}>
+            <ProfileFigures userId={profile.userId} stats={stats} />
+          </Suspense>
+          <Suspense fallback={<NowSkeleton />}>
+            <ProfileNow userId={profile.userId} />
+          </Suspense>
+          <Suspense fallback={<YearSkeleton />}>
+            <ProfileYear userId={profile.userId} isOwner={isOwner} />
+          </Suspense>
+        </aside>
+        <div className="flex min-w-0 flex-col gap-6 lg:pt-[86px]">
+          {isOwner && <FollowRequests requests={pendingRequests} />}
+          <SectionTabs active={tab} basePath={basePath} isOwner={isOwner} />
+          {tab==="experiencias"&&<Suspense fallback={<ProfileSectionSkeleton/>}><ExperiencesTab userId={profile.userId} viewerId={user?.id??null} basePath={basePath} params={parsedParams} isOwner={isOwner}/></Suspense>}
 
-      {tab === "coleccion" && (
-        <Suspense
-          key={`${itemType ?? ""}:${profile.hideDropped}`}
-          fallback={<SkeletonCoverGrid count={10} />}
-        >
-          <CollectionTab
-            userId={profile.userId}
-            basePath={basePath}
-            itemType={itemType}
-            // Preferencia del DUEÑO, no del visitante: si decide que sus
-            // abandonados no cuentan como su biblioteca, tampoco los enseña
-            // (spec, alcance).
-            hideDropped={profile.hideDropped}
-          />
-        </Suspense>
-      )}
+          {tab === "actividad" && (
+            <Suspense fallback={<ProfileSectionSkeleton />}>
+              <ActivityTab
+                userId={profile.userId}
+                viewerLoggedIn={!!user}
+                isOwner={isOwner}
+              />
+            </Suspense>
+          )}
+
+          {tab === "coleccion" && (
+            <Suspense
+              key={`${itemType ?? ""}:${profile.hideDropped}`}
+              fallback={<SkeletonCoverGrid count={10} />}
+            >
+              <CollectionTab
+                userId={profile.userId}
+                basePath={basePath}
+                itemType={itemType}
+                // Preferencia del DUEÑO, no del visitante: si decide que sus
+                // abandonados no cuentan como su biblioteca, tampoco los enseña
+                // (spec, alcance).
+                hideDropped={profile.hideDropped}
+              />
+            </Suspense>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
