@@ -7,7 +7,7 @@ export function HeroSkeleton() {
 export function FiguresSkeleton() {
   return (
     <div aria-hidden="true" className="grid grid-cols-4 gap-2">
-      {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-[48px] rounded-md" />)}
+      {[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-12 rounded-md lg:h-[52px]" />)}
     </div>
   );
 }
@@ -16,10 +16,10 @@ export function NowSkeleton() {
 }
 export function YearSkeleton() {
   return (
-    <div aria-hidden="true" className="rounded-card border border-border p-4">
-      <SkeletonLine className="w-24" />
+    <div aria-hidden="true" className="rounded-card border border-border bg-surface p-4">
+      <div className="flex h-[33px] items-center"><SkeletonLine className="w-24" /></div>
       <Skeleton className="mt-3 h-[70px] rounded-md" />
-      <SkeletonLine className="mt-2 w-3/4" />
+      <div className="mt-2 flex h-[19px] items-center"><SkeletonLine className="w-3/4" /></div>
     </div>
   );
 }

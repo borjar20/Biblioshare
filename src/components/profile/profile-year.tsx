@@ -19,7 +19,7 @@ export function YearView({ data, isOwner }: { data: ProfileYear | null; isOwner:
         <h2 className="font-serif text-[17px] font-semibold">
           {isOwner ? t("titleOwn", { year: data.year }) : t("title", { year: data.year })}
         </h2>
-        <span className="font-serif text-[22px] font-bold text-gold">
+        <span className="font-serif text-[22px] font-bold text-gold-ink">
           {data.total} <span className="font-mono text-[11px] font-medium uppercase text-muted-foreground">{t("works", { count: data.total })}</span>
         </span>
       </div>
@@ -27,7 +27,7 @@ export function YearView({ data, isOwner }: { data: ProfileYear | null; isOwner:
         {data.byMonth.map((v, i) => (
           <div key={i} className="flex flex-1 flex-col items-center gap-1">
             <div
-              className={`w-full rounded-[3px] ${i === data.bestMonth ? "bg-gold" : v ? "bg-accent/55" : "bg-foreground/[.07]"}`}
+              className={`w-full rounded-[3px] ${i === data.bestMonth ? "bg-gold-graphic" : v ? "bg-accent/55" : "bg-foreground/[.07]"}`}
               style={{ height: `${(v / max) * 56 + 2}px` }}
               title={`${monthName(i)}: ${v}`}
             />

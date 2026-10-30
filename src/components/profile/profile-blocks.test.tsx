@@ -7,6 +7,7 @@ import { HeroView } from "./profile-hero";
 import { FiguresView } from "./profile-figures";
 import { YearView } from "./profile-year";
 import { NowView } from "./profile-now";
+import { CoverTile } from "./cover-tile";
 
 vi.mock("next/image", () => ({ default: () => null }));
 
@@ -26,6 +27,21 @@ describe("HeroView", () => {
   it("el mosaico es decorativo", () => {
     wrap(<HeroView name="Mar" model={{ fan: [], mosaic: [cover("x"), cover("y"), cover("z")] }} />);
     expect(screen.getByTestId("profile-hero-mosaic").getAttribute("aria-hidden")).toBe("true");
+  });
+});
+
+describe("HeroView con mosaico y abanico", () => {
+  it("pinta ambos a la vez", () => {
+    wrap(<HeroView name="Mar" model={{ fan: [cover("a")], mosaic: [cover("x"), cover("y"), cover("z")] }} />);
+    expect(screen.getByTestId("profile-hero-mosaic")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Obra a" })).toBeTruthy();
+  });
+});
+
+describe("CoverTile", () => {
+  it("sin portada enseña las iniciales", () => {
+    wrap(<CoverTile cover={{ title: "Obra a", coverUrl: null }} sizes="56px" />);
+    expect(screen.getByText("OA")).toBeTruthy();
   });
 });
 
@@ -50,6 +66,15 @@ describe("YearView", () => {
     const data = { year: 2026, total: 3, byMonth: [1, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0], bestMonth: 6, topRated: null };
     wrap(<YearView data={data} isOwner />);
     expect(screen.getByText("Tu 2026")).toBeTruthy();
+  });
+});
+
+describe("YearView visitante", () => {
+  it("titula «Su» y enlaza la mejor valorada", () => {
+    const data = { year: 2026, total: 3, byMonth: [1, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0], bestMonth: 6, topRated: { ...cover("dune"), title: "Dune", href: "/libro/dune" } };
+    wrap(<YearView data={data} isOwner={false} />);
+    expect(screen.getByText("Su 2026")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Dune" }).getAttribute("href")).toBe("/libro/dune");
   });
 });
 

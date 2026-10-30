@@ -14,11 +14,11 @@ export function NowView({ items, pet }: { items: NowItem[]; pet: ReactNode }) {
   return (
     <section data-testid="profile-now" className="relative overflow-hidden rounded-card border border-border bg-surface">
       {first?.coverUrl && (
-        <div aria-hidden="true" className="absolute -inset-8 opacity-45 blur-2xl" style={{ backgroundImage: `url(${first.coverUrl})`, backgroundSize: "cover" }} />
+        <div aria-hidden="true" className="absolute -inset-8 opacity-45 blur-2xl" style={{ backgroundImage: `url("${first.coverUrl}")`, backgroundSize: "cover" }} />
       )}
       <div className="relative flex items-center gap-3.5 p-3.5">
         {first && (
-          <Link href={first.href} className="w-14 shrink-0"><CoverTile cover={first} sizes="56px" /></Link>
+          <Link href={first.href} aria-hidden="true" tabIndex={-1} className="w-14 shrink-0"><CoverTile cover={first} sizes="56px" /></Link>
         )}
         <div className="min-w-0 flex-1">
           {first && (
@@ -34,7 +34,7 @@ export function NowView({ items, pet }: { items: NowItem[]; pet: ReactNode }) {
                   aria-label={first.title}
                   className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-foreground/10"
                 >
-                  <div className="h-full rounded-full bg-gold" style={{ width: `${first.progressPercent}%` }} />
+                  <div className="h-full rounded-full bg-gold-graphic" style={{ width: `${first.progressPercent}%` }} />
                 </div>
               )}
               {first.progressLabel && <p className="mt-1 text-xs text-muted-foreground">{first.progressLabel}</p>}
@@ -48,7 +48,7 @@ export function NowView({ items, pet }: { items: NowItem[]; pet: ReactNode }) {
           <span className="font-mono text-[10.5px] uppercase tracking-[.08em] text-muted-foreground">{t("also")}</span>
           {rest.map((c) => (
             <Link key={c.href} href={c.href} className="flex min-h-11 items-center gap-2 rounded-full bg-foreground/[.06] py-1 pr-3 pl-1 text-[12.5px]">
-              <CoverTile cover={c} sizes="22px" className="w-[22px]" />
+              <CoverTile cover={c} sizes="22px" className="w-[22px]" decorative initialsClassName="text-[9px]" />
               <span className="truncate">{c.title}{c.progressLabel ? ` · ${c.progressLabel}` : ""}</span>
             </Link>
           ))}

@@ -9,11 +9,13 @@ export function CoverTile({
   sizes,
   className = "",
   decorative = false,
+  initialsClassName = "text-lg",
 }: {
   cover: Pick<ProfileCover, "title" | "coverUrl">;
   sizes: string;
   className?: string;
   decorative?: boolean;
+  initialsClassName?: string;
 }) {
   return (
     <div className={`relative aspect-[2/3] overflow-hidden rounded-cover bg-surface-muted shadow-cover ${className}`}>
@@ -21,7 +23,7 @@ export function CoverTile({
         <Image src={cover.coverUrl} alt={decorative ? "" : cover.title} fill sizes={sizes} className="object-cover" />
       ) : (
         <div
-          className="flex h-full items-center justify-center bg-[color-mix(in_oklab,var(--accent)_45%,var(--surface))] font-serif text-lg font-semibold text-foreground"
+          className={`flex h-full items-center justify-center bg-[color-mix(in_oklab,var(--accent)_45%,var(--surface))] font-serif ${initialsClassName} font-semibold text-foreground`}
           aria-hidden={decorative || undefined}
         >
           {coverInitials(cover.title)}
