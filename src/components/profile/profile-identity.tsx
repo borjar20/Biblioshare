@@ -73,7 +73,7 @@ export async function ProfileIdentity({
       <div className="col-span-2 row-start-2 min-w-0 lg:col-span-1">
         <h1 className="font-serif text-[28px] font-bold leading-[1.05] lg:text-[34px]">{name}</h1>
         <p className="mt-1 font-mono text-[12.5px] text-muted-foreground">
-          @{profile.username} · {tVisual("memberSinceInline", { year: memberSinceYear })}
+          <span>@{profile.username}</span> · {tVisual("memberSinceInline", { year: memberSinceYear })}
         </p>
         {profile.bio && (
           <p className="mt-2 max-w-prose text-sm text-muted-foreground">{profile.bio}</p>

@@ -24,7 +24,7 @@ export function NowView({ items, pet }: { items: NowItem[]; pet: ReactNode }) {
           {first && (
             <>
               <p className="font-mono text-[11px] uppercase tracking-[.09em] text-foreground-soft">{t("title")}</p>
-              <Link href={first.href} className="mt-1 block truncate font-serif text-[17px] font-semibold">{first.title}</Link>
+              <Link href={first.href} className="flex min-h-11 items-center font-serif text-[17px] font-semibold">{first.title}</Link>
               {first.progressPercent !== null && (
                 <div
                   role="progressbar"

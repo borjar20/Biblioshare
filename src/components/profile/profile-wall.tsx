@@ -42,7 +42,10 @@ export function ProfileWall({
 
   function stateLabel(c: WallCover): string {
     switch (c.state.kind) {
-      case "rated": return `${formatDots(c.state.rating)} de 5`;
+      case "rated": {
+        const value = formatDots(c.state.rating);
+        return value === null ? t("finished") : t("rated", { value });
+      }
       case "dropped": return t("dropped");
       case "finished": return t("finished");
       case "in_progress": return t("inProgress");

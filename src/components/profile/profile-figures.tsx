@@ -16,7 +16,10 @@ export function FiguresView({
   const cell = (value: string, label: string, title?: string) => (
     <div className="min-w-0" title={title}>
       <div className="font-serif text-[26px] font-semibold leading-none text-foreground lg:text-[30px]">{value}</div>
-      <div className="mt-1.5 font-mono text-[10.5px] uppercase tracking-[.07em] text-muted-foreground">{label}</div>
+      <div className="mt-1.5 font-mono text-[10.5px] uppercase tracking-[.07em] text-muted-foreground">
+        {label}
+        {title && <span className="sr-only"> · {title}</span>}
+      </div>
     </div>
   );
   return (
