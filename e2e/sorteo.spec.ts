@@ -41,7 +41,7 @@ test("sacar un lomo: hoja, sorteo y empezar el pase", async ({ page }) => {
 
 // Enlace directo (spec 2026-11-01): Biblioteca e Inicio llevan aquí y la hoja
 // llega abierta, sin pulsar la tarjeta.
-test("?sorteo=1 abre la hoja al llegar y cerrarla limpia la URL", async ({ page }) => {
+test("?sorteo=1 abre la hoja, limpia la URL y la entrada de Biblioteca la reabre", async ({ page }) => {
   test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
 
   await page.goto("/login");
@@ -55,7 +55,17 @@ test("?sorteo=1 abre la hoja al llegar y cerrarla limpia la URL", async ({ page 
   test.skip(await emptyCard.isVisible(), "el usuario de test no tiene pendientes");
 
   await expect(sheet.getByRole("heading", { name: /deja que decida/i })).toBeVisible();
+  // El parámetro se quita con replaceState nada más abrir, sin esperar al cierre.
+  await expect(page).not.toHaveURL(/sorteo/);
   await page.keyboard.press("Escape");
   await expect(sheet).toBeHidden();
   await expect(page).toHaveURL(/\/coleccion\/rincon$/);
+
+  // Segunda visita (la ruta puede seguir montada con Activity): vuelve a abrir.
+  await page.goto("/coleccion");
+  await page
+    .getByRole("navigation", { name: "Herramientas de tu biblioteca" })
+    .getByRole("link", { name: /sacar un lomo/i })
+    .click();
+  await expect(page.getByRole("dialog").getByRole("heading", { name: /deja que decida/i })).toBeVisible();
 });

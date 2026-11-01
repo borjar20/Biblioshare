@@ -5,8 +5,11 @@ import { NextIntlClientProvider } from "next-intl";
 import messages from "../../../messages/es.json";
 import type { SorteoItem } from "./sorteo-logic";
 
-const mocks = vi.hoisted(() => ({ replace: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: mocks.replace }) }));
+const mocks = vi.hoisted(() => ({ replace: vi.fn(), query: "" }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: mocks.replace }),
+  useSearchParams: () => new URLSearchParams(mocks.query),
+}));
 // La hoja real usa <dialog>.showModal y server actions; aquí basta con saber si está abierta.
 vi.mock("./sorteo-sheet", () => ({
   SorteoSheet: ({ open, onClose }: { open: boolean; onClose: () => void }) =>
@@ -21,34 +24,59 @@ const item: SorteoItem = {
 const ui = (props: Parameters<typeof SpineDraw>[0]) => (
   <NextIntlClientProvider locale="es" messages={messages}><SpineDraw {...props} /></NextIntlClientProvider>
 );
+function setUrl(query: string) {
+  mocks.query = query;
+  window.history.replaceState(null, "", `/coleccion/rincon${query ? `?${query}` : ""}`);
+}
 
-beforeEach(() => { vi.clearAllMocks(); window.history.replaceState(null, "", "/coleccion/rincon?sorteo=1&archivados=1"); });
+beforeEach(() => { vi.clearAllMocks(); setUrl("sorteo=1&archivados=1"); });
 afterEach(cleanup);
 
 describe("SpineDraw", () => {
-  it("empieza cerrado sin initialOpen", () => {
+  it("empieza cerrado sin openFromUrl, aunque la URL traiga sorteo", () => {
     render(ui({ pool: [item] }));
     expect(screen.queryByRole("dialog")).toBeNull();
+    expect(window.location.search).toBe("?sorteo=1&archivados=1");
   });
-  it("abre la hoja al montar con initialOpen", () => {
-    render(ui({ pool: [item], initialOpen: true }));
+  it("abre la hoja con sorteo=1 y openFromUrl", () => {
+    render(ui({ pool: [item], openFromUrl: true }));
     expect(screen.getByRole("dialog")).toBeTruthy();
   });
-  it("con el pool vacío ignora initialOpen y enseña la tarjeta vacía", () => {
-    render(ui({ pool: [], initialOpen: true }));
+  it("quita sorteo con replaceState y conserva el resto de parámetros", () => {
+    const spy = vi.spyOn(window.history, "replaceState");
+    render(ui({ pool: [item], openFromUrl: true }));
+    expect(spy).toHaveBeenCalledWith(null, "", "/coleccion/rincon?archivados=1");
+    expect(window.location.search).toBe("?archivados=1");
+    spy.mockRestore();
+  });
+  it("con el pool vacío no abre, enseña la tarjeta vacía y aun así limpia la URL", () => {
+    render(ui({ pool: [], openFromUrl: true }));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.getByText(messages.rincon.drawEmptyTitle)).toBeTruthy();
+    expect(window.location.search).toBe("?archivados=1");
   });
-  it("al cerrar la hoja abierta por URL quita sorteo y conserva el resto", () => {
-    render(ui({ pool: [item], initialOpen: true }));
+  it("cerrar la hoja no navega ni toca la URL", () => {
+    render(ui({ pool: [item], openFromUrl: true }));
+    const spy = vi.spyOn(window.history, "replaceState");
     fireEvent.click(screen.getByRole("button", { name: "cerrar" }));
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(mocks.replace).toHaveBeenCalledWith("/coleccion/rincon?archivados=1", { scroll: false });
+    expect(mocks.replace).not.toHaveBeenCalled();
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
   });
-  it("al cerrar una hoja abierta con el botón no toca la URL", () => {
+  it("reabre al llegar sorteo=1 con la ruta ya montada (Activity, segunda visita)", () => {
+    setUrl("");
+    const view = render(ui({ pool: [item], openFromUrl: true }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    setUrl("sorteo=1");
+    view.rerender(ui({ pool: [item], openFromUrl: true }));
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+  it("abre con el botón sin tocar la URL", () => {
+    setUrl("archivados=1");
     render(ui({ pool: [item] }));
     fireEvent.click(screen.getByRole("button", { name: messages.rincon.drawButton }));
-    fireEvent.click(screen.getByRole("button", { name: "cerrar" }));
+    expect(screen.getByRole("dialog")).toBeTruthy();
     expect(mocks.replace).not.toHaveBeenCalled();
   });
 });

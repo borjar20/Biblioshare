@@ -43,7 +43,7 @@ async function CommunityContent({ searchParams }: CommunityProps) {
       {([false, true] as const).map(isPeople => <Link key={String(isPeople)} href={isPeople ? "/comunidad?tab=personas" : "/comunidad"} aria-current={people === isPeople ? "page" : undefined} className={`inline-flex min-h-11 items-center border-b-2 py-2 font-serif text-base font-semibold ${people === isPeople ? "border-accent text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>{t(isPeople ? "people" : "clubs")}</Link>)}
     </nav>
     {/* Antes un enlace suelto sin contexto: la tarjeta dice qué hay detrás. */}
-    <Link href="/comunidad/entre-nosotros" className="group flex min-h-11 items-center justify-between gap-3 rounded-card border border-border bg-surface p-4 shadow-card transition-colors hover:border-accent/40">
+    <Link href="/comunidad/entre-nosotros" className="flex min-h-11 items-center justify-between gap-3 rounded-card border border-border bg-surface p-4 shadow-card transition-colors hover:border-accent/40">
       <span className="flex flex-col gap-1">
         <span className="font-serif text-lg font-semibold text-foreground">{t("comparisons")}</span>
         <span className="text-sm text-muted-foreground">{t("comparisonsHint")}</span>

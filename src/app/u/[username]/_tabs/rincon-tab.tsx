@@ -38,12 +38,10 @@ export async function RinconTab({
   userId,
   includeArchived,
   basePath,
-  openDraw = false,
 }: {
   userId: string;
   includeArchived: boolean;
   basePath: string;
-  openDraw?: boolean;
 }) {
   const tChallenges = await getTranslations("challenges");
   const tStats = await getTranslations("stats");
@@ -131,7 +129,7 @@ export async function RinconTab({
   // contadores (solo escritorio, el móvil C no los trae — frame H).
   const rail = (
     <div className="flex flex-col gap-4">
-      <SpineDraw pool={pool.items} collections={pool.collections} initialOpen={openDraw} />
+      <SpineDraw pool={pool.items} collections={pool.collections} openFromUrl />
       <div className="hidden lg:block">
         <Card>
           <NotesCountsCard counts={counts} />

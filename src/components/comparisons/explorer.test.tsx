@@ -293,6 +293,12 @@ describe('Explorer request boundaries', () => {
     await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/comunidad/entre-nosotros', { scroll: false }));
     expect(mocks.load).not.toHaveBeenCalled();
   });
+  it('lets ?group= win over ?personas= (a group the viewer does not own does not open the editor)', () => {
+    const bea = '10000000-0000-4000-8000-000000000002';
+    mocks.query = `group=10000000-0000-4000-8000-0000000000aa&personas=${bea}`;
+    render(<NextIntlClientProvider locale="es" messages={messages}><Explorer initialGroups={[]} candidates={[{ userId: 'a', name: 'Ana', avatarUrl: null }, { userId: bea, name: 'Bea', avatarUrl: null }]} viewerId="a"/></NextIntlClientProvider>);
+    expect(screen.queryByRole('dialog', { name: 'Crear grupo' })).toBeNull();
+  });
   it('lets ?con= win over ?personas=', async () => {
     const bea = '10000000-0000-4000-8000-000000000002';
     mocks.query = `con=${bea}&personas=${bea}`;

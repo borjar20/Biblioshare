@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   title: "Retos y objetivos — Biblioshare",
 };
 
-type CornerPageProps = { searchParams: Promise<{ archivados?: string; sorteo?: string }> };
+type CornerPageProps = { searchParams: Promise<{ archivados?: string }> };
 
 export default function LibraryCornerPage(props: CornerPageProps) {
   return (
@@ -28,7 +28,7 @@ async function LibraryCornerContent({ searchParams }: CornerPageProps) {
   // del perfil permite abrir las herramientas de otra persona.
   const user = await getCurrentUser();
   if (!user) redirect(loginHref("/coleccion/rincon"));
-  const { archivados, sorteo } = await searchParams;
+  const { archivados } = await searchParams;
   const t = await getTranslations("collection");
   const includeArchived = archivados === "1";
 
@@ -36,7 +36,7 @@ async function LibraryCornerContent({ searchParams }: CornerPageProps) {
     <div className={`mx-auto flex w-full ${SHELL_APP} flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8`}>
       <PageHeader title={t("rinconTitle")} backHref="/coleccion" backLabel={t("backToLibrary")} />
       <Suspense key={includeArchived ? "archived" : "active"} fallback={<CornerCardsSkeleton />}>
-        <RinconTab userId={user.id} includeArchived={includeArchived} basePath="/coleccion/rincon" openDraw={sorteo === "1"} />
+        <RinconTab userId={user.id} includeArchived={includeArchived} basePath="/coleccion/rincon" />
       </Suspense>
     </div>
   );
