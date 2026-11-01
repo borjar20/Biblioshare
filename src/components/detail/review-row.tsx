@@ -7,7 +7,7 @@ import { ReviewContent } from "./review-content";
 import type { ItemType } from "@/lib/catalog/types";
 
 // Los avatares subidos a Storage van por next/image (remotePatterns); las URLs
-// externas legado, por <img>. Mismo criterio que user-avatar/profile-header.
+// externas legado, por <img>. Mismo criterio que user-avatar/profile-identity.
 function isSupabaseAvatar(url: string): boolean {
   return /\.supabase\.co\/storage\/v1\/object\/public\//.test(url);
 }

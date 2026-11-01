@@ -228,8 +228,8 @@ function postMentionTexts(e:PostFeedEvent|SocialPostDraft):string[] {
 
 // El feed mezcla eventos de persona (un post) y de club (una actividad, que
 // puede no tener ítem). En vez de forzar un ítem falso, la lista transporta la
-// unión y cada tarjeta lee lo suyo. `person-group` lo produce solo el perfil
-// (`group-feed-entries.ts`); getFeed emite entradas
+// unión y cada tarjeta lee lo suyo. `person-group` ya no se produce en runtime
+// (`groupPersonEntries` solo se usa en tests); getFeed emite entradas
 // singleton `person` y `club`.
 export type FeedEntry =
   | {source:"experience";id:string;eventDate:string;orderDate:string;sortDate:string;event:ExperienceFeedEvent}
