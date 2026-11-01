@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { SorteoSheet } from "./sorteo-sheet";
 import type { SorteoCollection, SorteoItem } from "./sorteo-logic";
@@ -27,12 +28,28 @@ const SPINES = [
 export function SpineDraw({
   pool,
   collections = [],
+  initialOpen = false,
 }: {
   pool: SorteoItem[];
   collections?: SorteoCollection[];
+  // `?sorteo=1` (DRAW_HREF): la hoja llega abierta. Con el pool vacío no hay
+  // nada que sortear y se queda la tarjeta vacía.
+  initialOpen?: boolean;
 }) {
   const t = useTranslations("rincon");
-  const [open, setOpen] = useState(false);
+  const router = useRouter();
+  const [open, setOpen] = useState(initialOpen && pool.length > 0);
+  const [fromUrl, setFromUrl] = useState(initialOpen);
+
+  function close() {
+    setOpen(false);
+    if (!fromUrl) return;
+    // Sin `sorteo` en la URL, recargar o volver atrás no reabre la hoja.
+    setFromUrl(false);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("sorteo");
+    router.replace(`${url.pathname}${url.search}`, { scroll: false });
+  }
 
   const dark = "rounded-[14px] border p-4";
   const darkStyle = {
@@ -90,7 +107,7 @@ export function SpineDraw({
         pool={pool}
         collections={collections}
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={close}
       />
     </div>
   );

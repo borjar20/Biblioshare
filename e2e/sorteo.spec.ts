@@ -38,3 +38,24 @@ test("sacar un lomo: hoja, sorteo y empezar el pase", async ({ page }) => {
   await expect(sheet.getByRole("button", { name: /en curso/i })).toBeVisible();
   await expect(sheet.getByRole("link", { name: /ver ficha/i })).toBeVisible();
 });
+
+// Enlace directo (spec 2026-11-01): Biblioteca e Inicio llevan aquí y la hoja
+// llega abierta, sin pulsar la tarjeta.
+test("?sorteo=1 abre la hoja al llegar y cerrarla limpia la URL", async ({ page }) => {
+  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+
+  await page.goto("/login");
+  await submitLogin(page, EMAIL, PASSWORD);
+  await page.waitForURL("/");
+
+  await page.goto("/coleccion/rincon?sorteo=1");
+  const emptyCard = page.getByText(/estantería de pendientes está vacía/i);
+  const sheet = page.getByRole("dialog");
+  await expect(sheet.or(emptyCard).first()).toBeVisible();
+  test.skip(await emptyCard.isVisible(), "el usuario de test no tiene pendientes");
+
+  await expect(sheet.getByRole("heading", { name: /deja que decida/i })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(sheet).toBeHidden();
+  await expect(page).toHaveURL(/\/coleccion\/rincon$/);
+});
