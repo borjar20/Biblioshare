@@ -10,7 +10,19 @@ import { buildProfileWall, madridMonthKey, wallMonthLabel, type WallCover } from
 import { FeedItem } from "@/components/social/feed-item";
 import { RatingDots } from "@/components/ui/rating-dots";
 import { formatDots } from "@/lib/rating/dots";
+import { HeartIcon } from "@/components/ui/icons";
 import { CoverTile } from "./cover-tile";
+
+// Recuento de reacciones de una obra del muro, con el mismo icono que el feed.
+// Decorativo: el número ya va en el nombre accesible del enlace.
+function ReactionBadge({ count, className }: { count: number; className: string }) {
+  return (
+    <span aria-hidden="true" className={`inline-flex items-center gap-1 rounded-full bg-background/90 px-1.5 py-0.5 text-[10px] leading-none ${className}`}>
+      <HeartIcon className="h-3 w-3" />
+      {count}
+    </span>
+  );
+}
 
 // El muro de la actividad (spec §5): las mismas publicaciones que la lista de
 // antes, agrupadas por mes; cada obra una vez con su último estado y las
@@ -105,9 +117,7 @@ export function ProfileWall({
                       <div aria-hidden="true" className={`absolute top-1.5 right-1.5 rounded-full bg-background/90 px-1.5 py-0.5 font-mono text-[9.5px] font-medium uppercase ${c.state.kind === "in_progress" ? "text-gold-ink" : ""}`}>
                         {c.state.kind === "rated" ? <RatingDots value={c.state.rating} size="sm" /> : state}
                       </div>
-                      {c.reactions > 0 && (
-                        <span aria-hidden="true" className="absolute bottom-1.5 left-1.5 rounded-full bg-background/90 px-1.5 py-0.5 text-[10px]">❤ {c.reactions}</span>
-                      )}
+                      {c.reactions > 0 && <ReactionBadge count={c.reactions} className="absolute bottom-1.5 left-1.5" />}
                     </Link>
                   </li>
                 );
@@ -116,11 +126,13 @@ export function ProfileWall({
               // Reseña con texto: baldosa de 2 columnas, a la altura de una portada.
               const rating = review.rating ?? (c.state.kind === "rated" ? c.state.rating : null);
               return (
-                <li key={c.key} className="relative col-span-2">
+                <li key={c.key} className="col-span-2">
+                  {/* `h-full`: la fila la puede estirar una portada suelta más alta;
+                      la tarjeta ocupa ese alto en vez de quedarse corta. */}
                   <Link
                     href={href}
                     aria-label={label}
-                    className="flex min-h-11 items-stretch gap-2.5 rounded-card border border-border bg-surface p-2 transition-transform motion-safe:hover:-translate-y-1"
+                    className="flex h-full min-h-11 items-stretch gap-2.5 rounded-card border border-border bg-surface p-2 transition-transform motion-safe:hover:-translate-y-1"
                   >
                     <div className="w-[38%] shrink-0">
                       <CoverTile cover={{ title: c.title, coverUrl: c.coverUrl }} sizes="(max-width: 1024px) 20vw, 90px" className={dim} />
@@ -132,13 +144,13 @@ export function ProfileWall({
                       ) : (
                         <span className={`font-mono text-[9.5px] font-medium uppercase ${c.state.kind === "in_progress" ? "text-gold-ink" : "text-muted-foreground"}`}>{state}</span>
                       )}
-                      <p className={`line-clamp-4 font-serif text-[12px] leading-snug ${review.isSpoiler ? "text-muted-foreground" : "italic text-foreground"}`}>
+                      <p className={`line-clamp-3 font-serif text-[12px] leading-snug ${review.isSpoiler ? "text-muted-foreground" : "italic text-foreground"}`}>
                         {review.isSpoiler ? t("spoilerReview") : review.excerpt}
                       </p>
+                      {/* En el flujo de la columna, al pie: absoluta se salía de la
+                          tarjeta cuando la fila era más alta y pisaba la cita. */}
+                      {c.reactions > 0 && <ReactionBadge count={c.reactions} className="mt-auto self-end" />}
                     </div>
-                    {c.reactions > 0 && (
-                      <span aria-hidden="true" className="absolute right-3 bottom-3 rounded-full bg-background/90 px-1.5 py-0.5 text-[10px]">❤ {c.reactions}</span>
-                    )}
                   </Link>
                 </li>
               );
