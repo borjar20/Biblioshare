@@ -926,7 +926,12 @@
         "episodes": "{season, select, none {} other {T{season} · }}{count, plural, one {# ep.} other {# ep.}}",
         "reactions": "{count, plural, one {# reacción} other {# reacciones}}",
         "coverLabel": "{title}, {state}",
-        "coverLabelWithReactions": "{title}, {state}, {reactions}"
+        "coverLabelWithReactions": "{title}, {state}, {reactions}",
+        "reviewLabel": "{title}, {state}, reseña: {excerpt}",
+        "reviewLabelWithReactions": "{title}, {state}, reseña: {excerpt}, {reactions}",
+        "spoilerReview": "Reseña con spoilers",
+        "spoilerReviewLabel": "{title}, {state}, reseña con spoilers",
+        "spoilerReviewLabelWithReactions": "{title}, {state}, reseña con spoilers, {reactions}"
       },
       "year": {
         "title": "Su {year}",

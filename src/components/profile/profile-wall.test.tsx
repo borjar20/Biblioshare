@@ -50,9 +50,31 @@ describe("ProfileWall", () => {
     expect(screen.getByRole("link", { name: /Pearl/ }).getAttribute("href")).toBe("/pelicula/m1");
   });
 
-  it("una reseña con texto pinta además su tarjeta", () => {
-    wrap([person({ verb: "reviewed", reviewExcerpt: "Preciosa" })]);
-    expect(screen.getAllByTestId("card")).toHaveLength(1);
+  it("la reseña con texto es una baldosa de 2 columnas que abre la reseña y enseña la cita", () => {
+    wrap([person({ verb: "reviewed", reviewExcerpt: "Preciosa", postId: "r9" })]);
+    expect(screen.queryAllByTestId("card")).toHaveLength(0);
+    const link = screen.getByRole("link", { name: /reseña: Preciosa/ });
+    expect(link.getAttribute("href")).toBe("/post/r9");
+    expect(link.closest("li")?.className).toContain("col-span-2");
+    expect(screen.getByText("Preciosa")).toBeTruthy();
+  });
+
+  it("con spoiler no enseña el texto y sí «Reseña con spoilers»", () => {
+    wrap([person({ verb: "reviewed", reviewExcerpt: "Se muere", reviewIsSpoiler: true })]);
+    expect(screen.queryByText("Se muere")).toBeNull();
+    expect(screen.getByText("Reseña con spoilers")).toBeTruthy();
+    const link = screen.getByRole("link", { name: /reseña con spoilers/i });
+    expect(link.getAttribute("aria-label")).not.toContain("Se muere");
+  });
+
+  it("la rejilla del mes rellena huecos (grid-flow-row-dense)", () => {
+    wrap([person({})]);
+    expect(screen.getByRole("list").className).toContain("grid-flow-row-dense");
+  });
+
+  it("un pensamiento se pinta como tarjeta de ancho completo", () => {
+    wrap([person({ id: "posts:7", verb: "thought", thought: { body: "hola", isSpoiler: false, anchor: {} as never } })]);
+    expect(screen.getByTestId("card").closest("li")?.className).toContain("col-span-full");
   });
 
   it("con cursor ofrece cargar más", () => {

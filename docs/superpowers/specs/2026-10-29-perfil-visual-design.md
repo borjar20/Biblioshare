@@ -285,3 +285,5 @@ Lo que cambió respecto a lo diseñado arriba:
 - **e2e:** la cuenta `devtest` es admin y lee perfiles privados, así que los casos de privado y de seguidor
   usan visores temporales sin rol. Helper `waitForProfileSettled` antes de comprobar ausencias. Se añadió un
   quinto caso, el del seguidor aceptado.
+- **Retoque del usuario:** la reseña con texto es una baldosa de 2 columnas dentro de la rejilla (sustituye a la
+  portada; rejilla `grid-flow-row-dense`) para que no queden huecos.

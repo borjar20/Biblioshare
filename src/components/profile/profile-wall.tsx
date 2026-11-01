@@ -69,35 +69,81 @@ export function ProfileWall({
           <h3 id={`wall-${month.key}`} suppressHydrationWarning className="pt-4 pb-2 font-mono text-[11px] font-medium uppercase tracking-[.09em] text-muted-foreground">
             {t("month", { label: wallMonthLabel(month.key, currentKey), count: month.coverCount })}
           </h3>
-          <div className="flex flex-col gap-3">
-            {month.segments.map((seg) =>
-              seg.type === "card" ? (
-                <FeedItem key={seg.card.id} entry={seg.card.entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={known} hideActor />
-              ) : (
-                <ul key={`covers-${seg.covers[0].key}`} className="grid grid-cols-3 gap-2.5 lg:grid-cols-6">
-                  {seg.covers.map((c) => (
-                    <li key={c.key} className="relative">
-                      <Link
-                        href={c.postId ? `/post/${c.postId}` : itemHref(c.itemType, c.itemId)}
-                        aria-label={c.reactions > 0
-                          ? t("coverLabelWithReactions", { title: c.title, state: stateLabel(c), reactions: t("reactions", { count: c.reactions }) })
-                          : t("coverLabel", { title: c.title, state: stateLabel(c) })}
-                        className="block transition-transform motion-safe:hover:-translate-y-1"
-                      >
-                        <CoverTile cover={{ title: c.title, coverUrl: c.coverUrl }} sizes="(max-width: 1024px) 30vw, 140px" className={c.state.kind === "dropped" ? "opacity-55" : ""} />
-                        <div aria-hidden="true" className={`absolute top-1.5 right-1.5 rounded-full bg-background/90 px-1.5 py-0.5 font-mono text-[9.5px] font-medium uppercase ${c.state.kind === "in_progress" ? "text-gold-ink" : ""}`}>
-                          {c.state.kind === "rated" ? <RatingDots value={c.state.rating} size="sm" /> : stateLabel(c)}
-                        </div>
-                        {c.reactions > 0 && (
-                          <span aria-hidden="true" className="absolute bottom-1.5 left-1.5 rounded-full bg-background/90 px-1.5 py-0.5 text-[10px]">❤ {c.reactions}</span>
-                        )}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              ),
-            )}
-          </div>
+          <ul className="grid grid-flow-row-dense grid-cols-3 gap-2.5 lg:grid-cols-6">
+            {month.items.map((item) => {
+              if (item.type === "card") {
+                return (
+                  <li key={item.card.id} className="col-span-full">
+                    <FeedItem entry={item.card.entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={known} hideActor />
+                  </li>
+                );
+              }
+              const c = item.cover;
+              const review = c.review;
+              const reactionsText = c.reactions > 0 ? t("reactions", { count: c.reactions }) : null;
+              const state = stateLabel(c);
+              const label = !review
+                ? reactionsText
+                  ? t("coverLabelWithReactions", { title: c.title, state, reactions: reactionsText })
+                  : t("coverLabel", { title: c.title, state })
+                : review.isSpoiler
+                  ? reactionsText
+                    ? t("spoilerReviewLabelWithReactions", { title: c.title, state, reactions: reactionsText })
+                    : t("spoilerReviewLabel", { title: c.title, state })
+                  : reactionsText
+                    ? t("reviewLabelWithReactions", { title: c.title, state, excerpt: review.excerpt, reactions: reactionsText })
+                    : t("reviewLabel", { title: c.title, state, excerpt: review.excerpt });
+              const postId = review?.postId ?? c.postId;
+              const href = postId ? `/post/${postId}` : itemHref(c.itemType, c.itemId);
+              const dim = c.state.kind === "dropped" ? "opacity-55" : "";
+
+              if (!review) {
+                return (
+                  <li key={c.key} className="relative">
+                    <Link href={href} aria-label={label} className="block transition-transform motion-safe:hover:-translate-y-1">
+                      <CoverTile cover={{ title: c.title, coverUrl: c.coverUrl }} sizes="(max-width: 1024px) 30vw, 140px" className={dim} />
+                      <div aria-hidden="true" className={`absolute top-1.5 right-1.5 rounded-full bg-background/90 px-1.5 py-0.5 font-mono text-[9.5px] font-medium uppercase ${c.state.kind === "in_progress" ? "text-gold-ink" : ""}`}>
+                        {c.state.kind === "rated" ? <RatingDots value={c.state.rating} size="sm" /> : state}
+                      </div>
+                      {c.reactions > 0 && (
+                        <span aria-hidden="true" className="absolute bottom-1.5 left-1.5 rounded-full bg-background/90 px-1.5 py-0.5 text-[10px]">❤ {c.reactions}</span>
+                      )}
+                    </Link>
+                  </li>
+                );
+              }
+
+              // Reseña con texto: baldosa de 2 columnas, a la altura de una portada.
+              const rating = review.rating ?? (c.state.kind === "rated" ? c.state.rating : null);
+              return (
+                <li key={c.key} className="relative col-span-2">
+                  <Link
+                    href={href}
+                    aria-label={label}
+                    className="flex min-h-11 items-stretch gap-2.5 rounded-card border border-border bg-surface p-2 transition-transform motion-safe:hover:-translate-y-1"
+                  >
+                    <div className="w-[38%] shrink-0">
+                      <CoverTile cover={{ title: c.title, coverUrl: c.coverUrl }} sizes="(max-width: 1024px) 20vw, 90px" className={dim} />
+                    </div>
+                    <div aria-hidden="true" className="flex min-w-0 flex-1 flex-col gap-1 overflow-hidden">
+                      <span className="line-clamp-2 font-serif text-[13px] font-semibold leading-tight text-foreground">{c.title}</span>
+                      {rating !== null ? (
+                        <RatingDots value={rating} size="sm" />
+                      ) : (
+                        <span className={`font-mono text-[9.5px] font-medium uppercase ${c.state.kind === "in_progress" ? "text-gold-ink" : "text-muted-foreground"}`}>{state}</span>
+                      )}
+                      <p className={`line-clamp-4 font-serif text-[12px] leading-snug ${review.isSpoiler ? "text-muted-foreground" : "italic text-foreground"}`}>
+                        {review.isSpoiler ? t("spoilerReview") : review.excerpt}
+                      </p>
+                    </div>
+                    {c.reactions > 0 && (
+                      <span aria-hidden="true" className="absolute right-3 bottom-3 rounded-full bg-background/90 px-1.5 py-0.5 text-[10px]">❤ {c.reactions}</span>
+                    )}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
         </section>
       ))}
       {cursor && (

@@ -11,10 +11,13 @@ export type WallCoverState =
 export type WallCover = {
   key: string; itemType: ItemType; itemId: string; title: string; coverUrl: string | null;
   state: WallCoverState; postId: string | null; reactions: number; at: string;
+  // La reseña con texto más reciente de la obra en el mes: la baldosa se ensancha
+  // y enseña la cita (no se repite la obra como tarjeta aparte).
+  review: { excerpt: string; isSpoiler: boolean; postId: string | null; rating: number | null } | null;
 };
 export type WallCard = { id: string; entry: FeedEntry; at: string };
-export type WallSegment = { type: "covers"; covers: WallCover[] } | { type: "card"; card: WallCard };
-export type WallMonth = { key: string; coverCount: number; segments: WallSegment[] };
+export type WallItem = { type: "cover"; cover: WallCover } | { type: "card"; card: WallCard };
+export type WallMonth = { key: string; coverCount: number; items: WallItem[] };
 
 const COVER_VERBS = new Set(["started", "progressed", "finished", "rated", "reviewed", "dropped", "watchedEpisode"]);
 const MADRID = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid", year: "numeric", month: "2-digit", day: "2-digit" });
@@ -62,12 +65,12 @@ export function buildProfileWall(entries: FeedEntry[]): WallMonth[] {
     const key = madridMonthKey(entry.eventDate);
     let bucket = byMonth.get(key);
     if (!bucket) {
-      bucket = { month: { key, coverCount: 0, segments: [] }, covers: new Map() };
+      bucket = { month: { key, coverCount: 0, items: [] }, covers: new Map() };
       byMonth.set(key, bucket);
       months.push(bucket.month);
     }
     const { month, covers } = bucket;
-    const pushCard = (id: string) => month.segments.push({ type: "card", card: { id, entry, at: entry.eventDate } });
+    const pushCard = (id: string) => month.items.push({ type: "card", card: { id, entry, at: entry.eventDate } });
 
     if (entry.source !== "person") {
       if (entry.source === "experience" || entry.source === "wrap_up") pushCard(entry.id);
@@ -80,22 +83,25 @@ export function buildProfileWall(entries: FeedEntry[]): WallMonth[] {
     }
     const coverKey = `${event.itemType}:${event.itemId}`;
     const existing = covers.get(coverKey);
+    // Los eventos llegan del más reciente al más antiguo: la primera reseña con
+    // texto que se ve es la más reciente.
+    const review = event.verb === "reviewed" && event.reviewExcerpt
+      ? { excerpt: event.reviewExcerpt, isSpoiler: event.reviewIsSpoiler, postId: event.postId ?? null, rating: event.rating }
+      : null;
     if (existing) {
       existing.events.push(event);
       existing.cover.reactions += event.reactionCount;
+      if (review && !existing.cover.review) existing.cover.review = review;
     } else {
       const cover: WallCover = {
         key: coverKey, itemType: event.itemType, itemId: event.itemId, title: event.itemTitle,
         coverUrl: event.itemCoverUrl, state: { kind: "in_progress" }, postId: event.postId ?? null,
-        reactions: event.reactionCount, at: event.eventDate,
+        reactions: event.reactionCount, at: event.eventDate, review,
       };
       covers.set(coverKey, { cover, events: [event] });
-      const last = month.segments[month.segments.length - 1];
-      if (last?.type === "covers") last.covers.push(cover);
-      else month.segments.push({ type: "covers", covers: [cover] });
+      month.items.push({ type: "cover", cover });
       month.coverCount += 1;
     }
-    if (event.verb === "reviewed" && event.reviewExcerpt) pushCard(`${entry.id}:review`);
   }
 
   for (const { covers } of byMonth.values()) {
