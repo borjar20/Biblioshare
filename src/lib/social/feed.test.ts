@@ -356,6 +356,65 @@ describe("getFeed — paginación keyset", () => {
     expect(new Set(seen).size).toBe(expectedCount); // sin duplicados
   });
 
+  // Regresión del salto «hace 8 días» → «hace 75 días» en producción: la
+  // consulta de posts topa su `limit`, pero al resolver se descartan posts (un
+  // `finished` tapado por su visionado conjunto, una obra borrada) y la página
+  // se rellena con una actividad de club MUCHO más antigua que el último post
+  // pedido. El cursor sale de esa actividad y la página siguiente se salta
+  // todos los posts intermedios, que nunca se llegaron a pedir.
+  test("posts descartados no dejan colarse una fuente más antigua que el límite de otra", async () => {
+    const posts: FakeRow[] = [];
+    for (let i = 0; i < 12; i++) {
+      const day = String(30 - i).padStart(2, "0");
+      // Los dos primeros apuntan a una obra que ya no existe: se descartan.
+      posts.push(post(`p${String(i).padStart(2, "0")}`, `2026-10-${day}T12:00:00+00:00`, i < 2 ? { anchor_id: "book-borrado" } : {}));
+    }
+    const clubs: FakeRow[] = [{ id: "a-vieja", created_at: "2026-08-18T09:00:00+00:00" }];
+    const sb = fakeSupabase({ posts, clubActivities: clubs });
+
+    const first = await getFeed(sb.client, VIEWER, { pageSize: 5 });
+    // La actividad de agosto no puede servirse antes que los posts de octubre.
+    expect(first.events.map((e) => e.id)).not.toContain("club_activities:a-vieja");
+
+    const seen = [...first.events.map((e) => e.id)];
+    let cursor = first.nextCursor;
+    let guard = 0;
+    while (cursor) {
+      const page: Awaited<ReturnType<typeof getFeed>> = await getFeed(sb.client, VIEWER, { pageSize: 5, cursor });
+      seen.push(...page.events.map((e) => e.id));
+      cursor = page.nextCursor;
+      expect(++guard).toBeLessThan(50);
+    }
+    const expected = [
+      ...posts.slice(2).map((r) => `posts:${String(r.id)}`),
+      "club_activities:a-vieja",
+    ];
+    expect(seen).toEqual(expected);
+  });
+
+  test("una página entera de posts descartados no corta la paginación", async () => {
+    const posts: FakeRow[] = [];
+    for (let i = 0; i < 10; i++) {
+      const day = String(30 - i).padStart(2, "0");
+      posts.push(post(`p${i}`, `2026-10-${day}T12:00:00+00:00`, i < 6 ? { anchor_id: "book-borrado" } : {}));
+    }
+    const sb = fakeSupabase({ posts });
+
+    const seen: string[] = [];
+    let cursor: string | null = null;
+    let guard = 0;
+    do {
+      const page: Awaited<ReturnType<typeof getFeed>> = await getFeed(sb.client, VIEWER, {
+        pageSize: 3,
+        cursor: cursor ?? undefined,
+      });
+      seen.push(...page.events.map((e) => e.id));
+      cursor = page.nextCursor;
+      expect(++guard).toBeLessThan(50);
+    } while (cursor);
+    expect(seen).toEqual(["posts:p6", "posts:p7", "posts:p8", "posts:p9"]);
+  });
+
   test("el filtro `.or()` emitido por `posts` es espejo de isAfterCursor", async () => {
     // Cursor de un post; toda fila que el filtro SQL acepta la acepta también
     // `isAfterCursor`, y viceversa, para el mismo conjunto de filas.
