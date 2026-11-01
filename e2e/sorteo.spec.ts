@@ -61,8 +61,10 @@ test("?sorteo=1 abre la hoja, limpia la URL y la entrada de Biblioteca la reabre
   await expect(sheet).toBeHidden();
   await expect(page).toHaveURL(/\/coleccion\/rincon$/);
 
-  // Segunda visita (la ruta puede seguir montada con Activity): vuelve a abrir.
-  await page.goto("/coleccion");
+  // Segunda visita con navegación de cliente (no `goto`, que recarga): así el
+  // Rincón puede seguir montado con Activity y la hoja tiene que reabrirse igual.
+  await page.getByRole("link", { name: "Volver a Biblioteca" }).click();
+  await expect(page).toHaveURL(/\/coleccion$/);
   await page
     .getByRole("navigation", { name: "Herramientas de tu biblioteca" })
     .getByRole("link", { name: /sacar un lomo/i })

@@ -25,7 +25,7 @@ const SPINES = [
 // Abre la hoja cuando llega `?sorteo=1` (DRAW_HREF) y quita el parámetro.
 // Se lee el parámetro ENTRANTE, no el estado inicial: con `cacheComponents`
 // Next conserva las rutas visitadas ocultas con React Activity en vez de
-// desmontarlas, así que un `useState(initialOpen)` solo se evaluaría en la
+// desmontarlas, así que un estado inicial solo se evaluaría en la
 // primera visita y la segunda dejaría la hoja cerrada.
 // El parámetro se quita con `history.replaceState`, que Next sincroniza con
 // `useSearchParams`: no compite con otras navegaciones (p. ej. «Ver ficha»,
