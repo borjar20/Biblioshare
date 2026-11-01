@@ -16,16 +16,18 @@ export async function ProfilePet({ userId, variant = "card" }: { userId: string;
   if (variant === "compact") {
     return (
       <div
-        // Sin ancho ni alto fijos y a 3/4 de escala: la celda del sprite mide
-        // 96 px a escala 1, y una caja de 44 px la desbordaba hacia el borde de
-        // la tarjeta, que la recortaba (`overflow-hidden` por el fondo difuminado).
-        // A media escala el dibujo (que ocupa solo el centro de la celda) se leía
-        // demasiado pequeño.
-        className="flex shrink-0 items-center justify-center rounded-[10px] bg-surface-muted p-1"
+        // Ventana de 72 px sobre el sprite a escala 1 (celda de 96 px), centrada:
+        // el dibujo ocupa el centro de la celda y lo que se recorta es margen
+        // vacío. Antes la caja medía 44 px y el sprite desbordaba hacia el borde
+        // de la tarjeta, que lo cortaba. La escala tiene que ser entera
+        // (`PetSprite`: 1 | 2 | 3) para que el pixel art no se emborrone.
+        className="relative h-[72px] w-[72px] shrink-0 overflow-hidden rounded-[10px] bg-surface-muted"
         data-testid="profile-pet"
         title={`${pet.name} · ${t(`classes.${pet.petClass}`)} · ${t(`stages.${pet.stage}`)}`}
       >
-        <PetSprite stage={pet.stage} petClass={pet.petClass} mood="neutral" scale={0.75} label={pet.name} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+          <PetSprite stage={pet.stage} petClass={pet.petClass} mood="neutral" scale={1} label={pet.name} />
+        </div>
       </div>
     );
   }
