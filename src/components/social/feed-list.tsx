@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useEffectEvent, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { FeedEntry, FeedFilter } from "@/lib/social/feed";
@@ -39,19 +39,49 @@ export function FeedList({
   const [cursor, setCursor] = useState(initialCursor);
   const [known, setKnown] = useState(initialKnownUsernames);
   const [isPending, startTransition] = useTransition();
+  // Un fallo apaga la carga automática: el centinela sigue a la vista y, sin
+  // este freno, cada re-render volvería a pedir la misma página en bucle. El
+  // botón queda como reintento manual.
+  const [autoLoadFailed, setAutoLoadFailed] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const events = [...initialEvents, ...extraEvents];
 
   function loadMore() {
     startTransition(async () => {
-      const page = await loadMoreFeed(cursor, filter);
-      setExtraEvents((prev) => [...prev, ...page.events]);
-      setCursor(page.nextCursor);
-      // Se acumula: los eventos ya pintados de páginas anteriores siguen
-      // necesitando su set de known para no perder enlaces.
-      setKnown((prev) => [...new Set([...prev, ...page.knownUsernames])]);
+      try {
+        const page = await loadMoreFeed(cursor, filter);
+        setExtraEvents((prev) => [...prev, ...page.events]);
+        setCursor(page.nextCursor);
+        // Se acumula: los eventos ya pintados de páginas anteriores siguen
+        // necesitando su set de known para no perder enlaces.
+        setKnown((prev) => [...new Set([...prev, ...page.knownUsernames])]);
+        setAutoLoadFailed(false);
+      } catch (error) {
+        console.error("loadMoreFeed failed", error);
+        setAutoLoadFailed(true);
+      }
     });
   }
+
+  // Scroll infinito: un centinela tras la última tarjeta pide la página
+  // siguiente cuando entra en pantalla (con margen, para que llegue antes de
+  // tocar fondo). IntersectionObserver y no un listener de scroll: no corre en
+  // cada frame. Se re-observa tras cada carga, así que si la página nueva no
+  // llena la pantalla y el centinela sigue visible, encadena la siguiente.
+  const onSentinelVisible = useEffectEvent(loadMore);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !cursor || isPending || autoLoadFailed) return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) onSentinelVisible();
+      },
+      { rootMargin: "0px 0px 600px 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [cursor, isPending, autoLoadFailed]);
 
   if (events.length === 0) {
     return (
@@ -94,6 +124,9 @@ export function FeedList({
       {events.map((entry) => (
         <FeedItem key={entry.id} entry={entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={known} />
       ))}
+      {/* El botón se queda: es el camino de teclado y lector de pantalla, y el
+          reintento si la carga automática falla. */}
+      {cursor && <div ref={sentinelRef} aria-hidden="true" data-testid="feed-sentinel" />}
       {cursor && (
         <button
           type="button"
