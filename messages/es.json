@@ -588,6 +588,7 @@
   },
   "community": {
     "comparisons": "Entre nosotros",
+    "comparisonsHint": "Compara lo que leéis y veis con la gente a la que sigues",
     "title": "Comunidad",
     "clubs": "Clubes",
     "people": "Personas",
@@ -944,7 +945,7 @@
         "chartLabel": "Obras terminadas por mes en {year}"
       }
     },
-    "compareWith": "Comparar",
+    "compareWith": "Entre nosotros",
     "compareWithHint": "Ver qué obras compartís en Entre nosotros",
     "empty": "Este perfil todavía no ha añadido nada a su biblioteca.",
     "visibilityPublic": "Tu perfil es público. Cualquiera puede ver tu biblioteca.",
