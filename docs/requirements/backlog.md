@@ -1,6 +1,6 @@
 # Backlog — trabajo pendiente
 
-## Rework de sagas
+## Rework de sagas y rework visual
 
 - [x] **Rework de sagas · subproyecto 1, fase 1 (ficha de saga para el lector).** Hero
   cinemático, balda de pilas por subsaga, «Te toca», «Sobre la saga» y «Todas las obras»;
@@ -26,6 +26,10 @@
   [spec](superpowers/specs/2026-10-28-sagas-indice-atlas-design.md),
   [evidencia](testing/2026-10-28-sagas-indice-atlas.md), decisiones del 2026-10-28 («Atlas de sagas y universos»).
   Pendiente: #1573, #1574, #1575, #1576, #1577.
+- [x] **Rework visual · Perfil visual (#1580).** `/u/[username]` con cabecera en capas (mosaico y abanico de
+  Destacados), cifras grandes, «Leyendo ahora» con mascota compacta, «Su año» y la actividad como muro mixto por
+  mes. Rama `claude/perfil-visual` (PR pendiente); [spec](superpowers/specs/2026-10-29-perfil-visual-design.md),
+  [evidencia](testing/2026-11-01-perfil-visual.md), decisiones del 2026-11-01. Sin migraciones ni `use cache`.
 
 ## Moderación administrativa — #1183
 

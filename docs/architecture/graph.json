@@ -352,7 +352,12 @@
       "files": [
         "src/app/u/[username]",
         "src/app/u/[username]/_tabs",
+        "src/lib/profile",
+        "src/components/profile",
         "src/components/section-tabs.tsx"
+      ],
+      "gotchas": [
+        "El muro sale de posts (getFeed); la cabecera, cifras, Leyendo ahora y Su año salen de passes con el cliente de la petición. Sin use cache (#437)."
       ]
     },
     {

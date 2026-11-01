@@ -905,6 +905,44 @@
     }
   },
   "profile": {
+    "visual": {
+      "fanLabel": "Destacados de {name}",
+      "memberSinceInline": "desde {year}",
+      "figures": {
+        "books": "{count, plural, one {libro} other {libros}}",
+        "movies": "{count, plural, one {película} other {películas}}",
+        "series": "{count, plural, one {serie} other {series}}",
+        "rating": "nota media",
+        "noRating": "—",
+        "noRatingHint": "Aún no hay notas suficientes"
+      },
+      "now": { "title": "{type, select, book {Leyendo ahora} other {Viendo ahora}}", "also": "También en curso" },
+      "wall": {
+        "month": "{label} · {count, plural, one {# obra} other {# obras}}",
+        "inProgress": "En curso",
+        "dropped": "La dejó",
+        "finished": "Terminada",
+        "rated": "{value} de 5",
+        "episodes": "{season, select, none {} other {T{season} · }}{count, plural, one {# ep.} other {# ep.}}",
+        "reactions": "{count, plural, one {# reacción} other {# reacciones}}",
+        "coverLabel": "{title}, {state}",
+        "coverLabelWithReactions": "{title}, {state}, {reactions}",
+        "reviewLabel": "{title}, {state}, reseña: {excerpt}",
+        "reviewLabelWithReactions": "{title}, {state}, reseña: {excerpt}, {reactions}",
+        "spoilerReview": "Reseña con spoilers",
+        "spoilerReviewLabel": "{title}, {state}, reseña con spoilers",
+        "spoilerReviewLabelWithReactions": "{title}, {state}, reseña con spoilers, {reactions}"
+      },
+      "year": {
+        "title": "Su {year}",
+        "titleOwn": "Tu {year}",
+        "works": "{count, plural, one {obra} other {obras}}",
+        "bestMonth": "Su mejor mes, {month}: {count, plural, one {# obra} other {# obras}}.",
+        "bestMonthOwn": "Tu mejor mes, {month}: {count, plural, one {# obra} other {# obras}}.",
+        "topRated": "La mejor valorada: <title>{name}</title>.",
+        "chartLabel": "Obras terminadas por mes en {year}"
+      }
+    },
     "compareWith": "Comparar",
     "compareWithHint": "Ver qué obras compartís en Entre nosotros",
     "empty": "Este perfil todavía no ha añadido nada a su biblioteca.",
@@ -915,10 +953,6 @@
     "notFoundTitle": "Perfil no encontrado",
     "notFoundDescription": "Este perfil no existe o es privado.",
     "backHome": "Ir al inicio",
-    "statsBooks": "{count, plural, =0 {0 libros} one {1 libro} other {# libros}}",
-    "statsSeries": "{count, plural, =0 {0 series} one {1 serie} other {# series}}",
-    "statsFilms": "{count, plural, =0 {0 películas} one {1 película} other {# películas}}",
-    "memberSince": "Desde {year}",
     "nowConsuming": "Ahora mismo",
     "activityEmpty": "Este perfil todavía no tiene actividad pública.",
     "typeBooks": "Libros",
@@ -952,8 +986,6 @@
     "emptyTitle": "Biblioteca vacía",
     "highlights": "Destacados",
     "recentReviews": "Reseñas recientes",
-    "activityToday": "Hoy",
-    "activityYesterday": "Ayer",
     "activityEmptyTitle": "Sin actividad todavía",
     "activityEmptyOwn": "Tu actividad aparecerá aquí en cuanto registres algo.",
     "activityEmptyCta": "Buscar algo que registrar",
