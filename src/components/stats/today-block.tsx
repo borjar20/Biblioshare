@@ -46,10 +46,13 @@ export async function TodayBlock({ userId }: { userId: string }) {
     getLibraryItems(supabase, userId, { status: "planned" }),
   ]);
 
-  const later =
+  // Dos estanterías iguales: la de «en curso» lleva además el enlace al
+  // Sorteo; la de «Tu siguiente historia» no, porque ya lo tiene integrado.
+  const laterShelf = (showDraw: boolean) =>
     planned.length > 0 ? (
-      <LaterShelf items={planned.slice(0, LATER_SHOWN)} total={planned.length} />
+      <LaterShelf items={planned.slice(0, LATER_SHOWN)} total={planned.length} showDraw={showDraw} />
     ) : null;
+  const later = laterShelf(false);
 
   const t = await getTranslations("today");
   const panel = await getTranslations("homePanels");
@@ -116,7 +119,7 @@ export async function TodayBlock({ userId }: { userId: string }) {
         panelLabels={panelLabels}
         sectionHeading={<TodayHeader title={t("title")} />}
         keepGoingLabel={t("keepGoing")}
-        later={later}
+        later={laterShelf(true)}
         heading={
           <div className="flex items-center justify-between gap-3">
             <span className="font-mono text-[10px] tracking-[0.12em] uppercase text-muted-foreground">

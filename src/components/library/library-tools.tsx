@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import { NoteIcon, TargetIcon, TiersIcon } from "@/components/ui/icons";
+import { DiceIcon, NoteIcon, TargetIcon, TiersIcon } from "@/components/ui/icons";
+import { DRAW_HREF } from "@/lib/rincon/draw-href";
 
 const TOOLS = [
   { href: "/notas", key: "notebook", icon: NoteIcon },
   { href: "/coleccion/rincon", key: "goalsAndChallenges", icon: TargetIcon },
+  // El Sorteo vive en el Rincón, pero «Retos y objetivos» no lo nombra.
+  { href: DRAW_HREF, key: "drawTool", icon: DiceIcon },
   { href: "/estadisticas", key: "statistics", icon: TiersIcon },
 ] as const;
 
