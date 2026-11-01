@@ -41,7 +41,7 @@ export function ClubCoverBand({
   children?: ReactNode;
 }) {
   const cover = coverUrl && (
-    // eslint-disable-next-line @next/next/no-img-element -- portada externa/Storage, mismo criterio que profile-header
+    // eslint-disable-next-line @next/next/no-img-element -- portada externa/Storage, mismo criterio que profile-identity
     <img src={coverUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
   );
 

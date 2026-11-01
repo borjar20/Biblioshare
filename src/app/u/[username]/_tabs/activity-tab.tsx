@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { getFeed } from "@/lib/social/feed";
-import { ProfileActivityFeed } from "@/components/social/profile-activity-feed";
+import { ProfileWall } from "@/components/profile/profile-wall";
 import { EmptyState } from "@/components/ui/empty-state";
 import { UsersIcon } from "@/components/ui/icons";
 import { buttonVariants } from "@/components/ui/button";
@@ -44,7 +44,7 @@ export async function ActivityTab({
   }
 
   return (
-    <ProfileActivityFeed
+    <ProfileWall
       actorId={userId}
       initialEvents={page.events}
       initialCursor={page.nextCursor}

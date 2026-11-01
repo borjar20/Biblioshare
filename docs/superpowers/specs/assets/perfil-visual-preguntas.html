@@ -1,0 +1,238 @@
+<style>
+ .ph{width:300px;border-radius:26px;border:6px solid #0c0a09;background:#1f1a16;color:#f0e8db;font:12px/1.4 system-ui;overflow:hidden;padding-bottom:10px}
+ .m{font:500 10px ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase;color:#a99e8c;padding:12px 12px 6px}
+ .g{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:0 12px}
+ .c{aspect-ratio:2/3;border-radius:3px;position:relative;box-shadow:0 6px 12px #0008;overflow:hidden}
+ .c b{position:absolute;left:5px;bottom:5px;right:5px;font:700 10px/1.05 Georgia,serif;color:#fff;text-shadow:0 1px 4px #000}
+ .c s{position:absolute;right:4px;top:4px;background:#1f1a16e6;border-radius:99px;padding:1px 5px;font:600 8px system-ui;text-decoration:none;color:#e0a94a}
+ .t{margin:8px 12px;border:1px solid #ffffff1f;border-radius:10px;padding:8px;background:#2a231d}
+ .q{font:italic 13px/1.35 Georgia,serif;color:#cabfb0}
+ .row{display:flex;gap:8px;align-items:center;margin:6px 12px;padding:8px;border-radius:10px;background:#2a231d}
+ .mini{width:22px;height:33px;border-radius:2px;flex:none}
+ .tabs{display:flex;gap:16px;padding:10px 12px 0;border-bottom:1px solid #ffffff1f;font:600 13px Georgia,serif}
+ .tabs span{padding-bottom:8px}.tabs .on{border-bottom:2px solid #d98a5c}.tabs .off{color:#a99e8c}
+ .a{background:linear-gradient(160deg,#ff9a3a,#e0507a 55%,#3a1030)}.b{background:linear-gradient(160deg,#ff6aa0,#7a3ad0 55%,#140a30)}
+ .d{background:linear-gradient(160deg,#f5d0a0,#c03a3a 55%,#200808)}.e{background:linear-gradient(160deg,#9ad0e0,#4a7aa0 55%,#101c30)}
+ .f{background:linear-gradient(160deg,#e3a043,#8a3412 55%,#2b0f08)}.h{background:linear-gradient(160deg,#9ad8d0,#2a6a7a 55%,#0a1a20)}
+ .k{background:linear-gradient(160deg,#d04a6a,#5a1030 55%,#14060c)}.l{background:linear-gradient(160deg,#d7b25a,#5f6a2a 55%,#1d220c)}
+ .dots{color:#d98a5c;letter-spacing:1px;font-size:9px}
+ .cards{display:flex;gap:22px;flex-wrap:wrap;justify-content:center}
+ .col{display:flex;flex-direction:column;gap:8px;align-items:center;max-width:320px}
+ .why{font-size:13px;color:var(--text-secondary,#888);margin-top:8px}
+</style>
+
+<h2>¿Qué es el «muro» de la actividad?</h2>
+<p class="subtitle">La actividad del perfil son sus <b>publicaciones</b> (lo que la persona comparte): empezó, terminó, valoró, sesiones, episodios, pensamientos, experiencias, crónicas. Tres formas de volverla visual. Las tres usan los mismos datos de hoy; cambia cómo se agrupan.</p>
+
+<div class="options cards">
+
+<div class="option col" data-choice="a" onclick="toggleSelect(this)">
+ <div class="letter">A</div>
+ <div class="ph">
+  <div class="tabs"><span class="on">Actividad</span><span class="off">Experiencias</span><span class="off">Colección</span></div>
+  <div class="m">Octubre · 4 obras</div>
+  <div class="g">
+   <div class="c f"><s>EN CURSO</s><b>El imperio final</b></div>
+   <div class="c a"><s>●●●●○</s><b>Tangerine</b></div>
+   <div class="c k" style="opacity:.45"><s style="color:#a99e8c">LA DEJÓ</s><b>Obsession</b></div>
+  </div>
+  <div class="t"><div style="font-size:10.5px;color:#a99e8c">Pensamiento · sobre <i>Rayuela</i></div><div class="q">«Leer el capítulo 7 en voz alta es otra cosa.»</div></div>
+  <div class="g"><div class="c b"><s>●●●●●</s><b>Paprika</b></div></div>
+  <div class="t" style="display:flex;gap:8px"><div class="mini b"></div><div><div style="font-size:10.5px;color:#a99e8c">Reseñó Paprika <span class="dots">●●●●●</span></div><div class="q">«Satoshi Kon dibuja los sueños…»</div></div></div>
+  <div class="m">Septiembre · 9 obras</div>
+  <div class="g"><div class="c d"><s>●●●●●</s><b>Pearl</b></div><div class="c e"><s>●●●●○</s><b>Mr. Nobody</b></div><div class="c h"><s>T2 · 6 EP.</s><b>Severance</b></div></div>
+ </div>
+ <h3 style="margin:6px 0 0">Muro mixto por mes</h3>
+ <p class="why">Cada obra aparece <b>una vez por mes</b> con su último estado («en curso», «la dejó», nota). Las sesiones y los episodios se funden en esa portada («T2 · 6 ep.»). Pensamientos, reseñas, experiencias y crónicas se intercalan como tarjetas, en su sitio del tiempo. <b>Mi recomendación</b>: es la misma actividad de hoy, toda en una pestaña, y se ve.</p>
+</div>
+
+<div class="option col" data-choice="b" onclick="toggleSelect(this)">
+ <div class="letter">B</div>
+ <div class="ph">
+  <div class="tabs"><span class="on">Estantería</span><span class="off">Actividad</span><span class="off">Experiencias</span></div>
+  <div class="m">2026 · 39 terminadas</div>
+  <div class="g">
+   <div class="c a"><s>●●●●○</s><b>Tangerine</b></div><div class="c b"><s>●●●●●</s><b>Paprika</b></div><div class="c d"><s>●●●●●</s><b>Pearl</b></div>
+   <div class="c e"><s>●●●●○</s><b>Mr. Nobody</b></div><div class="c l"><s>●●●●○</s><b>El Hobbit</b></div><div class="c k"><s>●●●○○</s><b>Obsession</b></div>
+  </div>
+  <div class="m">2025 · 52 terminadas</div>
+  <div class="g"><div class="c h"><s>●●●●●</s><b>Severance</b></div><div class="c f"><s>●●●●●</s><b>Mistborn</b></div><div class="c a"><s>●●●○○</s><b>Resacón 2</b></div></div>
+  <div style="text-align:center;color:#a99e8c;font-size:10.5px;margin-top:10px">La pestaña Actividad sigue siendo el feed (con tarjetas nuevas)</div>
+ </div>
+ <h3 style="margin:6px 0 0">Estantería de terminadas + feed aparte</h3>
+ <p class="why">Pestaña nueva y por defecto: lo que <b>terminó</b>, por año, sacado de sus pases visibles (no de las publicaciones). La actividad se queda como feed en su pestaña, con tarjetas más visuales. Más limpio, pero son dos sitios y la estantería enseña lo que no publicó (aunque sea visible).</p>
+</div>
+
+<div class="option col" data-choice="c" onclick="toggleSelect(this)">
+ <div class="letter">C</div>
+ <div class="ph">
+  <div class="tabs"><span class="on">Actividad</span><span class="off">Experiencias</span><span class="off">Colección</span></div>
+  <div class="t" style="padding:0;overflow:hidden"><div class="d" style="height:60px;filter:blur(0)"></div><div style="display:flex;gap:8px;padding:0 8px 8px;margin-top:-30px"><div class="mini d" style="width:40px;height:60px;box-shadow:0 6px 12px #000"></div><div style="padding-top:32px"><b style="font-family:Georgia">Pearl</b> <span class="dots">●●●●●</span></div></div><div class="q" style="padding:0 8px 8px">«Mia Goth sostiene la película entera.»</div></div>
+  <div class="row"><div class="mini b"></div><div>Terminó <b>Paprika</b> <span class="dots">●●●●●</span></div></div>
+  <div class="row"><div class="mini h"></div><div>Vio 6 episodios de <b>Severance</b></div></div>
+  <div class="t"><div style="font-size:10.5px;color:#a99e8c">Pensamiento · sobre <i>Rayuela</i></div><div class="q">«Leer el capítulo 7 en voz alta es otra cosa.»</div></div>
+  <div class="row"><div class="mini f"></div><div>Empezó <b>El imperio final</b></div></div>
+ </div>
+ <h3 style="margin:6px 0 0">Feed con tarjetas más visuales</h3>
+ <p class="why">Se queda la lista de hoy, pero con las tarjetas del Inicio nuevo: la reseña con portada grande y fondo difuminado, los hitos con portadas más grandes. Es el cambio más pequeño, aunque sigue leyéndose como una lista.</p>
+</div>
+
+</div>
+<style>
+ .ph{width:300px;border-radius:26px;border:6px solid #0c0a09;background:#1f1a16;color:#f0e8db;font:12px/1.4 system-ui;overflow:hidden;padding-bottom:14px}
+ .bn{height:150px;position:relative;overflow:hidden}
+ .bl{position:absolute;inset:-30px;filter:blur(22px) saturate(1.4);opacity:.9}
+ .vl{position:absolute;inset:0;background:linear-gradient(180deg,#1f1a1622,#1f1a16 97%)}
+ .cv{border-radius:3px;box-shadow:0 8px 16px #000a;position:relative;flex:none}
+ .cv b{position:absolute;left:4px;right:4px;bottom:4px;font:700 9px/1.05 Georgia,serif;color:#fff;text-shadow:0 1px 4px #000}
+ .av{width:68px;height:68px;border-radius:50%;background:linear-gradient(135deg,#d04a4a,#8a1e2a);border:4px solid #1f1a16;box-shadow:0 6px 16px #0009}
+ .id{padding:0 14px;margin-top:-38px;position:relative}
+ .nm{font:700 22px Georgia,serif;margin:8px 0 0}.us{font:11px ui-monospace,monospace;color:#a99e8c}
+ .a{background:linear-gradient(160deg,#ff9a3a,#e0507a 55%,#3a1030)}.b{background:linear-gradient(160deg,#ff6aa0,#7a3ad0 55%,#140a30)}
+ .d{background:linear-gradient(160deg,#f5d0a0,#c03a3a 55%,#200808)}.e{background:linear-gradient(160deg,#9ad0e0,#4a7aa0 55%,#101c30)}
+ .f{background:linear-gradient(160deg,#e3a043,#8a3412 55%,#2b0f08)}.h{background:linear-gradient(160deg,#9ad8d0,#2a6a7a 55%,#0a1a20)}
+ .k{background:linear-gradient(160deg,#d04a6a,#5a1030 55%,#14060c)}.l{background:linear-gradient(160deg,#d7b25a,#5f6a2a 55%,#1d220c)}
+ .cards{display:flex;gap:22px;flex-wrap:wrap;justify-content:center}
+ .col{display:flex;flex-direction:column;gap:8px;align-items:center;max-width:320px}
+ .why{font-size:13px;margin-top:6px}
+</style>
+<h2>¿Qué va en la cabecera del perfil?</h2>
+<p class="subtitle">El banner es lo primero que ve quien entra. Las tres opciones usan datos que ya existen. En todas, si no hay material, se cae a un degradado con el color de acento.</p>
+
+<div class="options cards">
+
+<div class="option col" data-choice="a" onclick="toggleSelect(this)">
+ <div class="letter">A</div>
+ <div class="ph">
+  <div class="bn"><div class="bl" style="background:radial-gradient(circle at 20% 40%,#e3a043,transparent 55%),radial-gradient(circle at 55% 70%,#ff6aa0,transparent 55%),radial-gradient(circle at 85% 30%,#9ad0e0,transparent 55%),#2a1a14"></div><div class="vl"></div>
+   <div style="position:absolute;right:-6px;top:16px;display:flex">
+    <div class="cv f" style="width:58px;height:87px;transform:rotate(-8deg) translateY(8px)"><b>El imperio final</b></div>
+    <div class="cv b" style="width:58px;height:87px;margin-left:-14px;transform:rotate(-3deg)"><b>Paprika</b></div>
+    <div class="cv d" style="width:58px;height:87px;margin-left:-14px;transform:rotate(3deg)"><b>Pearl</b></div>
+    <div class="cv l" style="width:58px;height:87px;margin-left:-14px;transform:rotate(8deg) translateY(8px)"><b>El Hobbit</b></div>
+   </div></div>
+  <div class="id"><div class="av"></div><div class="nm">Dev Test</div><div class="us">@devtest</div></div>
+ </div>
+ <h3 style="margin:6px 0 0">Abanico de destacados</h3>
+ <p class="why">Sus obras fijadas (<code>pinned_order</code>), en abanico sobre su color mezclado. Las elige la persona, así que la cabecera es <b>su carta de presentación</b>. Sin destacados: sus últimas terminadas. <b>Mi recomendación.</b></p>
+</div>
+
+<div class="option col" data-choice="b" onclick="toggleSelect(this)">
+ <div class="letter">B</div>
+ <div class="ph">
+  <div class="bn"><div class="bl f" style="filter:blur(14px) saturate(1.3)"></div><div class="vl"></div>
+   <div style="position:absolute;right:16px;top:16px;display:flex;gap:8px;align-items:flex-end"><div style="text-align:right;font-size:10px;color:#f0e8dbcc">LEYENDO AHORA<br><b style="font:700 13px Georgia;color:#fff">El imperio final</b></div><div class="cv f" style="width:54px;height:81px"></div></div></div>
+  <div class="id"><div class="av"></div><div class="nm">Dev Test</div><div class="us">@devtest</div></div>
+ </div>
+ <h3 style="margin:6px 0 0">Lo que tiene entre manos</h3>
+ <p class="why">El fondo es la obra que está leyendo o viendo ahora, como el hero de la ficha. Cambia solo y está vivo. Pero la cabecera dice «qué hace hoy», no «quién es», y queda vacía en quien no tiene nada en curso.</p>
+</div>
+
+<div class="option col" data-choice="c" onclick="toggleSelect(this)">
+ <div class="letter">C</div>
+ <div class="ph">
+  <div class="bn" style="display:grid;grid-template-columns:repeat(6,1fr);grid-auto-rows:75px;gap:2px">
+   <div class="a"></div><div class="b"></div><div class="d"></div><div class="e"></div><div class="f"></div><div class="h"></div><div class="k"></div><div class="l"></div><div class="a"></div><div class="d"></div><div class="b"></div><div class="e"></div>
+   <div class="vl" style="background:linear-gradient(180deg,#1f1a1655,#1f1a16 97%)"></div></div>
+  <div class="id"><div class="av"></div><div class="nm">Dev Test</div><div class="us">@devtest</div></div>
+ </div>
+ <h3 style="margin:6px 0 0">Mosaico de lo último</h3>
+ <p class="why">Una pared de sus últimas doce obras terminadas, atenuada. Llena mucho y se renueva sola, pero es más ruidosa y nadie la elige: con una sola obra mala, el perfil sale con ella arriba.</p>
+</div>
+
+</div>
+<style>
+ .ph{width:300px;border-radius:26px;border:6px solid #0c0a09;background:#1f1a16;color:#f0e8db;font:12px/1.4 system-ui;overflow:hidden;padding-bottom:14px}
+ .bn{height:170px;position:relative;overflow:hidden}
+ .vl{position:absolute;inset:0;background:linear-gradient(180deg,#1f1a1600 30%,#1f1a16 97%)}
+ .cv{border-radius:3px;box-shadow:0 10px 18px #000c;position:relative;flex:none}
+ .cv b{position:absolute;left:4px;right:4px;bottom:4px;font:700 9px/1.05 Georgia,serif;color:#fff;text-shadow:0 1px 4px #000}
+ .av{width:68px;height:68px;border-radius:50%;background:linear-gradient(135deg,#d04a4a,#8a1e2a);border:4px solid #1f1a16;box-shadow:0 6px 16px #0009}
+ .id{padding:0 14px;margin-top:-38px;position:relative}
+ .nm{font:700 22px Georgia,serif;margin:8px 0 0}.us{font:11px ui-monospace,monospace;color:#a99e8c}
+ .a{background:linear-gradient(160deg,#ff9a3a,#e0507a 55%,#3a1030)}.b{background:linear-gradient(160deg,#ff6aa0,#7a3ad0 55%,#140a30)}
+ .d{background:linear-gradient(160deg,#f5d0a0,#c03a3a 55%,#200808)}.e{background:linear-gradient(160deg,#9ad0e0,#4a7aa0 55%,#101c30)}
+ .f{background:linear-gradient(160deg,#e3a043,#8a3412 55%,#2b0f08)}.h{background:linear-gradient(160deg,#9ad8d0,#2a6a7a 55%,#0a1a20)}
+ .k{background:linear-gradient(160deg,#d04a6a,#5a1030 55%,#14060c)}.l{background:linear-gradient(160deg,#d7b25a,#5f6a2a 55%,#1d220c)}
+ .mos{position:absolute;inset:0;display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:62px;gap:2px}
+ .cards{display:flex;gap:28px;flex-wrap:wrap;justify-content:center}
+ .col{display:flex;flex-direction:column;gap:8px;align-items:center;max-width:320px}
+ .why{font-size:13px;margin-top:6px}
+</style>
+<h2>Mezcla de A y C: ¿cuál de las dos?</h2>
+<p class="subtitle">En las dos, el mosaico son sus últimas obras terminadas y los destacados son las que eligió ella.</p>
+
+<div class="options cards">
+
+<div class="option col" data-choice="capas" onclick="toggleSelect(this)">
+ <div class="letter">1</div>
+ <div class="ph">
+  <div class="bn">
+   <div class="mos" style="opacity:.42;filter:saturate(.8)"><div class="a"></div><div class="e"></div><div class="h"></div><div class="k"></div><div class="a"></div><div class="d"></div><div class="e"></div><div class="h"></div><div class="k"></div><div class="l"></div><div class="d"></div><div class="a"></div><div class="h"></div><div class="e"></div><div class="k"></div><div class="a"></div><div class="d"></div><div class="h"></div><div class="l"></div><div class="e"></div><div class="a"></div></div>
+   <div class="vl"></div>
+   <div style="position:absolute;right:-4px;top:14px;display:flex">
+    <div class="cv f" style="width:60px;height:90px;transform:rotate(-8deg) translateY(8px)"><b>El imperio final</b></div>
+    <div class="cv b" style="width:60px;height:90px;margin-left:-14px;transform:rotate(-3deg)"><b>Paprika</b></div>
+    <div class="cv d" style="width:60px;height:90px;margin-left:-14px;transform:rotate(3deg)"><b>Pearl</b></div>
+    <div class="cv l" style="width:60px;height:90px;margin-left:-14px;transform:rotate(8deg) translateY(8px)"><b>El Hobbit</b></div>
+   </div></div>
+  <div class="id"><div class="av"></div><div class="nm">Dev Test</div><div class="us">@devtest</div></div>
+ </div>
+ <h3 style="margin:6px 0 0">Mosaico al fondo, abanico delante</h3>
+ <p class="why">El mosaico, atenuado y quieto, hace de papel pintado; el abanico de destacados flota encima con sombra. Las dos capas se leen por separado: lo que hace y lo que elige. <b>Mi recomendación.</b></p>
+</div>
+
+<div class="option col" data-choice="bento" onclick="toggleSelect(this)">
+ <div class="letter">2</div>
+ <div class="ph">
+  <div class="bn">
+   <div class="mos" style="grid-template-columns:repeat(8,1fr);grid-auto-rows:42px">
+    <div class="a" style="opacity:.5"></div><div class="e" style="opacity:.5"></div><div class="f" style="grid-column:span 2;grid-row:span 3;box-shadow:0 0 0 2px #e0a94a inset"></div><div class="h" style="opacity:.5"></div><div class="b" style="grid-column:span 2;grid-row:span 3;box-shadow:0 0 0 2px #e0a94a inset"></div><div class="k" style="opacity:.5"></div>
+    <div class="d" style="opacity:.5"></div><div class="l" style="opacity:.5"></div><div class="a" style="opacity:.5"></div><div class="e" style="opacity:.5"></div>
+    <div class="h" style="opacity:.5"></div><div class="k" style="opacity:.5"></div><div class="d" style="opacity:.5"></div><div class="a" style="opacity:.5"></div>
+    <div class="e" style="opacity:.5"></div><div class="l" style="opacity:.5"></div><div class="h" style="opacity:.5"></div><div class="d" style="opacity:.5"></div><div class="a" style="opacity:.5"></div><div class="k" style="opacity:.5"></div><div class="e" style="opacity:.5"></div><div class="h" style="opacity:.5"></div>
+   </div>
+   <div class="vl"></div></div>
+  <div class="id"><div class="av"></div><div class="nm">Dev Test</div><div class="us">@devtest</div></div>
+ </div>
+ <h3 style="margin:6px 0 0">Un solo mosaico con los destacados en grande</h3>
+ <p class="why">Una pared continua en la que los destacados ocupan baldosas grandes con borde dorado y el resto va pequeño y atenuado. Es más integrado y más «revista», pero los destacados se leen menos como algo que eligió ella.</p>
+</div>
+
+</div>
+<style>
+ .blk{width:300px;border-radius:14px;background:#1f1a16;color:#f0e8db;font:12px/1.4 system-ui;padding:12px;border:1px solid #ffffff1a}
+ .num{font:700 24px Georgia,serif;line-height:1}.num small{display:block;font:500 9px ui-monospace,monospace;letter-spacing:.07em;text-transform:uppercase;color:#a99e8c;margin-top:4px}
+ .cv{border-radius:3px;box-shadow:0 6px 12px #000a;flex:none}
+ .a{background:linear-gradient(160deg,#ff9a3a,#e0507a 55%,#3a1030)}.b{background:linear-gradient(160deg,#ff6aa0,#7a3ad0 55%,#140a30)}
+ .d{background:linear-gradient(160deg,#f5d0a0,#c03a3a 55%,#200808)}.f{background:linear-gradient(160deg,#e3a043,#8a3412 55%,#2b0f08)}
+ .l{background:linear-gradient(160deg,#d7b25a,#5f6a2a 55%,#1d220c)}.e{background:linear-gradient(160deg,#9ad0e0,#4a7aa0 55%,#101c30)}
+ .eb{font:500 9.5px ui-monospace,monospace;letter-spacing:.08em;text-transform:uppercase;color:#a99e8c}
+ .grid{display:flex;gap:22px;flex-wrap:wrap;justify-content:center}
+ .col{display:flex;flex-direction:column;gap:6px;align-items:center;max-width:320px}
+ .why{font-size:13px}
+</style>
+<h2>¿Qué bloques van entre la cabecera y el muro?</h2>
+<p class="subtitle">Elige todos los que quieras (selección múltiple). Ten en cuenta una regla del proyecto: el perfil enseña lo que la persona <b>comparte</b>, y sus <b>herramientas</b> (estadísticas, retos) viven en Biblioteca.</p>
+
+<div class="options grid" data-multiselect>
+
+<div class="option col" data-choice="cifras" onclick="toggleSelect(this)"><div class="letter">1</div>
+ <div class="blk" style="display:grid;grid-template-columns:repeat(4,1fr)"><div class="num">8<small>libros</small></div><div class="num">137<small>películas</small></div><div class="num">2<small>series</small></div><div class="num" style="color:#e0a94a">4,5<small>nota media</small></div></div>
+ <h3 style="margin:4px 0 0">Cifras grandes</h3><p class="why">Sustituyen a las píldoras de hoy. Libros, películas y series ya existen; la nota media es una lectura nueva de sus pases visibles.</p></div>
+
+<div class="option col" data-choice="leyendo" onclick="toggleSelect(this)"><div class="letter">2</div>
+ <div class="blk" style="display:flex;gap:10px;align-items:center"><div class="cv f" style="width:40px;height:60px"></div><div style="flex:1"><div class="eb">Leyendo ahora</div><b style="font:600 14px Georgia">El imperio final</b><div style="height:5px;border-radius:9px;background:#ffffff1a;margin-top:6px"><div style="width:99%;height:100%;background:#e0a94a;border-radius:9px"></div></div></div><div style="width:34px;height:34px;border-radius:9px;background:radial-gradient(circle,#5a7a4a,#2a3a24);display:grid;place-items:center">🧙</div></div>
+ <h3 style="margin:4px 0 0">Leyendo ahora + mascota</h3><p class="why">Lo que tiene en curso (hasta 3) y la mascota al lado, en lugar de su tarjeta suelta de hoy.</p></div>
+
+<div class="option col" data-choice="anio" onclick="toggleSelect(this)"><div class="letter">3</div>
+ <div class="blk"><div style="display:flex;justify-content:space-between"><b style="font:600 14px Georgia">Su 2026</b><span style="font:700 18px Georgia;color:#e0a94a">39</span></div><div style="display:flex;gap:3px;align-items:flex-end;height:44px;margin-top:6px">
+ <div style="flex:1;height:20%;background:#d98a5c88"></div><div style="flex:1;height:35%;background:#d98a5c88"></div><div style="flex:1;height:12%;background:#d98a5c88"></div><div style="flex:1;height:45%;background:#d98a5c88"></div><div style="flex:1;height:65%;background:#d98a5c88"></div><div style="flex:1;height:25%;background:#d98a5c88"></div><div style="flex:1;height:100%;background:#e0a94a"></div><div style="flex:1;height:55%;background:#d98a5c88"></div><div style="flex:1;height:35%;background:#d98a5c88"></div><div style="flex:1;height:45%;background:#d98a5c88"></div><div style="flex:1;height:4%;background:#ffffff14"></div><div style="flex:1;height:4%;background:#ffffff14"></div></div></div>
+ <h3 style="margin:4px 0 0">Su año</h3><p class="why">Terminadas por mes y su mejor mes. Vistoso, pero roza las «herramientas» (se parece a Estadísticas y a la Crónica). Si la persona comparte su crónica, ya aparece en el muro.</p></div>
+
+<div class="option col" data-choice="balda" onclick="toggleSelect(this)"><div class="letter">4</div>
+ <div class="blk"><div class="eb" style="margin-bottom:8px">Destacados</div><div style="display:flex;gap:8px"><div class="cv f" style="width:56px;height:84px"></div><div class="cv b" style="width:56px;height:84px"></div><div class="cv d" style="width:56px;height:84px"></div><div class="cv l" style="width:56px;height:84px"></div></div></div>
+ <h3 style="margin:4px 0 0">Destacados en balda</h3><p class="why">Los destacados en grande y con título. Repite el abanico de la cabecera, aunque con más detalle; con la cabecera elegida yo lo quitaría.</p></div>
+
+</div>
+<p class="subtitle" style="margin-top:12px">Mi recomendación: <b>1 y 2</b>. Su año, fuera, por la regla de las herramientas; los destacados ya están en la cabecera.</p>
