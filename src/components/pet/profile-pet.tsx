@@ -16,11 +16,16 @@ export async function ProfilePet({ userId, variant = "card" }: { userId: string;
   if (variant === "compact") {
     return (
       <div
-        className="grid h-11 w-11 shrink-0 place-items-center rounded-[10px] bg-surface-muted"
+        // Sin ancho ni alto fijos y a 3/4 de escala: la celda del sprite mide
+        // 96 px a escala 1, y una caja de 44 px la desbordaba hacia el borde de
+        // la tarjeta, que la recortaba (`overflow-hidden` por el fondo difuminado).
+        // A media escala el dibujo (que ocupa solo el centro de la celda) se leía
+        // demasiado pequeño.
+        className="flex shrink-0 items-center justify-center rounded-[10px] bg-surface-muted p-1"
         data-testid="profile-pet"
         title={`${pet.name} · ${t(`classes.${pet.petClass}`)} · ${t(`stages.${pet.stage}`)}`}
       >
-        <PetSprite stage={pet.stage} petClass={pet.petClass} mood="neutral" scale={1} label={pet.name} />
+        <PetSprite stage={pet.stage} petClass={pet.petClass} mood="neutral" scale={0.75} label={pet.name} />
       </div>
     );
   }
