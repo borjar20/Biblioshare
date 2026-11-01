@@ -1,7 +1,7 @@
 import Image from "next/image";
 
 // Avatar circular reutilizable para listas sociales (seguidores/solicitudes).
-// Misma lógica que profile-header: los subidos a Storage van por next/image
+// Misma lógica que profile-identity: los subidos a Storage van por next/image
 // (remotePatterns); las URLs externas legado, por <img>.
 function isSupabaseAvatar(url: string): boolean {
   return /\.supabase\.co\/storage\/v1\/object\/public\//.test(url);

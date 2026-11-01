@@ -1,0 +1,166 @@
+<style>
+  .wrap{display:flex;flex-direction:column;gap:22px}
+  .pair{display:grid;grid-template-columns:150px 1fr;gap:16px;align-items:start}
+  .ph{width:150px;height:300px;border-radius:18px;border:3px solid #3a322c;overflow:hidden;background:#211b17;color:#e9dfd2;font:9px/1.3 system-ui;position:relative}
+  .ph.old{filter:saturate(.6)}
+  .new{border-radius:18px;border:3px solid #3a322c;overflow:hidden;background:#1b1512;color:#f3e9dc;font:11px/1.35 system-ui;position:relative;min-height:300px}
+  .lab{font:10px system-ui;letter-spacing:.08em;text-transform:uppercase;color:#8a7f74;margin-bottom:4px}
+  .box{border:1px solid #3a322c;border-radius:6px;margin:4px 6px;padding:4px}
+  .ln{height:5px;border-radius:3px;background:#3a322c;margin:3px 0}
+  .c{border-radius:3px;display:inline-block;flex:none;box-shadow:0 6px 14px #0008}
+  .g1{background:linear-gradient(160deg,#e0a24a,#7a2e12)} .g2{background:linear-gradient(160deg,#4a8ad0,#1c2450)}
+  .g3{background:linear-gradient(160deg,#c9d65a,#2f5a2a)} .g4{background:linear-gradient(160deg,#d04a6a,#3a1030)}
+  .g5{background:linear-gradient(160deg,#9a6ad0,#26144a)} .g6{background:linear-gradient(160deg,#5ad0c0,#123a40)}
+  .g7{background:linear-gradient(160deg,#f0e0c0,#8a6a4a)} .g8{background:linear-gradient(160deg,#ff8a4a,#5a1a2a)}
+  .serif{font-family:Georgia,serif}
+  .hero{position:relative;padding:14px;overflow:hidden}
+  .hero::before{content:"";position:absolute;inset:-20px;background:var(--bg);filter:blur(22px) saturate(1.4);opacity:.75}
+  .hero>*{position:relative}
+  .ring{width:44px;height:44px;border-radius:50%;background:conic-gradient(#ffb15a 0 99%,#ffffff22 0);display:grid;place-items:center}
+  .ring i{width:36px;height:36px;border-radius:50%;background:#1b1512cc;display:grid;place-items:center;font:600 10px system-ui;font-style:normal}
+  .btn{display:inline-block;background:#e8734a;color:#1b1512;border-radius:99px;padding:4px 10px;font-weight:600;font-size:10px}
+  .shelf{display:flex;gap:6px;align-items:flex-end;padding:6px 12px 10px;overflow:hidden;border-bottom:3px solid #4a3a2c;box-shadow:0 8px 10px -8px #000}
+  .h{font:600 13px Georgia,serif;margin:10px 12px 2px}
+  .sub{color:#b9a998;font-size:10px;margin:0 12px}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .meta{font-size:11px;color:#8a7f74;margin-top:6px}
+  .rank{font:600 22px Georgia,serif;color:#e8734a;margin-right:6px}
+  .dots i{display:inline-block;width:6px;height:6px;border-radius:50%;background:#e8734a;margin-right:2px}
+  .dots i.o{background:#e8734a44}
+</style>
+
+<h2>Más visual y llamativa: ¿por dónde empezamos?</h2>
+<p class="subtitle">Nada de atlas: la idea es que <b>la portada sea el material</b>, con color sacado de las obras, números grandes en serif y movimiento suave, frente a las cajas de texto de hoy. Están ordenadas por cuánto se ve cada pantalla. Hoy (gris) → propuesta. Elige la primera.</p>
+
+<div class="options wrap">
+
+<!-- 1 INICIO -->
+<div class="option" data-choice="inicio" onclick="toggleSelect(this)">
+<div class="letter">1</div><div class="content">
+<h3><span class="rank">1</span>Inicio: la primera pantalla de cada día</h3>
+<div class="pair">
+ <div><div class="lab">Hoy · móvil</div><div class="ph old">
+  <div style="padding:8px"><div class="ln" style="width:60%;height:8px"></div><div class="ln" style="width:80%;height:8px"></div></div>
+  <div class="box" style="height:42px"><div class="ln" style="width:50%"></div><div class="ln" style="width:70%"></div></div>
+  <div class="box" style="width:60%;height:30px"></div><div class="box" style="height:22px"></div><div class="box" style="height:18px"></div>
+  <div class="box" style="height:26px;display:flex;gap:4px"><span class="c g4" style="width:12px;height:18px"></span><div style="flex:1"><div class="ln"></div></div></div>
+  <div class="box" style="height:26px"></div>
+ </div><div class="meta">Cajas de texto; la obra en curso, en una miniatura gris. El feed: portadas de 24 px.</div></div>
+ <div class="new">
+  <div class="hero" style="--bg:linear-gradient(135deg,#e0a24a,#7a2e12 60%,#1b1512)">
+   <div style="font-size:10px;opacity:.8">JUEVES 29 · ¿Qué has disfrutado hoy?</div>
+   <div style="display:flex;gap:12px;margin-top:8px;align-items:flex-end">
+    <span class="c g1" style="width:64px;height:96px"></span>
+    <div style="flex:1"><div class="serif" style="font-size:18px;font-weight:600">El imperio final</div><div style="opacity:.8">2.ª lectura · día 107</div>
+     <div style="display:flex;gap:8px;align-items:center;margin-top:6px"><div class="ring"><i>99%</i></div><div>Te queda <b>1 página</b><br><span class="btn">Registrar sesión</span></div></div></div>
+   </div>
+  </div>
+  <div class="h">Tu semana</div>
+  <div style="display:flex;gap:4px;padding:4px 12px">
+   <div style="text-align:center"><span class="c g1" style="width:22px;height:32px"></span><div style="font-size:9px">L</div></div><div style="text-align:center"><span class="c g1" style="width:22px;height:32px"></span><div style="font-size:9px">M</div></div><div style="text-align:center"><span class="c g2" style="width:22px;height:32px"></span><div style="font-size:9px">X</div></div><div style="text-align:center"><span style="display:inline-block;width:22px;height:32px;border:1px dashed #5a4a3c;border-radius:3px"></span><div style="font-size:9px">J</div></div>
+   <div style="margin-left:10px"><div class="serif" style="font-size:22px;color:#ffb15a">3 días</div><div style="font-size:9px;opacity:.7">de racha · 4 h 20</div></div>
+  </div>
+  <div class="h">De tu gente</div>
+  <div style="display:flex;gap:8px;padding:4px 12px 12px">
+   <div style="width:48%;border-radius:8px;overflow:hidden;background:#2a211c"><div style="height:54px" class="g4"></div><div style="padding:5px"><b>Ana</b> terminó <i class="serif">Pearl</i><div class="dots"><i></i><i></i><i></i><i></i><i class="o"></i></div>«Inquietante y preciosa»</div></div>
+   <div style="width:48%;border-radius:8px;overflow:hidden;background:#2a211c"><div style="height:54px" class="g5"></div><div style="padding:5px"><b>Club Lectura</b> · nuevo reto <i class="serif">Clásicos rusos</i></div></div>
+  </div>
+ </div>
+</div>
+<div class="meta">Reutiliza el hero cinemático de la ficha (portada difuminada como fondo), la balda y los dots. Datos: los mismos de hoy (pase activo, sesiones, feed). Cubre #1454 y #1450. Coste: 1–2 subproyectos (hero + semana; feed con portadas grandes). Riesgo medio: es la pantalla con más e2e y streaming por secciones.</div>
+</div></div>
+
+<!-- 2 BIBLIOTECA -->
+<div class="option" data-choice="biblioteca" onclick="toggleSelect(this)">
+<div class="letter">2</div><div class="content">
+<h3><span class="rank">2</span>Biblioteca: estanterías en lugar de rejilla</h3>
+<div class="pair">
+ <div><div class="lab">Hoy · móvil</div><div class="ph old">
+  <div style="padding:8px"><div class="ln" style="width:55%;height:9px"></div></div>
+  <div style="display:flex;gap:4px;padding:0 6px"><div class="box" style="flex:1;height:14px;margin:0"></div><div class="box" style="flex:1;height:14px;margin:0"></div></div><div class="box" style="width:45%;height:14px"></div>
+  <div style="padding:4px 8px"><div class="ln" style="width:70%"></div></div><div class="box" style="height:14px"></div>
+  <div style="display:flex;gap:6px;padding:6px"><div class="box" style="flex:1;height:110px;margin:0"></div><div class="box" style="flex:1;height:110px;margin:0"></div></div>
+ </div><div class="meta">440 px de botones, pestañas y filtros antes de la primera portada; luego, rejilla plana.</div></div>
+ <div class="new">
+  <div style="padding:12px 12px 0;display:flex;justify-content:space-between;align-items:flex-end"><div><div class="serif" style="font-size:20px;font-weight:600">Mi biblioteca</div><div style="opacity:.7">117 obras · 96 terminadas · 3 este mes</div></div><div style="opacity:.7">⌕ ⚙ ＋</div></div>
+  <div class="h" style="color:#ffb15a">En curso</div>
+  <div style="display:flex;gap:10px;padding:4px 12px">
+   <div style="display:flex;gap:8px;align-items:flex-end;background:#2a211c;border-radius:10px;padding:8px;flex:1"><span class="c g1" style="width:46px;height:68px"></span><div><b class="serif">El imperio final</b><div class="ln" style="width:90px;background:#ffb15a"></div>pág. 668 / 669</div></div>
+   <div style="display:flex;gap:8px;align-items:flex-end;background:#2a211c;border-radius:10px;padding:8px;flex:1"><span class="c g3" style="width:46px;height:68px"></span><div><b class="serif">Cien años…</b><div class="ln" style="width:30px;background:#ffb15a"></div>pág. 120</div></div>
+  </div>
+  <div class="h">Pendiente <span style="font:10px system-ui;opacity:.6">· 14 · ver todo →</span></div>
+  <div class="shelf"><span class="c g2" style="width:40px;height:60px"></span><span class="c g5" style="width:40px;height:60px"></span><span class="c g6" style="width:40px;height:60px"></span><span class="c g8" style="width:40px;height:60px"></span><span class="c g7" style="width:40px;height:60px"></span><span class="c g4" style="width:40px;height:60px"></span><span class="c g2" style="width:40px;height:60px"></span></div>
+  <div class="h">Terminadas este año <span style="font:10px system-ui;opacity:.6">· 31</span></div>
+  <div class="shelf"><span class="c g4" style="width:40px;height:60px"></span><span class="c g7" style="width:40px;height:60px"></span><span class="c g3" style="width:40px;height:60px"></span><span class="c g1" style="width:40px;height:60px"></span><span class="c g6" style="width:40px;height:60px"></span><span class="c g5" style="width:40px;height:60px"></span><span class="c g8" style="width:40px;height:60px"></span></div>
+  <div class="h">Tus colecciones</div>
+  <div style="display:flex;gap:8px;padding:4px 12px 12px"><div style="position:relative;width:70px;height:56px"><span class="c g2" style="position:absolute;left:0;width:34px;height:50px;transform:rotate(-8deg)"></span><span class="c g8" style="position:absolute;left:18px;width:34px;height:50px"></span><span class="c g3" style="position:absolute;left:36px;width:34px;height:50px;transform:rotate(8deg)"></span></div><div style="align-self:center"><b>Verano 2026</b><br>12 obras</div></div>
+ </div>
+</div>
+<div class="meta">Las herramientas (Cuaderno, Retos, Estadísticas) pasan a iconos; cada estado es una balda de portadas reales con «ver todo», que lleva a la rejilla filtrada de hoy, así que no se pierde nada. Datos: passes y colecciones (existen). Coste: 1–2 subproyectos. Riesgo medio (filtros por URL y e2e de biblioteca).</div>
+</div></div>
+
+<!-- 3 PERFIL -->
+<div class="option" data-choice="perfil" onclick="toggleSelect(this)">
+<div class="letter">3</div><div class="content">
+<h3><span class="rank">3</span>Perfil: que se vea quién eres de un vistazo</h3>
+<div class="two">
+ <div><div class="lab">Hoy · escritorio</div><div class="ph old" style="width:auto;height:190px">
+  <div style="display:flex;gap:8px;padding:10px"><span style="width:34px;height:34px;border-radius:50%;background:#3a322c"></span><div style="flex:1"><div class="ln" style="width:40%;height:8px"></div><div class="ln" style="width:25%"></div></div></div>
+  <div class="box" style="height:36px"></div><div style="display:flex;gap:4px;padding:2px 8px"><div class="box" style="width:30px;height:8px;margin:0"></div><div class="box" style="width:30px;height:8px;margin:0"></div><div class="box" style="width:30px;height:8px;margin:0"></div></div>
+  <div class="box" style="height:20px"></div><div class="box" style="height:20px"></div><div class="box" style="height:20px"></div>
+ </div><div class="meta">Nombre, contadores en píldoras y una lista de actividad en texto.</div></div>
+ <div class="new" style="min-height:190px">
+  <div class="hero" style="--bg:linear-gradient(90deg,#d04a6a,#9a6ad0,#4a8ad0);padding-bottom:30px">
+   <div style="display:flex;gap:4px;opacity:.9;justify-content:flex-end"><span class="c g4" style="width:26px;height:38px;transform:rotate(-6deg)"></span><span class="c g5" style="width:26px;height:38px"></span><span class="c g2" style="width:26px;height:38px;transform:rotate(5deg)"></span><span class="c g1" style="width:26px;height:38px"></span></div>
+  </div>
+  <div style="display:flex;gap:10px;padding:0 12px;margin-top:-26px;align-items:flex-end;position:relative">
+   <span style="width:52px;height:52px;border-radius:50%;background:#e8734a;border:3px solid #1b1512"></span>
+   <div><div class="serif" style="font-size:17px;font-weight:600">Dev Test</div><div style="opacity:.7">Lectora de fantasía · desde 2026</div></div>
+  </div>
+  <div style="display:flex;gap:18px;padding:10px 12px">
+   <div><div class="serif" style="font-size:22px;color:#ffb15a">8</div>libros</div><div><div class="serif" style="font-size:22px;color:#ffb15a">137</div>películas</div><div><div class="serif" style="font-size:22px;color:#ffb15a">2</div>series</div><div><div class="serif" style="font-size:22px;color:#ffb15a">4,5</div>nota media</div>
+  </div>
+  <div class="sub">Sus cuatro favoritas · leyendo ahora: <b>El imperio final</b></div>
+ </div>
+</div>
+<div class="meta">Cabecera con mosaico de sus favoritas difuminado, números grandes y «leyendo ahora»; la actividad pasa a un muro de portadas. Ojo con la privacidad: el perfil ya filtra por visibilidad y RLS, y no cambia qué se ve, solo cómo. Coste: 1 subproyecto. Riesgo medio-bajo.</div>
+</div></div>
+
+<!-- 4 PERSONA -->
+<div class="option" data-choice="persona" onclick="toggleSelect(this)">
+<div class="letter">4</div><div class="content">
+<h3><span class="rank">4</span>Persona (autor, director): cinemática como la ficha de obra</h3>
+<div class="two">
+ <div><div class="lab">Hoy · escritorio</div><div class="ph old" style="width:auto;height:150px;display:flex;gap:6px;padding:8px">
+  <div class="box" style="width:30%;margin:0"></div><div style="flex:1"><div style="display:flex;gap:4px"><div class="box" style="flex:1;height:40px;margin:0"></div><div class="box" style="flex:1;height:40px;margin:0"></div><div class="box" style="flex:1;height:40px;margin:0"></div></div><div class="ln" style="margin-top:8px"></div><div class="ln"></div><div class="ln"></div><div class="ln"></div><div class="ln"></div></div>
+ </div><div class="meta">Columna de bio y una lista de 205 filas por año.</div></div>
+ <div class="new" style="min-height:150px">
+  <div class="hero" style="--bg:linear-gradient(120deg,#9a6ad0,#2c4a8a 50%,#1b1512);display:flex;gap:12px;align-items:center">
+   <span style="width:54px;height:54px;border-radius:50%;background:#7a6a5a;flex:none"></span>
+   <div style="flex:1"><div class="serif" style="font-size:18px;font-weight:600">Brandon Sanderson</div><div style="opacity:.8">Autor · 205 obras · 3 sagas</div></div>
+   <div class="ring" style="background:conic-gradient(#ffb15a 0 12%,#ffffff22 0)"><i>4/34</i></div>
+  </div>
+  <div class="h">Mistborn <span style="font:10px system-ui;opacity:.6">· llevas 3 de 7 · te toca →</span></div>
+  <div class="shelf"><span class="c g1" style="width:36px;height:54px"></span><span class="c g1" style="width:36px;height:54px"></span><span class="c g8" style="width:44px;height:66px;outline:2px solid #ffb15a"></span><span class="c g1" style="width:36px;height:54px;opacity:.4"></span><span class="c g1" style="width:36px;height:54px;opacity:.4"></span></div>
+ </div>
+</div>
+<div class="meta">Hero con la portada más conocida difuminada, anillo «has leído X de su obra» (hoy escondido en la columna), una balda por saga (la de la ficha de saga) y debajo la lista de siempre. Datos: ya están. Coste: 1 subproyecto. Riesgo bajo.</div>
+</div></div>
+
+<!-- 5 RETOS -->
+<div class="option" data-choice="retos" onclick="toggleSelect(this)">
+<div class="letter">5</div><div class="content">
+<h3><span class="rank">5</span>Retos y objetivos: baldas que se llenan</h3>
+<div class="two">
+ <div><div class="lab">Hoy</div><div class="ph old" style="width:auto;height:110px;padding:8px"><div class="ln" style="width:40%;height:8px"></div><div class="ln" style="background:#6a5a4a"></div><div class="ln" style="width:40%;height:8px;margin-top:14px"></div><div class="ln" style="background:#6a5a4a"></div></div><div class="meta">Título y una barra.</div></div>
+ <div class="new" style="min-height:110px;padding:10px 12px">
+  <b class="serif" style="font-size:14px">12 libros en 2026</b> <span style="opacity:.7">· 7 de 12 · vas 1 por delante</span>
+  <div style="display:flex;gap:4px;margin:8px 0"><span class="c g1" style="width:22px;height:33px"></span><span class="c g2" style="width:22px;height:33px"></span><span class="c g3" style="width:22px;height:33px"></span><span class="c g4" style="width:22px;height:33px"></span><span class="c g5" style="width:22px;height:33px"></span><span class="c g6" style="width:22px;height:33px"></span><span class="c g7" style="width:22px;height:33px"></span><span style="display:inline-block;width:22px;height:33px;border:1px dashed #ffb15a;border-radius:3px"></span><span style="display:inline-block;width:22px;height:33px;border:1px dashed #5a4a3c;border-radius:3px"></span><span style="display:inline-block;width:22px;height:33px;border:1px dashed #5a4a3c;border-radius:3px"></span></div>
+  <div style="opacity:.8">El siguiente hueco: <b style="color:#ffb15a">El imperio final</b> (99 %)</div>
+ </div>
+</div>
+<div class="meta">Cada reto es una balda con las portadas que cuentan y huecos para las que faltan; al completarlo, celebración. Datos: retos + match + passes. Coste: 1 subproyecto pequeño. Riesgo bajo.</div>
+</div></div>
+
+</div>
+<p class="meta" style="margin-top:14px">Fuera de esta tanda (irán a issue): Estadísticas, que se solapa con Crónicas y Wrap; Club; Género; y Novedades, que tiene rediseño Paper reciente.</p>

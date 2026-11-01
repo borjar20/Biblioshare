@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prototipo · Inicio y Perfil</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --background:#1f1a16;--surface:#2a231d;--surface-muted:#332b23;--surface-3:#3d342b;
+  --foreground:#f0e8db;--soft:#cabfb0;--faint:#6f665a;--muted:#a99e8c;--border:rgba(240,232,219,.12);
+  --accent:#d98a5c;--accent-fg:#1f1409;--gold:#e0a94a;--green:#8ba57b;
+  --serif:'Fraunces',Georgia,serif;--sans:'Geist',system-ui,sans-serif;--mono:'Geist Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#141110;color:var(--foreground);font:14px/1.45 var(--sans)}
+.top{position:sticky;top:0;z-index:20;background:#141110ee;backdrop-filter:blur(8px);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.top h1{font:600 18px var(--serif);margin:0 12px 0 0}
+.seg{display:inline-flex;background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:3px}
+.seg button{all:unset;cursor:pointer;padding:5px 14px;border-radius:99px;color:var(--soft);font-size:13px}
+.seg button.on{background:var(--accent);color:var(--accent-fg);font-weight:600}
+.note{color:var(--muted);font-size:12.5px;max-width:520px}
+.stage{display:flex;gap:28px;padding:24px 20px 60px;align-items:flex-start;justify-content:center;flex-wrap:wrap}
+.frame-lbl{font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 8px 4px}
+.phone{width:390px;height:844px;border-radius:44px;border:10px solid #0c0a09;background:var(--background);overflow:hidden;position:relative;box-shadow:0 30px 80px #000a}
+.phone .scroll{height:100%;overflow-y:auto;scrollbar-width:none}
+.phone .scroll::-webkit-scrollbar{display:none}
+.desk{width:1280px;transform-origin:top left;border-radius:14px;border:1px solid #0c0a09;background:var(--background);overflow:hidden;box-shadow:0 30px 80px #000a}
+.deskwrap{overflow:hidden;border-radius:14px}
+.hidden{display:none!important}
+
+/* barra superior y nav de la app */
+.appbar{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;position:relative;z-index:3}
+.logo{font:600 16px var(--serif)}.logo b{color:var(--accent);font-weight:600}
+.av{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#d04a4a,#8a1e2a);display:inline-block;flex:none}
+.icons{display:flex;gap:14px;align-items:center;color:var(--soft);font-size:16px}
+.tabbar{position:absolute;bottom:0;left:0;right:0;height:64px;background:#1f1a16f2;backdrop-filter:blur(10px);border-top:1px solid var(--border);display:flex;justify-content:space-around;align-items:center;font-size:10px;color:var(--muted);z-index:5}
+.tabbar span{display:flex;flex-direction:column;align-items:center;gap:3px}.tabbar span.on{color:var(--accent)}
+.tabbar i{font-style:normal;font-size:17px}
+.desknav{display:flex;align-items:center;gap:26px;padding:14px 28px;border-bottom:1px solid var(--border);position:relative;z-index:3;background:#1f1a16cc}
+.desknav a{color:var(--soft);font-size:13.5px;text-decoration:none}.desknav a.on{color:var(--foreground);font-weight:600}
+
+/* portadas falsas */
+.cv{position:relative;border-radius:4px;overflow:hidden;flex:none;box-shadow:0 10px 24px #0009,0 0 0 1px #ffffff10 inset;display:flex;flex-direction:column;justify-content:space-between;padding:7% 8%;color:#fff;font-family:var(--serif)}
+.cv .t{font-weight:700;line-height:1.05;text-shadow:0 1px 6px #0007}
+.cv .a{font:500 .62em var(--sans);opacity:.85;text-transform:uppercase;letter-spacing:.06em}
+.cv::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#0003 0,#fff1 4%,transparent 9%)}
+.lift{transition:transform .25s ease,box-shadow .25s ease}.lift:hover{transform:translateY(-4px) rotate(-1deg)}
+
+/* piezas */
+.eyebrow{font:500 11px var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--soft)}
+.h2{font:600 19px var(--serif);margin:0}
+.secthead{display:flex;justify-content:space-between;align-items:baseline;padding:0 18px;margin:26px 0 10px}
+.secthead a{color:var(--accent);font-size:12.5px;text-decoration:none}
+.btn{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:9px 16px;font:600 13.5px var(--sans)}
+.btn.pri{background:var(--accent);color:var(--accent-fg)}.btn.pri:hover{background:#e5a074}
+.btn.ghost{background:#ffffff14;color:var(--foreground);border:1px solid #ffffff22}
+.dots{display:inline-flex;gap:3px;vertical-align:middle}.dots i{width:7px;height:7px;border-radius:50%;background:var(--accent)}.dots i.o{background:#d98a5c33}
+.chip{display:inline-block;border:1px solid var(--border);border-radius:99px;padding:5px 12px;font:500 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--soft);cursor:pointer;white-space:nowrap}
+.chip.on{border-color:var(--accent);color:var(--accent);background:#d98a5c14}
+.strip{display:flex;gap:12px;overflow-x:auto;padding:4px 18px 14px;scrollbar-width:none}
+.strip::-webkit-scrollbar{display:none}
+.ring{--p:99;--c:var(--gold);width:58px;height:58px;border-radius:50%;background:conic-gradient(var(--c) calc(var(--p)*1%),#ffffff1c 0);display:grid;place-items:center;flex:none;animation:fill 1.2s ease-out both}
+.ring b{width:46px;height:46px;border-radius:50%;background:#1f1a16d9;display:grid;place-items:center;font:600 13px var(--sans)}
+@property --p{syntax:'<number>';inherits:false;initial-value:0}
+@keyframes fill{from{--p:0}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.react{display:flex;gap:14px;color:var(--muted);font-size:12.5px;padding:10px 14px;border-top:1px solid var(--border)}
+
+/* hero «ahora» */
+.hero{position:relative;overflow:hidden}
+.hero .bd{position:absolute;inset:-40px;filter:blur(38px) saturate(1.5);opacity:.85;transform:scale(1.1)}
+.hero .veil{position:absolute;inset:0;background:linear-gradient(180deg,#1f1a1600 0%,#1f1a1655 45%,#1f1a16 100%)}
+.hero>.in{position:relative;z-index:2}
+
+/* tu semana */
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;align-items:end}
+.day{display:flex;flex-direction:column;align-items:center;gap:5px;font:500 10px var(--mono);color:var(--muted)}
+.day .stack{position:relative;width:100%;height:58px;display:flex;align-items:flex-end;justify-content:center}
+.day .stack .cv{position:absolute;bottom:0;width:30px;height:45px;padding:0}
+.day.today{color:var(--accent)}
+.day .empty{width:30px;height:45px;border:1.5px dashed #ffffff26;border-radius:4px}
+.day.today .empty{border-color:var(--accent)}
+
+/* perfil */
+.banner{height:210px;position:relative;overflow:hidden}
+.banner .fan{position:absolute;right:-10px;top:26px;display:flex;gap:0}
+.banner .fan .cv{margin-left:-18px}
+.num{font:600 26px var(--serif);color:var(--foreground);line-height:1}
+.num small{display:block;font:500 10.5px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-top:5px}
+.wall{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:0 18px}
+.wall .cell{position:relative}
+.wall .cell .cv{width:100%;aspect-ratio:2/3;height:auto}
+.wall .cell .badge{position:absolute;right:6px;top:6px;background:#1f1a16e6;border-radius:99px;padding:3px 6px}
+.month{font:500 11px var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);padding:18px 18px 8px}
+.quote{font:italic 400 15px/1.4 var(--serif);color:var(--soft)}
+.pet{width:38px;height:38px;image-rendering:pixelated;border-radius:10px;background:radial-gradient(circle at 50% 60%,#5a7a4a,#2a3a24);display:grid;place-items:center;font-size:20px}
+.foot{max-width:1300px;margin:0 auto;padding:0 20px 40px;color:var(--muted);font-size:13px;line-height:1.6}
+.foot h3{font:600 16px var(--serif);color:var(--foreground);margin:18px 0 6px}
+.foot code{font:12px var(--mono);color:var(--soft)}
+</style></head>
+<body>
+
+<div class="top">
+  <h1>Prototipo</h1>
+  <div class="seg" id="segScreen"><button data-v="inicio">Inicio</button><button data-v="perfil" class="on">Perfil</button></div>
+  <div class="seg" id="segDev"><button data-v="ambos" class="on">Móvil + escritorio</button><button data-v="movil">Móvil</button><button data-v="pc">Escritorio</button></div>
+  <span class="note">Con los tokens de la app en oscuro, Fraunces, Geist y datos de la cuenta de dev. Las portadas son falsas (degradados con título); en la app real son las imágenes del CDN y de ellas sale el color del fondo. Haz scroll dentro del móvil y pasa el ratón por las portadas.</span>
+</div>
+
+<div class="stage" id="stage">
+  <div id="colPhone"><p class="frame-lbl">Móvil · 390 px</p><div class="phone"><div class="scroll" id="phoneBody"></div><div class="tabbar" id="tabbar"></div></div></div>
+  <div id="colDesk"><p class="frame-lbl">Escritorio · 1280 px (a escala)</p><div class="deskwrap" id="deskwrap"><div class="desk" id="deskBody"></div></div></div>
+</div>
+
+<div class="foot" id="foot"></div>
+
+<script>
+/* ---------- datos (cuenta de dev) ---------- */
+const W = {
+  imperio:{t:"El imperio final",a:"Brandon Sanderson",g:["#e3a043","#8a3412","#2b0f08"]},
+  cien:{t:"Cien años de soledad",a:"García Márquez",g:["#e9d9a6","#a7783a","#3b2510"]},
+  hobbit:{t:"El Hobbit",a:"J.R.R. Tolkien",g:["#d7b25a","#5f6a2a","#1d220c"]},
+  mistborn:{t:"Mistborn: Secret History",a:"Sanderson",g:["#6aa0d8","#24407a","#0d1430"]},
+  rayuela:{t:"Rayuela",a:"Julio Cortázar",g:["#f2efe8","#c0392b","#2a0a0a"]},
+  resacon:{t:"Resacón 2",a:"Película · 2011",g:["#f0c040","#d0602a","#3a1010"]},
+  nobody:{t:"Mr. Nobody",a:"Película · 2009",g:["#9ad0e0","#4a7aa0","#101c30"]},
+  obsession:{t:"Obsession",a:"Película · 2026",g:["#d04a6a","#5a1030","#14060c"]},
+  tangerine:{t:"Tangerine",a:"Película · 2015",g:["#ff9a3a","#e0507a","#3a1030"]},
+  paprika:{t:"Paprika",a:"Película · 2006",g:["#ff6aa0","#7a3ad0","#140a30"]},
+  pearl:{t:"Pearl",a:"Película · 2022",g:["#f5d0a0","#c03a3a","#200808"]},
+  severance:{t:"Severance",a:"Serie · T2",g:["#9ad8d0","#2a6a7a","#0a1a20"]},
+  pozo:{t:"El Pozo de la Ascensión",a:"Sanderson",g:["#c8a0e0","#5a3a8a","#140a24"]},
+  dune:{t:"Dune: Parte dos",a:"Estreno · 2026",g:["#f0c080","#a0602a","#2a1408"]},
+};
+function cover(k,w,h,extra=""){const o=W[k];const fs=Math.max(8,Math.round(w*0.15));
+  return `<div class="cv lift ${extra}" style="width:${w}px;height:${h}px;background:linear-gradient(160deg,${o.g[0]},${o.g[1]} 55%,${o.g[2]});font-size:${fs}px"><span class="a">${o.a}</span><span class="t">${o.t}</span></div>`}
+function bd(k){const g=W[k].g;return `background:radial-gradient(ellipse at 30% 30%,${g[0]},transparent 60%),radial-gradient(ellipse at 80% 50%,${g[1]},transparent 60%),${g[2]}`}
+const dots=(n)=>`<span class="dots">${[1,2,3,4,5].map(i=>`<i class="${i<=n?'':'o'}"></i>`).join("")}</span>`;
+const avatar=(c1,c2,s=30,txt="")=>`<span class="av" style="width:${s}px;height:${s}px;background:linear-gradient(135deg,${c1},${c2});display:inline-grid;place-items:center;font:600 ${s*.38}px var(--sans);color:#fff">${txt}</span>`;
+
+/* ---------- INICIO ---------- */
+function heroAhora(desk){
+  return `<section class="hero" style="padding:${desk?'34px 40px 34px':'6px 18px 22px'}">
+   <div class="bd" style="${bd('imperio')}"></div><div class="veil"></div>
+   <div class="in" style="display:flex;gap:${desk?28:18}px;align-items:flex-end">
+     <div style="transform:rotate(-3deg)">${cover('imperio',desk?150:108,desk?225:162)}</div>
+     <div style="flex:1;min-width:0">
+       <div class="eyebrow">Jueves 29 oct · 2.ª lectura · día 107</div>
+       <h2 style="font:700 ${desk?40:27}px/1.05 var(--serif);margin:8px 0 4px;letter-spacing:-.01em">El imperio final</h2>
+       <div style="color:var(--soft)">Brandon Sanderson · Nacidos de la bruma I</div>
+       <div style="display:flex;gap:14px;align-items:center;margin-top:16px">
+         <div class="ring" style="--p:99"><b>99%</b></div>
+         <div><div style="font:600 15px var(--sans)">Te queda <span style="color:var(--gold)">1 página</span></div><div style="color:var(--muted);font-size:12.5px">pág. 668 de 669 · a tu ritmo, hoy mismo</div></div>
+       </div>
+       <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap"><button class="btn pri">＋ Registrar sesión</button><button class="btn ghost">✓ Lo terminé</button></div>
+     </div>
+     ${desk?`<div style="width:300px;flex:none;background:#1f1a16a6;backdrop-filter:blur(10px);border:1px solid #ffffff1a;border-radius:18px;padding:18px">${semana(true)}</div>`:''}
+   </div>
+   <div class="in" style="margin-top:18px;display:flex;gap:10px;align-items:center;color:var(--soft);font-size:12.5px">
+     <span class="eyebrow" style="color:var(--muted)">También en curso</span>
+     <span style="display:flex;gap:8px;align-items:center;background:#ffffff10;border-radius:99px;padding:4px 12px 4px 4px">${cover('cien',22,33)}<span>Cien años de soledad · pág. 120</span></span>
+     <span style="display:flex;gap:8px;align-items:center;background:#ffffff10;border-radius:99px;padding:4px 12px 4px 4px">${cover('severance',22,33)}<span>Severance · T2E4</span></span>
+   </div>
+  </section>`;
+}
+function semana(inHero){
+  const days=[["L",["imperio"]],["M",["imperio","severance"]],["X",["imperio"]],["J",[],1],["V",[]],["S",[]],["D",[]]];
+  return `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px"><span class="h2" style="font-size:17px">Tu semana</span><span class="eyebrow" style="color:var(--muted)">4 h 20 min</span></div>
+  <div class="week">${days.map(([d,ks,today],i)=>`<div class="day ${today?'today':''}" style="${i>3?'opacity:.35':''}"><div class="stack">${ks.length?ks.map((k,j)=>`<div style="position:absolute;bottom:${j*7}px;transform:rotate(${j?6:-2}deg)">${cover(k,30,45)}</div>`).join(""):`<div class="empty"></div>`}</div>${d}</div>`).join("")}</div>
+  <div style="display:flex;gap:18px;margin-top:16px;align-items:center">
+    <div><div style="font:700 30px/1 var(--serif);color:var(--gold)">3 días</div><div style="color:var(--muted);font-size:12px;margin-top:3px">de racha · tu récord, 9</div></div>
+    <div style="margin-left:auto;display:flex;gap:10px;align-items:center"><div class="ring" style="--p:0;--c:var(--accent);width:48px;height:48px"><b style="width:38px;height:38px;font-size:11px">0/30</b></div><div style="font-size:12px;color:var(--soft)">Meta de hoy<br><span style="color:var(--muted)">minutos</span></div></div>
+  </div>`;
+}
+function retos(){
+  const r=[["Libros",8,12,"#d98a5c"],["Películas",24,24,"#8ba57b"],["Series",2,2,"#e0a94a"]];
+  return `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px"><span class="h2" style="font-size:17px">Tus retos 2026</span><a style="color:var(--accent);font-size:12.5px">Ver →</a></div>
+  ${r.map(([n,v,t,c])=>`<div style="display:flex;align-items:center;gap:10px;margin:9px 0"><span style="width:70px;color:var(--soft);font-size:13px">${n}</span><div style="flex:1;height:8px;border-radius:99px;background:#ffffff14;overflow:hidden"><div style="height:100%;width:${v/t*100}%;background:${c};border-radius:99px"></div></div><span style="font:600 13px var(--mono);width:44px;text-align:right">${v}/${t}</span>${v>=t?'<span style="color:var(--green)">✓</span>':'<span style="width:12px"></span>'}</div>`).join("")}`;
+}
+function sale(desk){
+  return `<div class="secthead"><span class="h2">Sale esta semana</span><a>Novedades →</a></div>
+  <div class="strip">${[["dune","vie 31"],["pozo","mar 3"],["severance","T3 · jue 5"]].map(([k,d])=>`<div style="flex:none;width:${desk?120:104}px">${cover(k,desk?120:104,desk?180:156)}<div style="margin-top:8px;font:500 11px var(--mono);color:var(--gold);letter-spacing:.06em;text-transform:uppercase">${d}</div><div style="font-size:12.5px;color:var(--soft)">${W[k].t}</div></div>`).join("")}</div>`;
+}
+function feed(desk){
+  const pad=desk?0:18;
+  const finished=(who,c1,c2,k,n,q,when)=>`<article class="card" style="margin:0 ${pad}px 14px">
+    <div style="position:relative;height:${desk?150:128}px;overflow:hidden"><div style="position:absolute;inset:-30px;${bd(k)};filter:blur(24px) saturate(1.4)"></div><div style="position:absolute;inset:0;background:linear-gradient(180deg,transparent 30%,#2a231d)"></div>
+      <div style="position:absolute;left:14px;top:12px;display:flex;gap:8px;align-items:center;font-size:13px">${avatar(c1,c2,26,who[0])}<b>${who}</b><span style="color:var(--soft)">terminó y valoró</span></div>
+      <span style="position:absolute;right:14px;top:14px;color:var(--soft);font-size:12px">${when}</span></div>
+    <div style="display:flex;gap:14px;padding:0 14px 14px;margin-top:-62px;position:relative">
+      ${cover(k,78,117)}
+      <div style="padding-top:66px;min-width:0"><div style="font:600 17px var(--serif)">${W[k].t}</div><div style="color:var(--muted);font-size:12px;margin:2px 0 6px">${W[k].a}</div>${dots(n)}</div></div>
+    ${q?`<p class="quote" style="margin:0;padding:0 16px 14px">«${q}»</p>`:''}
+    <div class="react"><span>❤ 3</span><span>💬 1</span><span style="margin-left:auto">Reaccionar</span></div></article>`;
+  const club=`<article class="card" style="margin:0 ${pad}px 14px;display:flex;gap:0">
+    <div style="width:${desk?150:110}px;flex:none;background:linear-gradient(160deg,#5a8a6a,#1d3a2a);display:grid;place-items:center;position:relative">
+      <div style="display:flex">${cover('hobbit',46,69,'')}<div style="margin-left:-20px;transform:rotate(7deg)">${cover('cien',46,69)}</div></div></div>
+    <div style="padding:14px;min-width:0"><div class="eyebrow" style="color:var(--green)">Club Test Public · lectura conjunta</div>
+      <div style="font:600 17px var(--serif);margin:6px 0 4px">Clásicos de otoño</div>
+      <div style="color:var(--muted);font-size:12.5px">Propuesto por Dev Test · empieza el lunes</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:12px"><span style="display:flex">${avatar('#4a8ad0','#1c2450',24,'A')}<span style="margin-left:-8px">${avatar('#d0a04a','#5a3010',24,'M')}</span><span style="margin-left:-8px">${avatar('#9a6ad0','#26144a',24,'J')}</span></span><span style="font-size:12.5px;color:var(--soft)">3 se apuntan</span><button class="btn pri" style="margin-left:auto;padding:7px 14px;font-size:12.5px">Apuntarme</button></div></div></article>`;
+  const binge=`<article class="card" style="margin:0 ${pad}px 14px;padding:14px">
+    <div style="display:flex;gap:8px;align-items:center;font-size:13px">${avatar('#4a8ad0','#1c2450',26,'A')}<b>Ana</b><span style="color:var(--soft)">terminó 4 películas esta semana</span><span style="margin-left:auto;color:var(--muted);font-size:12px">hace 2 días</span></div>
+    <div style="display:flex;gap:10px;margin-top:12px">${['tangerine','paprika','obsession','nobody'].map((k,i)=>`<div style="flex:1">${cover(k,desk?96:76,desk?144:114)}<div style="margin-top:6px">${dots([4,5,3,4][i])}</div></div>`).join("")}</div></article>`;
+  const thought=`<article class="card" style="margin:0 ${pad}px 14px;padding:16px 16px 0">
+    <div style="display:flex;gap:8px;align-items:center;font-size:13px">${avatar('#d0a04a','#5a3010',26,'M')}<b>Marta</b><span style="color:var(--soft)">pensando en</span><span style="display:inline-flex;gap:6px;align-items:center">${cover('rayuela',16,24)}<i class="serif" style="font-family:var(--serif)">Rayuela</i></span></div>
+    <p style="font:400 20px/1.35 var(--serif);margin:12px 0 14px">«Leer el capítulo 7 en voz alta es otra cosa. Cortázar escribía para el oído.»</p>
+    <div class="react" style="margin:0 -16px"><span>❤ 8</span><span>💬 2</span></div></article>`;
+  return `<div style="display:flex;justify-content:space-between;align-items:center;padding:0 ${pad}px;margin:${desk?0:26}px 0 12px;gap:10px"><span class="h2">De tu gente</span></div>
+  <div class="strip" style="padding:0 ${pad}px 14px">${["Todo","Reseñas","Libros","Pantalla","Clubes"].map((c,i)=>`<span class="chip ${i?'':'on'}">${c}</span>`).join("")}</div>
+  ${finished('Ana','#4a8ad0','#1c2450','pearl',5,'Mia Goth sostiene la película entera con una sonrisa. Inquietante y preciosa.','hace 3 h')}
+  ${club}${thought}${binge}
+  ${finished('Dev Test','#d04a4a','#8a1e2a','resacon',2,'','hace 76 días')}`;
+}
+function compositor(pad){return `<div style="margin:${pad?'20px 18px 0':'0 0 18px'};display:flex;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:99px;padding:8px 8px 8px 14px">${avatar('#d04a4a','#8a1e2a',26)}<span style="color:var(--muted);flex:1">¿Qué te ronda la cabeza?</span><button class="btn ghost" style="padding:6px 12px;font-size:12px">Pensamiento</button></div>`}
+function seguir(){return `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px"><span class="h2" style="font-size:17px">A quién seguir</span></div>
+ ${[["coder_qa","#5ad0c0","#123a40",["paprika","nobody","pearl"]],["bibliosharecollab","#e0a24a","#7a2e12",["hobbit","cien","rayuela"]]].map(([n,a,b,ks])=>`<div style="display:flex;align-items:center;gap:10px;margin:10px 0">${avatar(a,b,34,n[0].toUpperCase())}<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px">${n}</div><div style="display:flex;gap:3px;margin-top:4px">${ks.map(k=>cover(k,18,27)).join("")}</div></div><button class="btn ghost" style="padding:5px 12px;font-size:12px">Seguir</button></div>`).join("")}`}
+
+function inicioMovil(){return `<div class="appbar"><span class="logo">Biblio<b>share</b></span><span class="icons">🔔 ⋯ <span class="av"></span></span></div>
+  ${heroAhora(false)}
+  <section style="padding:4px 18px 0">${semana(false)}</section>
+  ${sale(false)}
+  ${compositor(true)}
+  ${feed(false)}
+  <div style="height:80px"></div>`}
+function inicioPC(){return `<nav class="desknav"><span class="logo" style="font-size:18px">Biblio<b>share</b></span><a class="on">Inicio</a><a>Biblioteca</a><a>Experiencias</a><a>Comunidad</a><a>Buscar</a><span style="margin-left:auto" class="icons">🔔 ⋯ <span class="av"></span></span></nav>
+  ${heroAhora(true)}
+  <div style="display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:32px;padding:10px 40px 40px">
+    <div>${compositor(false)}${feed(true)}</div>
+    <aside style="display:flex;flex-direction:column;gap:18px">
+      <div class="card" style="padding:18px">${retos()}</div>
+      <div class="card" style="padding:18px 0 4px"><div style="padding:0 18px"><span class="h2" style="font-size:17px">Sale esta semana</span></div><div class="strip" style="padding:12px 18px">${[["dune","vie 31"],["pozo","mar 3"],["severance","jue 5"]].map(([k,d])=>`<div style="flex:none;width:86px">${cover(k,86,129)}<div style="margin-top:6px;font:500 10.5px var(--mono);color:var(--gold);text-transform:uppercase">${d}</div></div>`).join("")}</div></div>
+      <div class="card" style="padding:18px">${seguir()}</div>
+    </aside>
+  </div>`}
+
+/* ---------- PERFIL ---------- */
+const fav=['imperio','paprika','rayuela','pearl','hobbit','tangerine'];
+function banner(desk){return `<div class="banner" style="height:${desk?250:200}px">
+   <div style="position:absolute;inset:0;display:grid;grid-template-columns:repeat(${desk?14:7},1fr);grid-auto-rows:${desk?84:68}px;gap:2px;opacity:.55;filter:saturate(1.1)">${Array.from({length:desk?42:21},(_,i)=>{const ks=["tangerine","nobody","severance","obsession","resacon","pearl","paprika","hobbit","rayuela","mistborn","cien"];const g=W[ks[(i*7)%ks.length]].g;return `<div style="background:linear-gradient(160deg,${g[0]},${g[1]} 55%,${g[2]})"></div>`}).join("")}</div>
+   <div style="position:absolute;inset:0;background:linear-gradient(180deg,#1f1a1633,#1f1a16 96%)"></div>
+   <div class="fan" style="right:${desk?60:-30}px;top:${desk?34:44}px">${fav.slice(0,desk?6:4).map((k,i,a)=>`<div style="transform:rotate(${(i-(a.length-1)/2)*5}deg) translateY(${Math.abs(i-(a.length-1)/2)*6}px)">${cover(k,desk?92:70,desk?138:105)}</div>`).join("")}</div>
+   ${desk?'':'<div class="appbar" style="position:absolute;top:0;left:0;right:0"><span>‹</span><span class="icons">⚙ <span class="av"></span></span></div>'}
+ </div>`}
+function identidad(desk){return `<div style="padding:0 ${desk?0:18}px;margin-top:${desk?0:-46}px;position:relative;z-index:2">
+   <div style="display:flex;align-items:flex-end;gap:14px">
+     <span class="av" style="width:${desk?104:84}px;height:${desk?104:84}px;border:4px solid var(--background);box-shadow:0 8px 24px #0008"></span>
+     ${desk?'':`<div style="margin-left:auto;display:flex;gap:8px"><button class="btn ghost" style="padding:7px 14px;font-size:12.5px">Editar perfil</button></div>`}
+   </div>
+   <h1 style="font:700 ${desk?34:28}px/1.05 var(--serif);margin:12px 0 2px">Dev Test</h1>
+   <div style="font:13px var(--mono);color:var(--muted)">@devtest · desde 2026</div>
+   <p style="color:var(--soft);margin:10px 0 0;max-width:420px">Fantasía épica de día, cine raro de noche. Releyendo el Cosmere.</p>
+   <div style="display:flex;gap:16px;margin-top:10px;font-size:13px;color:var(--soft)"><span><b style="color:var(--foreground)">1</b> seguidor</span><span><b style="color:var(--foreground)">1</b> siguiendo</span></div>
+ </div>`}
+function numeros(desk){return `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:${desk?'0':'0 18px'};margin-top:22px">
+   ${[["8","libros"],["137","películas"],["2","series"],["4,5","nota media"]].map(([n,l])=>`<div class="num" style="${desk?'font-size:30px':''}">${n}<small>${l}</small></div>`).join("")}</div>`}
+function leyendo(desk){return `<div class="card" style="margin:${desk?'0':'22px 18px 0'};position:relative;overflow:hidden">
+   <div style="position:absolute;inset:-30px;${bd('imperio')};filter:blur(28px);opacity:.45"></div>
+   <div style="position:relative;display:flex;gap:14px;padding:14px;align-items:center">${cover('imperio',56,84)}
+     <div style="flex:1;min-width:0"><div class="eyebrow">Leyendo ahora</div><div style="font:600 17px var(--serif);margin:4px 0">El imperio final</div>
+     <div style="height:6px;border-radius:99px;background:#ffffff1a;overflow:hidden"><div style="width:99%;height:100%;background:var(--gold)"></div></div><div style="color:var(--muted);font-size:12px;margin-top:4px">pág. 668 de 669</div></div>
+     <div class="pet" title="Nuez, maga adulta">🧙</div></div></div>`}
+function destacados(desk){return `<div class="secthead" style="padding:${desk?0:'0 18px'}"><span class="h2">Destacados</span><a>Su colección →</a></div>
+   <div class="strip" style="padding:${desk?'4px 0 6px':'4px 18px 6px'}">${fav.map(k=>`<div style="flex:none">${cover(k,desk?120:96,desk?180:144)}</div>`).join("")}</div>`}
+function anio(desk){const m=[2,3,1,4,6,2,9,5,3,4,0,0];const mx=9;return `<div class="card" style="margin:${desk?0:'22px 18px 0'};padding:16px">
+   <div style="display:flex;justify-content:space-between;align-items:baseline"><span class="h2" style="font-size:17px">Su 2026</span><span style="font:700 22px var(--serif);color:var(--gold)">39 <span style="font:500 11px var(--mono);color:var(--muted)">OBRAS</span></span></div>
+   <div style="display:flex;gap:5px;align-items:flex-end;height:70px;margin-top:12px">${m.map((v,i)=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="width:100%;height:${v/mx*56+2}px;border-radius:3px;background:${i==6?'var(--gold)':v?'#d98a5c88':'#ffffff12'}"></div><span style="font:9px var(--mono);color:var(--muted)">${'EFMAMJJASOND'[i]}</span></div>`).join("")}</div>
+   <div style="color:var(--soft);font-size:12.5px;margin-top:8px">Su mejor mes, julio: 9 obras. Más vista: <b>Paprika</b>.</div></div>`}
+function muro(desk){const cols=desk?6:3;const items=[['resacon',2],['nobody',4],['obsession',-1],['severance',-2],['paprika',5],['pearl',5],['hobbit',4],['mistborn',0],['rayuela',0]];
+  return `<div style="display:flex;gap:22px;padding:${desk?'0':'0 18px'};margin:26px 0 4px;border-bottom:1px solid var(--border)">${["Actividad","Colección","Experiencias"].map((t,i)=>`<span style="padding:0 0 10px;${i?'color:var(--muted)':'border-bottom:2px solid var(--accent);font-weight:600'}">${t}</span>`).join("")}</div>
+  <div class="month" style="padding-left:${desk?0:18}px">Agosto · 1 obra</div>
+  <div class="wall" style="grid-template-columns:repeat(${cols},1fr);padding:${desk?0:'0 18px'}">${items.slice(0,1).map(cell).join("")}</div>
+  <article class="card" style="margin:14px ${desk?0:18}px 0;padding:14px;display:flex;gap:12px">${cover('paprika',48,72)}<div><div style="font-size:12.5px;color:var(--soft)">Reseñó <b style="color:var(--foreground)">Paprika</b> · ${dots(5)}</div><p class="quote" style="margin:6px 0 0">«Satoshi Kon dibuja los sueños mejor que nadie ha sabido filmarlos.»</p></div></article>
+  <div class="month" style="padding-left:${desk?0:18}px">Julio · 9 obras</div>
+  <div class="wall" style="grid-template-columns:repeat(${cols},1fr);padding:${desk?0:'0 18px'}">${items.slice(1).map(cell).join("")}</div>`}
+function cell([k,n]){return `<div class="cell">${cover(k,100,150).replace('width:100px;height:150px','width:100%;aspect-ratio:2/3')}${n>0?`<span class="badge">${dots(n)}</span>`:n===-1?`<span class="badge" style="font:500 9.5px var(--mono);color:var(--muted)">LA DEJÓ</span>`:n===-2?`<span class="badge" style="font:500 9.5px var(--mono);color:var(--soft)">T2 · 6 EP.</span>`:`<span class="badge" style="font:500 9.5px var(--mono);color:var(--gold)">EN CURSO</span>`}</div>`}
+
+function perfilMovil(){return `${banner(false)}${identidad(false)}${numeros(false)}${leyendo(false)}${anio(false)}${muro(false)}<div style="height:90px"></div>`}
+function perfilPC(){return `<nav class="desknav" style="position:absolute;top:0;left:0;right:0;background:transparent;border:0"><span class="logo" style="font-size:18px">Biblio<b>share</b></span><a>Inicio</a><a>Biblioteca</a><a>Experiencias</a><a>Comunidad</a><a>Buscar</a><span style="margin-left:auto" class="icons">🔔 ⋯ <span class="av"></span></span></nav>
+  <div style="position:relative">${banner(true)}</div>
+  <div style="display:grid;grid-template-columns:340px minmax(0,1fr);gap:44px;padding:0 48px 48px;margin-top:-70px;position:relative">
+    <aside>${identidad(true)}
+      <div style="display:flex;gap:8px;margin-top:16px"><button class="btn ghost">Editar perfil</button><button class="btn ghost">⚙</button></div>
+      ${numeros(true)}
+      <div style="margin-top:24px">${leyendo(true)}</div>
+      <div style="margin-top:16px">${anio(true)}</div>
+    </aside>
+    <main style="padding-top:86px">${muro(true)}</main>
+  </div>`}
+
+/* ---------- notas al pie ---------- */
+const NOTES={
+ inicio:`<h3>Qué cambia en Inicio y de dónde sale cada dato</h3>
+ <ul>
+ <li><b>«Ahora» como hero</b> (sustituye la tarjeta de <code>TodayBlock</code>): la portada del pase activo más reciente, difuminada como fondo, igual que el hero de la ficha cinemática. Anillo y «te queda» salen de <code>passes.position</code> y de <code>formatPosition</code>; nada nuevo. Los otros pases en curso bajan a píldoras.</li>
+ <li><b>Tu semana</b> (sustituye la caja «Tu semana · 0 min»): una columna por día con las portadas que tocaste, desde <code>progress_sessions</code> de los últimos 7 días. Racha y meta de hoy, como ya calcula el rail. En PC va dentro del hero.</li>
+ <li><b>Sale esta semana</b>: el mismo <code>ThisWeekReleases</code>, pero en tira de pósteres con la fecha encima.</li>
+ <li><b>Feed con portada protagonista</b>: misma consulta (<code>getFeed</code>), con otra tarjeta por tipo. «Terminó y valoró» lleva fondo difuminado, portada grande, dots y la reseña en cita. «Actividad de club» lleva el arte del club y los avatares de quien se apunta. El agrupado «terminó 4 películas» ya lo pide #1226 y puede ir en una segunda fase.</li>
+ <li><b>PC</b>: el hero ocupa el ancho entero y debajo quedan dos columnas, feed y lateral (retos, novedades, a quién seguir). De paso puede cerrar #1453: Novedades sube al principio del lateral.</li>
+ </ul>
+ <h3>Riesgos</h3><ul><li>CLS (#284): cada bloque nuevo reserva su alto en el esqueleto, como hoy.</li><li>Sin <code>use cache</code>: todo depende de la sesión (regla #437).</li><li>El color del fondo sale de la portada difuminada con CSS, sin extraer colores en el servidor.</li></ul>`,
+ perfil:`<h3>Qué cambia en Perfil y de dónde sale cada dato</h3>
+ <ul>
+ <li><b>Cabecera con abanico de destacados</b>: las obras marcadas como destacadas (las mismas de <code>FavoritesShelf</code>, desde <code>passes</code>), en abanico sobre su fondo difuminado. Sin destacados, las últimas terminadas visibles.</li>
+ <li><b>Números grandes</b>: los mismos de <code>LibraryStats</code> (hoy son píldoras pequeñas) más la nota media.</li>
+ <li><b>Leyendo ahora</b> con la mascota al lado: el pase en curso visible para quien mira y <code>ProfilePet</code>.</li>
+ <li><b>Su año</b>: obras terminadas por mes del año en curso, visibles para quien mira.</li>
+ <li><b>Actividad como muro</b>: portadas agrupadas por mes, con los dots encima; las reseñas se intercalan como tarjeta con cita. Sustituye la lista de filas de texto.</li>
+ <li><b>PC</b>: banner a todo el ancho, identidad a la izquierda (avatar, bio, números, leyendo, su año) y destacados más el muro a la derecha.</li>
+ </ul>
+ <h3>Riesgos</h3><ul><li><b>Privacidad</b>: no cambia <i>qué</i> se ve, solo cómo. Todo pasa por las mismas lecturas con RLS y la misma visibilidad de perfil; un perfil privado sigue mostrando el aviso de hoy. «Su año» y «Leyendo ahora» se calculan con lo que quien mira ya puede ver.</li><li>Sin <code>use cache</code> (regla #437).</li></ul>`};
+
+/* ---------- montaje ---------- */
+let screen="perfil",dev="ambos";
+const tabs=(on)=>["⌂ Inicio","▤ Biblioteca","✦ Experiencias","☺ Comunidad","⌕ Buscar"].map((t,i)=>{const[a,...b]=t.split(" ");return `<span class="${i===on?'on':''}"><i>${a}</i>${b.join(" ")}</span>`}).join("");
+function render(){
+  document.getElementById('phoneBody').innerHTML = screen==="inicio"?inicioMovil():perfilMovil();
+  document.getElementById('tabbar').innerHTML = tabs(screen==="inicio"?0:-1);
+  document.getElementById('deskBody').innerHTML = screen==="inicio"?inicioPC():perfilPC();
+  document.getElementById('foot').innerHTML = NOTES[screen];
+  document.getElementById('colPhone').classList.toggle('hidden',dev==="pc");
+  document.getElementById('colDesk').classList.toggle('hidden',dev==="movil");
+  document.getElementById('phoneBody').scrollTop=0;
+  requestAnimationFrame(fit);
+}
+function fit(){const desk=document.getElementById('deskBody'),wrap=document.getElementById('deskwrap');
+  const avail=Math.min(window.innerWidth-(dev==="ambos"?580:80),1280);const s=Math.max(.35,avail/1280);
+  desk.style.transform=`scale(${s})`;wrap.style.width=1280*s+"px";wrap.style.height=desk.scrollHeight*s+"px";}
+function seg(id,cb){document.getElementById(id).addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;[...e.currentTarget.children].forEach(x=>x.classList.toggle('on',x===b));cb(b.dataset.v);render();});}
+seg('segScreen',v=>screen=v);seg('segDev',v=>dev=v);
+document.addEventListener('click',e=>{const c=e.target.closest('.chip');if(c){[...c.parentElement.children].forEach(x=>x.classList.toggle('on',x===c));}});
+window.addEventListener('resize',fit);render();
+</script>
+</body></html>

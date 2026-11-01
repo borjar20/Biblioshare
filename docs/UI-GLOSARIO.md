@@ -158,6 +158,9 @@ desde el avatar global. Las funciones de la app tienen navegación propia;
 | **Obra** | Título, Ítem, Ficha | La cosa del catálogo: un libro, una película o una serie. En copy dirigido al usuario suele ser mejor decir el tipo concreto. | `items` |
 | **Edición** (libro) / **Versión** (película) | Ejemplar, Copia | La materialización concreta de la obra: tapa dura, montaje extendido. **Es del catálogo común, no tuya.** | tabla `editions` |
 | **Saga** | Serie de libros, Colección (de estudio) | Un conjunto de obras con orden narrativo. | `/saga/[id]` |
+| **Tu año** / **Su año** | Resumen, Wrap (en el perfil), Año en cifras | El resumen del año en el perfil: obras terminadas por mes, el mejor mes y la mejor valorada de ese año. «Tu año» en el tuyo, «Su año» en el ajeno. No es la Crónica anual. | bloque de `/u/[username]` |
+| **Leyendo ahora** / **Viendo ahora** | En curso, Actualmente | Lo que esa persona tiene en curso, con su avance y su mascota. «Leyendo» si la obra principal es un libro; «Viendo» si es serie o película. | bloque de `/u/[username]` |
+| **Destacados** | Favoritos, Top | Las obras que la persona fija en su perfil; en la cabecera forman el abanico sobre el mosaico de lo terminado. | cabecera de `/u/[username]` |
 | **Universo** | Metasaga, Franquicia | Una saga que agrupa otras sagas. Es una saga, no un tipo aparte. | `sagas.parent_id` |
 | **Club** | Grupo | El espacio compartido donde varias personas leen o ven algo a la vez. | `/club/[slug]` |
 | **Comunidad** | — | El destino compartido de Clubes y Personas. | `/comunidad`; pestaña Personas con `?tab=personas` |
