@@ -917,6 +917,15 @@
         "noRatingHint": "Aún no hay notas suficientes"
       },
       "now": { "title": "Leyendo ahora", "also": "También en curso" },
+      "wall": {
+        "month": "{label} · {count, plural, one {# obra} other {# obras}}",
+        "inProgress": "En curso",
+        "dropped": "La dejó",
+        "finished": "Terminada",
+        "episodes": "{season, select, none {} other {T{season} · }}{count, plural, one {# ep.} other {# ep.}}",
+        "reactions": "{count, plural, one {# reacción} other {# reacciones}}",
+        "coverLabel": "{title}, {state}"
+      },
       "year": {
         "title": "Su {year}",
         "titleOwn": "Tu {year}",
