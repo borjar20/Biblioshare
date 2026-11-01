@@ -38,6 +38,12 @@ export type ClubFeedResult = {
   events: ClubFeedEvent[];
   /** Filas brutas devueltas por la query, para el cálculo de "fuente agotada". */
   rowCount: number;
+  /**
+   * Última fila BRUTA de la query (antes de descartar actividades sin club):
+   * si la fuente topó su `limit`, es la frontera más allá de la cual el feed no
+   * sabe qué hay y no puede servir nada de ninguna fuente.
+   */
+  lastRow: { id: string; created_at: string } | null;
 };
 
 export async function getClubActivityEvents(
@@ -53,7 +59,7 @@ export async function getClubActivityEvents(
   if (memberError) throw memberError;
 
   const clubIds = (memberRows ?? []).map((r) => r.club_id);
-  if (clubIds.length === 0) return { events: [], rowCount: 0 };
+  if (clubIds.length === 0) return { events: [], rowCount: 0, lastRow: null };
 
   // Solo lo que sigue vivo: una actividad terminada o archivada no es novedad.
   // Los eventos (kind='evento') se excluyen aparte: comparten status='active'
@@ -79,7 +85,7 @@ export async function getClubActivityEvents(
   if (activityError) throw activityError;
 
   const rows = activityRows ?? [];
-  if (rows.length === 0) return { events: [], rowCount: 0 };
+  if (rows.length === 0) return { events: [], rowCount: 0, lastRow: null };
 
   const activityIds = rows.map((r) => r.id);
   const proposerIds = [...new Set(rows.map((r) => r.created_by))];
@@ -134,5 +140,6 @@ export async function getClubActivityEvents(
     });
   }
 
-  return { events, rowCount: rows.length };
+  const last = rows[rows.length - 1];
+  return { events, rowCount: rows.length, lastRow: { id: last.id, created_at: last.created_at } };
 }

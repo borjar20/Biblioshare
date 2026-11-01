@@ -1270,6 +1270,8 @@
     "empty": "Cuando sigas a otras personas, sus reseñas y avances aparecerán aquí.",
     "emptyCta": "Descubrir usuarios",
     "loadMore": "Cargar más",
+    "loadingMore": "Cargando más actividad…",
+    "loadMoreRetry": "No se pudo cargar más. Reintentar",
     "emptyTitle": "Tu feed está tranquilo",
     "emptyClubs": "Explorar clubes",
     "followingCount": "sigues a {count}",

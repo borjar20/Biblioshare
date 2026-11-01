@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useEffectEvent, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { FeedEntry, FeedFilter } from "@/lib/social/feed";
@@ -39,19 +39,49 @@ export function FeedList({
   const [cursor, setCursor] = useState(initialCursor);
   const [known, setKnown] = useState(initialKnownUsernames);
   const [isPending, startTransition] = useTransition();
+  // Un fallo apaga la carga automática: el centinela sigue a la vista y, sin
+  // este freno, cada re-render volvería a pedir la misma página en bucle. En
+  // lugar del spinner aparece entonces un botón de reintento.
+  const [autoLoadFailed, setAutoLoadFailed] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const events = [...initialEvents, ...extraEvents];
 
   function loadMore() {
     startTransition(async () => {
-      const page = await loadMoreFeed(cursor, filter);
-      setExtraEvents((prev) => [...prev, ...page.events]);
-      setCursor(page.nextCursor);
-      // Se acumula: los eventos ya pintados de páginas anteriores siguen
-      // necesitando su set de known para no perder enlaces.
-      setKnown((prev) => [...new Set([...prev, ...page.knownUsernames])]);
+      try {
+        const page = await loadMoreFeed(cursor, filter);
+        setExtraEvents((prev) => [...prev, ...page.events]);
+        setCursor(page.nextCursor);
+        // Se acumula: los eventos ya pintados de páginas anteriores siguen
+        // necesitando su set de known para no perder enlaces.
+        setKnown((prev) => [...new Set([...prev, ...page.knownUsernames])]);
+        setAutoLoadFailed(false);
+      } catch (error) {
+        console.error("loadMoreFeed failed", error);
+        setAutoLoadFailed(true);
+      }
     });
   }
+
+  // Scroll infinito: un centinela tras la última tarjeta pide la página
+  // siguiente cuando entra en pantalla (con margen, para que llegue antes de
+  // tocar fondo). IntersectionObserver y no un listener de scroll: no corre en
+  // cada frame. Se re-observa tras cada carga, así que si la página nueva no
+  // llena la pantalla y el centinela sigue visible, encadena la siguiente.
+  const onSentinelVisible = useEffectEvent(loadMore);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !cursor || isPending || autoLoadFailed) return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) onSentinelVisible();
+      },
+      { rootMargin: "0px 0px 600px 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [cursor, isPending, autoLoadFailed]);
 
   if (events.length === 0) {
     return (
@@ -94,15 +124,35 @@ export function FeedList({
       {events.map((entry) => (
         <FeedItem key={entry.id} entry={entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={known} />
       ))}
+      {cursor && <div ref={sentinelRef} aria-hidden="true" data-testid="feed-sentinel" />}
+      {/* Pie de alto fijo mientras quede algo por cargar: spinner (el mismo
+          dibujo que `ui/load-more`) o, si la carga falló, el único botón que
+          queda, el de reintentar. El alto fijo evita que el pie salte al
+          cambiar de uno a otro. */}
       {cursor && (
-        <button
-          type="button"
-          disabled={isPending}
-          onClick={loadMore}
-          className="self-center rounded-full border border-border px-5 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface-muted disabled:opacity-50"
-        >
-          {t("loadMore")}
-        </button>
+        <div className="flex min-h-11 items-center justify-center py-2">
+          {autoLoadFailed ? (
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={loadMore}
+              className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground disabled:opacity-50"
+            >
+              {t("loadMoreRetry")}
+            </button>
+          ) : (
+            <>
+              <span
+                aria-hidden
+                data-testid="feed-loading"
+                className="size-5 animate-spin rounded-full border-2 border-muted-foreground/40 border-t-transparent motion-reduce:animate-none"
+              />
+              <span role="status" className="sr-only">
+                {isPending ? t("loadingMore") : ""}
+              </span>
+            </>
+          )}
+        </div>
       )}
     </div>
   );

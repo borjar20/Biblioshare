@@ -25,6 +25,7 @@ import {
   isAfterCursor,
   makeCursor,
   parseCursor,
+  type OrderableEntry,
 } from "./feed-order";
 
 // Feed de actividad social (posts como capa canónica). Antes esto era un
@@ -1068,7 +1069,7 @@ export async function getFeed(
           cursorFilter: cursor ? cursorSourceFilter(FEED_SOURCE_COLUMNS.clubs, cursor) : undefined,
           pageSize: fetchLimit,
         })
-      : Promise.resolve({ events: [] as ClubFeedEvent[], rowCount: 0 }),
+      : Promise.resolve({ events: [] as ClubFeedEvent[], rowCount: 0, lastRow: null }),
   ]);
   if (followResult.error) throw followResult.error;
 
@@ -1161,7 +1162,25 @@ export async function getFeed(
   // Cada post es una tarjeta y ninguna se solapa, así que el corte es un slice.
   entries.sort(compareEntries);
   const fresh = cursor ? entries.filter((e) => isAfterCursor(e, cursor)) : entries;
-  const page = fresh.slice(0, pageSize);
+
+  // Horizonte: una fuente que topó su `limit` no dice nada de lo que hay tras
+  // su última fila BRUTA, así que nada más antiguo que esa fila —de ninguna
+  // fuente— puede servirse aún. Sin esta cota, los posts descartados al
+  // resolver (el `finished` tapado por su visionado conjunto, una obra
+  // borrada) dejaban huecos que rellenaba una actividad de club semanas más
+  // vieja; el cursor salía de ella y la página siguiente se saltaba todos los
+  // posts intermedios, que nunca se llegaron a pedir («hace 8 días» → «hace
+  // 75 días» en producción). Se toma la frontera más reciente de las dos.
+  const boundaries: OrderableEntry[] = [];
+  const lastPost = postRows.length >= fetchLimit ? postRows[postRows.length - 1] : undefined;
+  if (lastPost) boundaries.push({ orderDate: lastPost.created_at, sortDate: lastPost.created_at, id: `posts:${lastPost.id}` });
+  if (clubResult.rowCount >= fetchLimit && clubResult.lastRow) {
+    const { id, created_at } = clubResult.lastRow;
+    boundaries.push({ orderDate: created_at, sortDate: created_at, id: `club_activities:${id}` });
+  }
+  const horizon = boundaries.sort(compareEntries)[0] ?? null;
+  const withinHorizon = horizon ? fresh.filter((e) => compareEntries(e, horizon) <= 0) : fresh;
+  const page = withinHorizon.slice(0, pageSize);
 
   // Interacciones y borrado solo para los posts de ESTA página (referencias a
   // los mismos drafts, así que finalizarlos abajo ya los ve resueltos).
@@ -1185,13 +1204,18 @@ export async function getFeed(
         },
   );
 
-  // El feed se agota solo cuando ambas fuentes trajeron menos que el fetch Y se
-  // sirvió todo lo fresco. Si una fuente topó su límite, o quedaron filas sin
-  // servir tras el slice, hay más y el cursor es el keyset de la última servida.
-  const allExhausted = postRows.length < fetchLimit && clubResult.rowCount < fetchLimit;
-  const servedAll = page.length >= fresh.length;
+  // El feed se agota solo cuando ninguna fuente topó su límite (no hay
+  // horizonte) Y se sirvió todo lo fresco. Página llena: el cursor es la última
+  // servida. Página corta con horizonte: todo lo anterior a él ya se sirvió o
+  // se descartó, así que el cursor salta al horizonte — también si la página
+  // sale vacía porque se descartaron todas sus filas, que antes cortaba el feed.
   const last = page[page.length - 1];
-  const nextCursor = (allExhausted && servedAll) || !last ? null : makeCursor(last);
+  const hasMore = horizon !== null || page.length < fresh.length;
+  const nextCursor = !hasMore
+    ? null
+    : page.length === pageSize || !horizon
+      ? makeCursor(last)
+      : makeCursor(horizon);
 
   const knownUsernames = await resolveKnownMentions(
     supabase,
