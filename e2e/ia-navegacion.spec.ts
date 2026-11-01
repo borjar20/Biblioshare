@@ -82,9 +82,15 @@ for (const width of [390, 768]) {
         if (name === "Sacar un lomo") {
           // Llega con la hoja del sorteo abierta (modal): se cierra para poder
           // seguir navegando. Escape además quita `sorteo` de la URL.
-          await expect(page.getByRole("dialog")).toBeVisible();
-          await page.keyboard.press("Escape");
-          await expect(page.getByRole("dialog")).toBeHidden();
+          // Sin pendientes (usuario de test vacío) no hay hoja: el Rincón
+          // muestra la estantería vacía y no hay nada que cerrar.
+          const sheet = page.getByRole("dialog");
+          const emptyHeading = page.getByRole("heading", { name: /estantería de pendientes está vacía/i });
+          await expect(sheet.or(emptyHeading).first()).toBeVisible();
+          if (await sheet.isVisible()) {
+            await page.keyboard.press("Escape");
+            await expect(sheet).toBeHidden();
+          }
         }
         await expect(page.getByRole("heading", { level: 1, name: heading, exact: true })).toBeVisible();
         if (path === "/coleccion/rincon") {
