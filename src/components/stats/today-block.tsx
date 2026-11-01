@@ -6,6 +6,7 @@ import { getTodayFocus, getNextEpisode, type TodayPass } from "@/lib/stats/get-t
 import { getWeeklyActivity } from "@/lib/stats/get-weekly-activity";
 import { getOwnProfile } from "@/lib/profile/get-profile-by-username";
 import { getLibraryItems } from "@/lib/library/get-library-items";
+import { getPlannedItems } from "@/lib/library/get-planned-items";
 import { getSorteoPool } from "@/lib/rincon/get-sorteo-pool";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { getProgress, passPercent } from "@/lib/library/progress";
@@ -43,7 +44,8 @@ export async function TodayBlock({ userId }: { userId: string }) {
     getTodayFocus(supabase, userId),
     getWeeklyActivity(supabase, userId),
     getOwnProfile(userId),
-    getLibraryItems(supabase, userId, { status: "planned" }),
+    // Memoizada por petición: la tarjeta del Sorteo del Inicio pide la misma cola.
+    getPlannedItems(userId),
   ]);
 
   // Dos estanterías iguales: la de «en curso» lleva además el enlace al

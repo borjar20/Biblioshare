@@ -8194,3 +8194,13 @@ Entre nosotros acepta `?personas=` para abrir el editor de grupo con gente
 preseleccionada (botón de Miembros del club). No concede nada: se filtra contra
 los candidatos (follows aceptados) y el guardado vuelve a validar en servidor.
 Spec: `docs/superpowers/specs/2026-11-01-accesos-sorteo-entre-nosotros-design.md`.
+
+## 2026-11-02 — «Sacar un lomo» como tarjeta propia del Inicio en móvil
+
+Bajo 1100 px «Para más tarde» vive dentro del panel plegado de lo que disfrutas,
+así que su enlace al Sorteo quedaba a dos gestos. Se añade una tarjeta
+`HomeDrawTile` en la rejilla de Inicio, en la media fila libre junto a «Sale esta
+semana» (baja a la fila siguiente si está la crónica). Solo con pendientes y solo
+bajo 1100: en escritorio la estantería ya está abierta y lleva el enlace. La cola
+se lee con `getPlannedItems`, memoizada por petición con `cache()` de React
+(no `use cache`, regla #437), así que no suma consulta al bloque de hoy.

@@ -4872,6 +4872,8 @@
     "openWrap": "Abrir tu crónica",
     "wrap": "Tu crónica",
     "activityStart": "Tus historias empiezan aquí",
-    "new": "Nueva"
+    "new": "Nueva",
+    "draw": "Sacar un lomo",
+    "drawMeta": "Que decida el azar entre {count, plural, one {# pendiente} other {# pendientes}}"
   }
 }

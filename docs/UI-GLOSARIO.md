@@ -181,7 +181,7 @@ desde el avatar global. Las funciones de la app tienen navegación propia;
 | **Botín** | Loot | Objetos obtenidos al superar aventuras de la mascota. | `/mascota`, R4b #1123 |
 | **Equipo** | Loadout, Build | Arma y amuleto elegidos para el próximo combate. | `/mascota`, `pet_loadout` |
 | **Potencia** (del objeto) | Calidad, Roll, Reroll | Multiplicador fijo del efecto adicional de una copia de botín. No es el nivel de la mascota. | `/mascota`, R4b #1123 |
-| **Sorteo** | Ruleta, Random | El «Sacar un lomo»: el azar elige entre tus pendientes. | Rincón; «Sacar un lomo» en Biblioteca y en «Para más tarde» de Inicio (`/coleccion/rincon?sorteo=1`) |
+| **Sorteo** | Ruleta, Random | El «Sacar un lomo»: el azar elige entre tus pendientes. | Rincón; «Sacar un lomo» en Biblioteca, en «Para más tarde» de Inicio y, bajo 1100 px, como tarjeta propia de Inicio (`/coleccion/rincon?sorteo=1`) |
 | **Ajustes** | Configuración, Preferencias, Opciones | La pantalla donde decides sobre tu cuenta: perfil, visibilidad, contraseña, tus datos y avisos. | `/ajustes` |
 | **Más opciones** | Mi espacio | El menú de accesos secundarios de la app, disponible en cualquier pantalla. Incluye Partidas y Ajustes. | navegación global; separado del enlace de perfil en el avatar |
 | **Partida** | Juego | Una sesión de juego concreta; la unidad principal del dominio. | dominio `play`, `/partidas` |
