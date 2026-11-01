@@ -8,7 +8,14 @@ import { HeroFanLabel } from "./hero-fan-label";
 // Spec §3 y §4.1: mosaico de sus últimas terminadas al fondo (decorativo) y
 // abanico de sus destacados delante (enlaces). Sin mosaico, degradado de acento.
 export async function ProfileHero({ userId, name }: { userId: string; name: string }) {
-  const model = await getProfileHero(await createClient(), userId);
+  let model: HeroModel;
+  try {
+    model = await getProfileHero(await createClient(), userId);
+  } catch (error) {
+    // Una lectura secundaria fallida no debe tumbar el perfil: portada sin mosaico.
+    console.error("getProfileHero failed", error);
+    model = { fan: [], mosaic: [] };
+  }
   return <HeroView model={model} name={name} />;
 }
 
