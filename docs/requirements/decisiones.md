@@ -8181,3 +8181,16 @@ Sin migraciones. Ranking, fichas y prototipo en
 
 Evidencia en [el informe del perfil visual](../testing/2026-11-01-perfil-visual.md); ajustes respecto a
 la spec en [su sección final](../superpowers/specs/2026-10-29-perfil-visual-design.md).
+
+## 2026-11-01 — Accesos al Sorteo y a Entre nosotros: enlaces, no hojas montadas
+
+El Sorteo se abre fuera del Rincón con `/coleccion/rincon?sorteo=1`, no montando
+la hoja en Biblioteca e Inicio. Así hay una sola implementación del sorteo y no
+se añade `getSorteoPool` a cada render de Inicio. Se descartó cargar el pool al
+pulsar (server action nueva) por coste frente a beneficio; se puede migrar sin
+tirar nada si el salto de página molesta.
+
+Entre nosotros acepta `?personas=` para abrir el editor de grupo con gente
+preseleccionada (botón de Miembros del club). No concede nada: se filtra contra
+los candidatos (follows aceptados) y el guardado vuelve a validar en servidor.
+Spec: `docs/superpowers/specs/2026-11-01-accesos-sorteo-entre-nosotros-design.md`.
