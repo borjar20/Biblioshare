@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import type { NowItem } from "@/lib/profile/now";
 import { CoverTile } from "./cover-tile";
 
-// Leyendo ahora (spec §3.1 punto 4): la más reciente en grande con su avance,
+// Leyendo / Viendo ahora (spec §3.1 punto 4; el rótulo sigue el tipo de la obra principal): la más reciente en grande con su avance,
 // las otras en pastillas, y la mascota a la derecha. Sin nada que enseñar, nada.
 export function NowView({ items, pet }: { items: NowItem[]; pet: ReactNode }) {
   const t = useTranslations("profile.visual.now");
@@ -23,7 +23,7 @@ export function NowView({ items, pet }: { items: NowItem[]; pet: ReactNode }) {
         <div className="min-w-0 flex-1">
           {first && (
             <>
-              <p className="font-mono text-[11px] uppercase tracking-[.09em] text-foreground-soft">{t("title")}</p>
+              <p className="font-mono text-[11px] uppercase tracking-[.09em] text-foreground-soft">{t("title", { type: first.itemType })}</p>
               <Link href={first.href} className="flex min-h-11 items-center font-serif text-[17px] font-semibold">{first.title}</Link>
               {first.progressPercent !== null && (
                 <div

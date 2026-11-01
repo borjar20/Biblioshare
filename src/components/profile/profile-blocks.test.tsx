@@ -91,4 +91,16 @@ describe("NowView", () => {
     expect(screen.getByRole("progressbar").getAttribute("aria-valuenow")).toBe("99");
     expect(screen.getByText("También en curso")).toBeTruthy();
   });
+  it("el rótulo sigue el tipo de la obra principal: libro «Leyendo», serie o película «Viendo»", () => {
+    const item = (itemType: "book" | "series" | "movie") =>
+      ({ ...cover("a"), itemType, progressLabel: null, progressPercent: null });
+    wrap(<NowView pet={null} items={[item("book")]} />);
+    expect(screen.getByText("Leyendo ahora")).toBeTruthy();
+    cleanup();
+    wrap(<NowView pet={null} items={[item("series")]} />);
+    expect(screen.getByText("Viendo ahora")).toBeTruthy();
+    cleanup();
+    wrap(<NowView pet={null} items={[item("movie")]} />);
+    expect(screen.getByText("Viendo ahora")).toBeTruthy();
+  });
 });

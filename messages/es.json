@@ -916,7 +916,7 @@
         "noRating": "—",
         "noRatingHint": "Aún no hay notas suficientes"
       },
-      "now": { "title": "Leyendo ahora", "also": "También en curso" },
+      "now": { "title": "{type, select, book {Leyendo ahora} other {Viendo ahora}}", "also": "También en curso" },
       "wall": {
         "month": "{label} · {count, plural, one {# obra} other {# obras}}",
         "inProgress": "En curso",
