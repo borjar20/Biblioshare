@@ -24,12 +24,29 @@ async function createUser(request: APIRequestContext, username: string, isPublic
     headers: admin(true),
     data: { user_id: user.id, username, is_public: isPublic },
   });
-  expect(profile.ok()).toBe(true);
+  if (!profile.ok()) {
+    await deleteUser(user.id);
+    expect(profile.ok()).toBe(true);
+  }
   return { id: user.id as string, username };
 }
 
 async function deleteUser(id: string) {
-  await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${id}`, { method: "DELETE", headers: admin() });
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${id}`, { method: "DELETE", headers: admin() });
+  if (!res.ok) console.warn(`No se pudo borrar el usuario de prueba ${id}: ${res.status}`);
+}
+
+// Los bloques del perfil llegan por streaming, cada uno tras su skeleton: una
+// ausencia solo es fiable cuando la página ha terminado de llegar.
+async function waitForProfileSettled(page: Page, activityEmpty: boolean) {
+  if (activityEmpty) {
+    await expect(page.getByRole("heading", { name: "Sin actividad todavía" })).toBeVisible();
+  } else {
+    await expect(page.getByTestId("profile-wall")).toBeVisible();
+  }
+  await expect(page.getByTestId("profile-figures")).toBeVisible();
+  await page.waitForLoadState("networkidle");
+  await expect(page.locator('[aria-hidden="true"].bg-surface-muted, [aria-hidden="true"].animate-pulse')).toHaveCount(0);
 }
 
 async function login(page: Page, email = EMAIL, password = PASSWORD) {
@@ -60,23 +77,28 @@ test.describe("perfil visual", () => {
   });
 
   test("cuenta nueva y pública vista por otra: degradado sin mosaico, «—» y muro vacío", async ({ page, request }) => {
-    const fresh = await createUser(request, `pvnueva${Date.now()}`.slice(0, 20), true);
+    let fresh: { id: string; username: string } | undefined;
     try {
+      fresh = await createUser(request, `pvnueva${Date.now()}`.slice(0, 20), true);
       await login(page);
       await page.goto(`/u/${fresh.username}`);
+      await waitForProfileSettled(page, true);
       await expect(page.getByTestId("profile-hero")).toHaveAttribute("data-mosaic", "off");
       await expect(page.getByTestId("profile-figures")).toContainText("—");
+      await expect(page.getByTestId("profile-wall")).toHaveCount(0);
       await expect(page.getByTestId("profile-now")).toHaveCount(0);
       await expect(page.getByTestId("profile-year")).toHaveCount(0);
     } finally {
-      await deleteUser(fresh.id);
+      if (fresh) await deleteUser(fresh.id);
     }
   });
 
   test("perfil privado sin permiso: aviso y ningún bloque nuevo", async ({ page, request }) => {
-    const viewer = await createUser(request, `pvvis${Date.now()}`.slice(0, 20), true);
-    const priv = await createUser(request, `pvpriv${Date.now()}`.slice(0, 20), false);
+    let viewer: { id: string; username: string } | undefined;
+    let priv: { id: string; username: string } | undefined;
     try {
+      viewer = await createUser(request, `pvvis${Date.now()}`.slice(0, 20), true);
+      priv = await createUser(request, `pvpriv${Date.now()}`.slice(0, 20), false);
       await viewerLogin(page, viewer);
       await page.goto(`/u/${priv.username}`);
       await expect(page.getByRole("button", { name: "Solicitar seguir" })).toBeVisible();
@@ -84,15 +106,17 @@ test.describe("perfil visual", () => {
       await expect(page.getByTestId("profile-figures")).toHaveCount(0);
       await expect(page.getByTestId("profile-wall")).toHaveCount(0);
     } finally {
-      await deleteUser(priv.id);
-      await deleteUser(viewer.id);
+      if (priv) await deleteUser(priv.id);
+      if (viewer) await deleteUser(viewer.id);
     }
   });
 
   test("seguidor aceptado de un perfil privado: ve cabecera, cifras y muro", async ({ page, request }) => {
-    const viewer = await createUser(request, `pvfol${Date.now()}`.slice(0, 20), true);
-    const priv = await createUser(request, `pvseg${Date.now()}`.slice(0, 20), false);
+    let viewer: { id: string; username: string } | undefined;
+    let priv: { id: string; username: string } | undefined;
     try {
+      viewer = await createUser(request, `pvfol${Date.now()}`.slice(0, 20), true);
+      priv = await createUser(request, `pvseg${Date.now()}`.slice(0, 20), false);
       const follow = await request.post(`${SUPABASE_URL}/rest/v1/follows`, {
         headers: admin(true),
         data: { follower_id: viewer.id, followee_id: priv.id, status: "accepted" },
@@ -105,8 +129,8 @@ test.describe("perfil visual", () => {
       // Cuenta sin actividad: no hay muro, pero sí la pestaña (estado vacío).
       await expect(page.getByRole("heading", { name: "Sin actividad todavía" })).toBeVisible();
     } finally {
-      await deleteUser(priv.id); // el borrado en cascada retira también el follow
-      await deleteUser(viewer.id);
+      if (priv) await deleteUser(priv.id); // el borrado en cascada retira también el follow
+      if (viewer) await deleteUser(viewer.id);
     }
   });
 
@@ -115,6 +139,7 @@ test.describe("perfil visual", () => {
     const page = await context.newPage();
     await page.goto(`/u/${USERNAME}`);
     await expect(page.getByTestId("profile-hero")).toBeVisible();
+    await waitForProfileSettled(page, false);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow).toBeLessThanOrEqual(0);
     await context.close();
