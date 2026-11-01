@@ -40,8 +40,8 @@ export function FeedList({
   const [known, setKnown] = useState(initialKnownUsernames);
   const [isPending, startTransition] = useTransition();
   // Un fallo apaga la carga automática: el centinela sigue a la vista y, sin
-  // este freno, cada re-render volvería a pedir la misma página en bucle. El
-  // botón queda como reintento manual.
+  // este freno, cada re-render volvería a pedir la misma página en bucle. En
+  // lugar del spinner aparece entonces un botón de reintento.
   const [autoLoadFailed, setAutoLoadFailed] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -124,18 +124,35 @@ export function FeedList({
       {events.map((entry) => (
         <FeedItem key={entry.id} entry={entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={known} />
       ))}
-      {/* El botón se queda: es el camino de teclado y lector de pantalla, y el
-          reintento si la carga automática falla. */}
       {cursor && <div ref={sentinelRef} aria-hidden="true" data-testid="feed-sentinel" />}
+      {/* Pie de alto fijo mientras quede algo por cargar: spinner (el mismo
+          dibujo que `ui/load-more`) o, si la carga falló, el único botón que
+          queda, el de reintentar. El alto fijo evita que el pie salte al
+          cambiar de uno a otro. */}
       {cursor && (
-        <button
-          type="button"
-          disabled={isPending}
-          onClick={loadMore}
-          className="self-center rounded-full border border-border px-5 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface-muted disabled:opacity-50"
-        >
-          {t("loadMore")}
-        </button>
+        <div className="flex min-h-11 items-center justify-center py-2">
+          {autoLoadFailed ? (
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={loadMore}
+              className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground disabled:opacity-50"
+            >
+              {t("loadMoreRetry")}
+            </button>
+          ) : (
+            <>
+              <span
+                aria-hidden
+                data-testid="feed-loading"
+                className="size-5 animate-spin rounded-full border-2 border-muted-foreground/40 border-t-transparent motion-reduce:animate-none"
+              />
+              <span role="status" className="sr-only">
+                {isPending ? t("loadingMore") : ""}
+              </span>
+            </>
+          )}
+        </div>
       )}
     </div>
   );

@@ -59,9 +59,15 @@ describe("FeedList · scroll infinito", () => {
     await act(async () => fire([{ isIntersecting: true }]));
     expect(loadMoreFeed).toHaveBeenCalledWith("c1");
     expect(screen.getAllByTestId("feed-item").map((n) => n.textContent)).toEqual(["e1", "e2"]);
-    // Sin cursor no queda nada que observar ni botón que pulsar.
+    // Sin cursor no queda nada que observar ni que animar.
     expect(screen.queryByTestId("feed-sentinel")).toBeNull();
-    expect(screen.queryByRole("button", { name: "loadMore" })).toBeNull();
+    expect(screen.queryByTestId("feed-loading")).toBeNull();
+  });
+
+  it("con más por cargar enseña la animación, no un botón", () => {
+    renderList();
+    expect(screen.getByTestId("feed-loading")).toBeTruthy();
+    expect(screen.queryByRole("button")).toBeNull();
   });
 
   it("no carga mientras el centinela no está a la vista", async () => {
@@ -76,7 +82,7 @@ describe("FeedList · scroll infinito", () => {
     expect(screen.queryByTestId("feed-sentinel")).toBeNull();
   });
 
-  it("si la carga falla deja de reintentar sola y el botón sigue disponible", async () => {
+  it("si la carga falla deja de reintentar sola y cambia la animación por un reintento", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     loadMoreFeed.mockRejectedValue(new Error("red"));
     renderList();
@@ -85,6 +91,14 @@ describe("FeedList · scroll infinito", () => {
     await act(async () => {});
     expect(observers).toBe(afterFailure); // no se re-observa: sin bucle
     expect(loadMoreFeed).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("button", { name: "loadMore" })).toBeTruthy();
+    expect(screen.queryByTestId("feed-loading")).toBeNull();
+    const retry = screen.getByRole("button", { name: "loadMoreRetry" });
+
+    // El reintento manual vuelve a pedir la página y devuelve la animación.
+    loadMoreFeed.mockResolvedValue({ events: [entry("e2")], nextCursor: "c2", knownUsernames: [] });
+    await act(async () => retry.click());
+    expect(loadMoreFeed).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId("feed-loading")).toBeTruthy();
+    expect(screen.queryByRole("button")).toBeNull();
   });
 });
