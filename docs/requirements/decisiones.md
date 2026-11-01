@@ -8153,3 +8153,31 @@ Sin migraciones. Evidencia en [el informe del atlas](../testing/2026-10-28-sagas
 
 Sin migraciones. Ranking, fichas y prototipo en
 [la spec de candidatas](../superpowers/specs/2026-10-29-candidatos-rework-design.md).
+
+## 2026-11-01 — Perfil visual (#1580)
+
+1. **Cabecera en capas:** mosaico de portadas de lo terminado al fondo y, encima, un abanico con los
+   «Destacados». Es la candidata 1 del rework visual (spec del 2026-10-29).
+2. **Dos fuentes, un solo cliente.** El muro sale de publicaciones (`getFeed`); la cabecera, las cifras,
+   «Leyendo ahora» y «Su año» salen de `passes`, siempre con el cliente de la petición (RLS decide qué ve
+   cada quien).
+3. **«Su año» se acota a un resumen** pese a la regla de herramientas (que lo habría llevado a una
+   herramienta con su propia pantalla). Lo eligió el usuario; no se amplía sin otra decisión.
+4. **Las cifras usan la semántica de `getLibraryStats`.** Las discrepancias que ya tiene esa función (#772)
+   se tratan aparte; el perfil no las corrige ni las duplica.
+5. **Las lecturas se recortan en SQL antes de hidratar:** `latestPassKeys` devuelve las claves de los
+   últimos pases activos por estado o por destacado, y solo esas obras se hidratan. No se reutiliza
+   `getLibraryView`, que hidrata la biblioteca entera.
+6. **Mascota compacta a escala entera 1** dentro de una ventana de 72 px: `PetSprite` solo admite
+   `1 | 2 | 3`, y una escala fraccionaria rompería el pixel art.
+7. **El oro del perfil usa tokens `-ink` y `-graphic`** (texto y gráfico por separado) para cumplir el
+   contraste (#577) en claro y oscuro.
+8. **El esqueleto de la página sigue el layout nuevo:** `PROFILE_LAYOUT_CLASS` se comparte entre la página
+   y sus esqueletos, y cada `<Suspense>` lleva un esqueleto del alto del bloque (CLS, #284).
+9. **Sin `use cache` y sin migraciones** (regla #437): todo depende de quién mira, así que ninguna lectura
+   se comparte entre cuentas.
+10. **Se retiran** `profile-header.tsx` (sustituido por `profile-identity.tsx` y `profile-hero.tsx`),
+    `profile-activity-feed.tsx` y `profile-feed-buckets.ts` (la lista por días cede al muro por meses).
+
+Evidencia en [el informe del perfil visual](../testing/2026-11-01-perfil-visual.md); ajustes respecto a
+la spec en [su sección final](../superpowers/specs/2026-10-29-perfil-visual-design.md).

@@ -1,7 +1,7 @@
 ---
 title: Perfil visual (rework visual, candidata 1)
 date: 2026-10-29
-status: diseño aprobado; pendiente de plan
+status: implementado (rama claude/perfil-visual, PR pendiente)
 area: ui / social
 issue: "#1580"
 ---
@@ -266,3 +266,22 @@ Al cerrar:
 - `UI-GLOSARIO.md` si nace un término (p. ej. «Su año»);
 - cierre de #1580 (y de #431 si el layout lo resuelve);
 - declaración de la regla #437 en la PR: sin `use cache` nuevo.
+
+## Ajustes durante la implementación
+
+Lo que cambió respecto a lo diseñado arriba:
+
+- **`latestPassKeys` en vez de `getLibraryView`.** Las lecturas del perfil recortan en SQL a los últimos
+  pases activos (por estado o por destacado) y solo hidratan esas obras.
+- **Contrato de episodios.** Cada publicación `watched` lista los episodios del día, incluido el suyo; por eso el
+  muro suma `episodes.length`, o 1 si no trae la lista.
+- **Oro con `-ink` y `-graphic`.** Un solo token de oro no pasaba el contraste en ambos temas (#577).
+- **Mascota a escala 1 en una ventana de 72 px:** `PetSprite` solo admite `1 | 2 | 3`.
+- **Esqueleto de página con el layout nuevo** (`PROFILE_LAYOUT_CLASS` compartido), para no mover la página al
+  resolverse los `<Suspense>`.
+- **Claves i18n nuevas:** `memberSinceInline` y `coverLabelWithReactions`. La nota del muro se lee con
+  `formatDots` («X de 5»).
+- **`CoverTile` con `initialsClassName`,** para ajustar el tamaño de las iniciales según el contexto.
+- **e2e:** la cuenta `devtest` es admin y lee perfiles privados, así que los casos de privado y de seguidor
+  usan visores temporales sin rol. Helper `waitForProfileSettled` antes de comprobar ausencias. Se añadió un
+  quinto caso, el del seguidor aceptado.
