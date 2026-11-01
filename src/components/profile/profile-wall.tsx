@@ -9,6 +9,7 @@ import { itemHref } from "@/lib/catalog/item-href";
 import { buildProfileWall, madridMonthKey, wallMonthLabel, type WallCover } from "@/lib/profile/wall";
 import { FeedItem } from "@/components/social/feed-item";
 import { RatingDots } from "@/components/ui/rating-dots";
+import { formatDots } from "@/lib/rating/dots";
 import { CoverTile } from "./cover-tile";
 
 // El muro de la actividad (spec §5): las mismas publicaciones que la lista de
@@ -41,7 +42,7 @@ export function ProfileWall({
 
   function stateLabel(c: WallCover): string {
     switch (c.state.kind) {
-      case "rated": return `${(c.state.rating / 2).toLocaleString("es", { maximumFractionDigits: 1 })}/5`;
+      case "rated": return `${formatDots(c.state.rating)} de 5`;
       case "dropped": return t("dropped");
       case "finished": return t("finished");
       case "in_progress": return t("inProgress");
@@ -66,22 +67,24 @@ export function ProfileWall({
             {t("month", { label: wallMonthLabel(month.key, currentKey), count: month.coverCount })}
           </h3>
           <div className="flex flex-col gap-3">
-            {month.segments.map((seg, i) =>
+            {month.segments.map((seg) =>
               seg.type === "card" ? (
                 <FeedItem key={seg.card.id} entry={seg.card.entry} viewerLoggedIn={viewerLoggedIn} knownUsernames={known} hideActor />
               ) : (
-                <ul key={`covers-${i}`} className="grid grid-cols-3 gap-2.5 lg:grid-cols-6">
+                <ul key={`covers-${seg.covers[0].key}`} className="grid grid-cols-3 gap-2.5 lg:grid-cols-6">
                   {seg.covers.map((c) => (
                     <li key={c.key} className="relative">
                       <Link
                         href={c.postId ? `/post/${c.postId}` : itemHref(c.itemType, c.itemId)}
-                        aria-label={t("coverLabel", { title: c.title, state: stateLabel(c) })}
-                        className={`block transition-transform motion-safe:hover:-translate-y-1 ${c.state.kind === "dropped" ? "opacity-55" : ""}`}
+                        aria-label={c.reactions > 0
+                          ? t("coverLabelWithReactions", { title: c.title, state: stateLabel(c), reactions: t("reactions", { count: c.reactions }) })
+                          : t("coverLabel", { title: c.title, state: stateLabel(c) })}
+                        className="block transition-transform motion-safe:hover:-translate-y-1"
                       >
-                        <CoverTile cover={{ title: c.title, coverUrl: c.coverUrl }} sizes="(max-width: 1024px) 30vw, 140px" />
-                        <span aria-hidden="true" className="absolute top-1.5 right-1.5 rounded-full bg-background/90 px-1.5 py-0.5 font-mono text-[9.5px] font-medium uppercase">
+                        <CoverTile cover={{ title: c.title, coverUrl: c.coverUrl }} sizes="(max-width: 1024px) 30vw, 140px" className={c.state.kind === "dropped" ? "opacity-55" : ""} />
+                        <div aria-hidden="true" className={`absolute top-1.5 right-1.5 rounded-full bg-background/90 px-1.5 py-0.5 font-mono text-[9.5px] font-medium uppercase ${c.state.kind === "in_progress" ? "text-gold-ink" : ""}`}>
                           {c.state.kind === "rated" ? <RatingDots value={c.state.rating} size="sm" /> : stateLabel(c)}
-                        </span>
+                        </div>
                         {c.reactions > 0 && (
                           <span aria-hidden="true" className="absolute bottom-1.5 left-1.5 rounded-full bg-background/90 px-1.5 py-0.5 text-[10px]">❤ {c.reactions}</span>
                         )}

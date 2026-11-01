@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // src/components/profile/profile-wall.test.tsx
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { NextIntlClientProvider } from "next-intl";
 import messages from "../../../messages/es.json";
 import type { FeedEntry, FeedEvent } from "@/lib/social/feed";
@@ -10,6 +10,7 @@ vi.mock("next/image", () => ({ default: () => null }));
 vi.mock("@/lib/social/feed-actions", () => ({ loadMoreProfileFeed: vi.fn() }));
 vi.mock("@/components/social/feed-item", () => ({ FeedItem: ({ entry }: { entry: FeedEntry }) => <article data-testid="card">{entry.id}</article> }));
 
+import { loadMoreProfileFeed } from "@/lib/social/feed-actions";
 import { ProfileWall } from "./profile-wall";
 
 afterEach(cleanup);
@@ -57,5 +58,47 @@ describe("ProfileWall", () => {
   it("con cursor ofrece cargar más", () => {
     wrap([person({})], "c1");
     expect(screen.getByRole("button")).toBeTruthy();
+  });
+
+  it("la insignia «En curso» va en oro de texto (-ink)", () => {
+    wrap([person({ verb: "started", rating: null })]);
+    expect(screen.getByText("En curso").className).toContain("text-gold-ink");
+  });
+
+  it("«La dejó» atenúa solo la portada, no el enlace", () => {
+    wrap([person({ verb: "dropped", rating: null })]);
+    const link = screen.getByRole("link", { name: /Pearl/ });
+    expect(link.className).not.toContain("opacity-55");
+    expect(link.firstElementChild?.className).toContain("opacity-55");
+  });
+
+  it("solo episodios: muestra temporada y número", () => {
+    wrap([person({ verb: "watchedEpisode", rating: null, itemType: "series", itemId: "s1", episode: { season: 2, episode: 1, title: null }, episodes: [1, 2, 3].map((n) => ({ season: 2, episode: n, title: null, rating: null })) })]);
+    expect(screen.getByText(/^T2 · 3 ep\.$/i)).toBeTruthy();
+  });
+
+  it("el nombre accesible incluye las reacciones cuando hay", () => {
+    wrap([person({ reactionCount: 3 })]);
+    expect(screen.getByRole("link", { name: /3 reacciones/ })).toBeTruthy();
+  });
+
+  it("sin reacciones, el nombre no las menciona", () => {
+    wrap([person({ reactionCount: 0 })]);
+    expect(screen.getByRole("link", { name: /Pearl/ }).getAttribute("aria-label")).not.toMatch(/reacci/);
+  });
+
+  it("«Cargar más» une el mes partido entre páginas", async () => {
+    vi.mocked(loadMoreProfileFeed).mockResolvedValue({
+      events: [person({ id: "posts:0", verb: "dropped", rating: null, eventDate: "2026-10-05T10:00:00Z", sortDate: "2026-10-05T10:00:00Z", orderDate: "2026-10-05T10:00:00Z", reactionCount: 1 })],
+      nextCursor: null,
+      knownUsernames: [],
+    } as never);
+    wrap([person({ reactionCount: 2 })], "c1");
+    await act(async () => { fireEvent.click(screen.getByRole("button")); });
+    await waitFor(() => expect(screen.queryByRole("button")).toBeNull());
+    expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(1);
+    expect(screen.getByText(/· 1 obra$/)).toBeTruthy();
+    expect(screen.getAllByRole("link")).toHaveLength(1);
+    expect(screen.getByRole("link", { name: /3 reacciones/ })).toBeTruthy();
   });
 });

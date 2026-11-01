@@ -924,7 +924,8 @@
         "finished": "Terminada",
         "episodes": "{season, select, none {} other {T{season} · }}{count, plural, one {# ep.} other {# ep.}}",
         "reactions": "{count, plural, one {# reacción} other {# reacciones}}",
-        "coverLabel": "{title}, {state}"
+        "coverLabel": "{title}, {state}",
+        "coverLabelWithReactions": "{title}, {state}, {reactions}"
       },
       "year": {
         "title": "Su {year}",
