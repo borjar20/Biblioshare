@@ -305,12 +305,12 @@ test('foreign owner isolation and revoke/block/delete redact actual action respo
   }, { integrated: true });
 });
 
-test('profile «Comparar» opens an unsaved pair and «Guardar como grupo» keeps it (#1484)', async ({ page }) => {
+test('profile «Entre nosotros» opens an unsaved pair and «Guardar como grupo» keeps it (#1484)', async ({ page }) => {
   await withComparisonFixture(async fixture => {
     const [owner, beatriz] = fixture.actors;
     await loginComparisonActor(page, owner);
     await page.goto(`/u/${beatriz.username}`);
-    await page.getByRole('link', { name: 'Comparar', exact: true }).click();
+    await page.getByRole('link', { name: 'Entre nosotros', exact: true }).click();
     await expect(page).toHaveURL(url => url.pathname === '/comunidad/entre-nosotros' && url.searchParams.get('con') === beatriz.id);
     await settled(page);
     const chromeNav = page.getByRole('navigation', { name: 'Navegación principal', exact: true, includeHidden: true });
@@ -347,7 +347,7 @@ test('profile «Comparar» opens an unsaved pair and «Guardar como grupo» keep
     await page.goto(`/u/${fixture.actors[2].username}`);
     await comparisonRest(`follows?follower_id=eq.${owner.id}&followee_id=eq.${fixture.actors[2].id}`, { method: 'DELETE' });
     await page.reload();
-    await expect(page.getByRole('link', { name: 'Comparar', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Entre nosotros', exact: true })).toHaveCount(0);
   });
 });
 

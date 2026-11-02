@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { loadComparison } from '@/lib/comparisons/actions';
 import { sortGroups } from '@/lib/comparisons/order';
+import { personasFromQuery } from '@/lib/comparisons/personas-query';
 import { withPersonId, withPersonTarget } from '@/lib/comparisons/with-person';
 import type { Candidate, Format, Group, Result, Snapshot } from '@/lib/comparisons/types';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -147,7 +148,10 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
     { slotId: 'with', userId: withPerson.userId, name: withPerson.name, avatarUrl: withPerson.avatarUrl, available: true }] }, [withPerson, withName, self, viewerId]);
   const choices = withGroup ? [withGroup, ...groups] : groups;
   const [state, dispatch] = useReducer(explorerReducer, viewerId, id => ({ ...initialState(id), groupId: withGroup?.id ?? selectOwnedGroup(search.get('group'), initialGroups) }));
-  const [editor, setEditor] = useState<{ group: Group | null; people?: string[] } | null>(null);
+  // ?personas= (club -> atlas): the new-group editor opens with them ticked. ?con= and ?group= win.
+  const [initialPersonas] = useState(() => withPerson || search.get('group') ? [] : personasFromQuery(search.get('personas'), candidates, viewerId));
+  const [editor, setEditor] = useState<{ group: Group | null; people?: string[] } | null>(() => initialPersonas.length ? { group: null, people: [viewerId, ...initialPersonas] } : null);
+  const personasCleared = useRef(false);
   const [reload, forceReload] = useReducer((value: number) => value + 1, 0);
   const [completedHandoff, setCompletedHandoff] = useState<number | null>(null);
   // Atlas UI state lives here, not in AtlasView: a format change remounts the view. The lens and the Islas mode come from
@@ -195,6 +199,12 @@ function ExplorerSession({ initialGroups, candidates, viewerId }: Props) {
     });
     return () => { sequence.current += 1; };
   }, [state.groupId, reload]);
+  // Ids out of the URL once the editor holds them: a reload must not reopen it.
+  useEffect(() => {
+    if (!initialPersonas.length || personasCleared.current) return;
+    personasCleared.current = true;
+    router.replace(atlasHref(null, atlasUi.lens, atlasUi.islandMode), { scroll: false });
+  }, [initialPersonas, router, atlasUi.lens, atlasUi.islandMode]);
   function selectGroup(id: string | null) {
     sequence.current += 1; dispatch({ type: 'group', id }); setEditor(null);
     groupChip.current?.focus();

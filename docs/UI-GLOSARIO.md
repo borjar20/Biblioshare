@@ -165,6 +165,7 @@ desde el avatar global. Las funciones de la app tienen navegación propia;
 | **Club** | Grupo | El espacio compartido donde varias personas leen o ven algo a la vez. | `/club/[slug]` |
 | **Comunidad** | — | El destino compartido de Clubes y Personas. | `/comunidad`; pestaña Personas con `?tab=personas` |
 | **Personas** (en Comunidad) | Autores | Cuentas de Biblioshare que puedes buscar y conocer. | `/comunidad?tab=personas` |
+| **Entre nosotros** | — | Atlas que compara lo que leéis y veis con la gente a la que sigues. | Tarjeta en Comunidad; botón en el perfil ajeno (con follow aceptado); botón en Miembros del club |
 | **Perfil** | Mi espacio | La identidad y el contenido que comparte una persona. El avatar global da acceso al perfil propio. | `/u/[username]` |
 | **Madriguera del club** | Ranking del club, Equipo de combate | El espacio de compañía de las mascotas de quienes pertenecen al club, respetando la privacidad de cada perfil. | S3 #1129; implementada en desarrollo el 2026-09-07, aceptación visual de José Ángel el 2026-09-07; publicación pendiente |
 | **Actividad** | Evento, Lectura conjunta | Lo que se hace dentro de un club y tiene calendario: lectura conjunta, tierlist, evento… | `club_activities` |
@@ -180,7 +181,7 @@ desde el avatar global. Las funciones de la app tienen navegación propia;
 | **Botín** | Loot | Objetos obtenidos al superar aventuras de la mascota. | `/mascota`, R4b #1123 |
 | **Equipo** | Loadout, Build | Arma y amuleto elegidos para el próximo combate. | `/mascota`, `pet_loadout` |
 | **Potencia** (del objeto) | Calidad, Roll, Reroll | Multiplicador fijo del efecto adicional de una copia de botín. No es el nivel de la mascota. | `/mascota`, R4b #1123 |
-| **Sorteo** | Ruleta, Random | El «Sacar un lomo»: el azar elige entre tus pendientes. | Rincón |
+| **Sorteo** | Ruleta, Random | El «Sacar un lomo»: el azar elige entre tus pendientes. | Rincón; «Sacar un lomo» en Biblioteca, en «Para más tarde» de Inicio y, bajo 1100 px, como tarjeta propia de Inicio (`/coleccion/rincon?sorteo=1`) |
 | **Ajustes** | Configuración, Preferencias, Opciones | La pantalla donde decides sobre tu cuenta: perfil, visibilidad, contraseña, tus datos y avisos. | `/ajustes` |
 | **Más opciones** | Mi espacio | El menú de accesos secundarios de la app, disponible en cualquier pantalla. Incluye Partidas y Ajustes. | navegación global; separado del enlace de perfil en el avatar |
 | **Partida** | Juego | Una sesión de juego concreta; la unidad principal del dominio. | dominio `play`, `/partidas` |

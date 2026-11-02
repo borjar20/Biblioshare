@@ -38,3 +38,36 @@ test("sacar un lomo: hoja, sorteo y empezar el pase", async ({ page }) => {
   await expect(sheet.getByRole("button", { name: /en curso/i })).toBeVisible();
   await expect(sheet.getByRole("link", { name: /ver ficha/i })).toBeVisible();
 });
+
+// Enlace directo (spec 2026-11-01): Biblioteca e Inicio llevan aquí y la hoja
+// llega abierta, sin pulsar la tarjeta.
+test("?sorteo=1 abre la hoja, limpia la URL y la entrada de Biblioteca la reabre", async ({ page }) => {
+  test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
+
+  await page.goto("/login");
+  await submitLogin(page, EMAIL, PASSWORD);
+  await page.waitForURL("/");
+
+  await page.goto("/coleccion/rincon?sorteo=1");
+  const emptyCard = page.getByText(/estantería de pendientes está vacía/i);
+  const sheet = page.getByRole("dialog");
+  await expect(sheet.or(emptyCard).first()).toBeVisible();
+  test.skip(await emptyCard.isVisible(), "el usuario de test no tiene pendientes");
+
+  await expect(sheet.getByRole("heading", { name: /deja que decida/i })).toBeVisible();
+  // El parámetro se quita con replaceState nada más abrir, sin esperar al cierre.
+  await expect(page).not.toHaveURL(/sorteo/);
+  await page.keyboard.press("Escape");
+  await expect(sheet).toBeHidden();
+  await expect(page).toHaveURL(/\/coleccion\/rincon$/);
+
+  // Segunda visita con navegación de cliente (no `goto`, que recarga): así el
+  // Rincón puede seguir montado con Activity y la hoja tiene que reabrirse igual.
+  await page.getByRole("link", { name: "Volver a Biblioteca" }).click();
+  await expect(page).toHaveURL(/\/coleccion$/);
+  await page
+    .getByRole("navigation", { name: "Herramientas de tu biblioteca" })
+    .getByRole("link", { name: /sacar un lomo/i })
+    .click();
+  await expect(page.getByRole("dialog").getByRole("heading", { name: /deja que decida/i })).toBeVisible();
+});

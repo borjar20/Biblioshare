@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { SorteoSheet } from "./sorteo-sheet";
 import type { SorteoCollection, SorteoItem } from "./sorteo-logic";
@@ -21,18 +22,58 @@ const SPINES = [
   { h: 90, c: "#e0a94a" },
 ];
 
+// Abre la hoja cuando llega `?sorteo=1` (DRAW_HREF) y quita el parámetro.
+// Se lee el parámetro ENTRANTE, no el estado inicial: con `cacheComponents`
+// Next conserva las rutas visitadas ocultas con React Activity en vez de
+// desmontarlas, así que un estado inicial solo se evaluaría en la
+// primera visita y la segunda dejaría la hoja cerrada.
+// El parámetro se quita con `history.replaceState`, que Next sincroniza con
+// `useSearchParams`: no compite con otras navegaciones (p. ej. «Ver ficha»,
+// que cierra la hoja y navega a la vez) ni refetchea el árbol RSC del Rincón.
+function DrawFromUrl({ onOpen }: { onOpen: () => void }) {
+  const searchParams = useSearchParams();
+  const requested = searchParams.get("sorteo") === "1";
+
+  useEffect(() => {
+    if (!requested) return;
+    // `onOpen` decide si hay algo que sortear; el parámetro se limpia igual.
+    onOpen();
+    const url = new URL(window.location.href);
+    url.searchParams.delete("sorteo");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo reacciona al parámetro
+  }, [requested]);
+
+  return null;
+}
+
 // "Sacar un lomo": tarjeta-entrada del ritual (spec 2026-07-17). El botón abre
 // la hoja del sorteo (estantería animada + filtros). Tarjeta oscura a
 // propósito (misma en claro y oscuro). Vacío: invita a añadir pendientes.
 export function SpineDraw({
   pool,
   collections = [],
+  openFromUrl = false,
 }: {
   pool: SorteoItem[];
   collections?: SorteoCollection[];
+  // Escucha `?sorteo=1`: abre la hoja (si hay pool) y limpia el parámetro.
+  // Solo la usa el Rincón; el Inicio no debe leer la URL.
+  openFromUrl?: boolean;
 }) {
   const t = useTranslations("rincon");
   const [open, setOpen] = useState(false);
+  const hasPool = pool.length > 0;
+
+  const urlListener = openFromUrl ? (
+    <Suspense fallback={null}>
+      <DrawFromUrl onOpen={() => { if (hasPool) setOpen(true); }} />
+    </Suspense>
+  ) : null;
+
+  function close() {
+    setOpen(false);
+  }
 
   const dark = "rounded-[14px] border p-4";
   const darkStyle = {
@@ -41,9 +82,10 @@ export function SpineDraw({
     color: "#f0e8db",
   };
 
-  if (pool.length === 0) {
+  if (!hasPool) {
     return (
       <div className={dark} style={darkStyle}>
+        {urlListener}
         <h3 className="font-serif text-sm font-semibold">{t("drawEmptyTitle")}</h3>
         <p className="mt-1 text-[11.5px] leading-relaxed" style={{ color: "#a99e8c" }}>
           {t("drawEmptySub")}
@@ -61,6 +103,7 @@ export function SpineDraw({
 
   return (
     <div className={dark} style={darkStyle}>
+      {urlListener}
       <h3 className="font-serif text-sm font-semibold">{t("drawTitle")}</h3>
       <p className="mt-1 text-[11.5px] leading-relaxed" style={{ color: "#a99e8c" }}>
         {t("drawSub")}
@@ -90,7 +133,7 @@ export function SpineDraw({
         pool={pool}
         collections={collections}
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={close}
       />
     </div>
   );

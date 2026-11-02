@@ -61,7 +61,9 @@ export default function Loading() {
         </div>
 
         {/* STATS: resumen móvil y detalle completo de escritorio. */}
-        <HomeRail area="stats"><HomeSmallSkeleton stats /></HomeRail>
+        {/* Con la crónica reservada, «Sacar un lomo» va a media fila junto a
+            «Tu semana» (globals.css); su hueco se reserva igual. */}
+        <HomeRail area="stats"><HomeSmallSkeleton stats /><div aria-hidden className="home-draw-tile" /></HomeRail>
       </div>
     </div>
   );

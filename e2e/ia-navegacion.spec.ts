@@ -60,15 +60,16 @@ for (const width of [390, 768]) {
       await expect(page.getByRole("link", { name: "Mi perfil", exact: true })).toBeVisible();
     });
 
-    test("Biblioteca reúne Cuaderno, Retos y objetivos y Estadísticas", async ({ page }) => {
+    test("Biblioteca reúne Cuaderno, Retos y objetivos, Sacar un lomo y Estadísticas", async ({ page }) => {
       await login(page);
       const library = primaryNav(page).getByRole("link", { name: "Biblioteca", exact: true });
       await library.click();
       const tools = page.getByRole("navigation", { name: "Herramientas de tu biblioteca" });
-      await expect(tools.getByRole("link")).toHaveText(["Cuaderno", "Retos y objetivos", "Estadísticas"]);
+      await expect(tools.getByRole("link")).toHaveText(["Cuaderno", "Retos y objetivos", "Sacar un lomo", "Estadísticas"]);
       for (const [name, path, heading] of [
         ["Cuaderno", "/notas", "Cuaderno"],
         ["Retos y objetivos", "/coleccion/rincon", "Retos y objetivos"],
+        ["Sacar un lomo", "/coleccion/rincon?sorteo=1", "Retos y objetivos"],
         ["Estadísticas", "/estadisticas", "Estadísticas"],
       ]) {
         const link = tools.getByRole("link", { name, exact: true });
@@ -77,7 +78,20 @@ for (const width of [390, 768]) {
         expect(box, `${name}: control visible`).not.toBeNull();
         expect(box!.height).toBeGreaterThanOrEqual(44);
         await link.click();
-        await expect(page).toHaveURL(new RegExp(`${path}$`));
+        await expect(page).toHaveURL(url => `${url.pathname}${url.search}` === path);
+        if (name === "Sacar un lomo") {
+          // Llega con la hoja del sorteo abierta (modal): se cierra para poder
+          // seguir navegando. Escape además quita `sorteo` de la URL.
+          // Sin pendientes (usuario de test vacío) no hay hoja: el Rincón
+          // muestra la estantería vacía y no hay nada que cerrar.
+          const sheet = page.getByRole("dialog");
+          const emptyHeading = page.getByRole("heading", { name: /estantería de pendientes está vacía/i });
+          await expect(sheet.or(emptyHeading).first()).toBeVisible();
+          if (await sheet.isVisible()) {
+            await page.keyboard.press("Escape");
+            await expect(sheet).toBeHidden();
+          }
+        }
         await expect(page.getByRole("heading", { level: 1, name: heading, exact: true })).toBeVisible();
         if (path === "/coleccion/rincon") {
           // El objetivo es el primer editor, antes de los retos existentes.

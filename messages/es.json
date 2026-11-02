@@ -588,6 +588,7 @@
   },
   "community": {
     "comparisons": "Entre nosotros",
+    "comparisonsHint": "Compara lo que leéis y veis con la gente a la que sigues",
     "title": "Comunidad",
     "clubs": "Clubes",
     "people": "Personas",
@@ -709,6 +710,7 @@
     "seeAll": "{count} · Ver todos",
     "keepGoing": "Continúa donde lo dejaste",
     "later": "Para más tarde",
+    "drawLink": "Sacar un lomo",
     "day": "Día {n}",
     "since": "desde {date}",
     "notes": "{count, plural, =1 {1 nota} other {# notas}}",
@@ -943,7 +945,7 @@
         "chartLabel": "Obras terminadas por mes en {year}"
       }
     },
-    "compareWith": "Comparar",
+    "compareWith": "Entre nosotros",
     "compareWithHint": "Ver qué obras compartís en Entre nosotros",
     "empty": "Este perfil todavía no ha añadido nada a su biblioteca.",
     "visibilityPublic": "Tu perfil es público. Cualquiera puede ver tu biblioteca.",
@@ -1419,6 +1421,8 @@
     "daysAgo": "hace {count, plural, one {1 día} other {# días}}"
   },
   "club": {
+    "compareMembers": "Entre nosotros",
+    "compareMembersHint": "Compara lo que leéis y veis con los miembros del club a los que sigues",
     "navLabel": "Clubes",
     "myClubs": "Mis clubes",
     "discover": "Descubrir",
@@ -3449,6 +3453,7 @@
     "toolsLabel": "Herramientas de tu biblioteca",
     "notebook": "Cuaderno",
     "goalsAndChallenges": "Retos y objetivos",
+    "drawTool": "Sacar un lomo",
     "statistics": "Estadísticas",
     "rinconTitle": "Retos y objetivos",
     "backToLibrary": "Volver a Biblioteca",
@@ -4867,6 +4872,8 @@
     "openWrap": "Abrir tu crónica",
     "wrap": "Tu crónica",
     "activityStart": "Tus historias empiezan aquí",
-    "new": "Nueva"
+    "new": "Nueva",
+    "draw": "Sacar un lomo",
+    "drawMeta": "Que decida el azar entre {count, plural, one {# pendiente} other {# pendientes}}"
   }
 }

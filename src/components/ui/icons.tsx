@@ -52,6 +52,20 @@ export function HomeIcon(props: SVGProps<SVGSVGElement>) {
 
 // Estantería: las filas de la colección (no un libro suelto — la colección
 // mezcla libros, películas y series).
+/** «Sacar un lomo» (el Sorteo): tres lomos en la balda y el del centro
+ *  asomando hacia arriba, a medio sacar. No es el dado: ese es de Partidas. */
+export function PullSpineIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M3 21h18" />
+      <rect width="4" height="13" x="4" y="8" rx="1" />
+      <rect width="4" height="13" x="10" y="3" rx="1" />
+      <rect width="4" height="13" x="16" y="8" rx="1" />
+      <path d="M10 7h4" />
+    </Icon>
+  );
+}
+
 export function LibraryIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>

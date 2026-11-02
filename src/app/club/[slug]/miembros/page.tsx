@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
 import { createClient, getCurrentUser } from "@/lib/supabase/server";
 import { loginHref } from "@/lib/auth/safe-next";
@@ -7,6 +9,8 @@ import { getClubIdentity, hasPendingRequest } from "@/lib/clubs/join-requests";
 import { PrivateClubStub } from "@/components/clubs/private-club-stub";
 import { listClubActivities } from "@/lib/clubs/activities/core";
 import { listClubDirectory } from "@/lib/clubs/directory";
+import { getFollowedClubMembers } from "@/lib/clubs/followed-members";
+import { personasHref } from "@/lib/comparisons/personas-query";
 import { MemberDirectory } from "@/components/clubs/member-directory";
 import { ClubShell, ClubSidebar } from "@/components/clubs/club-shell";
 
@@ -55,9 +59,11 @@ export default async function ClubMembersPage({
 
   const canModerate =
     club.viewerRole === "moderator" || club.viewerRole === "owner";
-  const [initial, activities] = await Promise.all([
+  const [initial, activities, followed, t] = await Promise.all([
     listClubDirectory(club.id, { filter: "all", page: 0 }),
     canModerate ? listClubActivities(club.id) : Promise.resolve([]),
+    getFollowedClubMembers(club.id, user.id),
+    getTranslations("club"),
   ]);
   const pendingProposals = activities.filter(
     (a) => a.status === "proposed",
@@ -77,14 +83,26 @@ export default async function ClubMembersPage({
         />
       }
     >
-      <MemberDirectory
-        clubId={club.id}
-        clubSlug={club.slug}
-        clubName={club.name}
-        initial={initial}
-        canModerate={canModerate}
-        viewerId={user.id}
-      />
+      <div className="flex flex-col">
+        {/* Sin nadie a quien sigas no hay con quién comparar: el botón no se pinta. */}
+        {followed.length > 0 && (
+          <Link
+            href={personasHref(followed)}
+            title={t("compareMembersHint")}
+            className="mb-4 inline-flex min-h-11 items-center self-start rounded-full border border-border px-4 text-sm font-medium text-foreground hover:bg-surface-muted"
+          >
+            {t("compareMembers")}
+          </Link>
+        )}
+        <MemberDirectory
+          clubId={club.id}
+          clubSlug={club.slug}
+          clubName={club.name}
+          initial={initial}
+          canModerate={canModerate}
+          viewerId={user.id}
+        />
+      </div>
     </ClubShell>
   );
 }

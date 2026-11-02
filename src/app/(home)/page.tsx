@@ -23,6 +23,7 @@ import releaseStyles from "@/components/releases/releases.module.css";
 import { SHELL_HOME } from "@/lib/ui/layout";
 import { HomeRail } from "@/components/home/home-rail";
 import { HomeSmallSkeleton } from "@/components/home/home-skeleton";
+import { HomeDrawTile } from "@/components/home/home-draw-tile";
 import { ThisWeekReleases, PublicReleaseFan } from "@/components/releases/this-week-releases";
 
 // Sin `instant = false` (#476): el boundary de la ruta es `loading.tsx`, que
@@ -109,6 +110,9 @@ export default async function Home({
           </Suspense>
           <div className="home-today-boundary"><Suspense fallback={<TodayBlockSkeleton />}><TodayBlock userId={user.id} /></Suspense></div>
           <div className="home-week-boundary"><Suspense fallback={<HomeSmallSkeleton />}><ThisWeekReleases expandable /></Suspense></div>
+          {/* Sin fallback: ocupa el hueco libre de la fila de «Sale esta
+              semana», cuyo alto ya está reservado, así que no empuja nada. */}
+          <Suspense fallback={null}><HomeDrawTile userId={user.id} /></Suspense>
         </HomeRail>
 
         {/* FEED: compartir un pensamiento + filtros + actividad de tu gente. */}
@@ -139,6 +143,11 @@ export default async function Home({
           <Suspense fallback={<HomeSmallSkeleton stats />}>
             <StatsRail userId={user.id} />
           </Suspense>
+          {/* La misma tarjeta del Sorteo, para cuando la crónica llena la fila
+              de «Sale esta semana»: entonces va a media fila junto a «Tu
+              semana». El CSS pinta una u otra; la cola sale de la misma
+              lectura memoizada. */}
+          <Suspense fallback={null}><HomeDrawTile userId={user.id} /></Suspense>
         </HomeRail>
       </div>
     </div>

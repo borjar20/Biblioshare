@@ -284,6 +284,33 @@ describe('Explorer request boundaries', () => {
     mocks.query = 'con=10000000-0000-4000-8000-000000000099'; render(ui([]));
     expect(mocks.load).not.toHaveBeenCalled(); expect(screen.getByText('Compara con quien sigues')).toBeTruthy();
   });
+  it('opens the new-group editor with the followed people from ?personas= and clears it from the URL', async () => {
+    const bea = '10000000-0000-4000-8000-000000000002';
+    mocks.query = `personas=${bea},10000000-0000-4000-8000-000000000099`;
+    render(<NextIntlClientProvider locale="es" messages={messages}><Explorer initialGroups={[]} candidates={[{ userId: 'a', name: 'Ana', avatarUrl: null }, { userId: bea, name: 'Bea', avatarUrl: null }]} viewerId="a"/></NextIntlClientProvider>);
+    const sheet = screen.getByRole('dialog', { name: 'Crear grupo' });
+    expect((within(sheet).getByRole('checkbox', { name: 'Bea' }) as HTMLInputElement).checked).toBe(true);
+    await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/comunidad/entre-nosotros', { scroll: false }));
+    expect(mocks.load).not.toHaveBeenCalled();
+  });
+  it('lets ?group= win over ?personas= (a group the viewer does not own does not open the editor)', () => {
+    const bea = '10000000-0000-4000-8000-000000000002';
+    mocks.query = `group=10000000-0000-4000-8000-0000000000aa&personas=${bea}`;
+    render(<NextIntlClientProvider locale="es" messages={messages}><Explorer initialGroups={[]} candidates={[{ userId: 'a', name: 'Ana', avatarUrl: null }, { userId: bea, name: 'Bea', avatarUrl: null }]} viewerId="a"/></NextIntlClientProvider>);
+    expect(screen.queryByRole('dialog', { name: 'Crear grupo' })).toBeNull();
+  });
+  it('lets ?con= win over ?personas=', async () => {
+    const bea = '10000000-0000-4000-8000-000000000002';
+    mocks.query = `con=${bea}&personas=${bea}`;
+    render(<NextIntlClientProvider locale="es" messages={messages}><Explorer initialGroups={[]} candidates={[{ userId: 'a', name: 'Ana', avatarUrl: null }, { userId: bea, name: 'Bea', avatarUrl: null }]} viewerId="a"/></NextIntlClientProvider>);
+    await waitFor(() => expect(mocks.load).toHaveBeenCalledWith(`with:${bea}`, 'all'));
+    expect(screen.queryByRole('dialog', { name: 'Crear grupo' })).toBeNull();
+  });
+  it('opens the atlas as usual when ?personas= has nobody you follow', () => {
+    mocks.query = 'personas=10000000-0000-4000-8000-000000000099'; render(ui([]));
+    expect(screen.queryByRole('dialog', { name: 'Crear grupo' })).toBeNull();
+    expect(screen.getByText('Compara con quien sigues')).toBeTruthy();
+  });
   it('offers a primary create action in the empty state, or people to follow when there is nobody to compare with', () => {
     const mounted = render(ui([]));
     fireEvent.click(screen.getByRole('button', { name: 'Crear tu primer grupo' }));
