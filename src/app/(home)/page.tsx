@@ -143,6 +143,11 @@ export default async function Home({
           <Suspense fallback={<HomeSmallSkeleton stats />}>
             <StatsRail userId={user.id} />
           </Suspense>
+          {/* La misma tarjeta del Sorteo, para cuando la crónica llena la fila
+              de «Sale esta semana»: entonces va a media fila junto a «Tu
+              semana». El CSS pinta una u otra; la cola sale de la misma
+              lectura memoizada. */}
+          <Suspense fallback={null}><HomeDrawTile userId={user.id} /></Suspense>
         </HomeRail>
       </div>
     </div>

@@ -1157,19 +1157,28 @@ body {
  .home-releases-morph[data-expanded="true"] .home-focus-stage { width:100%; margin-left:0; }
  .home-releases-morph .home-focus-heading { top:12px; left:calc(var(--home-week-start) + 12px); width:calc(50% - 29px); padding-right:0; transition:padding-right var(--home-morph-duration) var(--home-morph-ease),top var(--home-morph-duration) var(--home-morph-ease),left var(--home-morph-duration) var(--home-morph-ease),width var(--home-morph-duration) var(--home-morph-ease); }
  .home-releases-morph .home-shared-title { line-height:18.4px; transition:font-size var(--home-morph-duration) var(--home-morph-ease),line-height var(--home-morph-duration) var(--home-morph-ease); }
- /* «Sacar un lomo» llena la media fila libre junto a la semanal. Si está la
-    crónica, esa fila ya va completa: baja a la siguiente como franja de ancho
-    entero (una media tarjeta dejaba un hueco al lado). Sin crónica, la
-    semanal desplegada ocupa la fila entera: la tarjeta se aparta mientras. */
+ /* «Sacar un lomo» llena la media fila libre junto a la semanal. Con la
+    crónica esa fila ya va llena: se pinta la copia del rail de stats, a media
+    fila junto a «Tu semana» (la de aquí se oculta). Sin crónica, la semanal
+    desplegada ocupa la fila entera: la tarjeta se aparta mientras. */
  .home-personal > .home-draw-tile { display:flex; flex-direction:column; justify-content:space-between; gap:6px; grid-column:2; grid-row:2; height:96px; padding:11px; border:1px solid var(--border); border-radius:14px; background:var(--surface); box-shadow:var(--shadow-card); text-align:left; transition:opacity 220ms var(--home-morph-ease),visibility 0s; }
- .home-personal:has(> .home-wrap-entry,> .home-wrap-skeleton) > .home-draw-tile { grid-column:1 / -1; grid-row:3; height:auto; min-height:54px; flex-direction:row; align-items:center; justify-content:flex-start; gap:11px; padding:9px 12px; }
- .home-personal:has(> .home-wrap-entry,> .home-wrap-skeleton) > .home-draw-tile .home-draw-tile-body { display:contents; }
- .home-personal:has(> .home-wrap-entry,> .home-wrap-skeleton) > .home-draw-tile svg { order:-1; }
- .home-personal:has(> .home-wrap-entry,> .home-wrap-skeleton) > .home-draw-tile .home-preview-name { flex-shrink:0; }
- .home-personal:has(> .home-wrap-entry,> .home-wrap-skeleton) > .home-draw-tile .home-preview-meta { min-width:0; }
  .home-personal:not(:has(> .home-wrap-entry,> .home-wrap-skeleton)):has(.home-releases-morph[data-expanded="true"]) > .home-draw-tile { opacity:0; visibility:hidden; transition:opacity 180ms var(--home-morph-ease),visibility 0s linear 180ms; }
  .home-draw-tile-body { display:flex; align-items:center; gap:8px; min-width:0; }
  .home-draw-tile .home-preview-meta { margin-top:0; line-height:15px; }
+ .home-grid:has(.home-personal > .home-wrap-entry,.home-personal > .home-wrap-skeleton) .home-personal > .home-draw-tile { display:none; }
+ .home-grid:has(.home-personal > .home-wrap-entry,.home-personal > .home-wrap-skeleton) > [data-area="stats"]:has(> .home-draw-tile) { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; align-items:start; }
+ .home-grid:has(.home-personal > .home-wrap-entry,.home-personal > .home-wrap-skeleton) > [data-area="stats"] > .home-draw-tile { display:flex; align-items:center; gap:9px; height:54px; padding:9px 12px; border:1px solid var(--border); border-radius:14px; background:var(--surface); box-shadow:var(--shadow-card); }
+ .home-grid > [data-area="stats"] > .home-draw-tile .home-draw-tile-body { display:contents; }
+ .home-grid > [data-area="stats"] > .home-draw-tile svg { order:-1; }
+ .home-grid > [data-area="stats"] > .home-draw-tile .home-preview-meta { display:none; }
+ /* «Tu semana» a media fila no cabe con su tira de barras: plegada se queda en
+    título y resumen; las barras vuelven al desplegarla a ancho entero. */
+ .home-grid:has(.home-personal > .home-wrap-entry,.home-personal > .home-wrap-skeleton) > [data-area="stats"]:has(> .home-draw-tile) .home-stats-morph:not([data-expanded="true"]) .home-focus-heading { left:12px; }
+ .home-grid:has(.home-personal > .home-wrap-entry,.home-personal > .home-wrap-skeleton) > [data-area="stats"]:has(> .home-draw-tile) .home-stats-morph:not([data-expanded="true"]) .home-shared-title { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+ .home-grid:has(.home-personal > .home-wrap-entry,.home-personal > .home-wrap-skeleton) > [data-area="stats"]:has(> .home-draw-tile) .home-stats-morph:not([data-expanded="true"]) .weekly-strip-body { visibility:hidden; }
+ .home-grid:has(.home-personal > .home-wrap-entry,.home-personal > .home-wrap-skeleton) > [data-area="stats"]:has(> .home-draw-tile) .home-stats-morph:not([data-expanded="true"]) .home-weekly-summary-label { left:0; }
+ .home-grid > [data-area="stats"]:has(.home-stats-morph[data-expanded="true"]) > :first-child { grid-column:1 / -1; }
+ .home-grid > [data-area="stats"]:has(.home-stats-morph[data-expanded="true"]) > .home-draw-tile { display:none; }
  .home-releases-morph[data-expanded="true"] .home-focus-heading { top:calc(var(--home-week-offset) + 17px); left:17px; width:calc(100% - 34px); padding-right:56px; }
  .home-releases-morph[data-expanded="true"] .home-shared-title { font-size:20px; line-height:28px; }
  .home-week-focus { min-height:96px; overflow:hidden; padding:11px; border:1px solid var(--border); border-radius:14px; background:var(--surface); box-shadow:var(--shadow-card); transition:padding var(--home-morph-duration) var(--home-morph-ease); }
