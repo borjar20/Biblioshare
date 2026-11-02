@@ -932,7 +932,7 @@ body {
 .home-wrap-desktop { display:block; }
 .home-wrap-preview { display:none; }
 .home-draw-tile { display:none; }
-.home-wrap-skeleton { height:104px; margin-bottom:12px; }
+.home-wrap-skeleton { height:104px; margin-bottom:12px; border-radius:14px; background:var(--surface-muted); }
 .home-today-mobile-skeleton,.home-small-mobile-skeleton { display:none; }
 @media(min-width:1100px) {
  .home-grid > [data-area="personal"],.home-grid > [data-area="stats"] { max-height:var(--home-rail-height,calc(100dvh - var(--topbar-h) - 112px)); overflow-y:auto; overscroll-behavior:contain; scrollbar-width:none; scrollbar-gutter:auto; }
@@ -967,7 +967,10 @@ body {
  .home-wrap-desktop { display:none; }
  .home-wrap-preview { display:flex; width:100%; min-height:96px; padding:11px; border:1px solid var(--border); border-radius:14px; background:var(--surface); box-shadow:var(--shadow-card); text-align:left; flex-direction:column; gap:6px; }
  .home-wrap-preview-body { display:flex; align-items:center; gap:6px; min-width:0; }
- .home-wrap-skeleton { height:96px; margin-bottom:0; }
+ .home-wrap-skeleton { height:96px; margin-bottom:0; border:1px solid var(--border); background:var(--surface); }
+ /* La semanal fantasma va en la fila de la real: junto a la crónica si la hay. */
+ .home-personal > .home-week-boundary > .home-small-skeleton { grid-row:2; grid-column:1; }
+ .home-personal:has(> .home-wrap-entry,> .home-wrap-skeleton) > .home-week-boundary > .home-small-skeleton { grid-column:2; }
  .home-today-mobile-skeleton,.home-small-mobile-skeleton { display:block; border:1px solid var(--border); border-radius:14px; background:var(--surface); }
  .home-today-mobile-skeleton { height:106px; }
  /* La tarjeta semanal contraída ocupa una única fila de 96 px. */
