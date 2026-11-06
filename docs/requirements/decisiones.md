@@ -8230,3 +8230,6 @@ se lee con `getPlannedItems`, memoizada por petición con `cache()` de React
   correcto, cerrar (de cualquier forma) dispara exactamente un `router.refresh()`.
 - `DRAW_HREF` se queda para Biblioteca y los enlaces externos.
 - Spec: `docs/superpowers/specs/2026-11-06-sacar-lomo-partida-design.md`.
+- **Desvío de la spec en «Afinar».** Los cubos de tiempo se ven siempre dentro del panel; la spec
+  pedía un «Ajustar tiempo» plegado. El panel ya es opcional y llega plegado tras la píldora, así
+  que un segundo pliegue dentro solo añadía un gesto: se descartó.
