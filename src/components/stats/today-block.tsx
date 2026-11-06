@@ -13,6 +13,8 @@ import { getProgress, passPercent } from "@/lib/library/progress";
 import { ChevronRightIcon } from "@/components/ui/icons";
 import { HomeExpandable } from "@/components/home/home-expandable";
 import { itemHref } from "@/lib/catalog/item-href";
+import { RouteMessages } from "@/components/route-messages";
+import { SorteoTrigger } from "@/components/rincon/sorteo-trigger";
 import { TodayCard } from "./today-card";
 import { TodayPicker } from "./today-picker";
 import { LaterShelf } from "./later-shelf";
@@ -48,11 +50,25 @@ export async function TodayBlock({ userId }: { userId: string }) {
     getPlannedItems(userId),
   ]);
 
-  // Dos estanterías iguales: la de «en curso» lleva además el enlace al
-  // Sorteo; la de «Tu siguiente historia» no, porque ya lo tiene integrado.
-  const laterShelf = (showDraw: boolean) =>
+  // Dos estanterías iguales: la de «en curso» lleva además el lomo «¿Cuál toca?»
+  // que abre el Sorteo; la de «Tu siguiente historia» no, porque ya lo tiene integrado.
+  const sorteoT = await getTranslations("sorteo");
+  const laterShelf = (withDraw: boolean) =>
     planned.length > 0 ? (
-      <LaterShelf items={planned.slice(0, LATER_SHOWN)} total={planned.length} showDraw={showDraw} />
+      <LaterShelf
+        items={planned.slice(0, LATER_SHOWN)}
+        total={planned.length}
+        drawSlot={
+          withDraw ? (
+            <RouteMessages ns={["sorteo"]}>
+              <SorteoTrigger className="later-draw" ariaLabel={sorteoT("triggerLabel")}>
+                <span className="later-draw-stack" aria-hidden><span className="later-draw-q">?</span><i /><i /><i /></span>
+                <span className="later-draw-label">{sorteoT("trigger")}</span>
+              </SorteoTrigger>
+            </RouteMessages>
+          ) : null
+        }
+      />
     ) : null;
   const later = laterShelf(false);
 
@@ -72,7 +88,7 @@ export async function TodayBlock({ userId }: { userId: string }) {
       // del Rincón: pases planned activos con su estimación). Perezoso: solo se
       // pide cuando de verdad estamos en el estado 2.
       const pool = await getSorteoPool(supabase, userId);
-      return cold(<ProximaLectura pool={pool.items} collections={pool.collections} later={later} />, planned, panel("nextStory"));
+      return cold(<ProximaLectura pool={pool.items} later={later} />, planned, panel("nextStory"));
     }
     // Solo se pide la colección cuando de verdad hace falta (sin en curso y sin
     // cola): un query menos en el camino feliz. Solo completados — releer es

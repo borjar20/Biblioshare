@@ -10,6 +10,10 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: mocks.replace }),
   useSearchParams: () => new URLSearchParams(mocks.query),
 }));
+vi.mock("./sorteo-stage", () => ({
+  SorteoStage: ({ open, onClose }: { open: boolean; onClose: () => void }) =>
+    open ? <div role="dialog"><button type="button" onClick={onClose}>cerrar</button></div> : null,
+}));
 import { SpineDraw } from "./spine-draw";
 
 const item: SorteoItem = {
@@ -34,7 +38,7 @@ describe("SpineDraw", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(window.location.search).toBe("?sorteo=1&archivados=1");
   });
-  it.skip("abre la hoja con sorteo=1 y openFromUrl", () => {
+  it("abre la hoja con sorteo=1 y openFromUrl", () => {
     render(ui({ pool: [item], openFromUrl: true }));
     expect(screen.getByRole("dialog")).toBeTruthy();
   });
@@ -51,7 +55,7 @@ describe("SpineDraw", () => {
     expect(screen.getByText(messages.rincon.drawEmptyTitle)).toBeTruthy();
     expect(window.location.search).toBe("?archivados=1");
   });
-  it.skip("cerrar la hoja no navega ni toca la URL", () => {
+  it("cerrar la hoja no navega ni toca la URL", () => {
     render(ui({ pool: [item], openFromUrl: true }));
     const spy = vi.spyOn(window.history, "replaceState");
     fireEvent.click(screen.getByRole("button", { name: "cerrar" }));
@@ -60,7 +64,7 @@ describe("SpineDraw", () => {
     expect(spy).not.toHaveBeenCalled();
     spy.mockRestore();
   });
-  it.skip("reabre al llegar sorteo=1 con la ruta ya montada (Activity, segunda visita)", () => {
+  it("reabre al llegar sorteo=1 con la ruta ya montada (Activity, segunda visita)", () => {
     setUrl("");
     const view = render(ui({ pool: [item], openFromUrl: true }));
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -68,7 +72,7 @@ describe("SpineDraw", () => {
     view.rerender(ui({ pool: [item], openFromUrl: true }));
     expect(screen.getByRole("dialog")).toBeTruthy();
   });
-  it.skip("abre con el botón sin tocar la URL", () => {
+  it("abre con el botón sin tocar la URL", () => {
     setUrl("archivados=1");
     render(ui({ pool: [item] }));
     fireEvent.click(screen.getByRole("button", { name: messages.rincon.drawButton }));

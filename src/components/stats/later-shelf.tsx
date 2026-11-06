@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
@@ -5,7 +6,6 @@ import type { LibraryItem } from "@/lib/library/types";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { itemHref } from "@/lib/catalog/item-href";
 import { ChevronRightIcon } from "@/components/ui/icons";
-import { DRAW_HREF } from "@/lib/rincon/draw-href";
 
 // "Para más tarde" (frame G): la cola de pendientes como estantería, al lado de
 // lo que tienes a medias.
@@ -19,13 +19,13 @@ import { DRAW_HREF } from "@/lib/rincon/draw-href";
 // SIN la casilla "+" del frame (decisión del usuario, 2026-07-17): era el
 // gemelo de "Registrar algo nuevo", que se descartó. Añadir a la cola sigue
 // siendo cosa de Buscar, donde vive la escalera de hidratación.
-export function LaterShelf({ items, total, showDraw = false }: { items: LibraryItem[]; total: number; showDraw?: boolean }) {
+export function LaterShelf({ items, total, drawSlot }: { items: LibraryItem[]; total: number; drawSlot?: ReactNode }) {
   return (
     // `today-later-col`: en el split lateral (<1100) esta columna vale el DOBLE
     // que "Continúa" (flex 2 vs 1, globals.css) — 4 portadas frente a 2, para que
     // midan casi lo mismo en las dos. A ≥1100 (columna) el flex-grow es inocuo.
     <section className="today-later-col flex flex-col gap-2">
-      <Header total={total} showDraw={showDraw} />
+      <Header total={total} />
       {/* `today-shelf-later`: carrusel de una fila. Móvil estrecho (<768): sangra
           hasta el borde (frame G). Tablet/desktop y en la columna derecha del
           split (≥560): contenido (`mx-0`, sin sangrado que se meta en la columna
@@ -36,14 +36,16 @@ export function LaterShelf({ items, total, showDraw = false }: { items: LibraryI
         {items.map((item) => (
           <Cover key={item.entryId} item={item} />
         ))}
+        {drawSlot}
       </div>
     </section>
   );
 }
 
-// `showDraw`: con algo en curso, el Sorteo no tiene tarjeta en el Inicio (solo
-// la tiene «Tu siguiente historia»); este enlace es su acceso desde aquí.
-async function Header({ total, showDraw }: { total: number; showDraw: boolean }) {
+// `drawSlot`: con algo en curso, el Sorteo no tiene tarjeta en el Inicio (solo
+// la tiene «Tu siguiente historia»); su acceso es este lomo-botón «¿Cuál toca?»
+// al final del carrusel, que abre la partida en el sitio.
+async function Header({ total }: { total: number }) {
   const t = await getTranslations("today");
   const link = "inline-flex items-center gap-1 font-mono text-[10px] tracking-[0.06em] uppercase text-accent hover:underline";
   return (
@@ -52,7 +54,6 @@ async function Header({ total, showDraw }: { total: number; showDraw: boolean })
         {t("later")}
       </span>
       <span className="flex items-center gap-3">
-        {showDraw && <Link href={DRAW_HREF} className={link}>{t("drawLink")}</Link>}
         <Link href="/coleccion?status=planned" className={link}>
           {t("seeAll", { count: total })}
           <ChevronRightIcon className="h-3 w-3" />

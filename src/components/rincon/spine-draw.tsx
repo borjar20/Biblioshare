@@ -4,15 +4,11 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import type { SorteoCollection, SorteoItem } from "./sorteo-logic";
-
-// Temporal hasta la Task 8: la partida sustituye a la hoja.
-function SorteoSheet(_: { pool: unknown; collections: unknown; open: boolean; onClose: () => void }) {
-  return null;
-}
+import type { SorteoItem } from "./sorteo-logic";
+import { SorteoStage } from "./sorteo-stage";
 
 // La estantería decorativa del frame C/H: alturas y colores variados, fijos,
-// para que la tarjeta tenga cuerpo. El sorteo real vive en la hoja.
+// para que la tarjeta tenga cuerpo. El sorteo real vive en SorteoStage.
 const SPINES = [
   { h: 78, c: "#cf8a54" },
   { h: 100, c: "#6bb0b4" },
@@ -52,15 +48,13 @@ function DrawFromUrl({ onOpen }: { onOpen: () => void }) {
 }
 
 // "Sacar un lomo": tarjeta-entrada del ritual (spec 2026-07-17). El botón abre
-// la hoja del sorteo (estantería animada + filtros). Tarjeta oscura a
+// la partida del sorteo (mueble, mascota y panel Afinar). Tarjeta oscura a
 // propósito (misma en claro y oscuro). Vacío: invita a añadir pendientes.
 export function SpineDraw({
   pool,
-  collections = [],
   openFromUrl = false,
 }: {
   pool: SorteoItem[];
-  collections?: SorteoCollection[];
   // Escucha `?sorteo=1`: abre la hoja (si hay pool) y limpia el parámetro.
   // Solo la usa el Rincón; el Inicio no debe leer la URL.
   openFromUrl?: boolean;
@@ -133,12 +127,7 @@ export function SpineDraw({
         {t("drawButton")}
       </button>
 
-      <SorteoSheet
-        pool={pool}
-        collections={collections}
-        open={open}
-        onClose={close}
-      />
+      <SorteoStage open={open} onClose={close} />
     </div>
   );
 }
