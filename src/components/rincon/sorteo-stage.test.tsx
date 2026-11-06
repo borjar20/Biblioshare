@@ -144,6 +144,40 @@ describe("SorteoStage", () => {
     expect(document.documentElement.dataset.sorteoOpen).toBeUndefined();
   });
 
+  it("el <dialog> va en un portal a document.body (fuera de subárboles inert)", async () => {
+    mocks.load.mockResolvedValue({ items: [mk("a")], collections: [], pet: null });
+    const { container } = render(ui());
+    await flush();
+    const dialog = document.querySelector("dialog")!;
+    expect(dialog.parentElement).toBe(document.body);
+    expect(container.contains(dialog)).toBe(false);
+  });
+
+  it("el telón no se abre mientras carga, aunque pase su tiempo", async () => {
+    mocks.load.mockReturnValue(new Promise(() => {}));
+    render(ui());
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+    expect(document.querySelector("[class*='curtain']")?.className).not.toMatch(/_open_/);
+  });
+
+  it("al reabrir no enseña la balda de la apertura anterior", async () => {
+    mocks.load.mockResolvedValueOnce({ items: [mk("a"), mk("b")], collections: [], pet: null });
+    const onClose = vi.fn();
+    const at = (open: boolean) => (
+      <NextIntlClientProvider locale="es" messages={messages}><SorteoStage open={open} onClose={onClose} /></NextIntlClientProvider>
+    );
+    const { rerender } = render(at(true));
+    await flush();
+    expect(screen.getByTitle("Peli a")).toBeTruthy();
+    rerender(at(false));
+    await flush();
+    mocks.load.mockReturnValue(new Promise(() => {}));
+    rerender(at(true));
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    expect(screen.queryByTitle("Peli a")).toBeNull();
+    expect(mocks.load).toHaveBeenCalledTimes(2);
+  });
+
   it("pool vacío: mensaje y enlace a Buscar", async () => {
     mocks.load.mockResolvedValue({ items: [], collections: [], pet: null });
     render(ui());

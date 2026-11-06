@@ -7,6 +7,10 @@ import { DEFAULT_SETTINGS, type SorteoItem } from "./sorteo-logic";
 import { StageBookcase } from "./stage-bookcase";
 import { StageTune } from "./stage-tune";
 import { StagePodium } from "./stage-podium";
+import { StagePet } from "./stage-pet";
+import { PET_CLASSES } from "@/lib/pet/classes";
+
+vi.mock("@/components/pet/pet-sprite", () => ({ PetSprite: () => <span data-testid="sprite" /> }));
 
 const mk = (id: string, over: Partial<SorteoItem> = {}): SorteoItem => ({
   itemType: "book", itemId: id, title: `Libro ${id}`, subtitle: "Ana Pérez", coverUrl: null, metaText: "",
@@ -25,6 +29,38 @@ describe("StageBookcase", () => {
       pulledKeys={new Set()} takenKeys={new Set()} lit={false} dim={false} shakeSeq={0} choosing>{null}</StageBookcase>));
     expect(screen.getByTitle("Libro a").className).not.toMatch(/off/);
     expect(screen.getByTitle("Libro b").className).toMatch(/off/);
+  });
+  it("el temblor lo pone React al cambiar shakeSeq y se quita al acabar la animación", () => {
+    const items = [mk("a")];
+    const at = (shakeSeq: number, lit = false) => wrap(<StageBookcase items={items} offKeys={new Set()} tickKey={null}
+      pulledKeys={new Set()} takenKeys={new Set()} lit={lit} dim={false} shakeSeq={shakeSeq} choosing={false}>{null}</StageBookcase>);
+    const { container, rerender } = render(at(0));
+    const box = () => container.querySelector<HTMLElement>("[class*='case']")!;
+    expect(box().className).not.toMatch(/shake/);
+    rerender(at(1));
+    expect(box().className).toMatch(/shake/);
+    rerender(at(1, true)); // otro render (el foco se enciende) no lo corta
+    expect(box().className).toMatch(/shake/);
+    // jsdom no trae AnimationEvent y React escucha entonces el nombre con prefijo.
+    fireEvent(box(), new Event("webkitAnimationEnd", { bubbles: true }));
+    fireEvent.animationEnd(box());
+    expect(box().className).not.toMatch(/shake/);
+    rerender(at(2));
+    expect(box().className).toMatch(/shake/);
+  });
+});
+
+describe("StagePet", () => {
+  it("el bocadillo (role=status) es el mismo nodo con narrador y con mascota", () => {
+    const speech = { text: "Hola", mood: "idle" } as const;
+    const { rerender } = render(<StagePet pet={null} speech={speech} entered={false} />);
+    const before = screen.getByRole("status");
+    expect(before.className).toMatch(/narrated/);
+    rerender(<StagePet pet={{ name: "Bellota", petClass: PET_CLASSES[0], stage: "young" }} speech={speech} entered />);
+    const after = screen.getByRole("status");
+    expect(after).toBe(before);
+    expect(after.className).not.toMatch(/narrated/);
+    expect(screen.getByTestId("sprite")).toBeTruthy();
   });
 });
 

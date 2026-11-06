@@ -29,7 +29,7 @@
   transition: transform .75s cubic-bezier(.7,0,.3,1) }
 .curtain.open i:first-of-type { transform: translateX(-102%) }
 .curtain.open i:last-of-type { transform: translateX(102%) }
-.curtain.gone { visibility: hidden }
+.curtain.gone { visibility: hidden; transition: visibility 0s .8s } /* tras abrirse, no antes */
 .curtain .lbl { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--f-display); font-size: 26px; font-weight: 600; color: #f4d9b6; transition: opacity .3s }
 .curtain.open .lbl { opacity: 0 }
 
@@ -102,21 +102,25 @@
 .spot { position: absolute; inset: 0; z-index: 5; pointer-events: none; opacity: 0; transition: opacity .35s;
   background: radial-gradient(calc(46px * var(--k) + 20px) calc(var(--rowh) * .9) at var(--sx, 50%) var(--sy, 50%), rgba(255,220,160,.12) 0, transparent 58%, rgba(6,4,2,.78) 100%) }
 .case.lit .spot { opacity: 1 }
+/* Dos nombres para los mismos keyframes: alternarlos reinicia el temblor (stage-bookcase). */
 .case.shake { animation: shake .5s }
+.case.shakeAlt { animation: shakeAlt .5s }
 @keyframes shake { 20% { transform: translateX(-4px) rotate(-.3deg) } 40% { transform: translateX(4px) rotate(.3deg) } 60% { transform: translateX(-3px) } 80% { transform: translateX(2px) } }
+@keyframes shakeAlt { 20% { transform: translateX(-4px) rotate(-.3deg) } 40% { transform: translateX(4px) rotate(.3deg) } 60% { transform: translateX(-3px) } 80% { transform: translateX(2px) } }
 
 /* Mascota sentada en lo alto del mueble */
 .pet { position: absolute; right: 8px; bottom: calc(100% - var(--petsz) * .1); z-index: 8; width: calc(96px * var(--petscale)); height: calc(96px * var(--petscale)); pointer-events: none;
   transform: translateY(-40px); opacity: 0; transition: transform .7s cubic-bezier(.3,1.5,.5,1), opacity .3s }
 .pet.in { transform: none; opacity: 1 }
 .pet > .sprite-box { transform: scale(var(--petscale)); transform-origin: bottom right; image-rendering: pixelated }
-.narrator { position: absolute; right: 8px; bottom: calc(100% + 8px); z-index: 9 }
 .pet.hop { animation: hop .5s 2 }
 @keyframes hop { 50% { translate: 0 -14px } }
 .bubble { position: absolute; right: calc(var(--petsz) - 4px); bottom: calc(100% + var(--petsz) * .45); z-index: 9; width: min(300px, calc(100% - var(--petsz) - 4px)); background: #fbf4e6; color: #2a1f15;
   border-radius: 16px 16px 4px 16px; padding: 10px 14px; font-size: 13.5px; line-height: 1.4; box-shadow: 0 10px 24px -8px rgba(0,0,0,.6);
   transform-origin: bottom right; transition: transform .25s cubic-bezier(.34,1.6,.64,1), opacity .2s }
 .bubble.off { transform: scale(.4); opacity: 0 }
+/* Sin mascota habla un narrador: el mismo bocadillo, pegado al borde del mueble. */
+.bubble.narrated { right: 8px; bottom: calc(100% + 8px); width: min(300px, calc(100% - 16px)) }
 .bubble b { font-family: var(--f-display); font-weight: 600 }
 @media (max-width: 640px) { .bubble { font-size: 12.5px; padding: 8px 12px } }
 
@@ -128,7 +132,6 @@
 .cand .back { transform: rotateY(180deg); background: linear-gradient(90deg, var(--c1), var(--c2) 45%, var(--c1)); display: grid; place-items: center }
 .cand .back::after { content: ""; width: 34%; height: 70%; border: 1.5px solid rgba(255,248,238,.4); border-radius: 4px }
 .cand.hidden .flip { transform: rotateY(180deg) }
-.cand .face .cover { position: absolute; inset: 0; border-radius: 8px; --cfs: clamp(11px, 2.4vw, 15px); box-shadow: 0 24px 40px -16px rgba(0,0,0,.9) }
 .cand .ped { height: 14px; margin: 10px -10% 0; border-radius: 50%; background: radial-gradient(closest-side, rgba(224,169,74,.35), transparent) }
 .cand.drop { animation: drop .6s cubic-bezier(.3,1.4,.5,1) both }
 @keyframes drop { from { transform: translateY(-140%) rotate(-12deg); opacity: 0 } }

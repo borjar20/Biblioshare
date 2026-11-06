@@ -16,7 +16,7 @@ export type SorteoItem = {
   collectionIds: string[];
   // `passes.created_at` del pase planned: desde cuándo espera (antojo «Lo que más espera» y frases).
   plannedSince: string;
-  // Solo series; alimenta «Miniserie» y la etiqueta de temporadas del lomo.
+  // Solo series; alimenta «Miniserie» y la etiqueta de episodios del lomo.
   totalEpisodes: number | null;
 };
 
@@ -120,6 +120,22 @@ export function sampleCandidates(items: SorteoItem[], rng: () => number = Math.r
   return shuffle(items, rng).slice(0, n);
 }
 
+// Con más de BOOKCASE_MAX pendientes no todos caben en el mueble, y un candidato
+// sin lomo en la balda no tiene nada que «sacar». Se sortea primero entre los
+// elegibles que están en la balda; solo si no llegan a `n` se completa con los
+// que no caben (sin hueco no hay animación de salida, pero el antojo se respeta).
+export function sampleFromShelf(
+  eligible: SorteoItem[],
+  shelfKeys: ReadonlySet<string>,
+  rng: () => number = Math.random,
+  n = 3
+): SorteoItem[] {
+  const onShelf = eligible.filter((i) => shelfKeys.has(itemKey(i)));
+  const offShelf = eligible.filter((i) => !shelfKeys.has(itemKey(i)));
+  const picked = sampleCandidates(onShelf, rng, n);
+  return picked.length < n ? [...picked, ...sampleCandidates(offShelf, rng, n - picked.length)] : picked;
+}
+
 export function pickIndex(length: number, rng: () => number = Math.random): number {
   return Math.floor(rng() * length);
 }
@@ -152,9 +168,10 @@ export function spineShade(item: SorteoItem): string {
   return shades[hash(item.itemId) % shades.length];
 }
 
-export function seasonsLabel(item: SorteoItem): string {
-  const seasons = item.totalEpisodes ? Math.max(1, Math.round(item.totalEpisodes / 9)) : 1;
-  return seasons > 1 ? `T1–${seasons}` : "T1";
+// El pie del lomo de una serie: episodios si se saben. No se adivinan temporadas
+// (dividir episodios entre un número fijo etiquetaba mal casi todo).
+export function seriesLabel(item: SorteoItem): string {
+  return item.totalEpisodes ? `${item.totalEpisodes} ep.` : "Serie";
 }
 
 export function initials(name: string): string {

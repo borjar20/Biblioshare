@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useEffectEvent, useMemo, useReducer, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useReducer, useRef, useState, useSyncExternalStore, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -10,7 +11,7 @@ import { itemHref } from "@/lib/catalog/item-href";
 import { formatDuration } from "@/lib/pace/format-duration";
 import {
   antojosFor, BOOKCASE_MAX, DEFAULT_SETTINGS, eligibleItems, itemKey, normalizeSettings, pickIndex,
-  sampleCandidates, shuffle,
+  sampleFromShelf, shuffle,
   type Antojo, type SorteoSettings,
 } from "./sorteo-logic";
 import { lineFor, type CandidateLine } from "./sorteo-lines";
@@ -65,6 +66,7 @@ function readSettings(): SorteoSettings {
 }
 
 const without = (set: Set<string>, k: string) => { const n = new Set(set); n.delete(k); return n; };
+const noSubscribe = () => () => {};
 
 // La partida (spec 2026-11-06). Un <dialog> nativo (foco atrapado y Escape) que
 // se abre encima de la página de origen; al empezar algo cierra y refresca, así
@@ -83,6 +85,11 @@ const without = (set: Set<string>, k: string) => { const n = new Set(set); n.del
 // sorteoOpen se quedaba puesta y el disparador no podía reabrir. El onClose del
 // <dialog> sigue cubriendo los cierres del navegador (Escape); `shown` hace que
 // la limpieza corra una sola vez por apertura aunque luego llegue el evento.
+//
+// Portal: el <dialog> se pinta en document.body, no donde está el disparador.
+// En el Inicio el disparador vive dentro de subárboles que se vuelven `inert`
+// por debajo de 1100 px (HomeExpandable), e `inert` alcanza también al modal de
+// la top layer: cruzar ese ancho con la partida abierta la dejaba congelada.
 export function SorteoStage({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useTranslations("sorteo");
   const router = useRouter();
@@ -107,6 +114,9 @@ export function SorteoStage({ open, onClose }: { open: boolean; onClose: () => v
   const [lines, setLines] = useState<Record<string, CandidateLine>>({});
   const [reaction, setReaction] = useState(0); // variante de la frase de reacción
   const antojoLabel = useAntojoLabel(settings.type);
+  // `document` existe ya en el primer render (la partida es `ssr:false`); el
+  // snapshot de servidor cubre un render sin DOM por si algún día se hidrata.
+  const canPortal = useSyncExternalStore(noSubscribe, () => true, () => false);
 
   const later = useCallback((fn: () => void, wait: number) => {
     const bag = timers.current.roll;
@@ -159,6 +169,8 @@ export function SorteoStage({ open, onClose }: { open: boolean; onClose: () => v
     dispatch({ type: "reset" });
     setCurtainOpen(false); setTuneOpen(false); setTickKey(null); setLuckFocus(null);
     setPulled(new Set()); setTaken(new Set());
+    // Sin restos de la apertura anterior: al reabrir, el telón tapa la carga nueva.
+    setData(null); setOrder([]);
     delete document.documentElement.dataset.sorteoOpen;
     onClose();
   }
@@ -199,7 +211,7 @@ export function SorteoStage({ open, onClose }: { open: boolean; onClose: () => v
       window.clearTimeout(tm.curtain);
       delete root.dataset.sorteoOpen;
     };
-  }, [open, load]);
+  }, [open, load, canPortal]);
 
   useEffect(() => {
     const tm = timers.current;
@@ -217,7 +229,8 @@ export function SorteoStage({ open, onClose }: { open: boolean; onClose: () => v
   // ---- tirada: barrido del foco y los tres que salen de la balda ----
   function roll() {
     if (eligible.length === 0) return;
-    const candidates = sampleCandidates(eligible);
+    // Con más de 24 pendientes no todos caben: los candidatos salen de la balda.
+    const candidates = sampleFromShelf(eligible, new Set(order));
     const today = new Date();
     const fmt = { duration: formatDuration, since: (iso: string) => SINCE.format(new Date(iso)) };
     setLines(Object.fromEntries(candidates.map((c) => [itemKey(c), lineFor(c, today, fmt)])));
@@ -441,9 +454,12 @@ export function SorteoStage({ open, onClose }: { open: boolean; onClose: () => v
   })();
 
   const podium = !["loading", "error", "empty", "choose", "roll"].includes(game.phase);
+  // El telón no se abre hasta que hay balda que enseñar, aunque ya pasara su tiempo.
+  const curtainUp = curtainOpen && game.phase !== "loading";
   const reveal = game.phase === "reveal" || game.phase === "starting" || game.phase === "started";
 
-  return (
+  if (!canPortal) return null;
+  return createPortal(
     <dialog
       ref={dialogRef}
       className={styles.stage}
@@ -458,7 +474,7 @@ export function SorteoStage({ open, onClose }: { open: boolean; onClose: () => v
       onCancel={(e) => { if (tuneOpen) { e.preventDefault(); setTuneOpen(false); } }}
     >
       <div className={cx(styles.st, reveal && styles.compact)}>
-        <div className={cx(styles.curtain, curtainOpen && styles.open, curtainOpen && game.phase !== "loading" && styles.gone)} aria-hidden>
+        <div className={cx(styles.curtain, curtainUp && styles.open, curtainUp && styles.gone)} aria-hidden>
           <i /><i /><div className={styles.lbl}>{t("title")}</div>
         </div>
         <div className={styles["st-head"]}>
@@ -474,7 +490,7 @@ export function SorteoStage({ open, onClose }: { open: boolean; onClose: () => v
           <div className={styles.floor} aria-hidden />
           <StageBookcase items={shelf} offKeys={offKeys} tickKey={tickKey} pulledKeys={pulled} takenKeys={taken}
             lit={tickKey !== null} dim={podium} shakeSeq={shakeSeq} choosing={game.phase === "choose"}>
-            <StagePet pet={data?.pet ?? null} speech={tuneOpen ? null : speech} entered={curtainOpen && game.phase !== "loading"} />
+            <StagePet pet={data?.pet ?? null} speech={tuneOpen ? null : speech} entered={curtainUp} />
           </StageBookcase>
           {podium && (
             <StagePodium phase={game.phase} candidates={game.candidates} presented={game.presented}
@@ -493,6 +509,7 @@ export function SorteoStage({ open, onClose }: { open: boolean; onClose: () => v
             onChange={changeSettings} onDone={() => setTuneOpen(false)} />
         )}
       </div>
-    </dialog>
+    </dialog>,
+    document.body
   );
 }

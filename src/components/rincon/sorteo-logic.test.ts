@@ -10,7 +10,8 @@ import {
   longestWaiting,
   normalizeSettings,
   sampleCandidates,
-  seasonsLabel,
+  sampleFromShelf,
+  seriesLabel,
   spineHeight,
   spineWidth,
   type SorteoItem,
@@ -159,10 +160,35 @@ describe("medidas del lomo", () => {
       expect(spineHeight(id)).toBeLessThanOrEqual(95);
     }
   });
-  it("etiqueta de temporadas e iniciales", () => {
-    expect(seasonsLabel(item({ itemType: "series", totalEpisodes: 26 }))).toBe("T1–3");
-    expect(seasonsLabel(item({ itemType: "series", totalEpisodes: 5 }))).toBe("T1");
+  it("etiqueta de episodios de la serie e iniciales", () => {
+    expect(seriesLabel(item({ itemType: "series", totalEpisodes: 26 }))).toBe("26 ep.");
+    expect(seriesLabel(item({ itemType: "series", totalEpisodes: 5 }))).toBe("5 ep.");
+    expect(seriesLabel(item({ itemType: "series", totalEpisodes: null }))).toBe("Serie");
     expect(initials("Juan Rulfo")).toBe("JR");
     expect(initials("de la Cruz")).toBe("C");
+  });
+});
+
+describe("sampleFromShelf", () => {
+  const many = Array.from({ length: 30 }, (_, k) => item({ itemId: `id-${k}` }));
+  const keys = (ids: number[]) => new Set(ids.map((k) => `book:id-${k}`));
+
+  it("con elegibles en la balda, los candidatos salen de la balda", () => {
+    const shelf = keys([3, 7, 11, 19, 25]);
+    for (let r = 0; r < 20; r++) {
+      const got = sampleFromShelf(many, shelf);
+      expect(got).toHaveLength(3);
+      for (const c of got) expect(shelf.has(`book:${c.itemId}`)).toBe(true);
+    }
+  });
+  it("si en la balda hay menos de tres, primero esos y se completa con los demás", () => {
+    const got = sampleFromShelf(many, keys([4]));
+    expect(got).toHaveLength(3);
+    expect(got[0].itemId).toBe("id-4");
+    expect(new Set(got.map((c) => c.itemId)).size).toBe(3);
+  });
+  it("sin ninguno en la balda, sortea entre todos los elegibles", () => {
+    expect(sampleFromShelf(many, new Set())).toHaveLength(3);
+    expect(sampleFromShelf(many.slice(0, 2), new Set())).toHaveLength(2);
   });
 });

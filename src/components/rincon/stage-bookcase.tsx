@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
-import { initials, itemKey, seasonsLabel, spineHeight, spineShade, spineWidth, type SorteoItem } from "./sorteo-logic";
+import { useLayoutEffect, useRef, useState, type AnimationEvent, type CSSProperties, type ReactNode } from "react";
+import { initials, itemKey, seriesLabel, spineHeight, spineShade, spineWidth, type SorteoItem } from "./sorteo-logic";
 import styles from "./sorteo-stage.module.css";
 
 const cx = (...c: (string | false | undefined)[]) => c.filter(Boolean).join(" ");
@@ -38,14 +38,21 @@ export function StageBookcase({
     box.style.setProperty("--sy", `${r.top - c.top + r.height / 2}px`);
   }, [tickKey]);
 
-  // Reinicia la animación de temblor en cada tirada.
-  useEffect(() => {
-    const box = caseRef.current;
-    if (!box || shakeSeq === 0) return;
-    box.classList.remove(styles.shake);
-    void box.offsetWidth;
-    box.classList.add(styles.shake);
-  }, [shakeSeq]);
+  // Temblor en cada tirada, en manos de React: antes se ponía a mano con
+  // classList y el siguiente render (el foco empieza a moverse enseguida)
+  // reescribía className y lo cortaba. Se enciende al cambiar `shakeSeq`
+  // (ajuste durante el render, sin efecto) y se apaga al acabar la animación.
+  // Dos clases con keyframes gemelos alternan por paridad: si llega otra tirada
+  // con el temblor aún en marcha, el cambio de nombre de animación la reinicia.
+  const [seenSeq, setSeenSeq] = useState(shakeSeq);
+  const [shaking, setShaking] = useState(false);
+  if (shakeSeq !== seenSeq) {
+    setSeenSeq(shakeSeq);
+    setShaking(shakeSeq !== 0);
+  }
+  const onAnimationEnd = (e: AnimationEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) setShaking(false);
+  };
 
   const half = Math.ceil(items.length / 2);
   const rows = [items.slice(0, half), items.slice(half)];
@@ -67,14 +74,15 @@ export function StageBookcase({
         <span className={styles.tt}>{item.title}</span>
         {item.itemType === "book" && <i className={styles.band} />}
         <span className={styles.au}>
-          {item.itemType === "series" ? seasonsLabel(item) : initials(item.subtitle ?? item.title)}
+          {item.itemType === "series" ? seriesLabel(item) : initials(item.subtitle ?? item.title)}
         </span>
       </div>
     );
   };
 
   return (
-    <div ref={caseRef} className={cx(styles.case, dim && styles.dim, lit && styles.lit)}>
+    <div ref={caseRef} onAnimationEnd={onAnimationEnd}
+      className={cx(styles.case, dim && styles.dim, lit && styles.lit, shaking && (shakeSeq % 2 ? styles.shake : styles.shakeAlt))}>
       <div className={styles.spot} aria-hidden />
       {children}
       <div className={cx(styles.rows, choosing && styles.choosing)}>

@@ -20,7 +20,10 @@ export async function loadSorteo(): Promise<SorteoLoad> {
   if (!user) throw new Error("loadSorteo: sin sesión");
   const [pool, companion] = await Promise.all([
     getSorteoPool(supabase, user.id),
-    getCompanionState(supabase).catch(() => null),
+    getCompanionState(supabase).catch((e) => {
+      console.error("loadSorteo: companion", e);
+      return null;
+    }),
   ]);
   const pet =
     companion && !companion.hidden

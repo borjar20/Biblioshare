@@ -8,28 +8,33 @@ export type Speech = { title?: string; text: string; mood: "idle" | "sad" | "joy
 
 // La mascota sentada en lo alto del mueble con su bocadillo (spec «La voz»).
 // Sin mascota (o con la compañera oculta) habla un narrador: el mismo bocadillo sin sprite.
+//
+// El bocadillo es SIEMPRE el mismo elemento en la misma posición del árbol: si
+// cambiara de rama al llegar la mascota (la carga resuelve con la partida ya
+// abierta), el `role="status"` se remontaría y el lector de pantalla podría
+// perder el primer anuncio. Narrador o mascota solo cambian una clase y el sprite.
 export function StagePet({ pet, speech, entered }: { pet: SorteoPet | null; speech: Speech; entered: boolean }) {
-  const bubble = (
-    <div className={`${styles.bubble} ${speech ? "" : styles.off}`} role="status" aria-live="polite">
-      {speech && (<>{speech.title && <b>{speech.title}. </b>}{speech.text}</>)}
-    </div>
-  );
-  if (!pet || pet.stage === "acorn") return <div className={styles.narrator}>{bubble}</div>;
+  const narrated = !pet || pet.stage === "acorn";
+  const cls = [styles.bubble, speech ? "" : styles.off, narrated ? styles.narrated : ""].filter(Boolean).join(" ");
   return (
     <>
-      {bubble}
-      <div className={`${styles.pet} ${entered ? styles.in : ""}`}>
-        <div className={styles["sprite-box"]}>
-          <PetSprite
-            stage={pet.stage}
-            petClass={pet.petClass}
-            mood={speech?.mood === "sad" ? "sad" : "happy"}
-            reaction={speech?.mood === "joy" ? "joy" : null}
-            scale={1}
-            label={pet.name}
-          />
-        </div>
+      <div className={cls} role="status" aria-live="polite">
+        {speech && (<>{speech.title && <b>{speech.title}. </b>}{speech.text}</>)}
       </div>
+      {!narrated && (
+        <div className={`${styles.pet} ${entered ? styles.in : ""}`}>
+          <div className={styles["sprite-box"]}>
+            <PetSprite
+              stage={pet.stage}
+              petClass={pet.petClass}
+              mood={speech?.mood === "sad" ? "sad" : "happy"}
+              reaction={speech?.mood === "joy" ? "joy" : null}
+              scale={1}
+              label={pet.name}
+            />
+          </div>
+        </div>
+      )}
     </>
   );
 }

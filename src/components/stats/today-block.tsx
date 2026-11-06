@@ -52,25 +52,30 @@ export async function TodayBlock({ userId }: { userId: string }) {
 
   // Dos estanterías iguales: la de «en curso» lleva además el lomo «¿Cuál toca?»
   // que abre el Sorteo; la de «Tu siguiente historia» no, porque ya lo tiene integrado.
-  const sorteoT = await getTranslations("sorteo");
-  const laterShelf = (withDraw: boolean) =>
+  // Con el lomo-botón se enseña una portada menos: ocupa un hueco de la rejilla
+  // y, con doce o más pendientes, se quedaba solo en una tercera fila.
+  const laterShelf = (drawSlot: React.ReactNode) =>
     planned.length > 0 ? (
       <LaterShelf
-        items={planned.slice(0, LATER_SHOWN)}
+        items={planned.slice(0, drawSlot ? LATER_SHOWN - 1 : LATER_SHOWN)}
         total={planned.length}
-        drawSlot={
-          withDraw ? (
-            <RouteMessages ns={["sorteo"]}>
-              <SorteoTrigger className="later-draw" ariaLabel={sorteoT("triggerLabel")}>
-                <span className="later-draw-stack" aria-hidden><span className="later-draw-q">?</span><i /><i /><i /></span>
-                <span className="later-draw-label">{sorteoT("trigger")}</span>
-              </SorteoTrigger>
-            </RouteMessages>
-          ) : null
-        }
+        drawSlot={drawSlot}
       />
     ) : null;
-  const later = laterShelf(false);
+  const later = laterShelf(null);
+  // Solo el camino «en curso» pinta el lomo-botón: las cadenas del Sorteo se piden ahí.
+  async function laterWithDraw() {
+    if (planned.length === 0) return null;
+    const sorteoT = await getTranslations("sorteo");
+    return laterShelf(
+      <RouteMessages ns={["sorteo"]}>
+        <SorteoTrigger className="later-draw" ariaLabel={sorteoT("triggerLabel")}>
+          <span className="later-draw-stack" aria-hidden><span className="later-draw-q">?</span><i /><i /><i /></span>
+          <span className="later-draw-label">{sorteoT("trigger")}</span>
+        </SorteoTrigger>
+      </RouteMessages>
+    );
+  }
 
   const t = await getTranslations("today");
   const panel = await getTranslations("homePanels");
@@ -137,7 +142,7 @@ export async function TodayBlock({ userId }: { userId: string }) {
         panelLabels={panelLabels}
         sectionHeading={<TodayHeader title={t("title")} />}
         keepGoingLabel={t("keepGoing")}
-        later={laterShelf(true)}
+        later={await laterWithDraw()}
         heading={
           <div className="flex items-center justify-between gap-3">
             <span className="font-mono text-[10px] tracking-[0.12em] uppercase text-muted-foreground">
