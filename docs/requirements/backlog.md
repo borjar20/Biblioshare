@@ -23,6 +23,9 @@
   Destacados), cifras grandes, «Leyendo ahora» con mascota compacta, «Su año» y la actividad como muro mixto por
   mes. Rama `claude/perfil-visual` (PR pendiente); [spec](superpowers/specs/2026-10-29-perfil-visual-design.md),
   [evidencia](testing/2026-11-01-perfil-visual.md), decisiones del 2026-11-01. Sin migraciones ni `use cache`.
+- [x] Partida «Sacar un lomo»: candidatos, mascota, duelo y apertura en el sitio (spec 2026-11-06).
+  Entrada bajo 1100 px por `HomeDrawTile` y desde 1100 px por el lomo-botón «¿Cuál toca?»; sin migraciones
+  ni `use cache`. [Spec](superpowers/specs/2026-11-06-sacar-lomo-partida-design.md), decisiones del 2026-11-06.
 
 ## Moderación administrativa — #1183
 

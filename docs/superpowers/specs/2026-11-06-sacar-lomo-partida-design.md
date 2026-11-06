@@ -34,8 +34,8 @@ mascota real; privado).
    de tiempo escrito en lenguaje humano.
 8. **La estantería es la protagonista.** Es un mueble ilustrado de dos baldas con todos los
    pendientes, cuyos lomos se dibujan según el tipo y el tiempo a tu ritmo (sección «Estantería»).
-6. **Acceso en escritorio: un lomo-botón dentro de «Para más tarde».** Sustituye al enlace de la
-   cabecera.
+6. **Acceso desde 1100 px: un lomo-botón dentro de «Para más tarde».** Sustituye al enlace de la
+   cabecera. Bajo 1100 px (tablet y móvil) la entrada es `HomeDrawTile`.
 7. **La partida se abre encima de la página de origen**, con el pool cargado por server action
    mientras sube el telón. Esto **revierte** la decisión del 2026-11-01 de abrir el sorteo por enlace
    directo. Hay que registrarlo en `decisiones.md` al implementar.
@@ -160,7 +160,7 @@ primero que aplique, en este orden:
 - Cada hecho tiene 2–3 variantes.
 - Hay frases de reacción para la bienvenida, el recuento en el antojo, el descarte, el duelo, la
   elección propia, la revelación y la salida.
-- Todo el texto va en `messages/es.json` bajo `rincon.sorteo.lines.*`, con la fecha y la duración
+- Todo el texto va en `messages/es.json` bajo `sorteo.lines.*`, con la fecha y la duración
   interpoladas.
 
 **Mascota.**
@@ -174,13 +174,16 @@ primero que aplique, en este orden:
 
 ## Acceso
 
-- **Escritorio y tablet:** el lomo-botón es la última casilla de «Para más tarde», del tamaño de una
+- **Desde 1100 px:** el lomo-botón es la última casilla de «Para más tarde», del tamaño de una
   portada. Lleva un montón de 3 lomos ladeados y un «?», con «¿Cuál toca?» debajo. Con hover o foco,
   los lomos se abren en abanico. Solo aparece con pendientes. Sustituye al enlace `drawLink` de la
   cabecera.
-- **Móvil:** `HomeDrawTile` se queda donde está, pero abre la partida en el sitio en vez de
-  navegar.
-- **Rincón:** `SpineDraw` abre la misma partida con el pool que ya tiene y mantiene `?sorteo=1`.
+- **Bajo 1100 px (tablet y móvil):** `HomeDrawTile` se queda donde está, pero abre la partida en el sitio
+  en vez de navegar. El lomo-botón se oculta bajo ese ancho (`.later-draw { display: none }`), porque ahí
+  «Para más tarde» vive en el panel plegado de lo que disfrutas.
+- **Rincón:** `SpineDraw` abre la misma partida: carga `SorteoStage` en diferido y el escenario pide sus
+  datos con `loadSorteo`, como en el Inicio, así la mascota llega igual desde todas las entradas.
+  Mantiene `?sorteo=1`.
 - **Biblioteca:** sigue enlazando a `DRAW_HREF`. Abrirla en el sitio queda fuera de alcance.
 
 ## Arquitectura
@@ -194,9 +197,9 @@ primero que aplique, en este orden:
 | Máquina de fases | `src/components/rincon/use-sorteo-game.ts` (nuevo) | Reducer de fases y temporizadores cancelables, testeable sin DOM. |
 | Escenario | `src/components/rincon/sorteo-stage.tsx` (sustituye a `sorteo-sheet.tsx`) | `<dialog>` nativo con telón, escena, mascota y panel. Subcomponentes `stage-bookcase` (mueble, lomos y atrezo), `stage-tune` (panel «Afinar»), `stage-podium` y `stage-reveal`. |
 | Disparador | `src/components/rincon/sorteo-trigger.tsx` (nuevo) | Botón que abre el escenario, llama a la action y gestiona la carga y el error. |
-| Lomo-botón | `src/components/stats/later-shelf.tsx` | Casilla final con `SorteoTrigger`. Quita `drawLink`. |
-| Móvil | `src/components/home/home-draw-tile.tsx` | Pasa a ser un `SorteoTrigger`. |
-| Rincón | `src/components/rincon/spine-draw.tsx` | Usa `SorteoStage` y conserva `DrawFromUrl`. |
+| Lomo-botón | `src/components/stats/later-shelf.tsx` | Casilla final con `SorteoTrigger`, visible desde 1100 px. Quita `drawLink`. |
+| Bajo 1100 px | `src/components/home/home-draw-tile.tsx` | Pasa a ser un `SorteoTrigger`. |
+| Rincón | `src/components/rincon/spine-draw.tsx` | Abre `SorteoStage` (carga diferida con `next/dynamic`, `ssr: false`), que obtiene sus datos con `loadSorteo` como en el Inicio, y conserva `DrawFromUrl`. |
 | Mascota flotante | `src/components/pet/pet-companion.tsx` | Se oculta con el escenario abierto (atributo en `<html>`). |
 
 La hoja sigue siendo espresso fija, con los mismos colores en claro y en oscuro, como la actual. Al
