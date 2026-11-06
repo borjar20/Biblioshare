@@ -79,6 +79,20 @@ describe("StageTune", () => {
     expect(fresh).toHaveProperty("disabled", true);
     expect(fresh.textContent).toContain("Nada aquí ahora");
   });
+  it("las colecciones salen como chapas en su fila, no como fichas de antojo", () => {
+    const onChange = vi.fn();
+    const { container } = render(wrap(<StageTune open pool={[mk("a", { collectionIds: ["c1"] })]}
+      collections={[{ id: "c1", name: "Clásicos" }, { id: "c2", name: "Vacía" }]}
+      settings={DEFAULT_SETTINGS} onChange={onChange} onDone={() => {}} />));
+    expect(screen.getByText(messages.sorteo.tuneCollectionsLabel)).toBeTruthy();
+    const chip = screen.getByRole("button", { name: /Clásicos/ });
+    expect(chip.className).toMatch(/colchip/);
+    expect(chip.className).not.toMatch(/antojo/);
+    expect(screen.getByRole("button", { name: /Vacía/ })).toHaveProperty("disabled", true);
+    expect(container.querySelectorAll("[class*='_antojo_']")).toHaveLength(3); // Sorpréndeme, espera, nunca
+    fireEvent.click(chip);
+    expect(onChange).toHaveBeenCalledWith({ ...DEFAULT_SETTINGS, antojo: "col:c1" });
+  });
 });
 
 describe("StagePodium", () => {
@@ -88,5 +102,15 @@ describe("StagePodium", () => {
       focusIndex={null} duelPick={null} winner={null} onDiscard={onDiscard} onPick={() => {}} />));
     fireEvent.click(screen.getByRole("button", { name: "Devolver Libro b a la balda" }));
     expect(onDiscard).toHaveBeenCalledWith(1);
+  });
+  it("durante la presentación todas las cartas reservan su etiqueta: las no presentadas, oculta", () => {
+    const { container } = render(wrap(<StagePodium phase="present" candidates={[mk("a"), mk("b"), mk("c")]} presented={1}
+      focusIndex={0} duelPick={null} winner={null} onDiscard={() => {}} onPick={() => {}} />));
+    const tags = [...container.querySelectorAll<HTMLElement>("[class*='_tag_']")];
+    // Mismo número de etiquetas que de cartas: si la etiqueta apareciera al
+    // presentarse, la carta cambiaría de alto y saltaría (están alineadas por abajo).
+    expect(tags).toHaveLength(3);
+    expect(tags.map((t) => t.style.visibility)).toEqual(["", "hidden", "hidden"]);
+    expect(tags.map((t) => t.getAttribute("aria-hidden"))).toEqual(["false", "true", "true"]);
   });
 });

@@ -35,6 +35,10 @@
 
 /* Habitación: luz de lámpara, motas de polvo, suelo */
 .scene { position: relative; flex: 1; min-height: 0; display: flex; align-items: flex-end; justify-content: center; padding: 0 24px 26px; overflow: hidden }
+/* Móvil: la pantalla es alta y el mueble pegado al suelo dejaba media escena
+   vacía arriba. Se centra el conjunto (mueble + mascota sentada encima, de ahí
+   el padding-top) y las cartas se centran sobre él. */
+@media (max-width: 640px) { .scene { align-items: center; padding: 110px 12px 26px } }
 .glow { position: absolute; inset: 0; pointer-events: none; background:
   radial-gradient(520px 340px at 18% 8%, rgba(255,176,96,.20), transparent 70%),
   radial-gradient(400px 260px at 85% 90%, rgba(224,169,74,.07), transparent 70%); animation: flicker 6s ease-in-out infinite }
@@ -145,13 +149,16 @@
 @keyframes pop { from { transform: scale(0) } }
 .cand.out { animation: stumble .8s ease-in forwards }
 @keyframes stumble { 0% { transform: none } 25% { transform: translateY(-14px) rotate(-8deg) } 45% { transform: translateY(4px) rotate(6deg) } 100% { transform: translateY(160%) rotate(18deg); opacity: 0 } }
-.cand .tag { min-height: 46px; margin-top: 2px; text-align: center; font-size: 11px; color: var(--st-muted); line-height: 1.3; text-shadow: 0 1px 3px #000 }
-.cand .tag b { display: block; color: var(--st-fg); font-family: var(--f-display); font-weight: 600; font-size: 13px }
+.cand .tag { height: 50px; overflow: hidden; margin-top: 2px; text-align: center; font-size: 11px; color: var(--st-muted); line-height: 1.3; text-shadow: 0 1px 3px #000 }
+.cand .tag b { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: var(--st-fg); font-family: var(--f-display); font-weight: 600; font-size: 13px; line-height: 1.25 }
 .duel .cand { cursor: pointer }
 .vs { font-family: var(--f-display); font-weight: 700; font-size: clamp(26px, 5vw, 44px); color: var(--st-gold); font-style: italic; transform: scale(0); transition: transform .5s cubic-bezier(.34,1.8,.64,1); align-self: flex-end; margin-bottom: calc(clamp(84px, 18vw, 128px) * .75 + 70px); text-shadow: 0 2px 10px #000 }
 .duel .vs { transform: scale(1) }
 .reveal .cand.win { width: clamp(104px, 22vw, 150px) }
 .reveal .cand.win .flip { box-shadow: 0 0 0 2px var(--st-gold), 0 30px 60px -20px rgba(224,169,74,.5); border-radius: 8px }
+/* El «vs» queda a media altura de las portadas: la carta es portada + peana +
+   etiqueta (≈76px), así que su centro está 38px por encima del de la carta. */
+@media (max-width: 640px) { .podium { align-items: center; padding: 0 12px } .vs { align-self: center; margin-bottom: 76px } }
 
 /* Barra inferior: tirar es lo principal; afinar es opcional */
 .ctrl { position: relative; z-index: 12; padding: 12px 20px 18px; display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--st-line); background: var(--st-bg) }
@@ -174,19 +181,36 @@
 .result .meta { color: var(--st-muted); font-size: 13px }
 .result .est { color: var(--st-gold); font-size: 12.5px; font-weight: 500 }
 @media (max-width: 640px) { .mainbar { flex-direction: column } .pill { flex: none } }
+/* Alto mínimo estable de la barra: entre tirada, presentación, descarte y duelo
+   cambia su contenido, y si cambiara su alto la escena (y las cartas) darían un
+   salto en cada fase. Es el alto de la fase más alta hasta el duelo; la
+   revelación sí crece (y el mueble se compacta a propósito). */
+.ctrl { min-height: 112px; justify-content: center }
+@media (max-width: 640px) { .ctrl { min-height: 154px } }
 
 /* Panel «Afinar» (plegado por defecto) */
 .tune { position: absolute; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--st-panel); border-top: 1px solid var(--st-line); border-radius: 18px 18px 0 0;
-  padding: 16px 20px calc(18px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 12px; max-height: 64%; overflow-y: auto;
+  padding: 0 20px calc(18px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 12px; max-height: calc(100% - 56px); overflow-y: auto; overscroll-behavior: contain;
   box-shadow: 0 -20px 40px rgba(0,0,0,.5); transform: translateY(105%); visibility: hidden; transition: transform .35s cubic-bezier(.3,1.1,.4,1), visibility 0s .35s }
 .tune.on { transform: none; visibility: visible; transition: transform .35s cubic-bezier(.3,1.1,.4,1), visibility 0s }
-.tune-head { display: flex; justify-content: space-between; align-items: center }
+/* Cabecera fija dentro del panel: «Listo» siempre a mano aunque el contenido
+   haga scroll. El botón no se estira (`.cta` lleva flex: 1 para la barra). */
+.tune-head { position: sticky; top: 0; z-index: 2; display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  margin: 0 -20px; padding: 16px 20px 10px; background: #36251a; box-shadow: 0 8px 12px -10px rgba(0,0,0,.7) }
 .tune-head h3 { margin: 0; font-family: var(--f-display); font-weight: 600; font-size: 17px }
+.tune-head .cta { flex: none; padding: 9px 20px; font-size: 14px }
+/* Las colecciones sorteables pueden ser muchas: van como chapas compactas en
+   su propia fila, no como fichas grandes que harían el panel interminable. */
+.cols { display: flex; flex-wrap: wrap; gap: 6px }
+.colchip { border-radius: 10px; padding: 7px 11px; font-size: 12.5px; display: inline-flex; gap: 6px; align-items: baseline; max-width: 100% }
+.colchip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0 }
+.colchip small { font-family: var(--f-mono); font-size: 10.5px; opacity: .8 }
+.colchip:disabled { opacity: .45; filter: saturate(.4); cursor: default }
 .types { display: flex; gap: 6px; flex-wrap: wrap }
 .chip { border-radius: 999px; border: 1px solid var(--st-line); background: var(--st-raise); color: var(--st-muted); padding: 7px 13px; font-size: 12.5px; font-weight: 600; display: inline-flex; gap: 7px; align-items: center }
 .chip[aria-pressed="true"] { background: var(--st-cta); border-color: var(--st-cta); color: var(--st-cta-ink) }
 .chip .dot { width: 7px; height: 7px; border-radius: 50% }
-.antojos { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px }
+.antojos { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px }
 .antojo { text-align: left; border: 1px solid var(--st-line); background: var(--st-raise); border-radius: 12px; padding: 9px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0 }
 .antojo .ic { font-size: 16px; line-height: 1 }
 .antojo b { font-family: var(--f-display); font-weight: 600; font-size: 14px }

@@ -4857,6 +4857,7 @@
     "tuneSummary": "Sorteando entre {count} de tus {total} pendientes",
     "tuneTypesLabel": "Qué te apetece",
     "tuneTimeLabel": "Cuánto tiempo (a tu ritmo)",
+    "tuneCollectionsLabel": "De tus colecciones",
     "types": { "all": "Todo", "book": "Libros", "movie": "Películas", "series": "Series" },
     "buckets": { "short": "Un rato · ‹2 h", "med": "Una tarde · 2–5 h", "long": "Para largo · +5 h", "none": "Sin estimar" },
     "antojo": {

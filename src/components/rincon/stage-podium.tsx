@@ -47,7 +47,7 @@ export function StagePodium({
       className={cx(styles.cand, phase === "present" && styles.drop, !reveal && index >= presented && phase === "present" && styles.hidden,
         focusIndex === index && styles.focus, focusIndex !== null && focusIndex !== index && styles.dim,
         duelPick === index && styles.pick, reveal && styles.win)}
-      style={{ "--c1": TYPE_COVER[item.itemType][0], "--c2": TYPE_COVER[item.itemType][1], animationDelay: `${index * 120}ms` } as React.CSSProperties}
+      style={{ "--c1": TYPE_COVER[item.itemType][0], "--c2": TYPE_COVER[item.itemType][1], animationDelay: phase === "present" ? `${index * 120}ms` : undefined } as React.CSSProperties}
       onClick={phase === "duel" ? () => onPick(index) : undefined}
       role={phase === "duel" ? "button" : undefined}
       tabIndex={phase === "duel" ? 0 : undefined}
@@ -64,8 +64,14 @@ export function StagePodium({
         <div className={styles.back} />
       </div>
       <div className={styles.ped} />
-      {!reveal && (index < presented || phase !== "present") && (
-        <div className={styles.tag}><b>{item.title}</b>{estimate(item)}</div>
+      {/* La etiqueta ocupa siempre su sitio (oculta hasta que se presenta) y
+          tiene alto fijo: si apareciera o cambiara de alto, las cartas, alineadas
+          por abajo, darían un salto al presentarse cada una. */}
+      {!reveal && (
+        <div className={styles.tag} aria-hidden={phase === "present" && index >= presented}
+          style={phase === "present" && index >= presented ? { visibility: "hidden" } : undefined}>
+          <b>{item.title}</b>{estimate(item)}
+        </div>
       )}
     </div>
   );

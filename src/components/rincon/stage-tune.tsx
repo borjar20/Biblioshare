@@ -33,7 +33,9 @@ export function StageTune({
   onDone: () => void;
 }) {
   const t = useTranslations("sorteo");
-  const list = antojosFor(settings.type, collections);
+  const all = antojosFor(settings.type, collections);
+  const list = all.filter((a) => !a.collectionName);
+  const cols = all.filter((a) => a.collectionName);
   const label = useAntojoLabel(settings.type);
   const desc = (a: Antojo) => {
     if (a.collectionName) return t("antojo.collectionDesc");
@@ -79,6 +81,23 @@ export function StageTune({
           );
         })}
       </div>
+      {cols.length > 0 && (
+        <>
+          <p className={styles.tlabel}>{t("tuneCollectionsLabel")}</p>
+          <div className={styles.cols}>
+            {cols.map((a) => {
+              const n = eligibleItems(pool, settings, a.id).length;
+              return (
+                <button key={a.id} type="button" className={`${styles.tchk} ${styles.colchip}`}
+                  aria-pressed={settings.antojo === a.id} disabled={n === 0}
+                  onClick={() => onChange({ ...settings, antojo: a.id })}>
+                  <span>{label(a)}</span><small>{n}</small>
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
       <p className={styles.tlabel}>{t("tuneTimeLabel")}</p>
       <div className={styles.trow}>
         {ALL_BUCKETS.map((b) => (
