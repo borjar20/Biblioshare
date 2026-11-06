@@ -156,7 +156,7 @@ test.describe("Inicio · estados de la columna personal", () => {
     await expect(cta).toBeVisible({ timeout: 15_000 });
 
     await cta.click();
-    // Tras el CTA la partida se cierra sola (~1,3 s) y la página se refresca.
+    // Tras el CTA la partida se cierra sola y la página se refresca.
     await expect(stage).toBeHidden({ timeout: 10_000 });
 
     // El efecto real: el pase queda in_progress.

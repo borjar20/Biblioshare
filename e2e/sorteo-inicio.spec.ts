@@ -107,27 +107,39 @@ test.describe("Inicio · sacar un lomo en el sitio", () => {
   test("«¿Cuál toca?» abre la partida en el sitio y al empezar sigues en /", async ({ page }) => {
     const user = await createOnboardedUser(`${USER_PREFIX}${Date.now()}`.slice(0, 20));
     await seedBookPass(user.id, e2eBookId("a"), "in_progress", "[E2E] Lomo en curso");
-    await seedBookPass(user.id, e2eBookId("b"), "planned", "[E2E] Lomo pendiente uno");
-    await seedBookPass(user.id, e2eBookId("c"), "planned", "[E2E] Lomo pendiente dos");
-    await seedBookPass(user.id, e2eBookId("d"), "planned", "[E2E] Lomo pendiente tres");
+    const planned = [
+      { id: e2eBookId("b"), title: "[E2E] Lomo pendiente uno" },
+      { id: e2eBookId("c"), title: "[E2E] Lomo pendiente dos" },
+      { id: e2eBookId("d"), title: "[E2E] Lomo pendiente tres" },
+    ];
+    for (const b of planned) await seedBookPass(user.id, b.id, "planned", b.title);
     await loginAs(page, user.email);
 
     await page.getByRole("button", { name: /¿Cuál toca\?/ }).click();
     const { stage, cta } = await playToReveal(page);
     const title = (await stage.getByRole("heading", { level: 3 }).textContent())!.trim();
-    expect(title).toMatch(/\[E2E\] Lomo pendiente/);
+    const winner = planned.find((b) => b.title === title);
+    expect(winner, `el ganador «${title}» es uno de los pendientes sembrados`).toBeDefined();
 
     await cta.click();
     await expect(stage).toBeHidden({ timeout: 10_000 });
     await expect(page).toHaveURL(/\/$/);
-    await expect(page.getByText(title).first()).toBeVisible();
 
-    // El efecto real: dos pases en curso (el previo y el sorteado).
+    // Prueba real: el pase del ganador pasa a en curso.
     await expect
       .poll(async () => {
-        const rows = (await (await rest(`passes?user_id=eq.${user.id}&status=eq.in_progress&select=id`)).json()) as unknown[];
+        const rows = (await (
+          await rest(`passes?user_id=eq.${user.id}&item_id=eq.${winner!.id}&status=eq.in_progress&select=id`)
+        ).json()) as unknown[];
         return rows.length;
       }, { timeout: 15_000 })
-      .toBe(2);
+      .toBe(1);
+    const inProgress = (await (await rest(`passes?user_id=eq.${user.id}&status=eq.in_progress&select=id`)).json()) as unknown[];
+    expect(inProgress).toHaveLength(2);
+
+    // UI: el título sigue en el Inicio y ya no está en «Para más tarde» (no hay una
+    // región accesible estable para «Continúa», así que se prueba por exclusión).
+    await expect(page.getByText(title).first()).toBeVisible();
+    await expect(page.locator("a.later-item").filter({ hasText: title })).toHaveCount(0);
   });
 });

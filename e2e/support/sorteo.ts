@@ -10,7 +10,7 @@ export async function playToReveal(page: Page): Promise<{ stage: Locator; cta: L
   const discard = stage.getByRole("button", { name: /^Devolver .* a la balda$/ });
   const luck = stage.getByRole("button", { name: /que decida la suerte/i });
 
-  // Descarte (3+): se devuelve el primero y se sigue al duelo.
+  // Descarte (3+): la partida sortea como mucho 3 candidatos, así que hay un solo descarte.
   await expect(cta.or(discard.first()).or(luck)).toBeVisible({ timeout: 15_000 });
   if (await discard.first().isVisible()) {
     await discard.first().click();
