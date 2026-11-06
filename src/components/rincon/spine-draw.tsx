@@ -1,11 +1,14 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import type { SorteoItem } from "./sorteo-logic";
-import { SorteoStage } from "./sorteo-stage";
+
+// La partida pesa: no viaja con el Rincón ni con el Inicio hasta que se abre.
+const SorteoStage = dynamic(() => import("./sorteo-stage").then((m) => m.SorteoStage), { ssr: false });
 
 // La estantería decorativa del frame C/H: alturas y colores variados, fijos,
 // para que la tarjeta tenga cuerpo. El sorteo real vive en SorteoStage.
@@ -61,6 +64,9 @@ export function SpineDraw({
 }) {
   const t = useTranslations("rincon");
   const [open, setOpen] = useState(false);
+  // Se monta al abrir por primera vez y se queda montada (como SorteoTrigger).
+  const [mounted, setMounted] = useState(false);
+  if (open && !mounted) setMounted(true);
   const hasPool = pool.length > 0;
 
   const urlListener = openFromUrl ? (
@@ -127,7 +133,7 @@ export function SpineDraw({
         {t("drawButton")}
       </button>
 
-      <SorteoStage open={open} onClose={close} />
+      {mounted && <SorteoStage open={open} onClose={close} />}
     </div>
   );
 }

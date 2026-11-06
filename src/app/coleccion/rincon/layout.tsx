@@ -7,7 +7,7 @@ import { RouteMessages } from "@/components/route-messages";
 // en el formulario y las tarjetas de retos). BASE lo añade RouteMessages.
 export default function CornerMessagesLayout({ children }: { children: ReactNode }) {
   return (
-    <RouteMessages ns={["challenges", "collection", "library", "notes", "rincon", "search", "stats"]}>
+    <RouteMessages ns={["challenges", "collection", "library", "notes", "rincon", "search", "sorteo", "stats"]}>
       {children}
     </RouteMessages>
   );

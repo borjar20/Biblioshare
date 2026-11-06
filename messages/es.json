@@ -4895,7 +4895,7 @@
     "emptyPool": "No quedan pendientes.",
     "emptyCta": "Buscar algo que añadir",
     "trigger": "¿Cuál toca?",
-    "triggerLabel": "Sacar un lomo: sortea tu próximo pendiente",
+    "triggerLabel": "¿Cuál toca? Sacar un lomo de tus pendientes",
     "say": {
       "count": "{count, plural, =0 {Así no queda nadie. Afloja algo y vuelvo a mirar.} one {Solo queda uno. Poca emoción, pero vale.} =2 {Solo quedan dos. Poca emoción, pero vale.} other {# lomos en juego. Cuando quieras, tira.}}",
       "discard": "Tres son multitud. Uno se vuelve a la balda. ¿Cuál?",

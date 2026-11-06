@@ -46,6 +46,7 @@ describe("Mensajes de cliente de la nueva navegación", () => {
     expect(t("challenges.newChallenge")).toBe(messages.challenges.newChallenge);
     expect(t("notes.anotherNote")).toBe(messages.notes.anotherNote);
     expect(t("rincon.drawButton")).toBe(messages.rincon.drawButton);
+    expect(t("sorteo.trigger")).toBe(messages.sorteo.trigger);
     expect(t("search.types.book")).toBe(messages.search.types.book);
   });
 
