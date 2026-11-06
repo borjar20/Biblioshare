@@ -4899,7 +4899,7 @@
     "say": {
       "count": "{count, plural, =0 {Así no queda nadie. Afloja algo y vuelvo a mirar.} one {Solo queda uno. Poca emoción, pero vale.} =2 {Solo quedan dos. Poca emoción, pero vale.} other {# lomos en juego. Cuando quieras, tira.}}",
       "discard": "Tres son multitud. Uno se vuelve a la balda. ¿Cuál?",
-      "discarded": { "0": "otra vez será.", "1": "vuelve a su sitio con dignidad.", "2": "dice que no pasa nada. Pasa." },
+      "discarded": { "0": "Pobre {title}… otra vez será.", "1": "Pobre {title}… vuelve a su sitio con dignidad.", "2": "Pobre {title}… dice que no pasa nada. Pasa." },
       "duel": "Cara a cara. ¿Lo dejamos a la suerte o ya lo tienes claro?",
       "picked": { "0": "Decidido. Me gusta tu estilo.", "1": "Sin titubeos. Así se hace." },
       "solo": "Solo me quedas tú.",

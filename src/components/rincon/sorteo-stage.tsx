@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useReducer, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -76,6 +76,13 @@ const without = (set: Set<string>, k: string) => { const n = new Set(set); n.del
 // para que una respuesta de red tardía no toque una partida que ya no existe.
 // Si algo se empezó en esta apertura, el refresco de la página lo hace el cierre
 // (sea por el temporizador de «started», por ✕ o por Escape), una sola vez.
+//
+// Cierre: todo cierre programático pasa por closeStage(), que cierra el <dialog>
+// y limpia en el acto. No se espera al evento nativo `close`: en Chrome real no
+// siempre llega (visto con la pestaña en segundo plano), y sin él la marca
+// sorteoOpen se quedaba puesta y el disparador no podía reabrir. El onClose del
+// <dialog> sigue cubriendo los cierres del navegador (Escape); `shown` hace que
+// la limpieza corra una sola vez por apertura aunque luego llegue el evento.
 export function SorteoStage({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useTranslations("sorteo");
   const router = useRouter();
@@ -85,6 +92,7 @@ export function SorteoStage({ open, onClose }: { open: boolean; onClose: () => v
   const loadedFor = useRef(-1); // sesión cuya carga ya se lanzó (StrictMode remonta los efectos)
   const curtainDone = useRef(false);
   const startedOk = useRef(false);
+  const shown = useRef(false); // hay una apertura viva que limpiar al cerrar
   const [game, dispatch] = useReducer(gameReducer, INITIAL_GAME);
   const [data, setData] = useState<SorteoLoad | null>(null);
   const [order, setOrder] = useState<string[]>([]);
@@ -136,8 +144,34 @@ export function SorteoStage({ open, onClose }: { open: boolean; onClose: () => v
     }
   }, []);
 
+  // Limpieza del cierre, idempotente: solo la primera llamada de cada apertura cuenta.
+  function finishClose() {
+    if (!shown.current) return;
+    shown.current = false;
+    session.current += 1;
+    clearRollTimers();
+    window.clearTimeout(timers.current.curtain);
+    curtainDone.current = false;
+    if (startedOk.current) {
+      startedOk.current = false;
+      router.refresh();
+    }
+    dispatch({ type: "reset" });
+    setCurtainOpen(false); setTuneOpen(false); setTickKey(null); setLuckFocus(null);
+    setPulled(new Set()); setTaken(new Set());
+    delete document.documentElement.dataset.sorteoOpen;
+    onClose();
+  }
+
+  function closeStage() {
+    const dialog = dialogRef.current;
+    if (dialog?.open) dialog.close();
+    finishClose();
+  }
+  const closeFromEffect = useEffectEvent(closeStage);
+
   // Abrir: telón + carga en paralelo. El estado ya está limpio: lo deja así el
-  // cierre (handleDialogClose) o el montaje. El efecto es idempotente y simétrico
+  // cierre (finishClose) o el montaje. El efecto es idempotente y simétrico
   // para que el remontaje de StrictMode (dev, e2e) no deje el telón echado:
   // showModal solo si hace falta, una carga por apertura, y la marca y el
   // temporizador del telón se rehacen en cada ejecución y se deshacen al limpiar.
@@ -145,10 +179,11 @@ export function SorteoStage({ open, onClose }: { open: boolean; onClose: () => v
     const dialog = dialogRef.current;
     if (!dialog) return;
     if (!open) {
-      if (dialog.open) dialog.close();
+      if (dialog.open) closeFromEffect();
       return;
     }
     if (!dialog.open) dialog.showModal();
+    shown.current = true;
     const root = document.documentElement;
     root.dataset.sorteoOpen = "";
     if (loadedFor.current !== session.current) {
@@ -173,22 +208,6 @@ export function SorteoStage({ open, onClose }: { open: boolean; onClose: () => v
       tm.roll.clear();
     };
   }, []);
-
-  const handleDialogClose = () => {
-    session.current += 1;
-    clearRollTimers();
-    window.clearTimeout(timers.current.curtain);
-    curtainDone.current = false;
-    if (startedOk.current) {
-      startedOk.current = false;
-      router.refresh();
-    }
-    dispatch({ type: "reset" });
-    setCurtainOpen(false); setTuneOpen(false); setTickKey(null); setLuckFocus(null);
-    setPulled(new Set()); setTaken(new Set());
-    delete document.documentElement.dataset.sorteoOpen;
-    onClose();
-  };
 
   function changeSettings(s: SorteoSettings) {
     setSettings(s);
@@ -324,8 +343,8 @@ export function SorteoStage({ open, onClose }: { open: boolean; onClose: () => v
   }
   useEffect(() => {
     if (game.phase !== "started") return;
-    // Cerrar basta: handleDialogClose refresca porque startedOk está puesto.
-    const id = window.setTimeout(() => dialogRef.current?.close(), ms(1300));
+    // Cerrar basta: finishClose refresca porque startedOk está puesto.
+    const id = window.setTimeout(() => closeFromEffect(), ms(1300));
     return () => clearTimeout(id);
   }, [game.phase]);
 
@@ -350,7 +369,7 @@ export function SorteoStage({ open, onClose }: { open: boolean; onClose: () => v
         return c ? { title: c.title, text: lineText(itemKey(c)), mood: "idle" } : null;
       }
       case "discard": return { text: t("say.discard"), mood: "idle" };
-      case "discarded": return game.discarded ? { title: game.discarded.title, text: t(`say.discarded.${reaction % 3}`), mood: "sad" } : null;
+      case "discarded": return game.discarded ? { text: t(`say.discarded.${reaction % 3}`, { title: game.discarded.title }), mood: "sad" } : null;
       case "duel": return { text: t("say.duel"), mood: "idle" };
       case "duelPicked": return { text: t(`say.picked.${reaction % 2}`), mood: "joy" };
       case "reveal": case "starting":
@@ -369,7 +388,7 @@ export function SorteoStage({ open, onClose }: { open: boolean; onClose: () => v
     switch (game.phase) {
       case "loading": return null;
       case "error": return <button type="button" className={cx(styles.cta, styles.big)} onClick={() => { dispatch({ type: "reload" }); void load(); }}>{t("retry")}</button>;
-      case "empty": return (<><p className={styles.hint}>{t("emptyPool")}</p><Link href="/buscar" className={cx(styles.cta, styles.big)} onClick={() => dialogRef.current?.close()}>{t("emptyCta")}</Link></>);
+      case "empty": return (<><p className={styles.hint}>{t("emptyPool")}</p><Link href="/buscar" className={cx(styles.cta, styles.big)} onClick={closeStage}>{t("emptyCta")}</Link></>);
       case "choose": {
         // La píldora enseña el antojo activo (y el tipo si no es «Todo»), como el prototipo.
         const antojo = antojosFor(settings.type, data?.collections ?? []).find((a) => a.id === settings.antojo) ?? ANY;
@@ -415,7 +434,7 @@ export function SorteoStage({ open, onClose }: { open: boolean; onClose: () => v
           </button>
           <div className={styles.btnrow}>
             <button type="button" className={styles.sec} disabled={game.phase !== "reveal"} onClick={again}>{t("again")}</button>
-            <Link href={itemHref(w.itemType, w.itemId)} className={styles.sec} onClick={() => dialogRef.current?.close()}>{t("goToItem")}</Link>
+            <Link href={itemHref(w.itemType, w.itemId)} className={styles.sec} onClick={closeStage}>{t("goToItem")}</Link>
           </div>
         </>);
     }
@@ -429,7 +448,7 @@ export function SorteoStage({ open, onClose }: { open: boolean; onClose: () => v
       ref={dialogRef}
       className={styles.stage}
       aria-label={t("title")}
-      onClose={handleDialogClose}
+      onClose={finishClose}
       onCancel={(e) => { if (tuneOpen) { e.preventDefault(); setTuneOpen(false); } }}
     >
       <div className={cx(styles.st, reveal && styles.compact)}>
@@ -439,7 +458,7 @@ export function SorteoStage({ open, onClose }: { open: boolean; onClose: () => v
         <div className={styles["st-head"]}>
           <div><h2>{t("title")}</h2>{phaseLabel && <span className={styles.phase}>{t(`phase.${phaseLabel}`)}</span>}</div>
           <button type="button" className={styles["icon-btn"]} aria-label={t("close")}
-            onClick={() => (tuneOpen ? setTuneOpen(false) : dialogRef.current?.close())}>✕</button>
+            onClick={() => (tuneOpen ? setTuneOpen(false) : closeStage())}>✕</button>
         </div>
         <div className={cx(styles.scene, game.phase === "choose" && styles.choosing)}>
           <div className={styles.glow} aria-hidden />

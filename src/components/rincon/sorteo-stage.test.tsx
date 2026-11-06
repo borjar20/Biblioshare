@@ -138,3 +138,47 @@ describe("SorteoStage", () => {
     expect(screen.getByRole("link", { name: messages.sorteo.emptyCta })).toHaveProperty("pathname", "/buscar");
   });
 });
+
+// En Chrome real, cerrar con dialog.close() no siempre llega a emitir `close`
+// (p. ej. con la pestaña en segundo plano). El cierre no puede depender de él.
+describe("SorteoStage sin evento close nativo", () => {
+  let nativeClose: typeof HTMLDialogElement.prototype.close;
+  beforeEach(() => {
+    nativeClose = HTMLDialogElement.prototype.close;
+    HTMLDialogElement.prototype.close = function () { this.removeAttribute("open"); };
+  });
+  afterEach(() => { HTMLDialogElement.prototype.close = nativeClose; });
+
+  it("✕ cierra, avisa una vez y quita la marca; un close tardío no repite", async () => {
+    mocks.load.mockResolvedValue({ items: [mk("a"), mk("b")], collections: [], pet: null });
+    const onClose = vi.fn();
+    render(ui(onClose));
+    await flush();
+    expect(document.documentElement.dataset.sorteoOpen).toBeDefined();
+    fireEvent.click(screen.getByRole("button", { name: messages.sorteo.close }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(document.documentElement.dataset.sorteoOpen).toBeUndefined();
+    const dialog = document.querySelector("dialog")!;
+    expect(dialog.open).toBe(false);
+    act(() => { dialog.dispatchEvent(new Event("close")); });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("tras empezar, el cierre automático refresca y avisa una sola vez", async () => {
+    mocks.load.mockResolvedValue({ items: [mk("a")], collections: [], pet: null });
+    mocks.update.mockResolvedValue({ kind: "done", passId: "p", closed: false, created: false });
+    const onClose = vi.fn();
+    render(ui(onClose));
+    await flush();
+    fireEvent.click(screen.getByRole("button", { name: "¡Tirar!" }));
+    await flush();
+    fireEvent.click(screen.getByRole("button", { name: "Ver esta noche" }));
+    await flush();
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(mocks.refresh).toHaveBeenCalledTimes(1);
+    expect(document.documentElement.dataset.sorteoOpen).toBeUndefined();
+    act(() => { document.querySelector("dialog")!.dispatchEvent(new Event("close")); });
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(mocks.refresh).toHaveBeenCalledTimes(1);
+  });
+});
