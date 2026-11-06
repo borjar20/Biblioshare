@@ -28,7 +28,9 @@ export function StageBookcase({
   useLayoutEffect(() => {
     const box = caseRef.current;
     if (!box || !tickKey) return;
-    const spine = box.querySelector<HTMLElement>(`[data-key="${CSS.escape(tickKey)}"]`);
+    // jsdom no trae CSS.escape; las claves son `tipo:uuid`, sin comillas que escapar.
+    const sel = typeof CSS !== "undefined" && CSS.escape ? CSS.escape(tickKey) : tickKey;
+    const spine = box.querySelector<HTMLElement>(`[data-key="${sel}"]`);
     if (!spine) return;
     const c = box.getBoundingClientRect();
     const r = spine.getBoundingClientRect();

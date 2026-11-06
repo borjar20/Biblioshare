@@ -264,7 +264,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .stage, .stage *, .stage *::before, .stage *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .12s !important }
-  .motes { display: none }
+  .motes, .confetti { display: none }
 }
 
 .error { color: #d97a63; font-size: 12px; text-align: center; margin: 0; }

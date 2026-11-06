@@ -9,6 +9,17 @@ import styles from "./sorteo-stage.module.css";
 
 const TYPE_ORDER: TypeFilter[] = ["all", "book", "movie", "series"];
 
+// Nombre visible de un antojo; lo comparten el panel y la píldora de SorteoStage.
+export function useAntojoLabel(type: TypeFilter) {
+  const t = useTranslations("sorteo");
+  return (a: Antojo) => {
+    if (a.collectionName) return a.collectionName;
+    if (a.id === "quick") return t(`antojo.quick.${type}`);
+    if (a.id === "fresh") return t(`antojo.fresh.${type}`);
+    return t(`antojo.${a.id}`);
+  };
+}
+
 // Panel «Afinar la tirada» (spec «Controles»): opcional, se superpone desde abajo.
 // Cada cambio llega al padre, que atenúa la balda en vivo.
 export function StageTune({
@@ -23,12 +34,7 @@ export function StageTune({
 }) {
   const t = useTranslations("sorteo");
   const list = antojosFor(settings.type, collections);
-  const label = (a: Antojo) => {
-    if (a.collectionName) return a.collectionName;
-    if (a.id === "quick") return t(`antojo.quick.${settings.type}`);
-    if (a.id === "fresh") return t(`antojo.fresh.${settings.type}`);
-    return t(`antojo.${a.id}`);
-  };
+  const label = useAntojoLabel(settings.type);
   const desc = (a: Antojo) => {
     if (a.collectionName) return t("antojo.collectionDesc");
     if (a.id === "any") return t(`antojo.anyDesc.${settings.type}`);
