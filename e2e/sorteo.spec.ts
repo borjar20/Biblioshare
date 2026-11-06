@@ -1,15 +1,17 @@
 import { test, expect } from "@playwright/test";
 import { submitLogin } from "./support/visible-form";
+import { playToReveal } from "./support/sorteo";
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
 const PASSWORD = process.env.TEST_USER_PASSWORD!;
 const USERNAME = process.env.TEST_USER_USERNAME!;
 
-// Sorteo "sacar un lomo" (spec 2026-07-17): la tarjeta del Rincón abre la
-// hoja, la ruleta revela un resultado y el CTA deja el ítem en curso.
-// OJO: el CTA muta datos del usuario de test (un pendiente pasa a en curso);
-// mientras le queden pendientes, las siguientes ejecuciones siguen valiendo.
-test("sacar un lomo: hoja, sorteo y empezar el pase", async ({ page }) => {
+test.use({ contextOptions: { reducedMotion: "reduce" } });
+
+// Sacar un lomo (spec 2026-11-06): la partida es un <dialog> que se abre en el
+// sitio. OJO: el CTA muta datos del usuario de test (un pendiente pasa a en
+// curso); mientras le queden pendientes, las siguientes ejecuciones siguen valiendo.
+test("Rincón: la partida llega al CTA y deja el ítem en curso", async ({ page }) => {
   test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
 
   await page.goto("/login");
@@ -24,24 +26,14 @@ test("sacar un lomo: hoja, sorteo y empezar el pase", async ({ page }) => {
   test.skip(await emptyCard.isVisible(), "el usuario de test no tiene pendientes");
 
   await openButton.click();
-  const sheet = page.getByRole("dialog");
-  await expect(sheet.getByRole("heading", { name: /deja que decida/i })).toBeVisible();
-
-  await sheet.getByRole("button", { name: /sorpréndeme/i }).click();
-  // La ruleta desacelera unos segundos antes del revelado.
-  const cta = sheet.getByRole("button", {
-    name: /empezar a leer|ver esta noche|empezar la t1/i,
-  });
-  await expect(cta).toBeVisible({ timeout: 15_000 });
-
+  const { stage, cta } = await playToReveal(page);
   await cta.click();
-  await expect(sheet.getByRole("button", { name: /en curso/i })).toBeVisible();
-  await expect(sheet.getByRole("link", { name: /ver ficha/i })).toBeVisible();
+  // Tras el CTA la partida se cierra sola y la página se refresca.
+  await expect(stage).toBeHidden({ timeout: 10_000 });
 });
 
-// Enlace directo (spec 2026-11-01): Biblioteca e Inicio llevan aquí y la hoja
-// llega abierta, sin pulsar la tarjeta.
-test("?sorteo=1 abre la hoja, limpia la URL y la entrada de Biblioteca la reabre", async ({ page }) => {
+// Enlace directo: Biblioteca e Inicio llevan aquí y la partida llega abierta.
+test("?sorteo=1 abre la partida, limpia la URL y la entrada de Biblioteca la reabre", async ({ page }) => {
   test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
 
   await page.goto("/login");
@@ -50,24 +42,26 @@ test("?sorteo=1 abre la hoja, limpia la URL y la entrada de Biblioteca la reabre
 
   await page.goto("/coleccion/rincon?sorteo=1");
   const emptyCard = page.getByText(/estantería de pendientes está vacía/i);
-  const sheet = page.getByRole("dialog");
-  await expect(sheet.or(emptyCard).first()).toBeVisible();
+  const stage = page.getByRole("dialog", { name: "Sacar un lomo" });
+  await expect(stage.or(emptyCard).first()).toBeVisible();
   test.skip(await emptyCard.isVisible(), "el usuario de test no tiene pendientes");
 
-  await expect(sheet.getByRole("heading", { name: /deja que decida/i })).toBeVisible();
+  await expect(stage.getByRole("button", { name: "¡Tirar!" })).toBeVisible();
   // El parámetro se quita con replaceState nada más abrir, sin esperar al cierre.
   await expect(page).not.toHaveURL(/sorteo/);
   await page.keyboard.press("Escape");
-  await expect(sheet).toBeHidden();
+  await expect(stage).toBeHidden();
   await expect(page).toHaveURL(/\/coleccion\/rincon$/);
 
   // Segunda visita con navegación de cliente (no `goto`, que recarga): así el
-  // Rincón puede seguir montado con Activity y la hoja tiene que reabrirse igual.
+  // Rincón puede seguir montado con Activity y la partida tiene que reabrirse igual.
   await page.getByRole("link", { name: "Volver a Biblioteca" }).click();
   await expect(page).toHaveURL(/\/coleccion$/);
   await page
     .getByRole("navigation", { name: "Herramientas de tu biblioteca" })
     .getByRole("link", { name: /sacar un lomo/i })
     .click();
-  await expect(page.getByRole("dialog").getByRole("heading", { name: /deja que decida/i })).toBeVisible();
+  await expect(
+    page.getByRole("dialog", { name: "Sacar un lomo" }).getByRole("button", { name: "¡Tirar!" }),
+  ).toBeVisible();
 });
