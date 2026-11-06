@@ -29,8 +29,11 @@ mascota real; privado).
 3. **El duelo lo resuelve quien juega:** con «Que decida la suerte» o con «Me quedo con este».
 4. **La voz es la mascota.** Usa sus animaciones existentes (`idle`, `sad`, `joy`) y no hace falta
    arte nuevo. Si no hay mascota incubada, habla un narrador de texto.
-5. **Controles: primero el tipo y luego antojos adaptados a él.** Debajo queda un ajuste de tiempo
-   plegado y escrito en lenguaje humano.
+5. **Controles opcionales.** Por defecto solo se ve «¡Tirar!» y una píldora con el antojo activo.
+   Al tocarla se abre el panel «Afinar»: primero el tipo, luego antojos adaptados a él y un ajuste
+   de tiempo escrito en lenguaje humano.
+8. **La estantería es la protagonista.** Es un mueble ilustrado de dos baldas con todos los
+   pendientes, cuyos lomos se dibujan según el tipo y el tiempo a tu ritmo (sección «Estantería»).
 6. **Acceso en escritorio: un lomo-botón dentro de «Para más tarde».** Sustituye al enlace de la
    cabecera.
 7. **La partida se abre encima de la página de origen**, con el pool cargado por server action
@@ -45,20 +48,21 @@ telón → antojo → tirada → presentación → descarte → duelo → revela
 
 1. **Telón** (~700 ms, tapa la carga del pool). Un telón que se abre, la balda se ilumina y entra la
    mascota con «¿Qué te apetece hoy?».
-2. **Antojo.** Fila de tipo (Todo / Libros / Películas / Series), tarjetas de antojo con su
-   recuento, «Ajustar tiempo» plegado y la línea «Sorteando entre N de tus M pendientes ·
-   Restablecer». Botón «¡Tirar!».
-3. **Tirada.** La balda tiembla y el foco barre los lomos frenando (~1,5 s). Los tres elegidos se
-   apagan en la balda.
-4. **Presentación.** Los tres caen a sus pedestales boca abajo. El foco se para en cada uno, que gira
+2. **Antes de tirar.** La estantería ocupa la escena. Abajo hay una barra con la píldora del
+   antojo («🎲 Sorpréndeme · 20 lomos en juego · Afinar») y «¡Tirar!». Afinar es opcional (sección
+   «Controles»).
+3. **Tirada.** El mueble tiembla y un foco barre los lomos elegibles de las dos baldas, frenando
+   (~1,6 s). Luego los tres elegidos asoman uno tras otro, brillan y salen de la balda dejando su
+   hueco.
+4. **Presentación.** Los tres caen boca abajo delante del mueble, que se oscurece y desenfoca. El foco se para en cada uno, que gira
    a su portada, y la mascota dice su frase (~2,3 s por candidato). «Saltar presentación» descubre
    los tres a la vez.
-5. **Descarte.** Aparece una ✕ en cada candidato. El elegido vuelve con un traspiés y la mascota
-   reacciona en `sad`.
+5. **Descarte.** Aparece una ✕ en cada candidato. El descartado cae con un traspiés, su lomo
+   vuelve a su hueco en la balda y la mascota reacciona en `sad`.
 6. **Duelo.** Los dos quedan cara a cara con un «vs». Con «Que decida la suerte», el foco oscila
    frenando y para en un ganador elegido de antemano. Con «Me quedo con este», que se activa al
    tocar uno, gana el elegido.
-7. **Revelación.** El ganador va al centro y se agranda, con confeti y la mascota en `joy`. Debajo:
+7. **Revelación.** Las baldas se encogen para dejar sitio, y el ganador va al centro y se agranda, con confeti y la mascota en `joy`. Debajo:
    título, meta, «≈ X a tu ritmo», CTA por tipo («Empezar a leer», «Ver esta noche», «Empezar la
    T1»), «↻ Otra partida» y «Ver ficha».
 8. **Salida.** El CTA llama a `updateStatus(…, "in_progress")`, enseña «✓ En curso» y una frase de la
@@ -76,9 +80,35 @@ telón → antojo → tirada → presentación → descarte → duelo → revela
 - El ganador y los candidatos se fijan en el estado al sacarlos. Tras el CTA, el pool cambia con la
   revalidación y no se puede señalar otro título (es el bug del 2026-07-17, que sigue vigente).
 
+## Estantería
+
+- **Mueble** de madera con copete y dos baldas, fondo de tablones en sombra, luz cálida de lámpara
+  que parpadea levemente, motas de polvo y suelo. Todo con CSS, sin imágenes.
+- **La mascota está sentada en lo alto del mueble**, con el bocadillo a su izquierda. Así no ocupa
+  hueco lateral y nunca tapa los lomos ni las cartas.
+- **Muestra todos los pendientes** (hasta 24), barajados al abrir. Lo que no encaja con el antojo
+  o el ajuste se **atenúa en vivo**, en vez de desaparecer: la balda muestra el efecto de afinar.
+- **Lomos:**
+  - **Grosor = tiempo a tu ritmo.** Los tochos se ven gruesos. Sin estimación, grosor medio.
+  - Altura variada y determinista (derivada del id).
+  - El color va por familia de tipo, con varios tonos por familia para que la balda no sea
+    monótona.
+  - **Libro:** cintas doradas, título en vertical e iniciales del autor.
+  - **Película:** estuche con brillo, banda superior con ▶ e iniciales del director.
+  - **Serie:** caja con bordes de cofre y etiqueta de temporadas («T1–3»).
+- **Atrezo:** sujetalibros, pila de libros tumbados, una planta (oculta en móvil) y el último lomo
+  de la balda inclinado.
+- **Hover** (antes de tirar): el lomo elegible se levanta un poco.
+- En móvil el mueble se estrecha a escala (`--k`) y conserva las dos baldas.
+
 ## Controles
 
-**El tipo va delante:** Todo / 📖 Libros / 🎬 Películas / 📺 Series. Los antojos dependen del tipo
+Plegados por defecto: el usuario casual solo ve «¡Tirar!». La píldora muestra el antojo activo y
+cuántos lomos hay en juego, y abre el panel **«Afinar la tirada»**, que se superpone desde abajo
+sin tapar las baldas superiores. Cada cambio atenúa la balda en vivo. Se cierra con «Listo», con
+✕ o con Escape.
+
+**Dentro del panel, el tipo va delante:** Todo / 📖 Libros / 🎬 Películas / 📺 Series. Los antojos dependen del tipo
 elegido:
 
 | Tipo | Antojos |
@@ -150,7 +180,7 @@ primero que aplique, en este orden:
 | Lógica pura | `src/components/rincon/sorteo-logic.ts` | Antojos por tipo, tramos, elegibilidad, «lo que más espera», muestra de 3. |
 | Frases | `src/components/rincon/sorteo-lines.ts` (nuevo) | Hechos → clave de frase y variables. |
 | Máquina de fases | `src/components/rincon/use-sorteo-game.ts` (nuevo) | Reducer de fases y temporizadores cancelables, testeable sin DOM. |
-| Escenario | `src/components/rincon/sorteo-stage.tsx` (sustituye a `sorteo-sheet.tsx`) | `<dialog>` nativo con telón, escena, mascota y panel. Subcomponentes `stage-antojos`, `stage-podium` y `stage-reveal`. |
+| Escenario | `src/components/rincon/sorteo-stage.tsx` (sustituye a `sorteo-sheet.tsx`) | `<dialog>` nativo con telón, escena, mascota y panel. Subcomponentes `stage-bookcase` (mueble, lomos y atrezo), `stage-tune` (panel «Afinar»), `stage-podium` y `stage-reveal`. |
 | Disparador | `src/components/rincon/sorteo-trigger.tsx` (nuevo) | Botón que abre el escenario, llama a la action y gestiona la carga y el error. |
 | Lomo-botón | `src/components/stats/later-shelf.tsx` | Casilla final con `SorteoTrigger`. Quita `drawLink`. |
 | Móvil | `src/components/home/home-draw-tile.tsx` | Pasa a ser un `SorteoTrigger`. |
