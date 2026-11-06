@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { StrictMode } from "react";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextIntlClientProvider } from "next-intl";
@@ -47,16 +48,19 @@ describe("SorteoStage", () => {
     const onClose = vi.fn();
     render(ui(onClose));
     await flush();
+    expect(document.documentElement.dataset.sorteoOpen).toBeDefined();
     fireEvent.click(screen.getByRole("button", { name: "¡Tirar!" }));
     await flush();
     fireEvent.click(screen.getByRole("button", { name: "Peli a" }));
     fireEvent.click(screen.getByRole("button", { name: "Me quedo con «Peli a»" }));
     await flush();
     fireEvent.click(screen.getByRole("button", { name: "Ver esta noche" }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); }); // resuelve updateStatus, sin cerrar aún
+    expect(screen.getByRole("button", { name: messages.sorteo.ctaDone })).toBeTruthy();
     await flush();
     expect(mocks.update).toHaveBeenCalledWith("movie", "a", "in_progress");
     expect(onClose).toHaveBeenCalled();
-    expect(mocks.refresh).toHaveBeenCalled();
+    expect(mocks.refresh).toHaveBeenCalledTimes(1);
     expect(document.documentElement.dataset.sorteoOpen).toBeUndefined();
   });
 
@@ -83,6 +87,34 @@ describe("SorteoStage", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it("cerrar con ✕ justo después de empezar refresca igualmente, una sola vez", async () => {
+    mocks.load.mockResolvedValue({ items: [mk("a")], collections: [], pet: null });
+    mocks.update.mockResolvedValue({ kind: "done", passId: "p", closed: false, created: false });
+    const onClose = vi.fn();
+    render(ui(onClose));
+    await flush();
+    fireEvent.click(screen.getByRole("button", { name: "¡Tirar!" }));
+    await flush();
+    fireEvent.click(screen.getByRole("button", { name: "Ver esta noche" }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    expect(screen.getByRole("button", { name: messages.sorteo.ctaDone })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: messages.sorteo.close }));
+    await flush();
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(mocks.refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("en StrictMode (dev) el remontaje no deja el telón cerrado ni borra la marca", async () => {
+    mocks.load.mockResolvedValue({ items: [mk("a"), mk("b")], collections: [], pet: null });
+    const { container } = render(<StrictMode>{ui()}</StrictMode>);
+    await flush();
+    expect(mocks.load).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: "¡Tirar!" })).toBeTruthy();
+    const curtain = container.ownerDocument.querySelector("[class*='curtain']");
+    expect(curtain?.className).toMatch(/_open_/);
+    expect(document.documentElement.dataset.sorteoOpen).toBeDefined();
+  });
+
   it("cerrar a media partida cancela los temporizadores y vuelve al principio", async () => {
     mocks.load.mockResolvedValue({ items: [mk("a"), mk("b"), mk("c")], collections: [], pet: null });
     const onClose = vi.fn();
@@ -102,6 +134,7 @@ describe("SorteoStage", () => {
     mocks.load.mockResolvedValue({ items: [], collections: [], pet: null });
     render(ui());
     await flush();
+    expect(screen.getByText(messages.sorteo.emptyPool)).toBeTruthy();
     expect(screen.getByRole("link", { name: messages.sorteo.emptyCta })).toHaveProperty("pathname", "/buscar");
   });
 });

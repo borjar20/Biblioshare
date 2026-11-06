@@ -9,7 +9,7 @@ import { updateStatus } from "@/lib/library/manage-actions";
 import { itemHref } from "@/lib/catalog/item-href";
 import { formatDuration } from "@/lib/pace/format-duration";
 import {
-  ALL_BUCKETS, antojosFor, BOOKCASE_MAX, DEFAULT_SETTINGS, eligibleItems, itemKey, normalizeSettings, pickIndex,
+  antojosFor, BOOKCASE_MAX, DEFAULT_SETTINGS, eligibleItems, itemKey, normalizeSettings, pickIndex,
   sampleCandidates, shuffle,
   type Antojo, type SorteoSettings,
 } from "./sorteo-logic";
@@ -74,12 +74,17 @@ const without = (set: Set<string>, k: string) => { const n = new Set(set); n.del
 // cerrar; los de cada fase son de su efecto, y cerrar devuelve la partida a
 // «loading», así que sus limpiezas los cancelan. `session` sube en cada cierre
 // para que una respuesta de red tardía no toque una partida que ya no existe.
+// Si algo se empezó en esta apertura, el refresco de la página lo hace el cierre
+// (sea por el temporizador de «started», por ✕ o por Escape), una sola vez.
 export function SorteoStage({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useTranslations("sorteo");
   const router = useRouter();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const timers = useRef<{ roll: Set<number>; curtain: number }>({ roll: new Set(), curtain: 0 });
   const session = useRef(0);
+  const loadedFor = useRef(-1); // sesión cuya carga ya se lanzó (StrictMode remonta los efectos)
+  const curtainDone = useRef(false);
+  const startedOk = useRef(false);
   const [game, dispatch] = useReducer(gameReducer, INITIAL_GAME);
   const [data, setData] = useState<SorteoLoad | null>(null);
   const [order, setOrder] = useState<string[]>([]);
@@ -132,19 +137,33 @@ export function SorteoStage({ open, onClose }: { open: boolean; onClose: () => v
   }, []);
 
   // Abrir: telón + carga en paralelo. El estado ya está limpio: lo deja así el
-  // cierre (handleDialogClose) o el montaje.
+  // cierre (handleDialogClose) o el montaje. El efecto es idempotente y simétrico
+  // para que el remontaje de StrictMode (dev, e2e) no deje el telón echado:
+  // showModal solo si hace falta, una carga por apertura, y la marca y el
+  // temporizador del telón se rehacen en cada ejecución y se deshacen al limpiar.
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
-    if (open && !dialog.open) {
-      dialog.showModal();
-      document.documentElement.dataset.sorteoOpen = "";
-      void load();
-      const tm = timers.current;
-      window.clearTimeout(tm.curtain);
-      tm.curtain = window.setTimeout(() => setCurtainOpen(true), ms(700));
+    if (!open) {
+      if (dialog.open) dialog.close();
+      return;
     }
-    if (!open && dialog.open) dialog.close();
+    if (!dialog.open) dialog.showModal();
+    const root = document.documentElement;
+    root.dataset.sorteoOpen = "";
+    if (loadedFor.current !== session.current) {
+      loadedFor.current = session.current;
+      void load();
+    }
+    const tm = timers.current;
+    if (!curtainDone.current) {
+      window.clearTimeout(tm.curtain);
+      tm.curtain = window.setTimeout(() => { curtainDone.current = true; setCurtainOpen(true); }, ms(700));
+    }
+    return () => {
+      window.clearTimeout(tm.curtain);
+      delete root.dataset.sorteoOpen;
+    };
   }, [open, load]);
 
   useEffect(() => {
@@ -152,8 +171,6 @@ export function SorteoStage({ open, onClose }: { open: boolean; onClose: () => v
     return () => {
       tm.roll.forEach(clearTimeout);
       tm.roll.clear();
-      window.clearTimeout(tm.curtain);
-      delete document.documentElement.dataset.sorteoOpen;
     };
   }, []);
 
@@ -161,6 +178,11 @@ export function SorteoStage({ open, onClose }: { open: boolean; onClose: () => v
     session.current += 1;
     clearRollTimers();
     window.clearTimeout(timers.current.curtain);
+    curtainDone.current = false;
+    if (startedOk.current) {
+      startedOk.current = false;
+      router.refresh();
+    }
     dispatch({ type: "reset" });
     setCurtainOpen(false); setTuneOpen(false); setTickKey(null); setLuckFocus(null);
     setPulled(new Set()); setTaken(new Set());
@@ -290,20 +312,22 @@ export function SorteoStage({ open, onClose }: { open: boolean; onClose: () => v
         return;
       }
       if (outcome.kind === "done") {
+        startedOk.current = true;
         setReaction(pickIndex(2));
         dispatch({ type: "startDone" });
       } else {
         dispatch({ type: "startFailed" });
       }
     } catch {
-      dispatch({ type: "startFailed" });
+      if (mine === session.current) dispatch({ type: "startFailed" });
     }
   }
   useEffect(() => {
     if (game.phase !== "started") return;
-    const id = window.setTimeout(() => { dialogRef.current?.close(); router.refresh(); }, ms(1300));
+    // Cerrar basta: handleDialogClose refresca porque startedOk está puesto.
+    const id = window.setTimeout(() => dialogRef.current?.close(), ms(1300));
     return () => clearTimeout(id);
-  }, [game.phase, router]);
+  }, [game.phase]);
 
   // El foco de los candidatos se deriva de la fase: el que habla al presentar,
   // el que ilumina la suerte durante el sorteo, ninguno en el resto.
@@ -350,12 +374,11 @@ export function SorteoStage({ open, onClose }: { open: boolean; onClose: () => v
         // La píldora enseña el antojo activo (y el tipo si no es «Todo»), como el prototipo.
         const antojo = antojosFor(settings.type, data?.collections ?? []).find((a) => a.id === settings.antojo) ?? ANY;
         const label = settings.type === "all" ? antojoLabel(antojo) : `${t(`types.${settings.type}`)} · ${antojoLabel(antojo)}`;
-        const tuned = settings.type !== "all" || settings.antojo !== "any" || settings.buckets.length < ALL_BUCKETS.length;
         return (
           <div className={styles.mainbar}>
-            <button type="button" className={styles.pill} aria-label={t("tuneOpen")} aria-expanded={tuneOpen} onClick={() => setTuneOpen(true)}>
+            <button type="button" className={styles.pill} aria-expanded={tuneOpen} onClick={() => setTuneOpen(true)}>
               <span className={styles.ic} aria-hidden>{antojo.icon}</span>
-              <span><b>{label}</b><small>{t("inPlay", { count: eligible.length })}{tuned ? "" : ` · ${t("tuneHint")}`}</small></span>
+              <span><b>{label}</b><small>{t("inPlay", { count: eligible.length })} · {t("tuneHint")}</small></span>
               <span className={styles.chev} aria-hidden>▾</span>
             </button>
             <button type="button" className={cx(styles.cta, styles.big)} disabled={eligible.length === 0} onClick={roll}>{t("roll")}</button>

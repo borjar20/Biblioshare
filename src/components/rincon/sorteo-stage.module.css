@@ -260,7 +260,7 @@
 
 .confetti { position: absolute; inset: 0; pointer-events: none; z-index: 9; overflow: hidden }
 .confetti i { position: absolute; top: -30px; width: 7px; height: 20px; border-radius: 2px; animation: fall linear forwards }
-@keyframes fall { to { transform: translateY(var(--dy)) rotate(var(--rot)); opacity: .9 } }
+@keyframes fall { 70% { opacity: .9 } to { transform: translateY(var(--dy)) rotate(var(--rot)); opacity: 0 } }
 
 @media (prefers-reduced-motion: reduce) {
   .stage, .stage *, .stage *::before, .stage *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .12s !important }
