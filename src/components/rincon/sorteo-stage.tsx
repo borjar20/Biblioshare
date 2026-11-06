@@ -288,7 +288,9 @@ export function SorteoStage({ open, onClose }: { open: boolean; onClose: () => v
   // ---- presentación: uno cada 2,3 s ----
   useEffect(() => {
     if (game.phase !== "present") return;
-    const id = window.setTimeout(() => dispatch({ type: "presentNext" }), ms(game.presented === 0 ? 750 : 2300));
+    // 900 ms: deja terminar la caída de las tres cartas (0,6 s + 240 ms de
+    // retardo de la tercera) antes de presentar la primera; ver StagePodium.
+    const id = window.setTimeout(() => dispatch({ type: "presentNext" }), ms(game.presented === 0 ? 900 : 2300));
     return () => clearTimeout(id);
   }, [game.phase, game.presented]);
 

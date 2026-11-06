@@ -112,5 +112,15 @@ describe("StagePodium", () => {
     expect(tags).toHaveLength(3);
     expect(tags.map((t) => t.style.visibility)).toEqual(["", "hidden", "hidden"]);
     expect(tags.map((t) => t.getAttribute("aria-hidden"))).toEqual(["false", "true", "true"]);
+    // Ya presentada la primera, ninguna carta conserva la animación de caída
+    // (si se reiniciara, la carta volvería a caer desde arriba al enfocarla).
+    expect([...container.querySelectorAll("[class*='_cand_']")].some((c) => /_drop_/.test(c.className))).toBe(false);
+  });
+  it("antes de presentar la primera, las tres caen (clase de caída con retardo escalonado)", () => {
+    const { container } = render(wrap(<StagePodium phase="present" candidates={[mk("a"), mk("b"), mk("c")]} presented={0}
+      focusIndex={null} duelPick={null} winner={null} onDiscard={() => {}} onPick={() => {}} />));
+    const cards = [...container.querySelectorAll<HTMLElement>("[class*='_cand_']")];
+    expect(cards.every((c) => /_drop_/.test(c.className))).toBe(true);
+    expect(cards.map((c) => c.style.animationDelay)).toEqual(["0ms", "120ms", "240ms"]);
   });
 });

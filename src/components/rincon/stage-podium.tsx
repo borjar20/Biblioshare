@@ -38,16 +38,22 @@ export function StagePodium({
   const reveal = phase === "reveal" || phase === "starting" || phase === "started";
   const duel = phase === "duel" || phase === "duelLuck" || phase === "duelPicked";
   const shown = reveal && winner ? [winner] : candidates;
+  // En la carta, la forma corta («≈ 9h 23min»): con «a tu ritmo» ocupaba dos
+  // líneas en móvil y la etiqueta, de alto fijo, la cortaba.
   const estimate = (i: SorteoItem) =>
-    i.estimatedMinutes !== null ? t("estimate", { duration: formatDuration(i.estimatedMinutes) }) : t("noEstimate");
+    i.estimatedMinutes !== null ? t("estimateShort", { duration: formatDuration(i.estimatedMinutes) }) : t("noEstimate");
+  // La caída solo mientras caen (antes de presentar la primera): si la clase
+  // siguiera puesta toda la presentación, cualquier reinicio de la animación
+  // (visto en Chrome Android) volvía a tirar la carta desde arriba al enfocarla.
+  const dropping = phase === "present" && presented === 0;
 
   const card = (item: SorteoItem, index: number) => (
     <div
       key={`${item.itemType}:${item.itemId}`}
-      className={cx(styles.cand, phase === "present" && styles.drop, !reveal && index >= presented && phase === "present" && styles.hidden,
+      className={cx(styles.cand, dropping && styles.drop, !reveal && index >= presented && phase === "present" && styles.hidden,
         focusIndex === index && styles.focus, focusIndex !== null && focusIndex !== index && styles.dim,
         duelPick === index && styles.pick, reveal && styles.win)}
-      style={{ "--c1": TYPE_COVER[item.itemType][0], "--c2": TYPE_COVER[item.itemType][1], animationDelay: phase === "present" ? `${index * 120}ms` : undefined } as React.CSSProperties}
+      style={{ "--c1": TYPE_COVER[item.itemType][0], "--c2": TYPE_COVER[item.itemType][1], animationDelay: dropping ? `${index * 120}ms` : undefined } as React.CSSProperties}
       onClick={phase === "duel" ? () => onPick(index) : undefined}
       role={phase === "duel" ? "button" : undefined}
       tabIndex={phase === "duel" ? 0 : undefined}

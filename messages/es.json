@@ -4885,6 +4885,7 @@
     "mineNamed": "Me quedo con «{title}»",
     "duelHint": "O toca uno de los dos para elegirlo tú.",
     "estimate": "≈ {duration} a tu ritmo",
+    "estimateShort": "≈ {duration}",
     "noEstimate": "Sin estimación",
     "cta": { "book": "Empezar a leer", "movie": "Ver esta noche", "series": "Empezar la T1" },
     "ctaPending": "Un momento…",

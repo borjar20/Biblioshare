@@ -158,7 +158,12 @@
 .reveal .cand.win .flip { box-shadow: 0 0 0 2px var(--st-gold), 0 30px 60px -20px rgba(224,169,74,.5); border-radius: 8px }
 /* El «vs» queda a media altura de las portadas: la carta es portada + peana +
    etiqueta (≈76px), así que su centro está 38px por encima del de la carta. */
-@media (max-width: 640px) { .podium { align-items: center; padding: 0 12px } .vs { align-self: center; margin-bottom: 76px } }
+@media (max-width: 640px) {
+  /* El padding-top deja libre la franja de la mascota y su bocadillo (sentados
+     en lo alto del mueble): las cartas se centran en lo que queda debajo. */
+  .podium { align-items: center; padding: 150px 12px 0 }
+  .vs { align-self: center; margin-bottom: 76px }
+}
 
 /* Barra inferior: tirar es lo principal; afinar es opcional */
 .ctrl { position: relative; z-index: 12; padding: 12px 20px 18px; display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--st-line); background: var(--st-bg) }
