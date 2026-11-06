@@ -4,8 +4,12 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { SorteoSheet } from "./sorteo-sheet";
 import type { SorteoCollection, SorteoItem } from "./sorteo-logic";
+
+// Temporal hasta la Task 8: la partida sustituye a la hoja.
+function SorteoSheet(_: { pool: unknown; collections: unknown; open: boolean; onClose: () => void }) {
+  return null;
+}
 
 // La estantería decorativa del frame C/H: alturas y colores variados, fijos,
 // para que la tarjeta tenga cuerpo. El sorteo real vive en la hoja.
