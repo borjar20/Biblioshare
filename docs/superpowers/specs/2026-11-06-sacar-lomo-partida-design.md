@@ -101,6 +101,18 @@ telón → antojo → tirada → presentación → descarte → duelo → revela
 - **Hover** (antes de tirar): el lomo elegible se levanta un poco.
 - En móvil el mueble se estrecha a escala (`--k`) y conserva las dos baldas.
 
+### Botones con los materiales del mueble
+
+- **Principales** («¡Tirar!», CTA, «Que decida la suerte», «Listo»): piel color teja con pespunte
+  (contorno discontinuo interior), brillo superior y canto en relieve. Se hunden al pulsar.
+- **Secundarios** («Otra partida», «Ver ficha», «Me quedo con este») y la píldora: tabla de madera
+  con veta. La píldora lleva el icono en un pomo de latón. La ✕ es un pomo de madera redondo.
+- **Barra inferior**: canto de madera arriba, como una balda.
+- **Panel «Afinar»**: fondo de madera. Los antojos son fichas de catálogo (papel con renglones,
+  línea roja y agujero); la elegida tiene borde dorado y «✓ elegido». Tipos y tramos son chapas de
+  madera que pasan a latón al seleccionarlas.
+- Todo es CSS (gradientes y sombras), con foco visible y estados `:active` y `:disabled`.
+
 ## Controles
 
 Plegados por defecto: el usuario casual solo ve «¡Tirar!». La píldora muestra el antojo activo y
