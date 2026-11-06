@@ -115,6 +115,20 @@ describe("SorteoStage", () => {
     expect(document.documentElement.dataset.sorteoOpen).toBeDefined();
   });
 
+  it("Escape con Afinar abierto cierra solo el panel", async () => {
+    mocks.load.mockResolvedValue({ items: [mk("a"), mk("b")], collections: [], pet: null });
+    const onClose = vi.fn();
+    render(ui(onClose));
+    await flush();
+    fireEvent.click(screen.getByRole("button", { name: /Afinar/ }));
+    const tune = screen.getByRole("group", { name: messages.sorteo.tuneTitle, hidden: true });
+    expect(tune.getAttribute("aria-hidden")).toBe("false");
+    fireEvent.keyDown(document.querySelector("dialog")!, { key: "Escape" });
+    expect(tune.getAttribute("aria-hidden")).toBe("true");
+    expect(onClose).not.toHaveBeenCalled();
+    expect(document.querySelector("dialog")!.open).toBe(true);
+  });
+
   it("cerrar a media partida cancela los temporizadores y vuelve al principio", async () => {
     mocks.load.mockResolvedValue({ items: [mk("a"), mk("b"), mk("c")], collections: [], pet: null });
     const onClose = vi.fn();

@@ -449,6 +449,12 @@ export function SorteoStage({ open, onClose }: { open: boolean; onClose: () => v
       className={styles.stage}
       aria-label={t("title")}
       onClose={finishClose}
+      // Escape con Afinar abierto cierra solo el panel. Se corta en keydown porque
+      // Chrome (close watcher) se salta `cancel` sin activación de usuario reciente
+      // y cerraría el diálogo entero; onCancel queda como respaldo.
+      onKeyDown={(e) => {
+        if (e.key === "Escape" && tuneOpen) { e.preventDefault(); e.stopPropagation(); setTuneOpen(false); }
+      }}
       onCancel={(e) => { if (tuneOpen) { e.preventDefault(); setTuneOpen(false); } }}
     >
       <div className={cx(styles.st, reveal && styles.compact)}>
