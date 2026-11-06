@@ -32,12 +32,18 @@ modules + Tailwind, Vitest + Testing Library, Playwright.
   worktree no tiene `node_modules`).
 - **Escritura de datos:** el CTA solo llama a la action existente
   `updateStatus(itemType, itemId, "in_progress")` de `src/lib/library/manage-actions.ts`.
-- **Entorno:** Node 22 (`fnm exec --using=22 …`); con Node 20 vitest se rompe (ver memoria del
-  proyecto). Copia `.env.local` del repo padre si el worktree no lo tiene.
-- **Comandos:**
-  - Tests unitarios: `fnm exec --using=22 npx vitest run <ruta>`
-  - Tipos: `fnm exec --using=22 npx tsc --noEmit`
-  - Lint: `fnm exec --using=22 npm run lint`
+- **Entorno (Windows):**
+  - Los comandos se ejecutan en **PowerShell** y empiezan siempre por
+    `fnm env | Out-String | Invoke-Expression; fnm use 22;`. Con Node 20 vitest se rompe, y
+    `fnm exec … npx` no funciona.
+  - En PowerShell 5.1 los comandos se encadenan con `;`, no con `&&`.
+  - `node_modules` del worktree es un *junction* al del repo padre: **no lo borres**. `next dev`
+    necesita `--webpack`.
+  - `.env.local` ya está copiado.
+- **Comandos** (tras el prefijo de arriba):
+  - Tests unitarios: `npx vitest run <ruta>`
+  - Tipos: `npx tsc --noEmit`
+  - Lint: `npm run lint`
 - **Movimiento:** respeta `prefers-reduced-motion`, con las mismas fases y retardos ≤ 120 ms.
 - **Al cerrar** el `<dialog>` antes de navegar a la ficha, hay que cerrarlo primero (#448).
 - **No cambia el esquema.** `passes.created_at` ya existe (`database.types.ts`).
@@ -280,7 +286,7 @@ describe("medidas del lomo", () => {
 
 - [ ] **Step 2: Comprueba que fallan**
 
-Run: `fnm exec --using=22 npx vitest run src/components/rincon/sorteo-logic.test.ts`
+Run: `npx vitest run src/components/rincon/sorteo-logic.test.ts`
 Expected: FAIL; no existen `antojosFor`, `isQuick`, etc.
 
 - [ ] **Step 3: Reescribe `sorteo-logic.ts`**
@@ -481,7 +487,7 @@ En `src/lib/rincon/get-sorteo-pool.ts`:
 
 - [ ] **Step 5: Arregla los demás fixtures de `SorteoItem`**
 
-Run: `fnm exec --using=22 npx tsc --noEmit`
+Run: `npx tsc --noEmit`
 Cada error de «falta `plannedSince`/`totalEpisodes`» en un test o fixture se corrige añadiendo
 `plannedSince: "2026-01-01T00:00:00Z", totalEpisodes: null`.
 
@@ -503,7 +509,7 @@ caso «abre la hoja con sorteo=1 y openFromUrl», que vuelve en la Task 8.
 
 - [ ] **Step 6: Comprueba que pasa**
 
-Run: `fnm exec --using=22 npx vitest run src/components/rincon && fnm exec --using=22 npx tsc --noEmit`
+Run: `npx vitest run src/components/rincon; npx tsc --noEmit`
 Expected: PASS, sin errores de tipos.
 
 - [ ] **Step 7: Commit**
@@ -586,7 +592,7 @@ describe("lineFor: prioridad de hechos", () => {
 
 - [ ] **Step 2: Comprueba que falla**
 
-Run: `fnm exec --using=22 npx vitest run src/components/rincon/sorteo-lines.test.ts`
+Run: `npx vitest run src/components/rincon/sorteo-lines.test.ts`
 Expected: FAIL; el módulo no existe.
 
 - [ ] **Step 3: Implementa**
@@ -643,7 +649,7 @@ export function lineFor(
 
 - [ ] **Step 4: Comprueba que pasa**
 
-Run: `fnm exec --using=22 npx vitest run src/components/rincon/sorteo-lines.test.ts`
+Run: `npx vitest run src/components/rincon/sorteo-lines.test.ts`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -752,7 +758,7 @@ describe("gameReducer", () => {
 
 - [ ] **Step 2: Comprueba que falla**
 
-Run: `fnm exec --using=22 npx vitest run src/components/rincon/use-sorteo-game.test.ts`
+Run: `npx vitest run src/components/rincon/use-sorteo-game.test.ts`
 Expected: FAIL; el módulo no existe.
 
 - [ ] **Step 3: Implementa**
@@ -871,7 +877,7 @@ export function gameReducer(s: GameState, a: GameAction): GameState {
 
 - [ ] **Step 4: Comprueba que pasa**
 
-Run: `fnm exec --using=22 npx vitest run src/components/rincon/use-sorteo-game.test.ts`
+Run: `npx vitest run src/components/rincon/use-sorteo-game.test.ts`
 Expected: PASS.
 
 - [ ] **Step 5: Commit**
@@ -1019,7 +1025,7 @@ sigue:
 
 - [ ] **Step 4: Valida el JSON y los tipos**
 
-Run: `fnm exec --using=22 node -e "JSON.parse(require('fs').readFileSync('messages/es.json','utf8'))" && fnm exec --using=22 npx tsc --noEmit`
+Run: `node -e "JSON.parse(require('fs').readFileSync('messages/es.json','utf8'))"; npx tsc --noEmit`
 Expected: sin salida de error.
 
 - [ ] **Step 5: Commit**
@@ -1092,7 +1098,7 @@ materiales del mueble», que redefine `.cta`, `.sec`, `.pill`, `.icon-btn`, `.ch
 
 - [ ] **Step 2: Comprueba que compila**
 
-Run: `fnm exec --using=22 npx tsc --noEmit && fnm exec --using=22 npm run lint`
+Run: `npx tsc --noEmit; npm run lint`
 Expected: sin errores. El módulo aún no se importa; se valida al montarlo en la Task 7.
 
 - [ ] **Step 3: Commit**
@@ -1185,7 +1191,7 @@ describe("StagePodium", () => {
 
 - [ ] **Step 2: Comprueba que falla**
 
-Run: `fnm exec --using=22 npx vitest run src/components/rincon/stage-parts.test.tsx`
+Run: `npx vitest run src/components/rincon/stage-parts.test.tsx`
 Expected: FAIL; los módulos no existen.
 
 - [ ] **Step 3: `stage-bookcase.tsx`**
@@ -1523,7 +1529,7 @@ export function StagePodium({
 
 - [ ] **Step 7: Comprueba que pasa**
 
-Run: `fnm exec --using=22 npx vitest run src/components/rincon/stage-parts.test.tsx && fnm exec --using=22 npx tsc --noEmit`
+Run: `npx vitest run src/components/rincon/stage-parts.test.tsx; npx tsc --noEmit`
 Expected: PASS. Si `PetSprite` falla en jsdom por el CSS module, en este test no se monta
 `StagePet`.
 
@@ -1641,7 +1647,7 @@ describe("SorteoStage", () => {
 
 - [ ] **Step 2: Comprueba que falla**
 
-Run: `fnm exec --using=22 npx vitest run src/components/rincon/sorteo-stage.test.tsx`
+Run: `npx vitest run src/components/rincon/sorteo-stage.test.tsx`
 Expected: FAIL; el módulo no existe.
 
 - [ ] **Step 3: Implementa `sorteo-stage.tsx`**
@@ -2015,7 +2021,7 @@ Copia la generación de `confetti()` del prototipo cambiando `Math.random()` por
 
 - [ ] **Step 4: Comprueba que pasa**
 
-Run: `fnm exec --using=22 npx vitest run src/components/rincon/sorteo-stage.test.tsx && fnm exec --using=22 npx tsc --noEmit && fnm exec --using=22 npm run lint`
+Run: `npx vitest run src/components/rincon/sorteo-stage.test.tsx; npx tsc --noEmit; npm run lint`
 Expected: PASS y sin errores. Si el lint marca `react-hooks/exhaustive-deps` en los efectos que
 leen `game.*`, añade la dependencia que falte. No silencies la regla.
 
@@ -2219,7 +2225,7 @@ usa `SpineDraw`.
 
 - [ ] **Step 8: Tests y tipos**
 
-Run: `fnm exec --using=22 npx vitest run src/components && fnm exec --using=22 npx tsc --noEmit && fnm exec --using=22 npm run lint`
+Run: `npx vitest run src/components; npx tsc --noEmit; npm run lint`
 Expected: PASS y sin errores.
 
 - [ ] **Step 9: Commit**
@@ -2371,7 +2377,7 @@ importar desde otro `.spec.ts` puede romper la recolección de Playwright. Si da
 
 Run: `npm run build` y luego `npm run start` en otra terminal (puerto 3000; mata antes el
 `next dev`). Después:
-`fnm exec --using=22 npx playwright test e2e/sorteo.spec.ts e2e/sorteo-inicio.spec.ts e2e/inicio-estado-vacio.spec.ts`
+`npx playwright test e2e/sorteo.spec.ts e2e/sorteo-inicio.spec.ts e2e/inicio-estado-vacio.spec.ts`
 Expected: PASS, o SKIP justificado si el usuario de test no tiene pendientes. Si falla el
 `webServer` por timeout, ver la memoria «Playwright: arrancar next dev a mano».
 
