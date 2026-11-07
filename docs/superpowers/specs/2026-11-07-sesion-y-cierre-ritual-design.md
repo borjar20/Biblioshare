@@ -132,7 +132,10 @@ Se extrae de la partida sin cambiarle el comportamiento, a `src/components/stage
 - **Mascota y recuento en el cierre:** la hoja se abre desde varios sitios, así que una server
   action `loadClosingContext(passId)` trae los dos al abrir (sesiones del pase con el cliente de la
   petición, sin caché). Recuento: nº de sesiones, días entre la primera y la última, páginas o
-  episodios del pase y la racha más larga de días consecutivos con sesión.
+  episodios del pase y la racha más larga de días consecutivos con sesión. En **series** (que no
+  crean `progress_sessions` desde la fase 4) el recuento sale de `episode_watches.watched_on` del
+  pase: episodios = filas vistas, «sesiones» = días de serie distintos, y días y racha sobre esas
+  fechas. Una serie sin episodios en el pase cae a la frase genérica.
 - **Frases:** `session-lines.ts` y `closing-lines.ts`, puros con rng inyectable, como
   `sorteo-lines.ts`. El texto va en `messages/es.json`, namespace `ritual`.
 

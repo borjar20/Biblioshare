@@ -14,6 +14,11 @@ describe("recapLine", () => {
   it("serie con episodios", () => {
     expect(recapLine("series", { ...recap, pages: null, episodes: 8 }, new Date(), fmt)).toEqual({ key: "recapSeries", values: { episodes: 8, days: 41 } });
   });
+  it("serie sin episodios con fecha: genérica, nunca «0 episodios»", () => {
+    const empty = { sessions: 0, days: 0, longestStreak: 0, pages: null, episodes: 0 };
+    expect(recapLine("series", empty, new Date(), fmt)).toEqual({ key: "generic", values: { type: "series" } });
+    expect(recapLine("series", null, new Date(), fmt).key).toBe("generic");
+  });
   it("película: día y franja de ahora", () => {
     const fri22 = new Date(2026, 10, 6, 22, 0);
     expect(recapLine("movie", null, fri22, fmt)).toEqual({ key: "movieNight", values: { weekday: "viernes", daypart: "night" } });
