@@ -4933,7 +4933,8 @@
       "label": "Marcapáginas: página de hoy",
       "valueText": "página {page}, {delta, plural, =0 {sin avance} one {# hoy} other {# hoy}}",
       "delta": "{delta, plural, one {+# pág.} other {+# págs.}}",
-      "more": "Más precisión"
+      "more": "Más precisión",
+      "moreMinutes": "Más precisión · {minutes} min"
     },
     "closing": {
       "recapBook": "{sessions, plural, one {# sesión} other {# sesiones}} en {days, plural, one {# día} other {# días}} · {pages} páginas · tu racha más larga, {streak, plural, one {# día} other {# días}}",

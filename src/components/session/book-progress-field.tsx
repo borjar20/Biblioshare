@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import materials from "@/components/stage/materials.module.css";
@@ -88,6 +88,20 @@ export function BookProgressField({
   // solo viaja UN name="startedAt" en el FormData (el servidor lee el primero).
   const startedAt = combineStartedAt(sessionDate, startedAtTime);
   const effectiveStartedAt = startedAt ?? initialStartedAt ?? null;
+
+  // Unos minutos que no son de ningún chip (los del cronómetro al pararlo, o
+  // `?minutos=` de la tarjeta de hoy: 37) quedarían escondidos en el <details>
+  // plegado sin chip pulsado. Se abre al llegar —llamada al DOM, no setState— y
+  // el resumen los dice aunque se vuelva a plegar a mano.
+  const customMinutes =
+    manualMinutes.trim() !== "" && !DURATION_CHIPS.some((n) => String(n) === manualMinutes)
+      ? manualMinutes
+      : null;
+  useEffect(() => {
+    if (customMinutes !== null && detailsRef.current && !detailsRef.current.open) {
+      detailsRef.current.open = true;
+    }
+  }, [customMinutes, durationMode]);
 
   // "Otro" no es un valor: vacía el campo y le lleva el foco (petición
   // explícita del diseño). Los chips numéricos son un acelerador del MISMO
@@ -210,7 +224,9 @@ export function BookProgressField({
               </button>
             </div>
             <details ref={detailsRef} className="flex flex-col gap-2">
-              <summary className="cursor-pointer font-mono text-[10px] tracking-wider uppercase text-muted-foreground">{tr("more")}</summary>
+              <summary className="cursor-pointer font-mono text-[10px] tracking-wider uppercase text-muted-foreground">
+                {customMinutes !== null ? tr("moreMinutes", { minutes: customMinutes }) : tr("more")}
+              </summary>
               <Input
                 ref={minutesRef}
                 id="session-duration"
