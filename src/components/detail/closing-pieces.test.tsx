@@ -22,6 +22,7 @@ describe("InkDateStamp", () => {
     render(wrap(<InkDateStamp name="finishedOn" defaultValue="2026-11-07" max="2026-11-07" label="Fecha de fin" />));
     const input = screen.getByLabelText("Fecha de fin") as HTMLInputElement;
     fireEvent.change(input, { target: { value: "" } });
+    fireEvent.blur(input);
     expect(input.value).toBe("2026-11-07");
     expect(screen.getByText(/7 nov 2026/i)).toBeTruthy();
   });
