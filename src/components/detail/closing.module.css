@@ -15,9 +15,17 @@
 .ticket::after { content: ""; position: absolute; top: 10px; bottom: 10px; right: 44px; border-right: 2px dashed rgba(42,29,16,.3) }
 .ticket.closing { animation: tear .6s ease-in forwards }
 @keyframes tear { 60% { transform: rotate(-2deg) } to { transform: translateY(40px) rotate(-6deg); opacity: 0 } }
-/* Serie: caja del último disco, con el disco asomando. */
-.disc { isolation: isolate; border-radius: 4px; border: 6px solid #2b2f36; background: linear-gradient(180deg, #f4ead3, #e7d8b6) }
-.disc::before { content: ""; position: absolute; right: -26px; top: 50%; width: 64px; height: 64px; margin-top: -32px; border-radius: 50%; z-index: -1;
+/* Serie: caja del último disco, con el disco asomando por DETRÁS de la caja.
+   `isolation` crea el contexto de apilado (sin él, el z-index:-1 del disco lo
+   mandaba detrás del fondo de la hoja y no se veía), pero dentro de ese contexto
+   un hijo con z-index:-1 se pinta ENCIMA del fondo de la propia caja: el disco
+   tapaba el borde y el papel. Por eso la cara de la caja (fondo y borde) va en
+   ::after, también a z-index:-1 y después del disco en el árbol: lo tapa. El
+   borde del elemento se queda transparente solo para conservar el hueco. Asoma
+   por arriba a la derecha: por el lateral solo cabían los 20 px del relleno. */
+.disc { isolation: isolate; border-radius: 4px; border: 6px solid transparent; background: none }
+.disc::after { content: ""; position: absolute; inset: -6px; z-index: -1; border-radius: 4px; border: 6px solid #2b2f36; background: linear-gradient(180deg, #f4ead3, #e7d8b6) }
+.disc::before { content: ""; position: absolute; right: 22px; top: -30px; width: 64px; height: 64px; border-radius: 50%; z-index: -1;
   background: radial-gradient(circle, #ddd 0 6px, #333 6px 8px, transparent 8px), conic-gradient(#c9d3df, #f0f4f8, #b4c0cf, #eef2f6, #c9d3df) }
 .disc.closing { animation: shut .6s ease-in forwards }
 @keyframes shut { to { transform: scaleY(.04); opacity: 0 } }
