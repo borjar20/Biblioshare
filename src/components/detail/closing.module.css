@@ -21,8 +21,9 @@
   background: radial-gradient(circle, #ddd 0 6px, #333 6px 8px, transparent 8px), conic-gradient(#c9d3df, #f0f4f8, #b4c0cf, #eef2f6, #c9d3df) }
 .disc.closing { animation: shut .6s ease-in forwards }
 @keyframes shut { to { transform: scaleY(.04); opacity: 0 } }
-/* Abandonar: el marcapáginas asoma por arriba. */
-.bookmark { position: absolute; top: -10px; right: 28px; width: 12px; height: 46px; background: linear-gradient(90deg, #7a1a14, #c23a2e 50%, #7a1a14); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 84%, 0 100%) }
+/* Abandonar: el marcapáginas asoma por arriba, en el hueco entre el título y el
+   sello (a la derecha tapaba el año de la fecha). No intercepta el toque al sello. */
+.bookmark { position: absolute; top: -10px; left: 50%; margin-left: -6px; pointer-events: none; width: 12px; height: 46px; background: linear-gradient(90deg, #7a1a14, #c23a2e 50%, #7a1a14); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 84%, 0 100%) }
 /* Sello de fecha */
 .stamp { position: relative; display: inline-grid; place-items: center; padding: 4px 10px; border: 2px solid #9b3a24; border-radius: 6px; transform: rotate(-4deg); cursor: pointer }
 .stampFace { font-family: var(--f-mono, ui-monospace, monospace); font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #9b3a24; opacity: .9 }
