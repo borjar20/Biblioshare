@@ -70,7 +70,14 @@ export async function TodayBlock({ userId }: { userId: string }) {
     return laterShelf(
       <RouteMessages ns={["sorteo"]}>
         <SorteoTrigger className="later-draw" ariaLabel={sorteoT("triggerLabel")}>
-          <span className="later-draw-stack" aria-hidden><span className="later-draw-q">?</span><i /><i /><i /></span>
+          {/* Un hueco del mueble de la partida en miniatura: el lomo del «?»
+              asoma al pasar por encima, como en la tirada. */}
+          <span className="later-draw-nook" aria-hidden>
+            <span className="later-draw-back">
+              <i className="ld-book" /><i className="ld-movie" /><i className="ld-pick"><b>?</b></i><i className="ld-series" /><i className="ld-lean" />
+            </span>
+            <span className="later-draw-lip" />
+          </span>
           <span className="later-draw-label">{sorteoT("trigger")}</span>
         </SorteoTrigger>
       </RouteMessages>

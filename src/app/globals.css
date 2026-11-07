@@ -1231,27 +1231,46 @@ body {
 
 /* «¿Cuál toca?»: casilla final de «Para más tarde» que abre la partida (spec 2026-11-06). */
 .later-draw { display:flex; flex-direction:column; gap:5px; width:66px; flex-shrink:0; padding:0; border:0; background:none; text-align:left; cursor:pointer; font:inherit; color:inherit; }
-.later-draw-stack { position:relative; display:block; aspect-ratio:2/3; border-radius:6px; overflow:hidden; border:1.5px dashed color-mix(in srgb, var(--accent) 55%, transparent); background:color-mix(in srgb, var(--accent) 7%, var(--surface)); }
-.later-draw-stack i { position:absolute; bottom:14%; width:13px; border-radius:3px 3px 2px 2px; transform-origin:bottom center; transition:transform 450ms cubic-bezier(.34,1.56,.64,1); box-shadow:0 3px 6px -3px rgba(0,0,0,.5); }
-.later-draw-stack i:nth-of-type(1) { height:56%; left:calc(50% - 22px); background:var(--type-book, #cf8a54); transform:rotate(-9deg); }
-.later-draw-stack i:nth-of-type(2) { height:66%; left:calc(50% - 6.5px); background:var(--type-movie, #6bb0b4); }
-.later-draw-stack i:nth-of-type(3) { height:50%; left:calc(50% + 9px); background:var(--type-series, #b592bd); transform:rotate(8deg); }
-.later-draw-q { position:absolute; top:10%; left:0; right:0; text-align:center; font-family:var(--font-fraunces), serif; font-weight:700; font-size:18px; color:var(--accent); transition:transform 300ms; }
+/* El hueco: un trozo del mueble de la partida (sorteo-stage.module.css) en
+   miniatura, con sus mismos materiales. Colores fijos, como la partida: es
+   madera, igual en tema claro y oscuro. */
+.later-draw-nook { position:relative; display:flex; flex-direction:column; aspect-ratio:2/3; padding:4px 4px 0; border-radius:4px 4px 2px 2px;
+  background:repeating-linear-gradient(90deg, rgba(255,255,255,.04) 0 2px, transparent 2px 7px), linear-gradient(180deg, #7d5737, #5b3e27 40%, #3a2717);
+  box-shadow:0 8px 14px -8px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,230,200,.22); }
+.later-draw-nook::before { content:""; position:absolute; left:-3px; right:-3px; top:-4px; height:5px; border-radius:3px 3px 0 0; background:linear-gradient(180deg, #8a6140, #5b3e27); box-shadow:0 2px 3px rgba(0,0,0,.45); }
+.later-draw-back { position:relative; flex:1; border-radius:1px;
+  background:radial-gradient(70% 45% at 50% 0%, rgba(255,184,110,.24), transparent 70%), repeating-linear-gradient(90deg, rgba(0,0,0,.22) 0 1px, transparent 1px 19px), linear-gradient(180deg, #120c07, #1c130c 45%, #2a1c11);
+  box-shadow:inset 0 10px 12px -8px rgba(0,0,0,.9), inset 4px 0 6px -4px rgba(0,0,0,.8), inset -4px 0 6px -4px rgba(0,0,0,.8); }
+.later-draw-lip { height:6px; margin:0 -4px; position:relative; border-radius:1px; background:linear-gradient(180deg, #9a6c45, #7d5737 40%, #3a2717); box-shadow:0 4px 6px -2px rgba(0,0,0,.6); }
+/* Lomos: los mismos tipos que en la balda grande (libro con cintas doradas,
+   película con su banda, serie tipo caja) y el del «?», que es el que sale. */
+.later-draw-back i { position:absolute; bottom:0; border-radius:2px 2px 1px 1px; transform-origin:bottom center; box-shadow:inset 0 0 0 1px rgba(0,0,0,.2), 1px 0 2px -1px rgba(0,0,0,.6);
+  transition:transform 450ms cubic-bezier(.34,1.56,.64,1), filter 300ms; }
+.later-draw-back .ld-book { left:4px; width:10px; height:68%;
+  background:linear-gradient(90deg, #e9c46a, #e9c46a) 0 14%/100% 2px no-repeat, linear-gradient(90deg, #e9c46a, #e9c46a) 0 84%/100% 2px no-repeat, linear-gradient(90deg, #6f3418, #b5652f 40%, #7a3a1c); }
+.later-draw-back .ld-movie { left:15px; width:9px; height:60%;
+  background:linear-gradient(rgba(0,0,0,.45), rgba(0,0,0,.45)) top/100% 13% no-repeat, linear-gradient(90deg, #1f4d50, #4f8a86 45%, #234f52); }
+.later-draw-back .ld-pick { left:25px; width:13px; height:80%; display:grid; place-items:center;
+  background:linear-gradient(90deg, #e9c46a, #e9c46a) 0 10%/100% 2px no-repeat, linear-gradient(90deg, #e9c46a, #e9c46a) 0 90%/100% 2px no-repeat, linear-gradient(90deg, #8e3b2b, #c0603f 40%, #8a3424); }
+.later-draw-back .ld-pick b { font-family:var(--font-fraunces), serif; font-weight:700; font-size:12px; line-height:1; color:#f3d48a; text-shadow:0 1px 1px rgba(0,0,0,.5); }
+.later-draw-back .ld-series { left:39px; width:11px; height:64%;
+  background:linear-gradient(90deg, #4b3555, #7e5470 45%, #4f3858); box-shadow:inset 2px 0 0 rgba(0,0,0,.25), inset -2px 0 0 rgba(0,0,0,.25), 1px 0 2px -1px rgba(0,0,0,.6); }
+.later-draw-back .ld-lean { left:50px; width:7px; height:56%; transform-origin:bottom right; transform:rotate(-11deg);
+  background:linear-gradient(90deg, #4d6b5a, #6f8f78 45%, #44604f); }
 .later-draw-label { font-family:var(--font-fraunces), serif; font-weight:600; font-size:11.5px; color:var(--accent); }
-.later-draw:focus-visible .later-draw-stack i:nth-of-type(1) { transform:rotate(-24deg) translateX(-4px); }
-.later-draw:focus-visible .later-draw-stack i:nth-of-type(2) { transform:translateY(-14px); }
-.later-draw:focus-visible .later-draw-stack i:nth-of-type(3) { transform:rotate(22deg) translateX(4px); }
-.later-draw:focus-visible .later-draw-q { transform:scale(1.15) rotate(-6deg); }
+/* Al pasar por encima (o con foco) el lomo del «?» asoma de la balda con su
+   brillo dorado, como los elegidos en la tirada; el apoyado se inclina más. */
+.later-draw:focus-visible .ld-pick { transform:translateY(-24%); filter:brightness(1.15) drop-shadow(0 0 5px rgba(224,169,74,.85)); }
+.later-draw:focus-visible .ld-lean { transform:rotate(-18deg); }
 @media (hover:hover) {
-.later-draw:hover .later-draw-stack i:nth-of-type(1) { transform:rotate(-24deg) translateX(-4px); }
-.later-draw:hover .later-draw-stack i:nth-of-type(2) { transform:translateY(-14px); }
-.later-draw:hover .later-draw-stack i:nth-of-type(3) { transform:rotate(22deg) translateX(4px); }
-.later-draw:hover .later-draw-q { transform:scale(1.15) rotate(-6deg); }
+.later-draw:hover .ld-pick { transform:translateY(-24%); filter:brightness(1.15) drop-shadow(0 0 5px rgba(224,169,74,.85)); }
+.later-draw:hover .ld-lean { transform:rotate(-18deg); }
 }
-.later-draw:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:6px; }
+.later-draw:active .ld-pick { transform:translateY(-34%); }
+.later-draw:focus-visible { outline:2px solid var(--accent); outline-offset:3px; border-radius:6px; }
 /* Bajo 1100 la entrada es la tarjeta móvil del Inicio, no este lomo. */
 @media (max-width:1099px) { .later-draw { display:none; } }
-@media (prefers-reduced-motion: reduce) { .later-draw-stack i, .later-draw-q { transition:none; } }
+@media (prefers-reduced-motion: reduce) { .later-draw-back i { transition:none; } }
 /* La tarjeta móvil pasa de <a> a <button>: mismo aspecto. */
 button.home-draw-tile { font:inherit; color:inherit; cursor:pointer; text-align:left; }
 /* Con la partida abierta no hay dos mascotas en pantalla. */
