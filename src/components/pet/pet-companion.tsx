@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { onCelebrationsShown } from "@/lib/celebrations/preference";
 import type { CelebrationPayload } from "@/lib/celebrations/types";
@@ -14,8 +15,17 @@ const BUBBLE_MS = 2200;
 
 // Compañera flotante (spec §6). Cero ruido: solo reacciona a lo que acabas de
 // hacer (una celebración recién encolada) y enseña el humor pasivo. Tap → /mascota.
+//
+// En /sesion/* (ruta directa y modal interceptado) no sale: la hoja ya trae su
+// propia mascota sobre la balda y la flotante la tapaba, y en móvil caía
+// encima de la pestaña «Cronómetro». El resto de rutas no cambia.
+function hidesCompanion(pathname: string | null): boolean {
+  return pathname?.startsWith("/sesion/") ?? false;
+}
+
 export function PetCompanion({ state }: { state: CompanionState }) {
   const t = useTranslations("nav");
+  const pathname = usePathname();
   const [reaction, setReaction] = useState<PetReaction>(null);
   const [bubble, setBubble] = useState<string | null>(null);
   const timers = useRef<number[]>([]);
@@ -52,6 +62,8 @@ export function PetCompanion({ state }: { state: CompanionState }) {
     "--pet-pad-r": `${cell - box.x - box.w}px`,
     "--pet-pad-b": `${cell - box.y - box.h}px`,
   } as CSSProperties;
+
+  if (hidesCompanion(pathname)) return null;
 
   return (
     <Link
