@@ -68,7 +68,7 @@ por la 180. ¿Hasta dónde hoy?»).
   `aria-valuenow` y `aria-valuetext` («página 214, 34 hoy»). Teclado: flechas ±1, AvPág/RePág ±10,
   Inicio/Fin.
 - Botones de latón «+10 · +25 · +50» (los saltos actuales).
-- Tras un «+»: el número exacto (input), la hora de inicio y los minutos exactos.
+- La cifra de la página es el input visible (lectura del marcapáginas); tras un «+»: la hora de inicio y los minutos exactos.
 - Las 4 fichas de duración (15/30/45/60) siguen visibles como chapas de latón. El cronómetro
   (`SessionTimer`) se queda.
 - **Contrato:** escribe en el mismo `<input name="page">` y llama al mismo `onPageChange`. Sin

@@ -185,6 +185,9 @@ desde el avatar global. Las funciones de la app tienen navegación propia;
 | **¿Cuál toca?** | Sortear, Ruleta | El lomo-botón de «Para más tarde» que abre la partida (desde 1100 px; bajo ese ancho la entrada es la tarjeta «Sacar un lomo» de Inicio). | Inicio, «Para más tarde» |
 | **Afinar la tirada** | Filtros, Ajustes del sorteo | El panel opcional de la partida con tipo, antojos y tiempo. | Partida «Sacar un lomo» |
 | **Antojo** | Filtro, Preset | Intención de la tirada como «Para esta noche» o «Lo que más espera»; cambia según el tipo de obra. | Panel «Afinar la tirada» |
+| **Marcapáginas** | Slider, Barra de progreso | El control con el que marcas hasta qué página has leído: una cinta sobre el libro de canto que se arrastra o se mueve con el teclado. La cifra de la página se ve al lado. | Hoja de sesión de un libro (`BookmarkField`) |
+| **Lacre** | Sello, Estrellas | La nota que das al cerrar una lectura, estampada en cera sobre los puntos de valoración. Al abandonar no hay lacre. | Hoja de cierre |
+| **Dedicatoria** | Reseña (en el cierre), Comentario | El texto libre que escribes al cerrar una lectura, como dedicatoria al final del libro. Es la reseña del pase. | Hoja de cierre |
 | **Ajustes** | Configuración, Preferencias, Opciones | La pantalla donde decides sobre tu cuenta: perfil, visibilidad, contraseña, tus datos y avisos. | `/ajustes` |
 | **Más opciones** | Mi espacio | El menú de accesos secundarios de la app, disponible en cualquier pantalla. Incluye Partidas y Ajustes. | navegación global; separado del enlace de perfil en el avatar |
 | **Partida** | Juego | Una sesión de juego concreta; la unidad principal del dominio. | dominio `play`, `/partidas` |
