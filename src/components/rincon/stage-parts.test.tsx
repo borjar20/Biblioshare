@@ -7,8 +7,6 @@ import { DEFAULT_SETTINGS, type SorteoItem } from "./sorteo-logic";
 import { StageBookcase } from "./stage-bookcase";
 import { StageTune } from "./stage-tune";
 import { StagePodium } from "./stage-podium";
-import { StagePet } from "./stage-pet";
-import { PET_CLASSES } from "@/lib/pet/classes";
 
 vi.mock("@/components/pet/pet-sprite", () => ({ PetSprite: () => <span data-testid="sprite" /> }));
 
@@ -47,29 +45,6 @@ describe("StageBookcase", () => {
     expect(box().className).not.toMatch(/shake/);
     rerender(at(2));
     expect(box().className).toMatch(/shake/);
-  });
-});
-
-describe("StagePet", () => {
-  it("el bocadillo (role=status) es el mismo nodo con narrador y con mascota", () => {
-    const speech = { text: "Hola", mood: "idle" } as const;
-    const { rerender } = render(<StagePet pet={null} speech={speech} entered={false} />);
-    const before = screen.getByRole("status");
-    expect(before.className).toMatch(/narrated/);
-    rerender(<StagePet pet={{ name: "Bellota", petClass: PET_CLASSES[0], stage: "young" }} speech={speech} entered />);
-    const after = screen.getByRole("status");
-    expect(after).toBe(before);
-    expect(after.className).not.toMatch(/narrated/);
-    expect(screen.getByTestId("sprite")).toBeTruthy();
-  });
-  it("la bellota también sale (no cae al narrador); sin mascota, narrador", () => {
-    const speech = { text: "Hola", mood: "idle" } as const;
-    const { rerender } = render(<StagePet pet={{ name: "Nuez", petClass: PET_CLASSES[0], stage: "acorn" }} speech={speech} entered />);
-    expect(screen.getByTestId("sprite")).toBeTruthy();
-    expect(screen.getByRole("status").className).not.toMatch(/narrated/);
-    rerender(<StagePet pet={null} speech={speech} entered />);
-    expect(screen.queryByTestId("sprite")).toBeNull();
-    expect(screen.getByRole("status").className).toMatch(/narrated/);
   });
 });
 

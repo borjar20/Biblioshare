@@ -17,7 +17,7 @@ import {
 import { lineFor, type CandidateLine } from "./sorteo-lines";
 import { gameReducer, INITIAL_GAME, type Phase } from "./use-sorteo-game";
 import { StageBookcase } from "./stage-bookcase";
-import { StagePet, type Speech } from "./stage-pet";
+import { StageMascot, type Speech } from "@/components/stage/stage-mascot";
 import { StageTune, useAntojoLabel } from "./stage-tune";
 import { StagePodium } from "./stage-podium";
 import styles from "./sorteo-stage.module.css";
@@ -492,7 +492,7 @@ export function SorteoStage({ open, onClose }: { open: boolean; onClose: () => v
           <div className={styles.floor} aria-hidden />
           <StageBookcase items={shelf} offKeys={offKeys} tickKey={tickKey} pulledKeys={pulled} takenKeys={taken}
             lit={tickKey !== null} dim={podium} shakeSeq={shakeSeq} choosing={game.phase === "choose"}>
-            <StagePet pet={data?.pet ?? null} speech={tuneOpen ? null : speech} entered={curtainUp} />
+            <StageMascot pet={data?.pet ?? null} speech={tuneOpen ? null : speech} entered={curtainUp} />
           </StageBookcase>
           {podium && (
             <StagePodium phase={game.phase} candidates={game.candidates} presented={game.presented}

@@ -3,9 +3,10 @@
 import type { CSSProperties } from "react";
 import { PetSprite } from "@/components/pet/pet-sprite";
 import { spriteBox } from "@/lib/pet/manifest";
-import type { SorteoPet } from "@/lib/rincon/load-sorteo";
-import styles from "./sorteo-stage.module.css";
+import type { PetClass, PetStage } from "@/lib/pet/classes";
+import styles from "./stage-mascot.module.css";
 
+export type StagePet = { name: string; petClass: PetClass; stage: PetStage };
 export type Speech = { title?: string; text: string; mood: "idle" | "sad" | "joy" } | null;
 
 // La mascota sentada en lo alto del mueble con su bocadillo (spec «La voz»).
@@ -16,14 +17,16 @@ export type Speech = { title?: string; text: string; mood: "idle" | "sad" | "joy
 // cambiara de rama al llegar la mascota (la carga resuelve con la partida ya
 // abierta), el `role="status"` se remontaría y el lector de pantalla podría
 // perder el primer anuncio. Narrador o mascota solo cambian una clase y el sprite.
-export function StagePet({ pet, speech, entered }: { pet: SorteoPet | null; speech: Speech; entered: boolean }) {
+export function StageMascot({ pet, speech, entered, size = "lg" }: {
+  pet: StagePet | null; speech: Speech; entered: boolean; size?: "lg" | "sm";
+}) {
   const narrated = !pet;
   const cls = [styles.bubble, speech ? "" : styles.off, narrated ? styles.narrated : ""].filter(Boolean).join(" ");
   // Caja real del personaje en su celda: el CSS la usa para apoyarlo en el mueble.
   const box = pet ? spriteBox(pet.stage, pet.petClass).box : null;
   const vars = box ? ({ "--bx": box.x, "--by": box.y, "--bw": box.w, "--bh": box.h } as CSSProperties) : undefined;
   return (
-    <div className={styles.petzone} style={vars}>
+    <div className={`${styles.petzone} ${size === "sm" ? styles.sm : ""}`} style={vars}>
       <div className={cls} role="status" aria-live="polite">
         {speech && (<>{speech.title && <b>{speech.title}. </b>}{speech.text}</>)}
       </div>
