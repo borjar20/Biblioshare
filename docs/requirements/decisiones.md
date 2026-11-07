@@ -8261,3 +8261,13 @@ se lee con `getPlannedItems`, memoizada por petición con `cache()` de React
   partida la usa. Los tokens de la app se redefinen dentro de `ritualScope` para que los Input y
   Select de dentro adopten el espresso.
 - Spec: `docs/superpowers/specs/2026-11-07-sesion-y-cierre-ritual-design.md`.
+- **Compañera flotante oculta en `/sesion/*`:** la hoja de sesión lleva su propia mascota; la
+  flotante se oculta en esas rutas (directa y modal interceptado) para no duplicarla ni tapar
+  «Cronómetro» en móvil. Sus celebraciones siguen suscritas y salen al volver a la ficha.
+- **Recuento de series:** las series no crean `progress_sessions`, así que el cierre cuenta con
+  `episode_watches.watched_on`: episodios = filas, «sesiones» = días distintos, y días y racha sobre
+  esas fechas. Sin episodios, frase genérica.
+- **Estado preservado entre visitas (cacheComponents):** la hoja guarda el microrritual en un
+  flag local `leaving` que solo se activa con una respuesta nueva y se limpia al cambiar de ruta o
+  al ocultarse; así la segunda sesión seguida del mismo pase no hereda el `ok` de la anterior
+  (variante añadida a `docs/TRAMPAS.md` #26).
