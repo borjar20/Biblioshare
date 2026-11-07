@@ -11,7 +11,9 @@ export type SorteoLoad = { items: SorteoItem[]; collections: SorteoCollection[];
 
 // Se llama al abrir la partida (spec «Arquitectura»): el telón tapa la espera.
 // SIN `use cache` (regla #437): el pool sale de RLS con auth.uid(), es del que mira.
-// La mascota es opcional: si su lectura falla o la compañera está oculta, habla el narrador.
+// La mascota es opcional: si no hay mascota o su lectura falla, habla el narrador.
+// `companion_hidden` NO cuenta: oculta la compañera flotante del shell, no la
+// mascota de la partida (con el filtro, quien la ocultaba se quedaba sin ella aquí).
 export async function loadSorteo(): Promise<SorteoLoad> {
   const supabase = await createClient();
   const {
@@ -25,9 +27,6 @@ export async function loadSorteo(): Promise<SorteoLoad> {
       return null;
     }),
   ]);
-  const pet =
-    companion && !companion.hidden
-      ? { name: companion.name, petClass: companion.petClass, stage: companion.stage }
-      : null;
+  const pet = companion ? { name: companion.name, petClass: companion.petClass, stage: companion.stage } : null;
   return { ...pool, pet };
 }

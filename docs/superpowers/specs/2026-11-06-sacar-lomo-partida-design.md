@@ -169,7 +169,8 @@ primero que aplique, en este orden:
   propio.
 - Animaciones: `idle` al presentar, `sad` al descartar o con pool vacío, `joy` al revelar y al
   salir.
-- Bellota o sin mascota: narrador de texto en el mismo hueco, sin sprite.
+- Sin mascota: narrador de texto en el mismo hueco, sin sprite. La bellota sale con su sprite, y
+  la partida usa la mascota aunque la compañera flotante esté oculta (`companion_hidden`).
 - La `PetCompanion` flotante se oculta mientras la hoja está abierta.
 
 ## Acceso

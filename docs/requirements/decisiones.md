@@ -8233,3 +8233,7 @@ se lee con `getPlannedItems`, memoizada por petición con `cache()` de React
 - **Desvío de la spec en «Afinar».** Los cubos de tiempo se ven siempre dentro del panel; la spec
   pedía un «Ajustar tiempo» plegado. El panel ya es opcional y llega plegado tras la píldora, así
   que un segundo pliegue dentro solo añadía un gesto: se descartó.
+- **Mascota en la partida.** Sale siempre que el usuario tenga mascota: también si es bellota
+  (PetSprite la pinta) y aunque haya ocultado la compañera flotante (`companion_hidden` es una
+  preferencia del shell, no de la partida). El narrador queda solo para quien no tiene mascota.
+  Antes las dos cosas caían al narrador y parecía que la mascota había desaparecido.

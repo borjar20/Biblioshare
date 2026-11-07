@@ -62,6 +62,15 @@ describe("StagePet", () => {
     expect(after.className).not.toMatch(/narrated/);
     expect(screen.getByTestId("sprite")).toBeTruthy();
   });
+  it("la bellota también sale (no cae al narrador); sin mascota, narrador", () => {
+    const speech = { text: "Hola", mood: "idle" } as const;
+    const { rerender } = render(<StagePet pet={{ name: "Nuez", petClass: PET_CLASSES[0], stage: "acorn" }} speech={speech} entered />);
+    expect(screen.getByTestId("sprite")).toBeTruthy();
+    expect(screen.getByRole("status").className).not.toMatch(/narrated/);
+    rerender(<StagePet pet={null} speech={speech} entered />);
+    expect(screen.queryByTestId("sprite")).toBeNull();
+    expect(screen.getByRole("status").className).toMatch(/narrated/);
+  });
 });
 
 describe("StageTune", () => {
