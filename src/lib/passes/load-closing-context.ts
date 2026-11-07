@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getCompanionState } from "@/lib/pet/get-companion-state";
+import { toStagePet } from "@/lib/pet/to-stage-pet";
 import { computeRecap, type ClosingRecap } from "@/lib/ritual/recap";
 import type { StagePet } from "@/components/stage/stage-mascot";
 
@@ -49,6 +50,5 @@ export async function loadClosingContext(passId: string): Promise<ClosingContext
   } else {
     console.error("loadClosingContext: recap", pass.error ?? source.error ?? "pase no encontrado");
   }
-  const pet = companion ? { name: companion.name, petClass: companion.petClass, stage: companion.stage } : null;
-  return { recap, pet };
+  return { recap, pet: toStagePet(companion) };
 }
