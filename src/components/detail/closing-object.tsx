@@ -24,7 +24,7 @@ export function ClosingObject({
         {stamp}
       </div>
       <div className={styles.objectBody}>{children}</div>
-      {variant === "completed" ? seal : <span data-bookmark className={styles.bookmark} aria-hidden />}
+      {variant === "completed" ? seal : itemType === "book" ? <span data-bookmark className={styles.bookmark} aria-hidden /> : null}
     </div>
   );
 }

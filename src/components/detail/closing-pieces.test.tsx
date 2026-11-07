@@ -18,6 +18,13 @@ describe("InkDateStamp", () => {
     fireEvent.change(input, { target: { value: "2026-10-01" } });
     expect(screen.getByText(/1 oct 2026/i)).toBeTruthy();
   });
+  it("un cambio vacío conserva la última fecha válida", () => {
+    render(wrap(<InkDateStamp name="finishedOn" defaultValue="2026-11-07" max="2026-11-07" label="Fecha de fin" />));
+    const input = screen.getByLabelText("Fecha de fin") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "" } });
+    expect(input.value).toBe("2026-11-07");
+    expect(screen.getByText(/7 nov 2026/i)).toBeTruthy();
+  });
 });
 
 describe("WaxSeal", () => {
@@ -41,6 +48,11 @@ describe("ClosingObject", () => {
   it("abandonar: marcapáginas dentro y sin lacre", () => {
     const { container } = render(wrap(<ClosingObject itemType="book" variant="dropped" closing={false} stamp={<i />} seal={<b data-seal />}><textarea /></ClosingObject>));
     expect(container.querySelector("[data-bookmark]")).toBeTruthy();
+    expect(container.querySelector("[data-seal]")).toBeNull();
+  });
+  it("abandonar película: sin marcapáginas ni lacre", () => {
+    const { container } = render(wrap(<ClosingObject itemType="movie" variant="dropped" closing={false} stamp={<i />} seal={<b data-seal />}><textarea /></ClosingObject>));
+    expect(container.querySelector("[data-bookmark]")).toBeNull();
     expect(container.querySelector("[data-seal]")).toBeNull();
   });
   it("closing añade la clase de cierre", () => {

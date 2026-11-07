@@ -13,7 +13,12 @@ export function InkDateStamp({ name, defaultValue, max, label }: { name: string;
     <label className={styles.stamp}>
       <span aria-hidden className={styles.stampFace}>{shown}</span>
       <input type="date" name={name} max={max} value={value} aria-label={label}
-        onChange={(e) => setValue(e.target.value)} className={styles.stampInput} />
+        onChange={(e) => {
+          // Fecha parcial o vacía mientras se teclea: se conserva la última válida.
+          if (/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) setValue(e.target.value);
+        }}
+        onClick={(e) => { try { e.currentTarget.showPicker?.(); } catch {} }}
+        className={styles.stampInput} />
     </label>
   );
 }
