@@ -3,7 +3,9 @@
   background: linear-gradient(180deg, #f6ecd6, #eadcbd); box-shadow: 0 18px 30px -16px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.5); transform-origin: left center; transition: transform .6s cubic-bezier(.6,0,.4,1), opacity .4s }
 .objectHead { display: flex; justify-content: space-between; align-items: center; gap: 10px }
 .objectTitle { font-family: var(--f-mono, ui-monospace, monospace); font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: rgba(42,29,16,.6) }
-.objectBody { min-height: 88px }
+.objectBody { min-height: 88px; border-radius: 2px }
+/* La dedicatoria no pinta anillo propio (materials.dedication quita el outline): el foco se ve en el papel. */
+.objectBody:focus-within { outline: 2px solid #e0a94a; outline-offset: 3px }
 /* Libro: última página con el lomo a la izquierda y el folio «Fin». */
 .lastPage { border-radius: 2px 6px 6px 2px; border-left: 10px solid #6f3418; box-shadow: inset 8px 0 10px -8px rgba(0,0,0,.35), 0 18px 30px -16px rgba(0,0,0,.9) }
 .lastPage.closing { transform: perspective(900px) rotateY(-92deg); opacity: .2 }

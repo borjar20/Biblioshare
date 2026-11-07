@@ -18,6 +18,9 @@
   --background: #17110d; --surface: #241d18; --surface-muted: #2f2620; --surface-3: #3a2f27;
   --foreground: #f0e8db; --foreground-soft: #d9cdb9; --muted-foreground: #a99e8c; --foreground-faint: #7d7263;
   --border: rgba(240,232,219,.14); --accent: #d98a5c; --accent-foreground: #1f1409; --accent-ink: #e9a574;
+  /* Errores legibles sobre el espresso: #e48b74 da ~6,5:1 sobre #17110d (el #b0492f
+     del tema claro no llega a 3:1). Lo usan text-status-dropped y el aviso del cronómetro. */
+  --status-dropped: #e48b74;
   color-scheme: dark; background: var(--st-bg); color: var(--st-fg); font-family: var(--f-body);
 }
 .leather { border: 1px solid #6f3417; border-radius: 14px; padding: 13px 18px; color: #2a1206; font-weight: 700; cursor: pointer;
@@ -42,10 +45,19 @@
   box-shadow: inset 0 1px 0 rgba(255,250,225,.8), 0 2px 0 #5e4517 }
 .paper { color: #2e2216; border-radius: 3px; background: repeating-linear-gradient(180deg, transparent 0 17px, rgba(90,120,170,.16) 17px 18px), linear-gradient(180deg, var(--paper-1), var(--paper-2));
   box-shadow: 0 1px 0 rgba(255,255,255,.4) inset, 0 4px 8px -3px rgba(0,0,0,.6) }
+/* Ficha de papel (motivos de abandono): papel liso; la elegida (`:has(input:checked)`)
+   queda marcada con tinta, como un sello. */
+.paperChip { color: #2e2216; border: 1px solid rgba(46,34,22,.25); border-radius: 4px; background: linear-gradient(180deg, var(--paper-1), var(--paper-2));
+  box-shadow: 0 1px 0 rgba(255,255,255,.4) inset, 0 3px 6px -3px rgba(0,0,0,.6); transform: rotate(-.6deg) }
+.paperChip:nth-child(even) { transform: rotate(.6deg) }
+.paperChip:has(input:checked) { color: #6f2513; border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink), 0 3px 6px -3px rgba(0,0,0,.6);
+  background: linear-gradient(180deg, #f7ddc8, #ecc9ad) }
 /* Texto escrito a pluma sobre papel (dedicatoria / reverso / librito). */
 .dedication { width: 100%; resize: none; border: 0; background: transparent; color: #2a1d10; font-family: var(--f-display); font-style: italic;
   font-size: 16px; line-height: 22px; background-image: repeating-linear-gradient(180deg, transparent 0 21px, rgba(90,120,170,.22) 21px 22px); padding: 0 2px }
 .dedication:focus { outline: none }
 .dedication::placeholder { color: rgba(42,29,16,.45) }
 .leather:focus-visible, .wood:focus-visible, .knob:focus-visible, .brass:focus-visible { outline: 2px solid var(--st-gold); outline-offset: 2px }
+/* Chapas y fichas con la casilla `sr-only` dentro: el foco de teclado se ve en la chapa. */
+.brass:has(input:focus-visible), .paperChip:has(input:focus-visible) { outline: 2px solid var(--st-gold); outline-offset: 2px }
 @media (prefers-reduced-motion: reduce) { .leather, .wood, .knob, .brass { transition: none } }

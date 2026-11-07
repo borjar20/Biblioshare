@@ -21,12 +21,16 @@ export function DroppedReasonFields({
   note,
   onNoteChange,
   size = "default",
+  chipClassName,
 }: {
   reason: DroppedReason | "";
   onReasonChange: (next: DroppedReason) => void;
   note: string;
   onNoteChange: (next: string) => void;
   size?: "default" | "sm";
+  // Opcional: piel de ficha para cada motivo (p. ej. `materials.paperChip` en el
+  // cierre), que marca el elegido con `:has(input:checked)`. Sin ella, la de siempre.
+  chipClassName?: string;
 }) {
   const t = useTranslations("passes.droppedReason");
   const s = SIZES[size];
@@ -38,11 +42,15 @@ export function DroppedReasonFields({
         {DROPPED_REASONS.map((value) => (
           <label
             key={value}
-            className={`cursor-pointer rounded-full border font-medium transition-colors ${s.pill} ${
-              reason === value
-                ? "border-accent bg-accent/10 text-foreground"
-                : "border-border text-muted-foreground hover:text-foreground"
-            }`}
+            className={
+              chipClassName
+                ? `${chipClassName} cursor-pointer font-medium ${s.pill}`
+                : `cursor-pointer rounded-full border font-medium transition-colors ${s.pill} ${
+                    reason === value
+                      ? "border-accent bg-accent/10 text-foreground"
+                      : "border-border text-muted-foreground hover:text-foreground"
+                  }`
+            }
           >
             <input
               type="radio"

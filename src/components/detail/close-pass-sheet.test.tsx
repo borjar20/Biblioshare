@@ -200,6 +200,98 @@ describe("ClosePassSheet (contrato)", () => {
     vi.useRealTimers();
   });
 
+  it("Escape durante la despedida: el padre recibe un único aviso", async () => {
+    vi.useFakeTimers();
+    const onClose = vi.fn();
+    const { container } = render(ui("completed", "book", onClose));
+    await flush();
+    fireEvent.click(screen.getByRole("button", { name: "Guardar", exact: true } as never));
+    await advance(0);
+    expect(screen.getByText(messages.ritual.closing.farewellSr)).toBeTruthy();
+    // Escape en un <dialog> modal: `cancel` y cierre nativo (que dispara `close`).
+    const dialog = container.ownerDocument.querySelector("dialog")!;
+    fireEvent(dialog, new Event("cancel"));
+    act(() => dialog.close());
+    expect(onClose).toHaveBeenCalledTimes(1);
+    await flush();
+    expect(onClose).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
+
+  it("abandonar un libro: marcapáginas, sin lomo a la balda, frase comprensiva y fichas de papel", async () => {
+    vi.useFakeTimers();
+    const { container } = render(ui("dropped"));
+    await flush();
+    expect(container.ownerDocument.querySelector("[data-bookmark]")).toBeTruthy();
+    expect(screen.getAllByRole("status")[0].textContent).toContain("No todos los libros son para ahora.");
+    const reasons = screen.getAllByRole("radio");
+    expect(reasons.length).toBeGreaterThan(0);
+    expect(reasons[0].closest("label")!.className).toMatch(/paperChip/);
+    fireEvent.click(screen.getByRole("button", { name: "Guardar", exact: true } as never));
+    await advance(0);
+    expect(container.ownerDocument.querySelector("[data-landing]")).toBeNull();
+    expect(screen.getByText(messages.ritual.closing.droppedSr)).toBeTruthy();
+    expect(screen.queryByText(messages.ritual.closing.farewellSr)).toBeNull();
+    expect(screen.getAllByRole("status")[0].textContent).toContain("No todos los libros son para ahora.");
+    vi.useRealTimers();
+  });
+
+  it("completar: el lomo cae a la balda al despedirse", async () => {
+    vi.useFakeTimers();
+    const { container } = render(ui("completed"));
+    await flush();
+    expect(container.ownerDocument.querySelector("[data-landing]")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Guardar", exact: true } as never));
+    await advance(0);
+    expect(container.ownerDocument.querySelector("[data-landing]")).toBeTruthy();
+    vi.useRealTimers();
+  });
+
+  it("abandonar una película: frase de película, sin libros ni marcapáginas", async () => {
+    vi.useFakeTimers();
+    const { container } = render(ui("dropped", "movie"));
+    await flush();
+    const text = screen.getAllByRole("status")[0].textContent ?? "";
+    expect(text).toContain("No todas las películas son para ahora.");
+    expect(text).not.toMatch(/libro|marcapáginas/);
+    expect(container.ownerDocument.querySelector("[data-bookmark]")).toBeNull();
+    vi.useRealTimers();
+  });
+
+  it("la chapa de visibilidad dice Pública/Privada y, desmarcada, no envía isPublic", async () => {
+    vi.useFakeTimers();
+    render(ui("completed"));
+    await flush();
+    const box = screen.getByRole("checkbox", { name: /Visible para la comunidad/ }) as HTMLInputElement;
+    expect(box.checked).toBe(true);
+    expect(box.closest("label")!.textContent).toContain("Pública");
+    fireEvent.click(box);
+    expect(box.checked).toBe(false);
+    expect(box.closest("label")!.textContent).toContain("Privada");
+    expect(box.closest("label")!.textContent).not.toContain("Pública");
+    fireEvent.click(screen.getByRole("button", { name: "Guardar", exact: true } as never));
+    await flush();
+    const fd = mocks.close.mock.calls[0][4] as FormData;
+    expect(fd.has("isPublic")).toBe(false);
+    vi.useRealTimers();
+  });
+
+  it("spoiler y acompañantes son chapas de latón", async () => {
+    vi.useFakeTimers();
+    mocks.mutuals.mockResolvedValue([{ userId: "u-ana", username: "ana", displayName: "Ana", avatarUrl: null }]);
+    render(ui("completed"));
+    await flush();
+    fireEvent.change(screen.getByLabelText("Reseña"), { target: { value: "Ojo" } });
+    const spoiler = screen.getByRole("checkbox", { name: messages.passes.reviewSpoiler });
+    expect(spoiler.getAttribute("name")).toBe("reviewIsSpoiler");
+    expect(spoiler.closest("label")!.className).toMatch(/brass/);
+    const ana = screen.getByRole("button", { name: /Ana/ });
+    expect(ana.className).toMatch(/brass/);
+    fireEvent.click(ana);
+    expect(ana.getAttribute("aria-pressed")).toBe("true");
+    vi.useRealTimers();
+  });
+
   const ana = { userId: "u-ana", username: "ana", displayName: "Ana", avatarUrl: null };
 
   it("con acompañantes: crea el visionado conjunto y después se despide y cierra", async () => {

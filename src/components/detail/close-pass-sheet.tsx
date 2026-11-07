@@ -102,6 +102,9 @@ export function ClosePassSheet({
   const [farewell, setFarewell] = useState(false);
   const [openedAt, setOpenedAt] = useState(() => new Date());
   const [openings, setOpenings] = useState(0);
+  // Visibilidad: controlada para que la chapa diga «Pública» o «Privada». Pública
+  // por defecto, como siempre (marcada → `isPublic=on`; desmarcada → no viaja).
+  const [isPublic, setIsPublic] = useState(true);
 
   // Al reabrir la hoja no queremos arrastrar la nota que hubiera quedado
   // marcada de una vez anterior. Ajuste de estado durante el render (mismo
@@ -120,6 +123,7 @@ export function ClosePassSheet({
       setFarewell(false);
       setOpenedAt(new Date());
       setOpenings((n) => n + 1);
+      setIsPublic(true);
     }
   }
 
@@ -230,7 +234,7 @@ export function ClosePassSheet({
   const today = openedAt.toISOString().slice(0, 10);
   const dropped = status === "dropped";
   const line = recapLine(itemType, ctx?.recap ?? null, openedAt, { weekday: (d) => WEEKDAY.format(d) });
-  const droppedLine = tr(`dropped.${variantOf(passId, DROPPED_VARIANTS)}`);
+  const droppedLine = tr(`dropped.${variantOf(passId, DROPPED_VARIANTS)}`, { type: itemType });
   const speech: Speech = farewell
     ? {
         text: dropped ? droppedLine : tr(`farewell.${variantOf(passId, FAREWELL_VARIANTS)}`),
@@ -277,7 +281,8 @@ export function ClosePassSheet({
 
         {/* El objeto en que se cierra la obra: el sello lleva `finishedOn`, el
             lacre la nota (`rating`, su input oculto vive en WaxSeal) y el
-            papel la reseña (`review`). Abandonar: sin lacre ni nota. */}
+            papel la reseña (`review`). Abandonar: sin lacre ni nota; en su
+            lugar, debajo del objeto, los motivos como fichas de papel. */}
         <div className="px-5 py-4">
           <ClosingObject
             key={openings}
@@ -304,10 +309,28 @@ export function ClosePassSheet({
               {mention.dropdown}
             </div>
           </ClosingObject>
+          {dropped && (
+            <div className="mt-4">
+              <DroppedReasonFields
+                reason={reason}
+                onReasonChange={setReason}
+                note={reasonNote}
+                onNoteChange={setReasonNote}
+                chipClassName={materials.paperChip}
+              />
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col gap-3 px-5">
-          <ReviewSpoilerField review={review} checked={reviewIsSpoiler} onChange={setReviewIsSpoiler} />
+          {/* Ajustes como chapas de latón (spec, «El cierre» 4): spoiler,
+              acompañantes y visibilidad. */}
+          <ReviewSpoilerField
+            review={review}
+            checked={reviewIsSpoiler}
+            onChange={setReviewIsSpoiler}
+            chipClassName={materials.brass}
+          />
 
           {/* Solo si hay a quién etiquetar: sin seguidos mutuos el bloque sería
               ruido en cada cierre, y mientras carga no se reserva hueco. */}
@@ -318,6 +341,7 @@ export function ClosePassSheet({
                 people={mutuals}
                 selected={companions}
                 onToggle={toggleCompanion}
+                chipClassName={materials.brass}
               />
               {companions.size > 0 && (
                 <p className="text-xs text-muted-foreground">{t("jointSheet.closeHint")}</p>
@@ -328,28 +352,20 @@ export function ClosePassSheet({
             </div>
           )}
 
-          {dropped && (
-            <DroppedReasonFields
-              reason={reason}
-              onReasonChange={setReason}
-              note={reasonNote}
-              onNoteChange={setReasonNote}
-            />
-          )}
-
           {/* Visibilidad como chapa de latón: brilla con la casilla marcada
-              (`:has(input:checked)`). Pública por defecto, como siempre. */}
-          <label
-            className={`${materials.brass} inline-flex w-fit items-center gap-2 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-[#e0a94a]`}
-          >
+              (`:has(input:checked)`) y dice su estado. El nombre accesible es
+              el texto visible, con «Visible para la comunidad» delante para
+              que «Privada, no marcada» no se lea al revés. */}
+          <label className={`${materials.brass} inline-flex w-fit items-center gap-2`}>
             <input
               type="checkbox"
               name="isPublic"
-              defaultChecked
-              aria-label={t("isPublic")}
+              checked={isPublic}
+              onChange={(e) => setIsPublic(e.target.checked)}
               className="sr-only"
             />
-            {tr("public")}
+            <span className="sr-only">{t("isPublic")}: </span>
+            {isPublic ? tr("public") : tr("private")}
           </label>
 
           {state.error && (
@@ -373,7 +389,8 @@ export function ClosePassSheet({
           </button>
         </div>
 
-        {farewell && <p role="status" className="sr-only">{tr("farewellSr")}</p>}
+        {/* Al abandonar nada vuela a la balda: solo «Guardado». */}
+        {farewell && <p role="status" className="sr-only">{tr(dropped ? "droppedSr" : "farewellSr")}</p>}
       </form>
     </dialog>
   );

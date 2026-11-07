@@ -4942,7 +4942,10 @@
       "movieNight": "La viste el {weekday} por la {daypart, select, morning {mañana} afternoon {tarde} other {noche}}.",
       "generic": "{type, select, book {Otro libro para la balda.} movie {Otra película vista.} other {Otra serie terminada.}}",
       "farewell": { "0": "A la balda de terminados. ¡Bien hecho!", "1": "Uno más para tu balda." },
-      "dropped": { "0": "No todos los libros son para ahora.", "1": "Lo dejamos aquí, con el marcapáginas puesto." },
+      "dropped": {
+        "0": "{type, select, book {No todos los libros son para ahora.} movie {No todas las películas son para ahora.} other {No todas las series son para ahora.}}",
+        "1": "{type, select, book {Lo dejamos aquí, con el marcapáginas puesto.} movie {La dejamos aquí; siempre puedes volver.} other {La dejamos aquí, en el episodio donde la dejaste.}}"
+      },
       "dateStamp": "Fecha de fin",
       "sealLabel": "Lacre: tu nota",
       "sealEmpty": "Sin lacrar",
@@ -4953,7 +4956,9 @@
       "lastPage": "Fin",
       "disc": "Último disco",
       "public": "Pública",
-      "farewellSr": "Guardado. Lo llevamos a la balda."
+      "private": "Privada",
+      "farewellSr": "Guardado. Lo llevamos a la balda.",
+      "droppedSr": "Guardado."
     }
   }
 }
