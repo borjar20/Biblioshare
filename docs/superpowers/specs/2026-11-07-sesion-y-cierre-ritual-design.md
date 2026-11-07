@@ -128,7 +128,9 @@ Se extrae de la partida sin cambiarle el comportamiento, a `src/components/stage
 
 - **Mascota en la sesión:** el loader de la ruta `/sesion/[passId]` añade la mascota con
   `getCompanionState` (cliente de la petición, **sin `use cache`**, regla #437). Misma regla que la
-  partida: sale aunque `companion_hidden`; narrador solo sin mascota.
+  partida: sale aunque `companion_hidden`; narrador solo sin mascota. La compañera flotante del
+  shell (`PetCompanion`) no se pinta en `/sesion/*` (ruta directa y modal): taparía a la de la
+  hoja y, en móvil, la pestaña «Cronómetro».
 - **Mascota y recuento en el cierre:** la hoja se abre desde varios sitios, así que una server
   action `loadClosingContext(passId)` trae los dos al abrir (sesiones del pase con el cliente de la
   petición, sin caché). Recuento: nº de sesiones, días entre la primera y la última, páginas o
