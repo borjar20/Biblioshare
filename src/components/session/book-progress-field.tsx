@@ -133,7 +133,7 @@ export function BookProgressField({
             value={toPage}
             onChange={(e) => updatePage(e.target.value)}
             onBlur={() => toPageNum !== null && setPage(toPageNum)}
-            className="w-[4.5ch] border-0 bg-transparent p-0 text-center font-serif text-[34px] font-semibold focus:ring-0"
+            className="w-[5ch] shrink-0 border-0 bg-transparent p-0! text-center font-serif text-[34px]! font-semibold focus:ring-0"
           />
           {delta !== null && delta > 0 && (
             <span className="font-mono text-[12px] text-[var(--st-gold)]">{tr("delta", { delta })}</span>
