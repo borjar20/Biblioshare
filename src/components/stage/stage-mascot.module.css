@@ -5,6 +5,9 @@
    quede pegado a su izquierda sin taparlo. `.petzone` no genera caja: solo pasa
    las variables a la mascota y al bocadillo, que se posicionan contra `.case`. */
 .petzone { display: contents; --pw: calc(var(--bw, 72) * var(--petscale) * 1px); --ph: calc(var(--bh, 68) * var(--petscale) * 1px) }
+.petzone { --petscale: 1.5 }
+.petzone.sm { --petscale: 1.1 }
+@media (max-width: 640px) { .petzone { --petscale: 1.1 } }
 .pet { position: absolute; right: 16px; bottom: calc(100% + 8px); z-index: 8; width: var(--pw); height: var(--ph); pointer-events: none;
   transform: translateY(-40px); opacity: 0; transition: transform .7s cubic-bezier(.3,1.5,.5,1), opacity .3s }
 .pet.in { transform: none; opacity: 1 }
@@ -21,6 +24,7 @@
 .bubble b { font-family: var(--f-display); font-weight: 600 }
 @media (max-width: 640px) { .bubble { font-size: 12.5px; padding: 8px 12px } }
 
-.petzone { --petscale: 1.5 }
-.petzone.sm { --petscale: 1.1 }
-@media (max-width: 640px) { .petzone { --petscale: 1.1 } }
+@media (prefers-reduced-motion: reduce) {
+  .pet, .bubble { transition-duration: .12s }
+  .pet.hop { animation-duration: .01ms }
+}
