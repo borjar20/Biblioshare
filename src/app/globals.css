@@ -1252,7 +1252,9 @@ body {
   background:linear-gradient(rgba(0,0,0,.45), rgba(0,0,0,.45)) top/100% 13% no-repeat, linear-gradient(90deg, #1f4d50, #4f8a86 45%, #234f52); }
 .later-draw-back .ld-pick { left:25px; width:13px; height:80%; display:grid; place-items:center;
   background:linear-gradient(90deg, #e9c46a, #e9c46a) 0 10%/100% 2px no-repeat, linear-gradient(90deg, #e9c46a, #e9c46a) 0 90%/100% 2px no-repeat, linear-gradient(90deg, #8e3b2b, #c0603f 40%, #8a3424); }
-.later-draw-back .ld-pick b { font-family:var(--font-fraunces), serif; font-weight:700; font-size:12px; line-height:1; color:#f3d48a; text-shadow:0 1px 1px rgba(0,0,0,.5); }
+/* `font-style:normal`: los lomos son <i> y el «?» heredaba su cursiva, que lo
+   desplazaba a la derecha del lomo. */
+.later-draw-back .ld-pick b { font-family:var(--font-fraunces), serif; font-style:normal; font-weight:700; font-size:12px; line-height:1; width:100%; text-align:center; color:#f3d48a; text-shadow:0 1px 1px rgba(0,0,0,.5); }
 .later-draw-back .ld-series { left:39px; width:11px; height:64%;
   background:linear-gradient(90deg, #4b3555, #7e5470 45%, #4f3858); box-shadow:inset 2px 0 0 rgba(0,0,0,.25), inset -2px 0 0 rgba(0,0,0,.25), 1px 0 2px -1px rgba(0,0,0,.6); }
 .later-draw-back .ld-lean { left:50px; width:7px; height:56%; transform-origin:bottom right; transform:rotate(-11deg);
