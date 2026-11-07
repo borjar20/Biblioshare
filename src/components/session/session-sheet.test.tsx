@@ -10,6 +10,7 @@ const h = vi.hoisted(() => ({ addSession: vi.fn(), push: vi.fn() }));
 
 vi.mock("@/lib/sessions/actions", () => ({ addSession: h.addSession }));
 vi.mock("@/lib/sessions/network-catch", () => ({ withNetworkCatch: (action: unknown) => action }));
+import { checkCelebrations } from "@/lib/celebrations/preference";
 vi.mock("@/lib/celebrations/preference", () => ({ checkCelebrations: vi.fn() }));
 vi.mock("@/lib/sessions/timer", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/sessions/timer")>()),
@@ -31,6 +32,7 @@ afterEach(cleanup);
 beforeEach(() => {
   h.addSession.mockReset();
   h.push.mockReset();
+  vi.mocked(checkCelebrations).mockClear();
   Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
     configurable: true,
     value(this: HTMLDialogElement) { this.open = true; },
@@ -44,8 +46,8 @@ beforeEach(() => {
   });
 });
 
-function sheet(over: Partial<SessionContext> = {}) {
-  return render(
+function sheetEl(over: Partial<SessionContext> = {}) {
+  return (
     <NextIntlClientProvider locale="es" messages={messages}>
       <SessionSheet
         ctx={{
@@ -63,8 +65,12 @@ function sheet(over: Partial<SessionContext> = {}) {
         }}
         mode="page"
       />
-    </NextIntlClientProvider>,
+    </NextIntlClientProvider>
   );
+}
+
+function sheet(over: Partial<SessionContext> = {}) {
+  return render(sheetEl(over));
 }
 
 async function askToResume() {
@@ -142,6 +148,40 @@ describe("SessionSheet · ritual", () => {
     fireEvent.submit(container.querySelector("form")!);
     await waitFor(() => expect(screen.getByRole("status").textContent).toContain("34 páginas"));
     expect(h.push).not.toHaveBeenCalled();
+    expect(checkCelebrations).not.toHaveBeenCalled();
     await waitFor(() => expect(h.push).toHaveBeenCalledTimes(1), { timeout: 2500 });
+    expect(checkCelebrations).toHaveBeenCalledTimes(1);
+  });
+
+  it("tras guardar deshabilita el envío y no duplica la sesión", async () => {
+    h.addSession.mockResolvedValue({ ok: true });
+    const { container } = sheet({ position: { page: 180 }, status: "in_progress", total: 412 });
+    fireEvent.change(screen.getByLabelText("Página final de hoy"), { target: { value: "214" } });
+    fireEvent.submit(container.querySelector("form")!);
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("34 páginas"));
+    const button = screen.getByRole("button", { name: "Guardar sesión" }) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    fireEvent.click(button);
+    expect(h.addSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("la frase guardada no cambia si el contexto se refresca a la página nueva", async () => {
+    h.addSession.mockResolvedValue({ ok: true });
+    const { container, rerender } = sheet({ position: { page: 180 }, status: "in_progress", total: 412 });
+    fireEvent.change(screen.getByLabelText("Página final de hoy"), { target: { value: "214" } });
+    fireEvent.submit(container.querySelector("form")!);
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("34 páginas"));
+    rerender(sheetEl({ position: { page: 214 }, status: "in_progress", total: 412 }));
+    expect(screen.getByRole("status").textContent).toContain("34 páginas");
+  });
+
+  it("si el pase se cierra no navega y pide las celebraciones enseguida", async () => {
+    h.addSession.mockResolvedValue({ ok: true, passClosed: true });
+    const { container } = sheet({ position: { page: 180 }, status: "in_progress", total: 412 });
+    fireEvent.change(screen.getByLabelText("Página final de hoy"), { target: { value: "214" } });
+    fireEvent.submit(container.querySelector("form")!);
+    await waitFor(() => expect(checkCelebrations).toHaveBeenCalledTimes(1));
+    await new Promise((r) => setTimeout(r, 1500));
+    expect(h.push).not.toHaveBeenCalled();
   });
 });

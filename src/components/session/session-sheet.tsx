@@ -204,6 +204,11 @@ export function SessionSheet({
   })();
 
   const [newlyMarkedCount, setNewlyMarkedCount] = useState(0);
+  const [submitted, setSubmitted] = useState<{
+    fromPage: number | null;
+    toPage: number | null;
+    episodes: number;
+  } | null>(null);
 
   // El anclaje del compositor sigue al campo VIVO, no a `position` (la posición
   // GUARDADA del pase). Si leyera `position`, anotarías en la 240 y se
@@ -227,16 +232,13 @@ export function SessionSheet({
   const [shareSpoiler, setShareSpoiler] = useState(false);
 
   // La frase se deriva en el render (sin setState en efectos). Tras guardar
-  // usa lo enviado: livePage y newlyMarkedCount siguen siendo los del envío.
-  const line = state.ok
-    ? savedLine({
-        itemType,
-        fromPage: currentPage,
-        toPage: livePage,
-        total,
-        episodes: newlyMarkedCount,
-      })
-    : openingLine(itemType, currentPage);
+  // usa la foto tomada al enviar: addSession revalida la ruta y `ctx` puede
+  // refrescarse a la página nueva (fromPage = toPage), y la rejilla de
+  // episodios puede volver a contar 0.
+  const line =
+    state.ok && submitted
+      ? savedLine({ itemType, total, ...submitted })
+      : openingLine(itemType, currentPage);
   const speech: Speech = { text: tRitual(line.key, line.values), mood: state.ok ? "joy" : "idle" };
 
   const noteAnchor: NoteAnchor =
@@ -285,6 +287,9 @@ export function SessionSheet({
       <form
         ref={formRef}
         action={formAction}
+        onSubmit={() =>
+          setSubmitted({ fromPage: currentPage, toPage: livePage, episodes: newlyMarkedCount })
+        }
         className={`${materials.ritualScope} flex min-h-0 flex-1 flex-col overflow-y-auto`}
       >
         <input ref={resumeModeRef} type="hidden" name="resumeMode" />
@@ -477,7 +482,7 @@ export function SessionSheet({
           )}
           <button
             type="submit"
-            disabled={pending || notePending}
+            disabled={pending || notePending || (state.ok && !state.passClosed)}
             className={`${materials.leather} w-full`}
           >
             {pending

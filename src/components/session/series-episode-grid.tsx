@@ -207,7 +207,11 @@ export function SeriesEpisodeGrid({
                     <span className="block font-mono text-[12px] font-semibold">
                       {tEpisode("episodeShort", { n: ep.episode })}
                     </span>
-                    <span className="block truncate text-[10px] text-muted-foreground">
+                    <span
+                      className={`block truncate text-[10px] ${
+                        st === "unseen" ? "text-[#5a4630]" : "text-muted-foreground"
+                      }`}
+                    >
                       {t(`epState.${st}`)}
                     </span>
                   </span>
