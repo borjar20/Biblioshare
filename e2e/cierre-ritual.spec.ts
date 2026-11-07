@@ -84,6 +84,19 @@ async function deleteNewSessions(passId: string, before: Set<string>) {
   });
 }
 
+// Terminar una obra publica sola su post `finished` (autopost.ts): se borra lo
+// que el test haya creado sobre esa obra, como pase-hub.spec.ts.
+async function postIds(userId: string, anchorId: string): Promise<Set<string>> {
+  const rows = await rest<{ id: string }[]>(`posts?author_id=eq.${userId}&anchor_id=eq.${anchorId}&select=id`);
+  return new Set(rows.map((r) => r.id));
+}
+
+async function deleteNewPosts(userId: string, anchorId: string, before: Set<string>) {
+  const newIds = [...(await postIds(userId, anchorId))].filter((id) => !before.has(id));
+  if (newIds.length === 0) return;
+  await fetch(`${SUPABASE_URL}/rest/v1/posts?id=in.(${newIds.join(",")})`, { method: "DELETE", headers: headers() });
+}
+
 // Se ancla al bloque «Sesiones» de la ficha (ver registrar-sesion-v2.spec.ts).
 function sessionLink(page: Page, passId: string) {
   return page
@@ -117,6 +130,7 @@ test("libro: terminar por sesión, lacrar 8/10 con dedicatoria y guardar deja no
 
   const snapshot = await snapshotPass(pass.id);
   const sessionsBefore = await sessionIds(pass.id);
+  const postsBefore = await postIds(userId, book.id);
   const dedication = `Dedicatoria e2e ${Date.now()}`;
 
   try {
@@ -166,6 +180,7 @@ test("libro: terminar por sesión, lacrar 8/10 con dedicatoria y guardar deja no
   } finally {
     await patch(`passes?id=eq.${pass.id}`, snapshot);
     await deleteNewSessions(pass.id, sessionsBefore);
+    await deleteNewPosts(userId, book.id, postsBefore);
   }
 });
 
@@ -227,10 +242,12 @@ test("película: marcar Vista enseña la entrada y «Ahora no» cierra la hoja",
   );
   if (!pass) throw new Error("devtest no tiene ningún pase de película completado para reutilizar");
   const snapshot = await snapshotPass(pass.id);
+  const postsBefore = await postIds(userId, pass.item_id);
 
   try {
-    // Se devuelve a «en curso» para poder volver a marcarla Vista desde la ficha.
-    await patch(`passes?id=eq.${pass.id}`, { status: "in_progress", finished_on: null });
+    // Se devuelve a «en curso» para poder volver a marcarla Vista desde la ficha,
+    // y sin nota para comprobar que «Ahora no» no pone ninguna.
+    await patch(`passes?id=eq.${pass.id}`, { status: "in_progress", finished_on: null, rating: null });
 
     await login(page);
     await page.goto(`/pelicula/${pass.item_id}?tab=log`);
@@ -243,7 +260,14 @@ test("película: marcar Vista enseña la entrada y «Ahora no» cierra la hoja",
 
     await page.getByRole("button", { name: "Ahora no" }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
+
+    // «Ahora no» no guarda nada del cierre: la película queda vista y sin nota.
+    const [row] = await rest<{ status: string; rating: number | null }[]>(
+      `passes?id=eq.${pass.id}&select=status,rating`,
+    );
+    expect(row).toEqual({ status: "completed", rating: null });
   } finally {
     await patch(`passes?id=eq.${pass.id}`, snapshot);
+    await deleteNewPosts(userId, pass.item_id, postsBefore);
   }
 });
