@@ -238,6 +238,9 @@ export function ClosePassSheet({
   const speech: Speech = farewell
     ? {
         text: dropped ? droppedLine : tr(`farewell.${variantOf(passId, FAREWELL_VARIANTS)}`),
+        // La confirmación para lector de pantalla va en el mismo bocadillo
+        // (role="status"): antes un segundo <p role="status"> la anunciaba aparte.
+        sr: tr(dropped ? "droppedSr" : "farewellSr"),
         mood: dropped ? "sad" : "joy",
       }
     : ctx
@@ -389,8 +392,6 @@ export function ClosePassSheet({
           </button>
         </div>
 
-        {/* Al abandonar nada vuela a la balda: solo «Guardado». */}
-        {farewell && <p role="status" className="sr-only">{tr(dropped ? "droppedSr" : "farewellSr")}</p>}
       </form>
     </dialog>
   );

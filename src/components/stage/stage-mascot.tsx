@@ -7,7 +7,9 @@ import type { PetClass, PetStage } from "@/lib/pet/classes";
 import styles from "./stage-mascot.module.css";
 
 export type StagePet = { name: string; petClass: PetClass; stage: PetStage };
-export type Speech = { title?: string; text: string; mood: "idle" | "sad" | "joy" } | null;
+/** `sr`: texto solo para lector de pantalla que viaja en el MISMO anuncio que
+ *  la frase (p. ej. «Guardado.» en la despedida): una sola región viva, no dos. */
+export type Speech = { title?: string; text: string; sr?: string; mood: "idle" | "sad" | "joy" } | null;
 
 // La mascota sentada en lo alto del mueble con su bocadillo (spec «La voz»).
 // Sin mascota habla un narrador: el mismo bocadillo sin sprite. La bellota sí
@@ -28,7 +30,7 @@ export function StageMascot({ pet, speech, entered, size = "lg" }: {
   return (
     <div className={`${styles.petzone} ${size === "sm" ? styles.sm : ""}`} style={vars}>
       <div className={cls} role="status" aria-live="polite">
-        {speech && (<>{speech.title && <b>{speech.title}. </b>}{speech.text}</>)}
+        {speech && (<>{speech.title && <b>{speech.title}. </b>}{speech.text}{speech.sr && <span className="sr-only"> {speech.sr}</span>}</>)}
       </div>
       {!narrated && (
         <div className={`${styles.pet} ${entered ? styles.in : ""}`}>

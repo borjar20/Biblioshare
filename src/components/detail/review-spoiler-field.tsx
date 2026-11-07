@@ -1,4 +1,5 @@
 "use client";
+import { useId } from "react";
 import { useTranslations } from "next-intl";
 
 // Casilla «Contiene spoiler» de una reseña (pase o episodio). Marca la reseña
@@ -23,6 +24,7 @@ export function ReviewSpoilerField({
   chipClassName?: string;
 }) {
   const t = useTranslations("passes");
+  const hintId = useId();
   if (review.trim() === "") return null;
   if (chipClassName) {
     return (
@@ -33,11 +35,14 @@ export function ReviewSpoilerField({
             name="reviewIsSpoiler"
             checked={checked}
             onChange={(e) => onChange(e.target.checked)}
+            aria-describedby={hintId}
             className="sr-only"
           />
           {t("reviewSpoiler")}
         </label>
-        <span className="text-[10.5px] text-muted-foreground">{t("reviewSpoilerHint")}</span>
+        {/* Fuera de la chapa (no cabe), así que se enlaza a la casilla: sin
+            esto el lector de pantalla no oye la aclaración al llegar a ella. */}
+        <span id={hintId} className="text-[10.5px] text-muted-foreground">{t("reviewSpoilerHint")}</span>
       </div>
     );
   }

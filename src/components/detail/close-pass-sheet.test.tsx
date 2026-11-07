@@ -120,6 +120,11 @@ describe("ClosePassSheet (contrato)", () => {
     const bubble = screen.getAllByRole("status")[0];
     expect(farewellTexts.some((f) => bubble.textContent?.includes(f))).toBe(true);
     expect(screen.getByText(messages.ritual.closing.farewellSr)).toBeTruthy();
+    // Una sola región viva: la frase y «Guardado…» van en el mismo anuncio.
+    const announcing = screen
+      .getAllByRole("status")
+      .filter((s) => s.textContent?.includes(messages.ritual.closing.farewellSr));
+    expect(announcing).toEqual([bubble]);
     expect(onClose).not.toHaveBeenCalled();
     await advance(1500);
     expect(onClose).not.toHaveBeenCalled();
