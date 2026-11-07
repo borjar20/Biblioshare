@@ -55,6 +55,7 @@ function sheet() {
           position: { page: 40 },
           status: "dropped",
           total: 300,
+          pet: null,
         }}
         mode="page"
       />

@@ -13,6 +13,7 @@ type LayoutModule = {
 const layouts = import.meta.glob([
   "../app/coleccion/**/layout.tsx",
   "../app/comunidad/**/layout.tsx",
+  "../app/sesion/**/layout.tsx",
 ]) as Record<string, () => Promise<LayoutModule>>;
 
 async function clientMessagesFor(pathname: string) {
@@ -86,5 +87,11 @@ describe("Mensajes de cliente de la nueva navegación", () => {
     expect(community.stats).toBeUndefined();
     expect(community.rincon).toBeUndefined();
     expect(community.profile).toBeUndefined();
+  });
+
+  it("la entrada directa a /sesion traduce las cadenas del ritual", async () => {
+    const t = await translatorFor("/sesion/[passId]");
+    expect(t("ritual.closing.dateStamp")).toBe(messages.ritual.closing.dateStamp);
+    expect(t("ritual.session.savedGeneric")).toBe(messages.ritual.session.savedGeneric);
   });
 });
