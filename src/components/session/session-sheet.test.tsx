@@ -3,9 +3,10 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import messages from "../../../messages/es.json";
+import type { SessionContext } from "@/lib/sessions/load-context";
 import { SessionSheet } from "./session-sheet";
 
-const h = vi.hoisted(() => ({ addSession: vi.fn() }));
+const h = vi.hoisted(() => ({ addSession: vi.fn(), push: vi.fn() }));
 
 vi.mock("@/lib/sessions/actions", () => ({ addSession: h.addSession }));
 vi.mock("@/lib/sessions/network-catch", () => ({ withNetworkCatch: (action: unknown) => action }));
@@ -14,10 +15,11 @@ vi.mock("@/lib/sessions/timer", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/sessions/timer")>()),
   clearTimer: vi.fn(),
 }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: h.push }) }));
 // Los server actions del margen arrastran server-only: aquí solo interesa el render.
 vi.mock("@/lib/margin/actions", () => ({ createMarginNote: vi.fn() }));
 vi.mock("@/lib/margin/follower-search", () => ({ searchMyFollowers: vi.fn() }));
+vi.mock("@/components/pet/pet-sprite", () => ({ PetSprite: () => null }));
 vi.mock("./session-modal", () => ({ useModalClose: () => undefined }));
 vi.mock("./session-hero", () => ({ SessionHero: () => null }));
 vi.mock("./session-notebook", () => ({ SessionNotebook: () => null }));
@@ -28,6 +30,7 @@ afterEach(cleanup);
 
 beforeEach(() => {
   h.addSession.mockReset();
+  h.push.mockReset();
   Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
     configurable: true,
     value(this: HTMLDialogElement) { this.open = true; },
@@ -41,7 +44,7 @@ beforeEach(() => {
   });
 });
 
-function sheet() {
+function sheet(over: Partial<SessionContext> = {}) {
   return render(
     <NextIntlClientProvider locale="es" messages={messages}>
       <SessionSheet
@@ -56,6 +59,7 @@ function sheet() {
           status: "dropped",
           total: 300,
           pet: null,
+          ...over,
         }}
         mode="page"
       />
@@ -122,5 +126,22 @@ describe("SessionSheet · elegir cómo retomar (#737)", () => {
       shareBody: "He vuelto a la página 25",
       shareSpoiler: "on",
     });
+  });
+});
+
+describe("SessionSheet · ritual", () => {
+  it("abre con la frase de la página actual (narrador sin mascota)", () => {
+    sheet({ position: { page: 180 }, status: "in_progress", total: 412 });
+    expect(screen.getByRole("status").textContent).toContain("Ibas por la 180");
+  });
+
+  it("al guardar dice la frase de la sesión y solo cierra tras el microrritual", async () => {
+    h.addSession.mockResolvedValue({ ok: true });
+    const { container } = sheet({ position: { page: 180 }, status: "in_progress", total: 412 });
+    fireEvent.change(screen.getByLabelText("Página final de hoy"), { target: { value: "214" } });
+    fireEvent.submit(container.querySelector("form")!);
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("34 páginas"));
+    expect(h.push).not.toHaveBeenCalled();
+    await waitFor(() => expect(h.push).toHaveBeenCalledTimes(1), { timeout: 2500 });
   });
 });

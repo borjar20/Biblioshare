@@ -22,6 +22,10 @@ import { SessionHero } from "./session-hero";
 import type { NoteAnchor } from "@/components/notes/note-composer";
 import { SessionNotebook } from "./session-notebook";
 import { MarginNoteSheet } from "@/components/margin/margin-note-sheet";
+import materials from "@/components/stage/materials.module.css";
+import { StageMascot, type Speech } from "@/components/stage/stage-mascot";
+import { MiniShelf } from "@/components/stage/mini-shelf";
+import { openingLine, savedLine } from "@/lib/ritual/session-lines";
 
 const STATUSES: MediaStatus[] = [
   "planned",
@@ -64,6 +68,7 @@ export function SessionSheet({
   const tLibrary = useTranslations("library");
   const tResume = useTranslations("passes.resume");
   const tMargin = useTranslations("margin");
+  const tRitual = useTranslations("ritual.session");
   const router = useRouter();
   // null en modo "page" (no hay SessionModal por encima). En modo "modal" es
   // el único punto de salida del <dialog> exterior (ver session-modal.tsx):
@@ -153,7 +158,6 @@ export function SessionSheet({
     // objetivo diario, hito de racha): que el provider las drene y anime. Va
     // aquí y no en el bloque de derivación porque disparar un evento es un
     // efecto, no estado derivado. Se pide también cuando el pase se cierra.
-    checkCelebrations();
     // SOLO con el guardado CONFIRMADO se apaga el cronómetro: localStorage y,
     // vía el espejo app→nativo de timer.ts (clearRunningTimer), el TimerStore
     // de Android — la notificación/widget dejan de mostrar la sesión cuando
@@ -161,8 +165,23 @@ export function SessionSheet({
     // tocar «Registrar»: si el envío fallaba sin red, la única copia moría).
     // Idempotente si no había cronómetro; el espejo se autoguarda de plataforma.
     if (itemType === "book") clearTimer(passId);
-    if (state.passClosed) return;
-    closeSheet();
+    // Las celebraciones se piden también cuando el pase se cierra, y esperan a
+    // que se vea la hoja de cierre (su onClose es quien navega).
+    if (state.passClosed) {
+      checkCelebrations();
+      return;
+    }
+    // Microrritual: la frase de la mascota se ve antes de salir; las
+    // celebraciones drenan después, como antes (spec, decisión 5).
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const id = window.setTimeout(
+      () => {
+        checkCelebrations();
+        closeSheet();
+      },
+      reduced ? 120 : 1200,
+    );
+    return () => window.clearTimeout(id);
   }, [state, closeSheet, itemType, passId]);
 
   const currentPage =
@@ -206,6 +225,19 @@ export function SessionSheet({
   // la marca de spoiler necesitan conservar su borrador igual que el estado.
   const [shareBody, setShareBody] = useState("");
   const [shareSpoiler, setShareSpoiler] = useState(false);
+
+  // La frase se deriva en el render (sin setState en efectos). Tras guardar
+  // usa lo enviado: livePage y newlyMarkedCount siguen siendo los del envío.
+  const line = state.ok
+    ? savedLine({
+        itemType,
+        fromPage: currentPage,
+        toPage: livePage,
+        total,
+        episodes: newlyMarkedCount,
+      })
+    : openingLine(itemType, currentPage);
+  const speech: Speech = { text: tRitual(line.key, line.values), mood: state.ok ? "joy" : "idle" };
 
   const noteAnchor: NoteAnchor =
     itemType === "book"
@@ -253,7 +285,7 @@ export function SessionSheet({
       <form
         ref={formRef}
         action={formAction}
-        className="flex min-h-0 flex-1 flex-col overflow-y-auto"
+        className={`${materials.ritualScope} flex min-h-0 flex-1 flex-col overflow-y-auto`}
       >
         <input ref={resumeModeRef} type="hidden" name="resumeMode" />
         {/* `shrink-0`: cabecera, hero y footer son hermanos flex de este
@@ -265,7 +297,7 @@ export function SessionSheet({
             de campos de más abajo (el que sí tiene `flex-1`, sin `shrink-0`)
             absorbe el hueco que falta o sobra, y si no le basta, es el
             <form> quien scrollea (overflow-y-auto, ver comentario de arriba). */}
-        <div className="sticky top-0 z-10 flex shrink-0 items-center justify-between bg-background/90 px-4 py-3.5 backdrop-blur">
+        <div className="sticky top-0 z-10 flex shrink-0 items-center justify-between bg-[var(--st-bg)]/90 px-4 py-3.5 backdrop-blur">
           <span className="font-serif text-[17px] font-semibold">
             {/* Una serie ya no registra sesiones (fase 4, D3): marca episodios. */}
             {itemType === "series" ? t("sheetTitleSeries") : t("sheetTitle")}
@@ -274,7 +306,7 @@ export function SessionSheet({
             type="button"
             onClick={closeSheet}
             aria-label={t("close")}
-            className="grid h-[30px] w-[30px] place-items-center rounded-lg border border-border bg-surface text-muted-foreground"
+            className={materials.knob}
           >
             ✕
           </button>
@@ -287,6 +319,18 @@ export function SessionSheet({
           coverUrl={ctx.coverUrl}
           statusLabel={tLibrary(`status.${ctx.status}`)}
         />
+
+        <div className="relative mx-4 mt-1 mb-2 shrink-0 pt-[92px]">
+          <MiniShelf
+            spines={[
+              { color: "#b5652f", h: 70 },
+              { color: "#2f6f73", h: 60 },
+              { color: "#6b4d77", h: 76 },
+            ]}
+          >
+            <StageMascot pet={ctx.pet} speech={speech} entered size="sm" />
+          </MiniShelf>
+        </div>
 
         {/* Este es el único hermano SIN `shrink-0`: es el que debe absorber el
             hueco que falte o sobre entre cabecera+hero+footer (arriba) y la
@@ -358,7 +402,7 @@ export function SessionSheet({
           {/* Solo libros: una serie publica sola su post diario (autopost-watched.ts,
               con su interruptor en Ajustes), no un «Compartir» por hoja. */}
           {itemType === "book" && (
-            <div className="flex flex-col gap-2.5 rounded-lg border border-border bg-surface p-3">
+            <div className="flex flex-col gap-2.5 rounded-lg border border-border bg-[var(--st-panel)] p-3">
               <label className="flex items-center gap-2 text-sm text-foreground">
                 <input
                   type="checkbox"
@@ -397,7 +441,7 @@ export function SessionSheet({
 
           {/* Estado plegado (D8): el caso normal —registrar y seguir— no lo ve.
               Sigue disponible para abandonar o completar a mano sin ir a la ficha. */}
-          <details className="rounded-lg border border-border bg-surface">
+          <details className="rounded-lg border border-border bg-[var(--st-panel)]">
             <summary className="cursor-pointer px-3 py-2.5 text-[12.5px] font-semibold text-muted-foreground">
               {t("statusToggle")}
             </summary>
@@ -424,14 +468,18 @@ export function SessionSheet({
             scrollea de más arriba: si el usuario ya hizo scroll hasta el
             fondo para llegar al botón, un aviso pintado arriba queda fuera
             de vista y ve un botón deshabilitado sin explicación. */}
-        <div className="sticky bottom-0 z-10 shrink-0 border-t border-border bg-background/92 px-4 pt-3.5 pb-4 backdrop-blur">
+        <div className="sticky bottom-0 z-10 shrink-0 border-t border-border bg-[var(--st-bg)]/92 px-4 pt-3.5 pb-4 backdrop-blur">
           {state.error && (
             <p className="mb-2.5 text-sm text-status-dropped">{t(`errors.${state.error}`)}</p>
           )}
           {notePending && (
             <p className="mb-2.5 text-sm text-status-dropped">{t("notePendingHint")}</p>
           )}
-          <Button type="submit" disabled={pending || notePending} className="w-full">
+          <button
+            type="submit"
+            disabled={pending || notePending}
+            className={`${materials.leather} w-full`}
+          >
             {pending
               ? t("submitting")
               : noteCount > 0
@@ -439,7 +487,7 @@ export function SessionSheet({
                 : itemType === "series" && newlyMarkedCount > 0
                   ? t("submitEpisodes", { count: newlyMarkedCount })
                   : t("submit")}
-          </Button>
+          </button>
           <p className="mt-2 text-center text-[11px] text-muted-foreground">
             {itemType === "book" ? t("footerHintBook") : t("footerHintSeries")}
           </p>
