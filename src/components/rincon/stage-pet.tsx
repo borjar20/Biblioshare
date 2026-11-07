@@ -1,6 +1,8 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { PetSprite } from "@/components/pet/pet-sprite";
+import { spriteBox } from "@/lib/pet/manifest";
 import type { SorteoPet } from "@/lib/rincon/load-sorteo";
 import styles from "./sorteo-stage.module.css";
 
@@ -17,8 +19,11 @@ export type Speech = { title?: string; text: string; mood: "idle" | "sad" | "joy
 export function StagePet({ pet, speech, entered }: { pet: SorteoPet | null; speech: Speech; entered: boolean }) {
   const narrated = !pet;
   const cls = [styles.bubble, speech ? "" : styles.off, narrated ? styles.narrated : ""].filter(Boolean).join(" ");
+  // Caja real del personaje en su celda: el CSS la usa para apoyarlo en el mueble.
+  const box = pet ? spriteBox(pet.stage, pet.petClass).box : null;
+  const vars = box ? ({ "--bx": box.x, "--by": box.y, "--bw": box.w, "--bh": box.h } as CSSProperties) : undefined;
   return (
-    <>
+    <div className={styles.petzone} style={vars}>
       <div className={cls} role="status" aria-live="polite">
         {speech && (<>{speech.title && <b>{speech.title}. </b>}{speech.text}</>)}
       </div>
@@ -36,6 +41,6 @@ export function StagePet({ pet, speech, entered }: { pet: SorteoPet | null; spee
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }

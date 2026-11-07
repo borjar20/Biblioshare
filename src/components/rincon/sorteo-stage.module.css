@@ -112,14 +112,21 @@
 @keyframes shake { 20% { transform: translateX(-4px) rotate(-.3deg) } 40% { transform: translateX(4px) rotate(.3deg) } 60% { transform: translateX(-3px) } 80% { transform: translateX(2px) } }
 @keyframes shakeAlt { 20% { transform: translateX(-4px) rotate(-.3deg) } 40% { transform: translateX(4px) rotate(.3deg) } 60% { transform: translateX(-3px) } 80% { transform: translateX(2px) } }
 
-/* Mascota sentada en lo alto del mueble */
-.pet { position: absolute; right: 8px; bottom: calc(100% - var(--petsz) * .1); z-index: 8; width: calc(96px * var(--petscale)); height: calc(96px * var(--petscale)); pointer-events: none;
+/* Mascota sentada en lo alto del mueble. La celda del sprite (92–104 px) lleva
+   un 30–40 % de relleno transparente: se posiciona la CAJA REAL del personaje
+   (--bx/--by/--bw/--bh, de spriteBox(), en px de celda), no la celda, para que
+   los pies apoyen en el copete (que asoma 10 px sobre el mueble) y el bocadillo
+   quede pegado a su izquierda sin taparlo. `.petzone` no genera caja: solo pasa
+   las variables a la mascota y al bocadillo, que se posicionan contra `.case`. */
+.petzone { display: contents; --pw: calc(var(--bw, 72) * var(--petscale) * 1px); --ph: calc(var(--bh, 68) * var(--petscale) * 1px) }
+.pet { position: absolute; right: 16px; bottom: calc(100% + 8px); z-index: 8; width: var(--pw); height: var(--ph); pointer-events: none;
   transform: translateY(-40px); opacity: 0; transition: transform .7s cubic-bezier(.3,1.5,.5,1), opacity .3s }
 .pet.in { transform: none; opacity: 1 }
-.pet > .sprite-box { transform: scale(var(--petscale)); transform-origin: bottom right; image-rendering: pixelated }
+.pet > .sprite-box { position: absolute; left: calc(var(--bx, 11) * var(--petscale) * -1px); top: calc(var(--by, 10) * var(--petscale) * -1px);
+  transform: scale(var(--petscale)); transform-origin: 0 0; image-rendering: pixelated }
 .pet.hop { animation: hop .5s 2 }
 @keyframes hop { 50% { translate: 0 -14px } }
-.bubble { position: absolute; right: calc(var(--petsz) - 4px); bottom: calc(100% + var(--petsz) * .45); z-index: 9; width: min(300px, calc(100% - var(--petsz) - 4px)); background: #fbf4e6; color: #2a1f15;
+.bubble { position: absolute; right: calc(16px + var(--pw) + 8px); bottom: calc(100% + 8px + var(--ph) * .4); z-index: 9; width: min(300px, calc(100% - var(--pw) - 48px)); background: #fbf4e6; color: #2a1f15;
   border-radius: 16px 16px 4px 16px; padding: 10px 14px; font-size: 13.5px; line-height: 1.4; box-shadow: 0 10px 24px -8px rgba(0,0,0,.6);
   transform-origin: bottom right; transition: transform .25s cubic-bezier(.34,1.6,.64,1), opacity .2s }
 .bubble.off { transform: scale(.4); opacity: 0 }
