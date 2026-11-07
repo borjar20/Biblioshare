@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useActionState, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -116,11 +116,39 @@ export function SessionSheet({
   // valor EN VIVO para combinarlo con la hora opcional en combineStartedAt —
   // ver book-progress-field.tsx.
   const [sessionDate, setSessionDate] = useState(todayISO());
+  // Microrritual de salida (botón deshabilitado, frase de guardado, cierre
+  // diferido). Va en un flag propio y NO en `state.ok`: con cacheComponents la
+  // ruta interceptada se conserva entre visitas (Activity, TRAMPAS #26) y
+  // `useActionState` sigue devolviendo el `{ ok: true }` de la sesión anterior
+  // al reabrir la hoja del mismo pase. Solo una respuesta NUEVA lo arma; lo
+  // desarman el temporizador y la limpieza al ocultarse/desmontarse.
+  const [leaving, setLeaving] = useState(false);
   if (state !== prevState) {
     setPrevState(state);
     if (state.passClosed) setClosingPass(true);
     if (state.askResume) setResumeOpen(true);
+    if (state.ok && !state.passClosed) setLeaving(true);
   }
+  // Salir de la hoja la deja lista para la próxima visita. Medido en e2e
+  // (cierre-ritual.spec.ts, «dos sesiones seguidas»): tras `replace` a la
+  // ficha la ruta interceptada sigue montada Y visible (solo se cierra su
+  // <dialog>), así que ninguna limpieza de efecto corre; el cambio de ruta sí
+  // llega. No se apaga en el propio temporizador: entre él y que se cierre el
+  // <dialog> media la navegación, y con el botón reactivado se podía guardar
+  // dos veces (972e9346).
+  const pathname = usePathname();
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  if (pathname !== prevPathname) {
+    setPrevPathname(pathname);
+    setLeaving(false);
+  }
+
+  // Al ocultarse (Activity) o desmontarse la hoja, el microrritual en curso se
+  // abandona: al volver no debe quedar el botón deshabilitado ni un cierre
+  // pendiente. useLayoutEffect para que la limpieza corra ANTES de ocultarse.
+  useLayoutEffect(() => {
+    return () => setLeaving(false);
+  }, []);
 
   useEffect(() => {
     const dialog = resumeDialogRef.current;
@@ -152,8 +180,13 @@ export function SessionSheet({
   // ClosePassSheet más abajo. Si el pase se cerró con esta sesión, la
   // navegación espera: primero se ve la hoja de cierre (más abajo) y es su
   // onClose quien navega.
+  // Respuesta ok ya atendida. Los efectos se re-ejecutan al volver a mostrarse
+  // la ruta (Activity) con el MISMO `state`: sin esta guarda, el cronómetro que
+  // el usuario hubiera arrancado después se borraría al reabrir la hoja.
+  const handledStateRef = useRef<AddSessionState>(initialState);
   useEffect(() => {
-    if (!state.ok) return;
+    if (!state.ok || handledStateRef.current === state) return;
+    handledStateRef.current = state;
     // El guardado pudo ganar celebraciones en servidor (primera actividad,
     // objetivo diario, hito de racha): que el provider las drene y anime. Va
     // aquí y no en el bloque de derivación porque disparar un evento es un
@@ -167,12 +200,16 @@ export function SessionSheet({
     if (itemType === "book") clearTimer(passId);
     // Las celebraciones se piden también cuando el pase se cierra, y esperan a
     // que se vea la hoja de cierre (su onClose es quien navega).
-    if (state.passClosed) {
-      checkCelebrations();
-      return;
-    }
-    // Microrritual: la frase de la mascota se ve antes de salir; las
-    // celebraciones drenan después, como antes (spec, decisión 5).
+    if (state.passClosed) checkCelebrations();
+  }, [state, itemType, passId]);
+
+  // Microrritual: la frase de la mascota se ve antes de salir; las
+  // celebraciones drenan después, como antes (spec, decisión 5). Lo gobierna
+  // `leaving`, no `state.ok` (ver arriba): al ocultarse la ruta la limpieza
+  // cancela el temporizador y el layout effect apaga `leaving`, así que al
+  // volver a mostrarse no se rearma.
+  useEffect(() => {
+    if (!leaving) return;
     const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     const id = window.setTimeout(
       () => {
@@ -182,7 +219,7 @@ export function SessionSheet({
       reduced ? 120 : 1200,
     );
     return () => window.clearTimeout(id);
-  }, [state, closeSheet, itemType, passId]);
+  }, [leaving, closeSheet]);
 
   const currentPage =
     "page" in position && position.page !== undefined ? position.page : null;
@@ -236,10 +273,10 @@ export function SessionSheet({
   // refrescarse a la página nueva (fromPage = toPage), y la rejilla de
   // episodios puede volver a contar 0.
   const line =
-    state.ok && submitted
+    leaving && submitted
       ? savedLine({ itemType, total, ...submitted })
       : openingLine(itemType, currentPage);
-  const speech: Speech = { text: tRitual(line.key, line.values), mood: state.ok ? "joy" : "idle" };
+  const speech: Speech = { text: tRitual(line.key, line.values), mood: leaving ? "joy" : "idle" };
 
   const noteAnchor: NoteAnchor =
     itemType === "book"
@@ -482,7 +519,7 @@ export function SessionSheet({
           )}
           <button
             type="submit"
-            disabled={pending || notePending || (state.ok && !state.passClosed)}
+            disabled={pending || notePending || leaving}
             className={`${materials.leather} w-full`}
           >
             {pending

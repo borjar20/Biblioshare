@@ -4,9 +4,11 @@ import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import messages from "../../../messages/es.json";
 import type { SessionContext } from "@/lib/sessions/load-context";
+import { Activity } from "react";
+import { clearTimer } from "@/lib/sessions/timer";
 import { SessionSheet } from "./session-sheet";
 
-const h = vi.hoisted(() => ({ addSession: vi.fn(), push: vi.fn() }));
+const h = vi.hoisted(() => ({ addSession: vi.fn(), push: vi.fn(), pathname: "/sesion/pass-1" }));
 
 vi.mock("@/lib/sessions/actions", () => ({ addSession: h.addSession }));
 vi.mock("@/lib/sessions/network-catch", () => ({ withNetworkCatch: (action: unknown) => action }));
@@ -16,7 +18,7 @@ vi.mock("@/lib/sessions/timer", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/sessions/timer")>()),
   clearTimer: vi.fn(),
 }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: h.push }) }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: h.push }), usePathname: () => h.pathname }));
 // Los server actions del margen arrastran server-only: aquí solo interesa el render.
 vi.mock("@/lib/margin/actions", () => ({ createMarginNote: vi.fn() }));
 vi.mock("@/lib/margin/follower-search", () => ({ searchMyFollowers: vi.fn() }));
@@ -32,7 +34,9 @@ afterEach(cleanup);
 beforeEach(() => {
   h.addSession.mockReset();
   h.push.mockReset();
+  h.pathname = "/sesion/pass-1";
   vi.mocked(checkCelebrations).mockClear();
+  vi.mocked(clearTimer).mockClear();
   Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
     configurable: true,
     value(this: HTMLDialogElement) { this.open = true; },
@@ -183,5 +187,76 @@ describe("SessionSheet · ritual", () => {
     await waitFor(() => expect(checkCelebrations).toHaveBeenCalledTimes(1));
     await new Promise((r) => setTimeout(r, 1500));
     expect(h.push).not.toHaveBeenCalled();
+  });
+});
+
+// Con cacheComponents la ruta /sesion se conserva entre visitas: o se oculta con
+// <Activity> (los efectos se limpian y se re-ejecutan sin render nuevo) o sigue
+// montada y visible con el <dialog> cerrado. En ambos casos `useActionState`
+// devuelve aún el `{ ok: true }` de la sesión anterior al reabrir la hoja.
+describe("SessionSheet · reabrir la hoja conservada", () => {
+  const at = (mode: "visible" | "hidden") => <Activity mode={mode}>{sheetEl({ position: { page: 180 }, status: "in_progress", total: 412 })}</Activity>;
+
+  async function saveOnce(container: HTMLElement) {
+    fireEvent.change(screen.getByLabelText("Página final de hoy"), { target: { value: "214" } });
+    fireEvent.submit(container.querySelector("form")!);
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("34 páginas"));
+  }
+
+  it("ocultarse a mitad del microrritual lo cancela: al volver, botón activo, frase de apertura y sin auto-cierre", async () => {
+    h.addSession.mockResolvedValue({ ok: true });
+    const { container, rerender } = render(at("visible"));
+    await saveOnce(container);
+    expect(clearTimer).toHaveBeenCalledTimes(1);
+
+    rerender(at("hidden"));
+    rerender(at("visible"));
+
+    const button = screen.getByRole("button", { name: "Guardar sesión" }) as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
+    expect(screen.getByRole("status").textContent).toContain("Ibas por la 180");
+    await new Promise((r) => setTimeout(r, 1500));
+    expect(h.push).not.toHaveBeenCalled();
+    // El cronómetro se apaga una vez por guardado confirmado, no al reaparecer.
+    expect(clearTimer).toHaveBeenCalledTimes(1);
+  });
+
+  it("reaparecer tras un guardado completo no vuelve a apagar el cronómetro ni a pedir celebraciones", async () => {
+    h.addSession.mockResolvedValue({ ok: true });
+    const { container, rerender } = render(at("visible"));
+    await saveOnce(container);
+    await waitFor(() => expect(h.push).toHaveBeenCalledTimes(1), { timeout: 2500 });
+    expect(clearTimer).toHaveBeenCalledTimes(1);
+    expect(checkCelebrations).toHaveBeenCalledTimes(1);
+
+    rerender(at("hidden"));
+    rerender(at("visible"));
+    await new Promise((r) => setTimeout(r, 1500));
+
+    expect(clearTimer).toHaveBeenCalledTimes(1);
+    expect(checkCelebrations).toHaveBeenCalledTimes(1);
+    expect(h.push).toHaveBeenCalledTimes(1);
+    expect((screen.getByRole("button", { name: "Guardar sesión" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("si la ruta sigue montada y visible, salir a la ficha y volver deja la hoja limpia", async () => {
+    // Una respuesta nueva por envío, como una server action real.
+    h.addSession.mockImplementation(async () => ({ ok: true }));
+    const { container, rerender } = render(at("visible"));
+    await saveOnce(container);
+    await waitFor(() => expect(h.push).toHaveBeenCalledTimes(1), { timeout: 2500 });
+
+    h.pathname = "/libro/book-1";
+    rerender(at("visible"));
+    h.pathname = "/sesion/pass-1";
+    rerender(at("visible"));
+
+    expect((screen.getByRole("button", { name: "Guardar sesión" }) as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.getByRole("status").textContent).toContain("Ibas por la 180");
+
+    // Y una segunda sesión vuelve a hacer su microrritual entero.
+    await saveOnce(container);
+    await waitFor(() => expect(h.push).toHaveBeenCalledTimes(2), { timeout: 2500 });
+    expect(clearTimer).toHaveBeenCalledTimes(2);
   });
 });

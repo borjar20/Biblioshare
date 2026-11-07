@@ -169,6 +169,56 @@ test("libro: terminar por sesión, lacrar 8/10 con dedicatoria y guardar deja no
   }
 });
 
+// Con cacheComponents la ruta interceptada se conserva (Activity) entre una
+// visita y la siguiente: la segunda hoja NO puede heredar el `{ ok: true }` de
+// la primera (botón deshabilitado, frase de guardado, auto-cierre a los 120 ms).
+test("libro: dos sesiones seguidas desde la ficha sin recargar", async ({ page }) => {
+  test.setTimeout(90_000);
+  const userId = await devtestId();
+  const [book] = await rest<{ id: string }[]>(`books?${FINAL_EMPIRE_FILTER}&select=id`);
+  if (!book) throw new Error("no se encontró el libro fixture en catálogo");
+  const [pass] = await rest<{ id: string }[]>(
+    `passes?user_id=eq.${userId}&item_type=eq.book&item_id=eq.${book.id}&is_active=eq.true&select=id`,
+  );
+  if (!pass) throw new Error('devtest no tiene pase activo sobre "The Final Empire"');
+
+  const snapshot = await snapshotPass(pass.id);
+  const sessionsBefore = await sessionIds(pass.id);
+
+  try {
+    await patch(`passes?id=eq.${pass.id}`, { position: { page: 5 }, status: "in_progress", finished_on: null });
+
+    await login(page);
+    await page.goto(`/libro/${book.id}?tab=log`);
+    const dialog = page.getByRole("dialog");
+
+    // Primera sesión.
+    await sessionLink(page, pass.id).click();
+    await expect(dialog).toBeVisible();
+    await dialog.locator('input[name="page"]').fill("10");
+    await dialog.getByRole("button", { name: "Guardar sesión" }).click();
+    await expect(dialog).toBeHidden({ timeout: 20_000 });
+    await expect(page).toHaveURL(new RegExp(`/libro/${book.id}`));
+    await expect.poll(async () => (await sessionIds(pass.id)).size - sessionsBefore.size).toBe(1);
+
+    // Segunda, sin recargar: la hoja vuelve limpia y se queda abierta.
+    await sessionLink(page, pass.id).click();
+    await expect(dialog).toBeVisible();
+    const save = dialog.getByRole("button", { name: "Guardar sesión" });
+    await expect(save).toBeEnabled();
+    // Reduced motion: un auto-cierre heredado saltaría a los 120 ms.
+    await page.waitForTimeout(1_000);
+    await expect(dialog).toBeVisible();
+    await dialog.locator('input[name="page"]').fill("15");
+    await save.click();
+    await expect(dialog).toBeHidden({ timeout: 20_000 });
+    await expect.poll(async () => (await sessionIds(pass.id)).size - sessionsBefore.size).toBe(2);
+  } finally {
+    await patch(`passes?id=eq.${pass.id}`, snapshot);
+    await deleteNewSessions(pass.id, sessionsBefore);
+  }
+});
+
 test("película: marcar Vista enseña la entrada y «Ahora no» cierra la hoja", async ({ page }) => {
   test.setTimeout(90_000);
   const userId = await devtestId();
