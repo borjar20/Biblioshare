@@ -2,12 +2,11 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
 import { clamp, MAX_ZOOM, MIN_ZOOM, panBy, zoomAt, zoomToward } from "@/lib/atlas/camera";
-import type { Camera, Extent, Point, Viewport } from "@/lib/atlas/types";
-import { readCamera, writeCamera, type CameraContext } from "@/lib/sagas/atlas/camera-storage";
-import type { Lens, Orientation } from "@/lib/sagas/atlas/layout";
-import { centreIn, fitVisible, NO_INSETS, type Insets } from "@/lib/sagas/atlas/visible-camera";
+import { readCamera, writeCamera, type CameraContext } from "@/lib/atlas/camera-storage";
+import type { Camera, Extent, Orientation, Point, Viewport } from "@/lib/atlas/types";
+import { centreIn, fitVisible, NO_INSETS, type Insets } from "@/lib/atlas/visible-camera";
 
-// Cámara del atlas de la saga (spec 2026-10-28 §7). Toda la geometría sale de
+// Cámara de los atlas (saga e índice) (spec 2026-10-28 §7). Toda la geometría sale de
 // `@/lib/atlas/camera`; aquí solo hay estado, gestos y persistencia.
 const DRAG_THRESHOLD = 5;
 const FALLBACK: Camera = { x: 0, y: 0, k: 1 };
@@ -81,14 +80,14 @@ export function useChromeInsets(
  * centrar usan la zona libre entre la barra y el dock (`insets`), no el viewport entero.
  * Lo que se guarda es solo la cámara que alguien movió.
  */
-export function useAtlasCamera({ ref, viewport, insets = NO_INSETS, extent, focus, sagaId, lens, orientation }: {
+export function useAtlasCamera({ ref, viewport, insets = NO_INSETS, extent, focus, storageKey, lens, orientation }: {
   ref: RefObject<HTMLElement | null>;
   viewport: Viewport;
   insets?: Insets;
   extent: Extent;
   focus: Point | null;
-  sagaId: string;
-  lens: Lens;
+  storageKey: string;
+  lens: string;
   orientation: Orientation;
 }) {
   const [moved, setMoved] = useState<Camera | null>(null);
@@ -97,13 +96,13 @@ export function useAtlasCamera({ ref, viewport, insets = NO_INSETS, extent, focu
   const ready = viewport.width > 0 && viewport.height > 0;
   const initial = useMemo<Camera | null>(() => {
     if (!ready) return null;
-    const saved = readCamera(sagaId, { lens, orientation });
+    const saved = readCamera(storageKey, { lens, orientation });
     if (saved) return saved;
     // Saga corta: se ve entera y grande. Saga larga: se lee desde donde vas, a tamaño real.
     const whole = fitVisible(extent, viewport, insets, 2);
     if (whole.k >= FIT_MIN_K || !focus) return whole;
     return centreIn(focus, 1, insets);
-  }, [ready, sagaId, lens, orientation, focus, extent, viewport, insets]);
+  }, [ready, storageKey, lens, orientation, focus, extent, viewport, insets]);
   const camera = moved ?? initial ?? FALLBACK;
 
   // Los listeners nativos (rueda) y los updaters leen lo último sin re-suscribirse.
@@ -122,21 +121,21 @@ export function useAtlasCamera({ ref, viewport, insets = NO_INSETS, extent, focu
   useLayoutEffect(() => {
     ctx.current = { lens, orientation };
   });
-  const pending = useRef<{ sagaId: string; camera: Camera; ctx: CameraContext } | null>(null);
+  const pending = useRef<{ key: string; camera: Camera; ctx: CameraContext } | null>(null);
   useEffect(() => {
     if (!moved) return;
     const at = ctx.current; // lente y orientación en que se movió, no las de cuando dispare el temporizador
-    pending.current = { sagaId, camera: moved, ctx: at };
+    pending.current = { key: storageKey, camera: moved, ctx: at };
     const id = setTimeout(() => {
-      writeCamera(sagaId, moved, at);
+      writeCamera(storageKey, moved, at);
       pending.current = null;
     }, 200);
     return () => clearTimeout(id);
-  }, [moved, sagaId]);
+  }, [moved, storageKey]);
   useEffect(() => {
     const box = pending;
     return () => {
-      if (box.current) writeCamera(box.current.sagaId, box.current.camera, box.current.ctx);
+      if (box.current) writeCamera(box.current.key, box.current.camera, box.current.ctx);
       box.current = null;
     };
   }, []);

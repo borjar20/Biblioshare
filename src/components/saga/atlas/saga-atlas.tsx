@@ -8,13 +8,13 @@ import { COVER_H, COVER_W, layoutAtlas, type Lens, type Orientation } from "@/li
 import type { AtlasModel, AtlasWork } from "@/lib/sagas/atlas/model";
 import { parseLens, parseRole } from "@/lib/sagas/atlas/lens";
 import { summarize } from "@/lib/sagas/atlas/summary";
-import { inVisibleArea } from "@/lib/sagas/atlas/visible-camera";
+import { inVisibleArea } from "@/lib/atlas/visible-camera";
 import { AtlasList } from "./atlas-list";
 import { AtlasPlane } from "./atlas-plane";
 import { OptionalToggle } from "./optional-toggle";
 import { AtlasDock, AtlasTopBar, AtlasZoom, LENS_LABEL, LENSES, ProgressToggle } from "./atlas-chrome";
 import { ItinerarySheet, type AtlasRoute } from "./itinerary-sheet";
-import { useAtlasCamera, useChromeInsets, useViewport } from "./use-atlas-camera";
+import { useAtlasCamera, useChromeInsets, useViewport } from "@/components/atlas/use-atlas-camera";
 import { WorkSheet } from "./work-sheet";
 import styles from "./atlas.module.css";
 
@@ -76,7 +76,7 @@ export function SagaAtlas({
     return p ? { x: p.x, y: p.y } : null;
   }, [model, layout]);
   const { camera, animated, zoomBy, fitAll, focusOn, bind } = useAtlasCamera({
-    ref: stageRef, viewport, insets, extent: layout.extent, focus, sagaId, lens, orientation,
+    ref: stageRef, viewport, insets, extent: layout.extent, focus, storageKey: `saga-atlas:${sagaId}`, lens, orientation,
   });
 
   // Mini-ficha (§7): clic, Enter o Espacio en una obra la abre; no mueve la cámara.

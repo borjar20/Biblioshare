@@ -16,23 +16,23 @@ const ORDEN: CameraContext = { lens: "orden", orientation: "h" };
 afterEach(() => vi.unstubAllGlobals());
 
 describe("cámara del atlas en sessionStorage", () => {
-  it("ida y vuelta por saga, con la clave saga-atlas:<id>", () => {
+  it("ida y vuelta por clave", () => {
     const s = fakeStorage();
     vi.stubGlobal("sessionStorage", s);
-    writeCamera("abc", { x: 10, y: -4, k: 1.5 }, ORDEN);
+    writeCamera("saga-atlas:abc", { x: 10, y: -4, k: 1.5 }, ORDEN);
     expect([...s.data.keys()]).toEqual(["saga-atlas:abc"]);
-    expect(readCamera("abc", ORDEN)).toEqual({ x: 10, y: -4, k: 1.5 });
-    expect(readCamera("otra", ORDEN)).toBeNull();
+    expect(readCamera("saga-atlas:abc", ORDEN)).toEqual({ x: 10, y: -4, k: 1.5 });
+    expect(readCamera("saga-atlas:otra", ORDEN)).toBeNull();
   });
 
   it("null si getItem lanza", () => {
     vi.stubGlobal("sessionStorage", { getItem: () => { throw new Error("bloqueado"); }, setItem: () => {} });
-    expect(readCamera("abc", ORDEN)).toBeNull();
+    expect(readCamera("saga-atlas:abc", ORDEN)).toBeNull();
   });
 
   it("escribir no lanza aunque el almacenamiento falle", () => {
     vi.stubGlobal("sessionStorage", { getItem: () => null, setItem: () => { throw new Error("lleno"); } });
-    expect(() => writeCamera("abc", { x: 0, y: 0, k: 1 }, ORDEN)).not.toThrow();
+    expect(() => writeCamera("saga-atlas:abc", { x: 0, y: 0, k: 1 }, ORDEN)).not.toThrow();
   });
 
   it("descarta lo que no es una cámara válida", () => {
@@ -41,23 +41,31 @@ describe("cámara del atlas en sessionStorage", () => {
     s.data.set("saga-atlas:a", "no-json");
     s.data.set("saga-atlas:b", JSON.stringify({ x: 1, y: 2, k: 0 }));
     s.data.set("saga-atlas:c", JSON.stringify({ x: "1", y: 2, k: 1 }));
-    expect(readCamera("a", ORDEN)).toBeNull();
-    expect(readCamera("b", ORDEN)).toBeNull();
-    expect(readCamera("c", ORDEN)).toBeNull();
+    expect(readCamera("saga-atlas:a", ORDEN)).toBeNull();
+    expect(readCamera("saga-atlas:b", ORDEN)).toBeNull();
+    expect(readCamera("saga-atlas:c", ORDEN)).toBeNull();
   });
 
   it("solo restaura si coinciden lente y orientación", () => {
     vi.stubGlobal("sessionStorage", fakeStorage());
-    writeCamera("abc", { x: 10, y: -4, k: 1.5 }, ORDEN);
-    expect(readCamera("abc", { lens: "publicacion", orientation: "h" })).toBeNull();
-    expect(readCamera("abc", { lens: "orden", orientation: "v" })).toBeNull();
-    expect(readCamera("abc", ORDEN)).toEqual({ x: 10, y: -4, k: 1.5 });
+    writeCamera("saga-atlas:abc", { x: 10, y: -4, k: 1.5 }, ORDEN);
+    expect(readCamera("saga-atlas:abc", { lens: "publicacion", orientation: "h" })).toBeNull();
+    expect(readCamera("saga-atlas:abc", { lens: "orden", orientation: "v" })).toBeNull();
+    expect(readCamera("saga-atlas:abc", ORDEN)).toEqual({ x: 10, y: -4, k: 1.5 });
   });
 
   it("ignora el formato antiguo, sin lente ni orientación", () => {
     const s = fakeStorage();
     vi.stubGlobal("sessionStorage", s);
     s.data.set("saga-atlas:abc", JSON.stringify({ x: 10, y: -4, k: 1.5 }));
-    expect(readCamera("abc", ORDEN)).toBeNull();
+    expect(readCamera("saga-atlas:abc", ORDEN)).toBeNull();
+  });
+
+  it("usa la clave tal cual, sin prefijo", () => {
+    const s = fakeStorage();
+    vi.stubGlobal("sessionStorage", s);
+    writeCamera("sagas-atlas", { x: 1, y: 2, k: 1 }, { lens: "indice", orientation: "h" });
+    expect([...s.data.keys()]).toEqual(["sagas-atlas"]);
+    expect(readCamera("sagas-atlas", { lens: "indice", orientation: "h" })).toEqual({ x: 1, y: 2, k: 1 });
   });
 });

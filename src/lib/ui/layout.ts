@@ -104,10 +104,6 @@ export const NOTE_GRID_COLS = "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:gri
  * Tarjetas anchas con contenido dentro (saga con progreso, club con portada y
  * recuento). Paran en cuatro: a 1600px repartidos entre tres, cada tarjeta se
  * iría a ~530px y el contenido queda flotando.
- *
- * OJO: `saga-load-more` monta su PROPIA rejilla para las filas que añade, así
- * que tiene que usar esta misma constante o las columnas dejan de alinearse
- * con las de la primera página.
  */
 export const CARD_GRID_COLS = "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
 

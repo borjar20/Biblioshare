@@ -6,9 +6,9 @@ import { useTranslations } from "next-intl";
 import type { Viewport } from "@/lib/atlas/types";
 import { SAGA_ACCENT, type SagaAccentToken } from "@/lib/sagas/accents";
 import type { AtlasWork } from "@/lib/sagas/atlas/model";
-import { cardPosition, type Insets } from "@/lib/sagas/atlas/visible-camera";
+import { cardPosition, type Insets } from "@/lib/atlas/visible-camera";
 import { SkipOptionalButton } from "./skip-optional-button";
-import { useDismissable } from "./use-dismissable";
+import { useDismissable } from "@/components/atlas/use-dismissable";
 import { useWorkFacts } from "./work-facts";
 import styles from "./atlas.module.css";
 

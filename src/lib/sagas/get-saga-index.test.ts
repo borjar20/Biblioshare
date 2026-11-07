@@ -38,7 +38,7 @@ describe("getSagaIndexData (#895)", () => {
       },
     } as never;
 
-    await getSagaIndexData(supabase, "");
+    await getSagaIndexData(supabase);
 
     expect(mocks.getCurrentUser).toHaveBeenCalledOnce();
     expect(ownerFilters).toEqual([

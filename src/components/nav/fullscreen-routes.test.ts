@@ -39,4 +39,9 @@ describe("rutas que se comen el marco de la app", () => {
     expect(isFullscreenRoute("/saga/x")).toBe(false);
     expect(isFullscreenRoute("/saga/x/mapas")).toBe(false);
   });
+
+  it("/sagas es pantalla completa; /sagas/nueva no", () => {
+    expect(isFullscreenRoute("/sagas")).toBe(true);
+    expect(isFullscreenRoute("/sagas/nueva")).toBe(false);
+  });
 });
