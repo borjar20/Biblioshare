@@ -147,18 +147,17 @@ test.describe("Inicio · estados de la columna personal", () => {
     await expect(draw).toBeVisible();
 
     await draw.click();
-    const sheet = page.getByRole("dialog");
-    await expect(sheet.getByRole("heading", { name: /deja que decida/i })).toBeVisible();
-
-    await sheet.getByRole("button", { name: /sorpréndeme/i }).click();
-    // Con un solo pendiente la ruleta revela al instante (sin animación larga).
-    const cta = sheet.getByRole("button", {
+    const stage = page.getByRole("dialog", { name: "Sacar un lomo" });
+    await stage.getByRole("button", { name: "¡Tirar!" }).click();
+    // Con un solo pendiente la partida salta directa a la revelación.
+    const cta = stage.getByRole("button", {
       name: /empezar a leer|ver esta noche|empezar la t1/i,
     });
     await expect(cta).toBeVisible({ timeout: 15_000 });
 
     await cta.click();
-    await expect(sheet.getByRole("button", { name: /en curso/i })).toBeVisible();
+    // Tras el CTA la partida se cierra sola y la página se refresca.
+    await expect(stage).toBeHidden({ timeout: 10_000 });
 
     // El efecto real: el pase queda in_progress.
     await expect

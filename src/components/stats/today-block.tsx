@@ -13,6 +13,8 @@ import { getProgress, passPercent } from "@/lib/library/progress";
 import { ChevronRightIcon } from "@/components/ui/icons";
 import { HomeExpandable } from "@/components/home/home-expandable";
 import { itemHref } from "@/lib/catalog/item-href";
+import { RouteMessages } from "@/components/route-messages";
+import { SorteoTrigger } from "@/components/rincon/sorteo-trigger";
 import { TodayCard } from "./today-card";
 import { TodayPicker } from "./today-picker";
 import { LaterShelf } from "./later-shelf";
@@ -48,13 +50,39 @@ export async function TodayBlock({ userId }: { userId: string }) {
     getPlannedItems(userId),
   ]);
 
-  // Dos estanterías iguales: la de «en curso» lleva además el enlace al
-  // Sorteo; la de «Tu siguiente historia» no, porque ya lo tiene integrado.
-  const laterShelf = (showDraw: boolean) =>
+  // Dos estanterías iguales: la de «en curso» lleva además el lomo «¿Cuál toca?»
+  // que abre el Sorteo; la de «Tu siguiente historia» no, porque ya lo tiene integrado.
+  // Con el lomo-botón se enseña una portada menos: ocupa un hueco de la rejilla
+  // y, con doce o más pendientes, se quedaba solo en una tercera fila.
+  const laterShelf = (drawSlot: React.ReactNode) =>
     planned.length > 0 ? (
-      <LaterShelf items={planned.slice(0, LATER_SHOWN)} total={planned.length} showDraw={showDraw} />
+      <LaterShelf
+        items={planned.slice(0, drawSlot ? LATER_SHOWN - 1 : LATER_SHOWN)}
+        total={planned.length}
+        drawSlot={drawSlot}
+      />
     ) : null;
-  const later = laterShelf(false);
+  const later = laterShelf(null);
+  // Solo el camino «en curso» pinta el lomo-botón: las cadenas del Sorteo se piden ahí.
+  async function laterWithDraw() {
+    if (planned.length === 0) return null;
+    const sorteoT = await getTranslations("sorteo");
+    return laterShelf(
+      <RouteMessages ns={["sorteo"]}>
+        <SorteoTrigger className="later-draw" ariaLabel={sorteoT("triggerLabel")}>
+          {/* Un hueco del mueble de la partida en miniatura: el lomo del «?»
+              asoma al pasar por encima, como en la tirada. */}
+          <span className="later-draw-nook" aria-hidden>
+            <span className="later-draw-back">
+              <i className="ld-book" /><i className="ld-movie" /><i className="ld-pick"><b>?</b></i><i className="ld-series" /><i className="ld-lean" />
+            </span>
+            <span className="later-draw-lip" />
+          </span>
+          <span className="later-draw-label">{sorteoT("trigger")}</span>
+        </SorteoTrigger>
+      </RouteMessages>
+    );
+  }
 
   const t = await getTranslations("today");
   const panel = await getTranslations("homePanels");
@@ -72,7 +100,7 @@ export async function TodayBlock({ userId }: { userId: string }) {
       // del Rincón: pases planned activos con su estimación). Perezoso: solo se
       // pide cuando de verdad estamos en el estado 2.
       const pool = await getSorteoPool(supabase, userId);
-      return cold(<ProximaLectura pool={pool.items} collections={pool.collections} later={later} />, planned, panel("nextStory"));
+      return cold(<ProximaLectura pool={pool.items} later={later} />, planned, panel("nextStory"));
     }
     // Solo se pide la colección cuando de verdad hace falta (sin en curso y sin
     // cola): un query menos en el camino feliz. Solo completados — releer es
@@ -121,7 +149,7 @@ export async function TodayBlock({ userId }: { userId: string }) {
         panelLabels={panelLabels}
         sectionHeading={<TodayHeader title={t("title")} />}
         keepGoingLabel={t("keepGoing")}
-        later={laterShelf(true)}
+        later={await laterWithDraw()}
         heading={
           <div className="flex items-center justify-between gap-3">
             <span className="font-mono text-[10px] tracking-[0.12em] uppercase text-muted-foreground">

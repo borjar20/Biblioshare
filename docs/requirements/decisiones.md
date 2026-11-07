@@ -8204,3 +8204,36 @@ semana» (baja a la fila siguiente si está la crónica). Solo con pendientes y 
 bajo 1100: en escritorio la estantería ya está abierta y lleva el enlace. La cola
 se lee con `getPlannedItems`, memoizada por petición con `cache()` de React
 (no `use cache`, regla #437), así que no suma consulta al bloque de hoy.
+
+## 2026-11-06 — «Sacar un lomo» se abre en el sitio y pasa a ser una partida
+
+- **Revierte** la decisión del 2026-11-01 (enlace directo `/coleccion/rincon?sorteo=1` desde el
+  Inicio): la partida se abre encima de la página de origen con `SorteoTrigger`, y al terminar
+  el usuario sigue donde estaba. El coste de no consultar en cada visita al Inicio se mantiene: el
+  pool lo trae la server action `loadSorteo()` solo al abrir, tapada por el telón.
+- **Todas las entradas cargan igual.** El Rincón también usa `loadSorteo()`: `SpineDraw` carga
+  `SorteoStage` en diferido (`next/dynamic`, `ssr: false`) y el escenario pide sus datos a la action
+  en cualquier entrada, de modo que la mascota llega igual desde el Inicio, «Para más tarde» y el
+  Rincón. Se descartó reutilizar el pool que ya tiene el Rincón porque dejaba la partida sin mascota.
+- `loadSorteo` no lleva `use cache` (regla #437): el pool depende de `auth.uid()`.
+- **Entrada por ancho.** Bajo 1100 px (tablet y móvil) la entrada es `HomeDrawTile`, que ahora abre
+  la partida en el sitio; el lomo-botón «¿Cuál toca?» de «Para más tarde» solo se ve desde 1100 px
+  (`.later-draw { display: none }` bajo ese ancho). La spec decía «escritorio y tablet → lomo-botón»;
+  en tablet «Para más tarde» vive en el panel plegado de lo que disfrutas, así que la tarjeta sigue
+  siendo el acceso a un gesto (mismo motivo que la decisión del 2026-11-02).
+- Las cadenas viven en el namespace `sorteo`, no en `rincon`: el Inicio lo manda al cliente con
+  `RouteMessages` y `rincon` es mucho más grande. Los layouts del Rincón
+  (`src/app/coleccion/rincon/layout.tsx`) y del perfil público (`src/app/u/[username]/layout.tsx`)
+  también mandan `sorteo`.
+- **Cierre.** No depende del evento nativo `close` del `<dialog>`: `closeStage()` ejecuta la limpieza
+  de forma síncrona e idempotente. Escape con «Afinar» abierto cierra solo el panel. Tras un CTA
+  correcto, cerrar (de cualquier forma) dispara exactamente un `router.refresh()`.
+- `DRAW_HREF` se queda para Biblioteca y los enlaces externos.
+- Spec: `docs/superpowers/specs/2026-11-06-sacar-lomo-partida-design.md`.
+- **Desvío de la spec en «Afinar».** Los cubos de tiempo se ven siempre dentro del panel; la spec
+  pedía un «Ajustar tiempo» plegado. El panel ya es opcional y llega plegado tras la píldora, así
+  que un segundo pliegue dentro solo añadía un gesto: se descartó.
+- **Mascota en la partida.** Sale siempre que el usuario tenga mascota: también si es bellota
+  (PetSprite la pinta) y aunque haya ocultado la compañera flotante (`companion_hidden` es una
+  preferencia del shell, no de la partida). El narrador queda solo para quien no tiene mascota.
+  Antes las dos cosas caían al narrador y parecía que la mascota había desaparecido.

@@ -1,14 +1,17 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { SorteoSheet } from "./sorteo-sheet";
-import type { SorteoCollection, SorteoItem } from "./sorteo-logic";
+import type { SorteoItem } from "./sorteo-logic";
+
+// La partida pesa: no viaja con el Rincón ni con el Inicio hasta que se abre.
+const SorteoStage = dynamic(() => import("./sorteo-stage").then((m) => m.SorteoStage), { ssr: false });
 
 // La estantería decorativa del frame C/H: alturas y colores variados, fijos,
-// para que la tarjeta tenga cuerpo. El sorteo real vive en la hoja.
+// para que la tarjeta tenga cuerpo. El sorteo real vive en SorteoStage.
 const SPINES = [
   { h: 78, c: "#cf8a54" },
   { h: 100, c: "#6bb0b4" },
@@ -48,21 +51,22 @@ function DrawFromUrl({ onOpen }: { onOpen: () => void }) {
 }
 
 // "Sacar un lomo": tarjeta-entrada del ritual (spec 2026-07-17). El botón abre
-// la hoja del sorteo (estantería animada + filtros). Tarjeta oscura a
+// la partida del sorteo (mueble, mascota y panel Afinar). Tarjeta oscura a
 // propósito (misma en claro y oscuro). Vacío: invita a añadir pendientes.
 export function SpineDraw({
   pool,
-  collections = [],
   openFromUrl = false,
 }: {
   pool: SorteoItem[];
-  collections?: SorteoCollection[];
   // Escucha `?sorteo=1`: abre la hoja (si hay pool) y limpia el parámetro.
   // Solo la usa el Rincón; el Inicio no debe leer la URL.
   openFromUrl?: boolean;
 }) {
   const t = useTranslations("rincon");
   const [open, setOpen] = useState(false);
+  // Se monta al abrir por primera vez y se queda montada (como SorteoTrigger).
+  const [mounted, setMounted] = useState(false);
+  if (open && !mounted) setMounted(true);
   const hasPool = pool.length > 0;
 
   const urlListener = openFromUrl ? (
@@ -129,12 +133,7 @@ export function SpineDraw({
         {t("drawButton")}
       </button>
 
-      <SorteoSheet
-        pool={pool}
-        collections={collections}
-        open={open}
-        onClose={close}
-      />
+      {mounted && <SorteoStage open={open} onClose={close} />}
     </div>
   );
 }

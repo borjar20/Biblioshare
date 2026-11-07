@@ -165,20 +165,25 @@ test("marcar una colección como sorteable la ofrece en el filtro del sorteo", a
     await expect(page.getByRole("menuitem", { name: /quitar del sorteo/i })).toBeVisible();
     await page.keyboard.press("Escape");
 
-    // Lo que de verdad importa: la colección se ofrece ya en el filtro del
-    // sorteo, que vive en el Rincón del perfil detrás del panel «⚙ Filtros».
+    // Lo que de verdad importa: la colección se ofrece ya como antojo del
+    // sorteo. «Sacar un lomo» del Rincón abre la partida (un <dialog>) y las
+    // colecciones sorteables salen en su panel opcional «Afinar la tirada».
     await page.goto(`/u/${USERNAME}?tab=rincon`);
-    // El botón se pinta en el servidor pero abre la hoja desde estado de
+    // El botón se pinta en el servidor pero abre la partida desde estado de
     // cliente: un clic anterior a la hidratación no hace nada y el test se
-    // quedaba esperando. Reintentar hasta que la hoja aparezca de verdad.
+    // quedaba esperando. Reintentar hasta que el diálogo aparezca de verdad.
+    const stage = page.getByRole("dialog", { name: "Sacar un lomo" });
     await expect(async () => {
       await page.getByRole("button", { name: /sacar un lomo/i }).click();
-      await expect(
-        page.getByRole("heading", { name: /deja que decida la estantería/i }),
-      ).toBeVisible({ timeout: 2000 });
+      await expect(stage).toBeVisible({ timeout: 2000 });
     }).toPass({ timeout: 15000 });
-    await page.getByRole("button", { name: /filtros/i }).click();
-    await expect(page.getByRole("button", { name: collectionName })).toBeVisible();
+    // La píldora del antojo activo abre «Afinar» (su nombre accesible lo lleva).
+    await stage.getByRole("button", { name: /Afinar/ }).click();
+    // La colección está vacía, así que su antojo puede salir desactivado con
+    // «Nada aquí ahora»: basta con que se ofrezca.
+    await expect(stage.getByRole("button", { name: new RegExp(collectionName) })).toBeVisible();
+    // Escape con Afinar abierto cierra el panel; el segundo, la partida.
+    await page.keyboard.press("Escape");
     await page.keyboard.press("Escape");
 
     // Limpieza: borrar la colección (confirm() nativo).

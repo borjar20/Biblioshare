@@ -129,7 +129,7 @@ export async function RinconTab({
   // contadores (solo escritorio, el móvil C no los trae — frame H).
   const rail = (
     <div className="flex flex-col gap-4">
-      <SpineDraw pool={pool.items} collections={pool.collections} openFromUrl />
+      <SpineDraw pool={pool.items} openFromUrl />
       <div className="hidden lg:block">
         <Card>
           <NotesCountsCard counts={counts} />

@@ -39,7 +39,7 @@ export async function getSorteoPool(
 ): Promise<SorteoPool> {
   const { data: entries, error } = await supabase
     .from("passes")
-    .select("id, item_type, item_id, edition_id")
+    .select("id, item_type, item_id, edition_id, created_at")
     .eq("user_id", userId)
     .eq("is_active", true)
     .eq("status", "planned");
@@ -54,6 +54,8 @@ export async function getSorteoPool(
     idsByType[entry.item_type].push(entry.item_id);
     editionIdByItem.set(`${entry.item_type}:${entry.item_id}`, entry.edition_id);
   }
+
+  const plannedSinceByItem = new Map(entries.map((e) => [`${e.item_type}:${e.item_id}`, e.created_at]));
 
   const [metaByKey, bookPace, moviePace, previous, sorteables] = await Promise.all([
     fetchCatalogMeta(supabase, idsByType, editionIdByItem),
@@ -139,6 +141,8 @@ export async function getSorteoPool(
       estimateText: minutes !== null ? estimate.formulaText : null,
       fresh: !seen.has(`${item.itemType}:${item.itemId}`),
       collectionIds: collectionIdsByKey.get(`${item.itemType}:${item.itemId}`) ?? [],
+      plannedSince: plannedSinceByItem.get(`${item.itemType}:${item.itemId}`) ?? new Date(0).toISOString(),
+      totalEpisodes: item.itemType === "series" ? item.totalEpisodes : null,
     } satisfies SorteoItem;
   });
 
