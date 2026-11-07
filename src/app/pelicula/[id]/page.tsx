@@ -21,7 +21,7 @@ import { RouteMessages } from "@/components/route-messages";
 // Namespaces de cliente de la ficha (medidos por su subárbol, #444).
 const DETAIL_NS = [
   "catalogEdit", "collection", "detail", "editions",
-  "item", "library", "margin", "notes", "passes", "social", "joint",
+  "item", "library", "margin", "notes", "passes", "ritual", "social", "joint",
 ] as const;
 import { LogPanel, type ManagedEntry } from "@/components/detail/log-panel";
 import { HeroMenu } from "@/components/detail/hero-menu";

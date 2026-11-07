@@ -8237,3 +8237,37 @@ se lee con `getPlannedItems`, memoizada por petición con `cache()` de React
   (PetSprite la pinta) y aunque haya ocultado la compañera flotante (`companion_hidden` es una
   preferencia del shell, no de la partida). El narrador queda solo para quien no tiene mascota.
   Antes las dos cosas caían al narrador y parecía que la mascota había desaparecido.
+
+## 2026-11-07 — Registrar sesión y cerrar una lectura como ritual
+
+- La sesión y el cierre adoptan la esencia de «Sacar un lomo»: materiales del mueble, mascota con
+  frases de datos y controles opcionales. Las server actions y el esquema no cambian; las hojas
+  conservan su orquestación (#117, askResume, sin red, cronómetro, cuaderno en vivo).
+- **Libros:** el avance se marca con un marcapáginas sobre el libro de canto (`BookmarkField`,
+  `role="slider"`). **Desvío de la spec:** la cifra de la página sigue siendo el `<input
+  name="page">` visible, como lectura del marcapáginas (decisión D1 previa; varios e2e lo rellenan).
+  Detrás del «+» («Más precisión») quedan los minutos exactos y la hora.
+- **Cierre:** recuento del pase con `loadClosingContext` (server action, sin caché, regla #437); un
+  objeto por tipo (última página, entrada de cine, caja del disco); la reseña como dedicatoria; la
+  nota como lacre (piel sobre `RatingDots`); despedida con el lomo volando a la balda. Abandonar: sin
+  lacre y con el marcapáginas dentro.
+- **Microrritual:** tras guardar una sesión, la hoja espera ~1,2 s (≤ 120 ms con reduced motion) con
+  la frase de la mascota antes de cerrarse; el envío queda deshabilitado durante la espera y la frase
+  se calcula con una foto tomada al enviar. Las celebraciones salen después, como antes.
+- **Despedida del cierre:** ~1,6 s (≤ 120 ms con reduced motion) antes de `dialog.close()`.
+- **Fichas de latón compartidas:** spoiler, compañeros y Pública/Privada reutilizan sus componentes
+  con una prop opcional `chipClassName`; fuera del cierre no cambian.
+- **Base compartida** en `src/components/stage/` (paleta y materiales, `StageMascot`, `MiniShelf`); la
+  partida la usa. Los tokens de la app se redefinen dentro de `ritualScope` para que los Input y
+  Select de dentro adopten el espresso.
+- Spec: `docs/superpowers/specs/2026-11-07-sesion-y-cierre-ritual-design.md`.
+- **Compañera flotante oculta en `/sesion/*`:** la hoja de sesión lleva su propia mascota; la
+  flotante se oculta en esas rutas (directa y modal interceptado) para no duplicarla ni tapar
+  «Cronómetro» en móvil. Sus celebraciones siguen suscritas y salen al volver a la ficha.
+- **Recuento de series:** las series no crean `progress_sessions`, así que el cierre cuenta con
+  `episode_watches.watched_on`: episodios = filas, «sesiones» = días distintos, y días y racha sobre
+  esas fechas. Sin episodios, frase genérica.
+- **Estado preservado entre visitas (cacheComponents):** la hoja guarda el microrritual en un
+  flag local `leaving` que solo se activa con una respuesta nueva y se limpia al cambiar de ruta o
+  al ocultarse; así la segunda sesión seguida del mismo pase no hereda el `ok` de la anterior
+  (variante añadida a `docs/TRAMPAS.md` #26).

@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   redirect: vi.fn(),
   getActivePass: vi.fn(),
   getEditions: vi.fn(),
+  getCompanionState: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -21,6 +22,7 @@ vi.mock("@/lib/passes/get-passes", () => ({ getActivePass: mocks.getActivePass }
 vi.mock("@/lib/editions/get-editions", () => ({ getEditions: mocks.getEditions }));
 vi.mock("@/lib/series/get-episode-data", () => ({ getEpisodeData: vi.fn() }));
 vi.mock("@/lib/library/ensure-series-episodes", () => ({ ensureSeriesEpisodes: vi.fn() }));
+vi.mock("@/lib/pet/get-companion-state", () => ({ getCompanionState: mocks.getCompanionState }));
 
 import { loadSessionContext } from "./load-context";
 
@@ -68,6 +70,7 @@ beforeEach(() => {
   }));
   mocks.getCurrentUser.mockResolvedValue({ id: "usuario" });
   mocks.getEditions.mockResolvedValue([]);
+  mocks.getCompanionState.mockResolvedValue(null);
 });
 
 describe("loadSessionContext (#737)", () => {
@@ -129,5 +132,24 @@ describe("loadSessionContext (#737)", () => {
     await loadSessionContext(PASS_ID);
 
     expect(eqCalls).toContainEqual(["user_id", "usuario"]);
+  });
+
+  it("la mascota se pide en paralelo (antes de las ediciones) y un fallo deja narrador", async () => {
+    mocks.getActivePass.mockResolvedValue({ id: PASS_ID, status: "in_progress", position: { page: 20 }, editionId: null });
+    let companionStartedBeforeEditions = false;
+    mocks.getEditions.mockImplementation(async () => {
+      companionStartedBeforeEditions = mocks.getCompanionState.mock.calls.length === 1;
+      return [];
+    });
+    mocks.getCompanionState.mockResolvedValue({ name: "Nuez", petClass: "wizard", stage: "adult", mood: "happy", hidden: true });
+
+    await expect(loadSessionContext(PASS_ID)).resolves.toMatchObject({
+      pet: { name: "Nuez", petClass: "wizard", stage: "adult" },
+    });
+    expect(companionStartedBeforeEditions).toBe(true);
+
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.getCompanionState.mockRejectedValue(new Error("rpc"));
+    await expect(loadSessionContext(PASS_ID)).resolves.toMatchObject({ pet: null });
   });
 });

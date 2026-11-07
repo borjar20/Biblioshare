@@ -5,6 +5,8 @@ import Image from "next/image";
 import { useTranslations } from "next-intl";
 import type { SessionSeason } from "@/lib/sessions/load-context";
 import { episodeState, firstUnwatchedIndex } from "@/lib/sessions/episode-grid";
+import materials from "@/components/stage/materials.module.css";
+import styles from "./series-episode-grid.module.css";
 
 // Tope de la rejilla: 4 filas de 2 columnas. Sin él, una temporada de 24
 // episodios convierte la hoja en un scroll interminable (D6).
@@ -184,8 +186,8 @@ export function SeriesEpisodeGrid({
                   onClick={() => toggle(ep.episode)}
                   className={`flex items-center gap-2.5 rounded-[11px] border p-2 text-left ${
                     st === "unseen"
-                      ? "border-border bg-surface"
-                      : "border-type-series bg-type-series/7"
+                      ? materials.paper
+                      : `border-type-series bg-type-series/7 ${styles.stamped}`
                   }`}
                 >
                   {/* El 5 % de episodios sin still_url cae al bloque neutro:
@@ -205,7 +207,11 @@ export function SeriesEpisodeGrid({
                     <span className="block font-mono text-[12px] font-semibold">
                       {tEpisode("episodeShort", { n: ep.episode })}
                     </span>
-                    <span className="block truncate text-[10px] text-muted-foreground">
+                    <span
+                      className={`block truncate text-[10px] ${
+                        st === "unseen" ? "text-[#5a4630]" : "text-muted-foreground"
+                      }`}
+                    >
                       {t(`epState.${st}`)}
                     </span>
                   </span>

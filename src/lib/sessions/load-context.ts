@@ -8,6 +8,9 @@ import { getEditions } from "@/lib/editions/get-editions";
 import { pagesForPass } from "@/lib/editions/edition-label";
 import { ensureSeriesEpisodes } from "@/lib/library/ensure-series-episodes";
 import { getEpisodeData } from "@/lib/series/get-episode-data";
+import { getCompanionState } from "@/lib/pet/get-companion-state";
+import { toStagePet } from "@/lib/pet/to-stage-pet";
+import type { StagePet } from "@/components/stage/stage-mascot";
 
 // Un episodio tal como lo pinta la rejilla de la hoja. `title` y `stillUrl`
 // salen de series_episodes vía getEpisodeData — no hay query extra: la ficha
@@ -35,6 +38,7 @@ export type SessionContext = {
   status: MediaStatus;
   total: number | null;
   seriesEpisodes?: SessionSeason[];
+  pet: StagePet | null;
 };
 
 // Un parámetro de URL es texto de fuera: se acepta solo si es un entero de
@@ -81,6 +85,14 @@ export async function loadSessionContext(passId: string): Promise<SessionContext
   // el árbol de la ruta. La URL antigua sigue siendo del dueño, pero ya no debe
   // montar la hoja sobre una lectura cerrada: vuelve a la ficha de la obra.
   if (activePass.id !== passId) redirect(itemHref(itemType, itemId));
+
+  // Mascota de la hoja (spec 2026-11-07): sin caché (regla #437), sale aunque la
+  // compañera flotante esté oculta; si falla, narrador. Se lanza ya y se espera
+  // al final: no depende de la obra ni de las ediciones.
+  const companionPromise = getCompanionState(supabase).catch((e) => {
+    console.error("loadSessionContext: companion", e);
+    return null;
+  });
 
   const [{ data: book }, { data: series }] = await Promise.all([
     itemType === "book"
@@ -140,6 +152,8 @@ export async function loadSessionContext(passId: string): Promise<SessionContext
     book?.total_pages ?? series?.total_episodes ?? null,
   );
 
+  const pet = toStagePet(await companionPromise);
+
   return {
     passId: activePass.id,
     itemType,
@@ -151,5 +165,6 @@ export async function loadSessionContext(passId: string): Promise<SessionContext
     status: activePass.status,
     total,
     seriesEpisodes,
+    pet,
   };
 }

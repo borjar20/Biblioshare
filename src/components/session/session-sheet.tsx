@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useActionState, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,10 @@ import { SessionHero } from "./session-hero";
 import type { NoteAnchor } from "@/components/notes/note-composer";
 import { SessionNotebook } from "./session-notebook";
 import { MarginNoteSheet } from "@/components/margin/margin-note-sheet";
+import materials from "@/components/stage/materials.module.css";
+import { StageMascot, type Speech } from "@/components/stage/stage-mascot";
+import { MiniShelf } from "@/components/stage/mini-shelf";
+import { openingLine, savedLine } from "@/lib/ritual/session-lines";
 
 const STATUSES: MediaStatus[] = [
   "planned",
@@ -64,6 +68,7 @@ export function SessionSheet({
   const tLibrary = useTranslations("library");
   const tResume = useTranslations("passes.resume");
   const tMargin = useTranslations("margin");
+  const tRitual = useTranslations("ritual.session");
   const router = useRouter();
   // null en modo "page" (no hay SessionModal por encima). En modo "modal" es
   // el único punto de salida del <dialog> exterior (ver session-modal.tsx):
@@ -111,11 +116,39 @@ export function SessionSheet({
   // valor EN VIVO para combinarlo con la hora opcional en combineStartedAt —
   // ver book-progress-field.tsx.
   const [sessionDate, setSessionDate] = useState(todayISO());
+  // Microrritual de salida (botón deshabilitado, frase de guardado, cierre
+  // diferido). Va en un flag propio y NO en `state.ok`: con cacheComponents la
+  // ruta interceptada se conserva entre visitas (Activity, TRAMPAS #26) y
+  // `useActionState` sigue devolviendo el `{ ok: true }` de la sesión anterior
+  // al reabrir la hoja del mismo pase. Solo una respuesta NUEVA lo arma; lo
+  // desarman el temporizador y la limpieza al ocultarse/desmontarse.
+  const [leaving, setLeaving] = useState(false);
   if (state !== prevState) {
     setPrevState(state);
     if (state.passClosed) setClosingPass(true);
     if (state.askResume) setResumeOpen(true);
+    if (state.ok && !state.passClosed) setLeaving(true);
   }
+  // Salir de la hoja la deja lista para la próxima visita. Medido en e2e
+  // (cierre-ritual.spec.ts, «dos sesiones seguidas»): tras `replace` a la
+  // ficha la ruta interceptada sigue montada Y visible (solo se cierra su
+  // <dialog>), así que ninguna limpieza de efecto corre; el cambio de ruta sí
+  // llega. No se apaga en el propio temporizador: entre él y que se cierre el
+  // <dialog> media la navegación, y con el botón reactivado se podía guardar
+  // dos veces (972e9346).
+  const pathname = usePathname();
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  if (pathname !== prevPathname) {
+    setPrevPathname(pathname);
+    setLeaving(false);
+  }
+
+  // Al ocultarse (Activity) o desmontarse la hoja, el microrritual en curso se
+  // abandona: al volver no debe quedar el botón deshabilitado ni un cierre
+  // pendiente. useLayoutEffect para que la limpieza corra ANTES de ocultarse.
+  useLayoutEffect(() => {
+    return () => setLeaving(false);
+  }, []);
 
   useEffect(() => {
     const dialog = resumeDialogRef.current;
@@ -147,13 +180,17 @@ export function SessionSheet({
   // ClosePassSheet más abajo. Si el pase se cerró con esta sesión, la
   // navegación espera: primero se ve la hoja de cierre (más abajo) y es su
   // onClose quien navega.
+  // Respuesta ok ya atendida. Los efectos se re-ejecutan al volver a mostrarse
+  // la ruta (Activity) con el MISMO `state`: sin esta guarda, el cronómetro que
+  // el usuario hubiera arrancado después se borraría al reabrir la hoja.
+  const handledStateRef = useRef<AddSessionState>(initialState);
   useEffect(() => {
-    if (!state.ok) return;
+    if (!state.ok || handledStateRef.current === state) return;
+    handledStateRef.current = state;
     // El guardado pudo ganar celebraciones en servidor (primera actividad,
     // objetivo diario, hito de racha): que el provider las drene y anime. Va
     // aquí y no en el bloque de derivación porque disparar un evento es un
     // efecto, no estado derivado. Se pide también cuando el pase se cierra.
-    checkCelebrations();
     // SOLO con el guardado CONFIRMADO se apaga el cronómetro: localStorage y,
     // vía el espejo app→nativo de timer.ts (clearRunningTimer), el TimerStore
     // de Android — la notificación/widget dejan de mostrar la sesión cuando
@@ -161,9 +198,28 @@ export function SessionSheet({
     // tocar «Registrar»: si el envío fallaba sin red, la única copia moría).
     // Idempotente si no había cronómetro; el espejo se autoguarda de plataforma.
     if (itemType === "book") clearTimer(passId);
-    if (state.passClosed) return;
-    closeSheet();
-  }, [state, closeSheet, itemType, passId]);
+    // Las celebraciones se piden también cuando el pase se cierra, y esperan a
+    // que se vea la hoja de cierre (su onClose es quien navega).
+    if (state.passClosed) checkCelebrations();
+  }, [state, itemType, passId]);
+
+  // Microrritual: la frase de la mascota se ve antes de salir; las
+  // celebraciones drenan después, como antes (spec, decisión 5). Lo gobierna
+  // `leaving`, no `state.ok` (ver arriba): al ocultarse la ruta la limpieza
+  // cancela el temporizador y el layout effect apaga `leaving`, así que al
+  // volver a mostrarse no se rearma.
+  useEffect(() => {
+    if (!leaving) return;
+    const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const id = window.setTimeout(
+      () => {
+        checkCelebrations();
+        closeSheet();
+      },
+      reduced ? 120 : 1200,
+    );
+    return () => window.clearTimeout(id);
+  }, [leaving, closeSheet]);
 
   const currentPage =
     "page" in position && position.page !== undefined ? position.page : null;
@@ -185,6 +241,11 @@ export function SessionSheet({
   })();
 
   const [newlyMarkedCount, setNewlyMarkedCount] = useState(0);
+  const [submitted, setSubmitted] = useState<{
+    fromPage: number | null;
+    toPage: number | null;
+    episodes: number;
+  } | null>(null);
 
   // El anclaje del compositor sigue al campo VIVO, no a `position` (la posición
   // GUARDADA del pase). Si leyera `position`, anotarías en la 240 y se
@@ -206,6 +267,16 @@ export function SessionSheet({
   // la marca de spoiler necesitan conservar su borrador igual que el estado.
   const [shareBody, setShareBody] = useState("");
   const [shareSpoiler, setShareSpoiler] = useState(false);
+
+  // La frase se deriva en el render (sin setState en efectos). Tras guardar
+  // usa la foto tomada al enviar: addSession revalida la ruta y `ctx` puede
+  // refrescarse a la página nueva (fromPage = toPage), y la rejilla de
+  // episodios puede volver a contar 0.
+  const line =
+    leaving && submitted
+      ? savedLine({ itemType, total, ...submitted })
+      : openingLine(itemType, currentPage);
+  const speech: Speech = { text: tRitual(line.key, line.values), mood: leaving ? "joy" : "idle" };
 
   const noteAnchor: NoteAnchor =
     itemType === "book"
@@ -253,7 +324,10 @@ export function SessionSheet({
       <form
         ref={formRef}
         action={formAction}
-        className="flex min-h-0 flex-1 flex-col overflow-y-auto"
+        onSubmit={() =>
+          setSubmitted({ fromPage: currentPage, toPage: livePage, episodes: newlyMarkedCount })
+        }
+        className={`${materials.ritualScope} flex min-h-0 flex-1 flex-col overflow-y-auto`}
       >
         <input ref={resumeModeRef} type="hidden" name="resumeMode" />
         {/* `shrink-0`: cabecera, hero y footer son hermanos flex de este
@@ -265,7 +339,7 @@ export function SessionSheet({
             de campos de más abajo (el que sí tiene `flex-1`, sin `shrink-0`)
             absorbe el hueco que falta o sobra, y si no le basta, es el
             <form> quien scrollea (overflow-y-auto, ver comentario de arriba). */}
-        <div className="sticky top-0 z-10 flex shrink-0 items-center justify-between bg-background/90 px-4 py-3.5 backdrop-blur">
+        <div className="sticky top-0 z-10 flex shrink-0 items-center justify-between bg-[var(--st-bg)]/90 px-4 py-3.5 backdrop-blur">
           <span className="font-serif text-[17px] font-semibold">
             {/* Una serie ya no registra sesiones (fase 4, D3): marca episodios. */}
             {itemType === "series" ? t("sheetTitleSeries") : t("sheetTitle")}
@@ -274,7 +348,7 @@ export function SessionSheet({
             type="button"
             onClick={closeSheet}
             aria-label={t("close")}
-            className="grid h-[30px] w-[30px] place-items-center rounded-lg border border-border bg-surface text-muted-foreground"
+            className={materials.knob}
           >
             ✕
           </button>
@@ -287,6 +361,18 @@ export function SessionSheet({
           coverUrl={ctx.coverUrl}
           statusLabel={tLibrary(`status.${ctx.status}`)}
         />
+
+        <div className="relative mx-4 mt-1 mb-2 shrink-0 pt-[92px]">
+          <MiniShelf
+            spines={[
+              { color: "#b5652f", h: 70 },
+              { color: "#2f6f73", h: 60 },
+              { color: "#6b4d77", h: 76 },
+            ]}
+          >
+            <StageMascot pet={ctx.pet} speech={speech} entered size="sm" />
+          </MiniShelf>
+        </div>
 
         {/* Este es el único hermano SIN `shrink-0`: es el que debe absorber el
             hueco que falte o sobre entre cabecera+hero+footer (arriba) y la
@@ -358,7 +444,7 @@ export function SessionSheet({
           {/* Solo libros: una serie publica sola su post diario (autopost-watched.ts,
               con su interruptor en Ajustes), no un «Compartir» por hoja. */}
           {itemType === "book" && (
-            <div className="flex flex-col gap-2.5 rounded-lg border border-border bg-surface p-3">
+            <div className="flex flex-col gap-2.5 rounded-lg border border-border bg-[var(--st-panel)] p-3">
               <label className="flex items-center gap-2 text-sm text-foreground">
                 <input
                   type="checkbox"
@@ -397,7 +483,7 @@ export function SessionSheet({
 
           {/* Estado plegado (D8): el caso normal —registrar y seguir— no lo ve.
               Sigue disponible para abandonar o completar a mano sin ir a la ficha. */}
-          <details className="rounded-lg border border-border bg-surface">
+          <details className="rounded-lg border border-border bg-[var(--st-panel)]">
             <summary className="cursor-pointer px-3 py-2.5 text-[12.5px] font-semibold text-muted-foreground">
               {t("statusToggle")}
             </summary>
@@ -424,14 +510,18 @@ export function SessionSheet({
             scrollea de más arriba: si el usuario ya hizo scroll hasta el
             fondo para llegar al botón, un aviso pintado arriba queda fuera
             de vista y ve un botón deshabilitado sin explicación. */}
-        <div className="sticky bottom-0 z-10 shrink-0 border-t border-border bg-background/92 px-4 pt-3.5 pb-4 backdrop-blur">
+        <div className="sticky bottom-0 z-10 shrink-0 border-t border-border bg-[var(--st-bg)]/92 px-4 pt-3.5 pb-4 backdrop-blur">
           {state.error && (
             <p className="mb-2.5 text-sm text-status-dropped">{t(`errors.${state.error}`)}</p>
           )}
           {notePending && (
             <p className="mb-2.5 text-sm text-status-dropped">{t("notePendingHint")}</p>
           )}
-          <Button type="submit" disabled={pending || notePending} className="w-full">
+          <button
+            type="submit"
+            disabled={pending || notePending || leaving}
+            className={`${materials.leather} w-full`}
+          >
             {pending
               ? t("submitting")
               : noteCount > 0
@@ -439,7 +529,7 @@ export function SessionSheet({
                 : itemType === "series" && newlyMarkedCount > 0
                   ? t("submitEpisodes", { count: newlyMarkedCount })
                   : t("submit")}
-          </Button>
+          </button>
           <p className="mt-2 text-center text-[11px] text-muted-foreground">
             {itemType === "book" ? t("footerHintBook") : t("footerHintSeries")}
           </p>

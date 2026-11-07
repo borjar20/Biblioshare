@@ -60,4 +60,16 @@ describe("ReviewSpoilerField", () => {
     const box = screen.getByRole("checkbox", { name: /Contiene spoiler/ }) as HTMLInputElement;
     expect(box.name).toBe("reviewIsSpoiler");
   });
+
+  it("como chapa, la aclaración queda enlazada a la casilla (aria-describedby)", () => {
+    render(
+      <NextIntlClientProvider locale="es" messages={messages}>
+        <ReviewSpoilerField review="Qué final" checked={false} onChange={() => {}} chipClassName="chip" />
+      </NextIntlClientProvider>,
+    );
+    const box = screen.getByRole("checkbox", { name: /Contiene spoiler/ });
+    const hintId = box.getAttribute("aria-describedby");
+    expect(hintId).toBeTruthy();
+    expect(document.getElementById(hintId!)?.textContent).toBe(messages.passes.reviewSpoilerHint);
+  });
 });

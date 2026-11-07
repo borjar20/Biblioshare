@@ -866,7 +866,6 @@
     "finishedOn": "Fecha",
     "rating": "Tu nota",
     "review": "Reseña",
-    "reviewPlaceholder": "Qué te ha parecido…",
     "reviewSpoiler": "Contiene spoiler",
     "reviewSpoilerHint": "Los demás la verán tapada hasta que decidan destaparla.",
     "isPublic": "Visible para la comunidad",
@@ -2887,11 +2886,7 @@
     "remaining": "quedan {remaining}",
     "advance": "Avance",
     "advanceOf": "{current} / {total} pág.",
-    "legendRead": "Ya leído",
-    "legendSession": "Esta sesión",
-    "legendLeft": "Queda",
     "finalPage": "Página final de hoy",
-    "currentPage": "pág. actual",
     "fromMark": "Desde tu marca {from} → {to}",
     "deltaFull": "▲ {delta} páginas leídas · quedan {remaining}",
     "jump": "+{n}",
@@ -2900,8 +2895,6 @@
     "durationHour": "1 h",
     "startedAtTime": "¿A qué hora empezaste?",
     "startedAtTimeHint": "Opcional. Ayuda a saber cuándo sueles leer.",
-    "stepDown": "Una página menos",
-    "stepUp": "Una página más",
     "season": "Temporada",
     "seasonsCount": "{n} temporadas",
     "episode": "Episodio",
@@ -4915,6 +4908,51 @@
       "long": { "0": "≈{duration}. Esto es una relación seria.", "1": "≈{duration} a tu ritmo. Trae merienda." },
       "retry": { "0": "Ya os conocéis… ¿segunda oportunidad?", "1": "Lo dejaste a medias una vez. Te guarda rencor, poco." },
       "fresh": { "0": "Primera vez. Nada de spoilers.", "1": "Nunca lo has empezado. Todo por descubrir." }
+    }
+  },
+  "ritual": {
+    "session": {
+      "openBook": "Ibas por la {page}. ¿Hasta dónde hoy?",
+      "openFirst": "Primera página. ¿Empezamos?",
+      "openSeries": "¿Qué episodios has visto?",
+      "savedFinished": "¡Última página! Vamos a cerrarlo bien.",
+      "savedHalf": "{delta, plural, one {# página.} other {# páginas.}} Ya pasaste la mitad.",
+      "savedNearEnd": "{delta, plural, one {# página.} other {# páginas.}} Te quedan {remaining}: el final está cerca.",
+      "savedPages": "{delta, plural, one {# página más.} other {# páginas más.}}",
+      "savedEpisodes": "{count, plural, one {# episodio más.} other {# episodios más.}}",
+      "savedGeneric": "Apuntado."
+    },
+    "bookmark": {
+      "label": "Marcapáginas: página de hoy",
+      "valueText": "página {page}, {delta, plural, =0 {sin avance} one {# hoy} other {# hoy}}",
+      "delta": "{delta, plural, one {+# pág.} other {+# págs.}}",
+      "more": "Más precisión",
+      "moreMinutes": "Más precisión · {minutes} min"
+    },
+    "closing": {
+      "recapBook": "{sessions, plural, one {# sesión} other {# sesiones}} en {days, plural, one {# día} other {# días}} · {pages} páginas · tu racha más larga, {streak, plural, one {# día} other {# días}}",
+      "recapSessions": "{sessions, plural, one {# sesión} other {# sesiones}} en {days, plural, one {# día} other {# días}} · tu racha más larga, {streak, plural, one {# día} other {# días}}",
+      "recapSeries": "{episodes, plural, one {# episodio} other {# episodios}} en {days, plural, one {# día} other {# días}}",
+      "movieNight": "La viste el {weekday} por la {daypart, select, morning {mañana} afternoon {tarde} other {noche}}.",
+      "generic": "{type, select, book {Otro libro para la balda.} movie {Otra película vista.} other {Otra serie terminada.}}",
+      "farewell": { "0": "A la balda de terminados. ¡Bien hecho!", "1": "Uno más para tu balda." },
+      "dropped": {
+        "0": "{type, select, book {No todos los libros son para ahora.} movie {No todas las películas son para ahora.} other {No todas las series son para ahora.}}",
+        "1": "{type, select, book {Lo dejamos aquí, con el marcapáginas puesto.} movie {La dejamos aquí; siempre puedes volver.} other {La dejamos aquí, en el episodio donde la dejaste.}}"
+      },
+      "dateStamp": "Fecha de fin",
+      "sealLabel": "Lacre: tu nota",
+      "sealEmpty": "Sin lacrar",
+      "dedicationBook": "Tu dedicatoria en la última página",
+      "dedicationMovie": "En el reverso de la entrada",
+      "dedicationSeries": "En el librito del disco",
+      "ticket": "Entrada",
+      "lastPage": "Fin",
+      "disc": "Último disco",
+      "public": "Pública",
+      "private": "Privada",
+      "farewellSr": "Guardado. Lo llevamos a la balda.",
+      "droppedSr": "Guardado."
     }
   }
 }

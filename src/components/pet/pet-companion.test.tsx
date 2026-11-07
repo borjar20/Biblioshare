@@ -4,7 +4,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { acornEntry, sheetEntry } from "@/lib/pet/manifest";
 import type { CompanionState } from "@/lib/pet/get-companion-state";
 
+const nav = vi.hoisted(() => ({ pathname: "/" }));
 vi.mock("next-intl", () => ({ useTranslations: () => (k: string) => k }));
+vi.mock("next/navigation", () => ({ usePathname: () => nav.pathname }));
 vi.mock("@/lib/celebrations/preference", () => ({ onCelebrationsShown: () => () => {} }));
 vi.mock("next/link", () => ({
   default: ({ href, children, ...rest }: { href: string; children: React.ReactNode } & Record<string, unknown>) => (
@@ -16,7 +18,10 @@ vi.mock("next/link", () => ({
 
 import { PetCompanion } from "./pet-companion";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  nav.pathname = "/";
+});
 
 const state: CompanionState = { name: "Nuez", petClass: "wizard", stage: "adult", mood: "happy", hidden: false };
 
@@ -59,5 +64,21 @@ describe("PetCompanion", () => {
     expect(holder.style.pointerEvents).toBe("none");
     expect(holder.style.left).toBe(`${-box.x}px`);
     expect(holder.style.top).toBe(`${-box.y}px`);
+  });
+});
+
+// La hoja de sesión trae su propia mascota; la flotante se le ponía encima (y en
+// móvil tapaba la pestaña «Cronómetro»).
+describe("PetCompanion · rutas", () => {
+  it.each(["/sesion/pass-1", "/sesion/pass-1?minutos=20"])("no sale en %s", (path) => {
+    nav.pathname = path.split("?")[0];
+    render(<PetCompanion state={state} />);
+    expect(screen.queryByTestId("pet-companion")).toBeNull();
+  });
+
+  it.each(["/", "/libro/abc", "/sesiones", "/biblioteca"])("sigue saliendo en %s", (path) => {
+    nav.pathname = path;
+    render(<PetCompanion state={state} />);
+    expect(screen.getByTestId("pet-companion")).toBeTruthy();
   });
 });

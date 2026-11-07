@@ -2,11 +2,12 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getCompanionState } from "@/lib/pet/get-companion-state";
-import type { PetClass, PetStage } from "@/lib/pet/classes";
+import { toStagePet } from "@/lib/pet/to-stage-pet";
+import type { StagePet } from "@/components/stage/stage-mascot";
 import { getSorteoPool } from "./get-sorteo-pool";
 import type { SorteoCollection, SorteoItem } from "@/components/rincon/sorteo-logic";
 
-export type SorteoPet = { name: string; petClass: PetClass; stage: PetStage };
+export type SorteoPet = StagePet;
 export type SorteoLoad = { items: SorteoItem[]; collections: SorteoCollection[]; pet: SorteoPet | null };
 
 // Se llama al abrir la partida (spec «Arquitectura»): el telón tapa la espera.
@@ -27,6 +28,5 @@ export async function loadSorteo(): Promise<SorteoLoad> {
       return null;
     }),
   ]);
-  const pet = companion ? { name: companion.name, petClass: companion.petClass, stage: companion.stage } : null;
-  return { ...pool, pet };
+  return { ...pool, pet: toStagePet(companion) };
 }

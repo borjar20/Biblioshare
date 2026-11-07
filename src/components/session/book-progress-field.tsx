@@ -1,12 +1,14 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
+import materials from "@/components/stage/materials.module.css";
 import { clampPage, readProgress } from "@/lib/sessions/page-stepper";
 import { combineStartedAt } from "@/lib/sessions/combine-started-at";
 import { hasTime, useTimerState } from "@/lib/sessions/use-timer-state";
 import { SessionTimer } from "./session-timer";
+import { BookmarkField } from "./bookmark-field";
 
 const JUMPS = [10, 25, 50] as const;
 const DURATION_CHIPS = [15, 30, 45, 60] as const;
@@ -46,9 +48,10 @@ export function BookProgressField({
   sessionDate: string;
 }) {
   const t = useTranslations("session");
+  const tr = useTranslations("ritual.bookmark");
   const [toPage, setToPage] = useState(fromPage !== null ? String(fromPage) : "");
   const toPageNum = toPage.trim() === "" ? null : Number(toPage);
-  const { delta, remaining, readPct, sessionPct } = readProgress(fromPage, toPageNum, total);
+  const { delta, remaining } = readProgress(fromPage, toPageNum, total);
 
   function updatePage(next: string) {
     setToPage(next);
@@ -78,6 +81,7 @@ export function BookProgressField({
     initialMinutes ? String(initialMinutes) : "",
   );
   const minutesRef = useRef<HTMLInputElement>(null);
+  const detailsRef = useRef<HTMLDetailsElement>(null);
   // Vacío por defecto a propósito (issue #252): nunca se rellena con "ahora".
   const [startedAtTime, setStartedAtTime] = useState("");
   // La hora a mano manda; si no hay, cae a la que reenvió el cronómetro. Así
@@ -85,12 +89,29 @@ export function BookProgressField({
   const startedAt = combineStartedAt(sessionDate, startedAtTime);
   const effectiveStartedAt = startedAt ?? initialStartedAt ?? null;
 
+  // Unos minutos que no son de ningún chip (los del cronómetro al pararlo, o
+  // `?minutos=` de la tarjeta de hoy: 37) quedarían escondidos en el <details>
+  // plegado sin chip pulsado. Se abre al llegar —llamada al DOM, no setState— y
+  // el resumen los dice aunque se vuelva a plegar a mano.
+  const customMinutes =
+    manualMinutes.trim() !== "" && !DURATION_CHIPS.some((n) => String(n) === manualMinutes)
+      ? manualMinutes
+      : null;
+  useEffect(() => {
+    if (customMinutes !== null && detailsRef.current && !detailsRef.current.open) {
+      detailsRef.current.open = true;
+    }
+  }, [customMinutes, durationMode]);
+
   // "Otro" no es un valor: vacía el campo y le lleva el foco (petición
   // explícita del diseño). Los chips numéricos son un acelerador del MISMO
   // input, no un control aparte — solo hay un name="durationMinutes" en el DOM.
   function pickDuration(minutes: number | null) {
     setManualMinutes(minutes === null ? "" : String(minutes));
-    if (minutes === null) minutesRef.current?.focus();
+    if (minutes === null) {
+      if (detailsRef.current) detailsRef.current.open = true;
+      minutesRef.current?.focus();
+    }
   }
 
   return (
@@ -104,15 +125,7 @@ export function BookProgressField({
             </span>
           )}
         </span>
-        <div className="flex h-[15px] overflow-hidden rounded-full border border-border bg-surface-muted">
-          <div className="bg-type-book/40" style={{ width: `${readPct}%` }} />
-          <div className="bg-accent" style={{ width: `${sessionPct}%` }} />
-        </div>
-        <div className="flex gap-3.5 text-[10.5px] text-muted-foreground">
-          <span>{t("legendRead")}</span>
-          <span>{t("legendSession")}</span>
-          <span>{t("legendLeft")}</span>
-        </div>
+        <BookmarkField fromPage={fromPage} value={toPageNum} total={total} onChange={(p) => setPage(p)} />
       </div>
 
       <div className="flex flex-col gap-2">
@@ -120,41 +133,25 @@ export function BookProgressField({
           {t("finalPage")}
         </span>
         {/* La cifra ES el input (decisión D1 del brief): tocarla abre el
-            teclado numérico y escribes 240 de una vez. Los −/+ son solo para
-            el ajuste de ±1 (sin aceleración por mantener pulsado — rechazada
-            explícitamente); los chips, para el salto grande. */}
-        <div className="flex items-stretch overflow-hidden rounded-xl border border-border bg-surface">
-          <button
-            type="button"
-            aria-label={t("stepDown")}
-            onClick={() => setPage((toPageNum ?? 0) - 1)}
-            className="grid w-[52px] place-items-center bg-surface-muted text-2xl text-accent"
-          >
-            −
-          </button>
-          <div className="flex flex-1 flex-col items-center justify-center py-2">
-            <Input
-              name="page"
-              type="number"
-              min={0}
-              max={total ?? undefined}
-              inputMode="numeric"
-              aria-label={t("finalPage")}
-              value={toPage}
-              onChange={(e) => updatePage(e.target.value)}
-              onBlur={() => toPageNum !== null && setPage(toPageNum)}
-              className="w-full border-0 bg-transparent text-center font-mono text-[26px] font-semibold focus:ring-0"
-            />
-            <span className="text-[10px] text-muted-foreground">{t("currentPage")}</span>
-          </div>
-          <button
-            type="button"
-            aria-label={t("stepUp")}
-            onClick={() => setPage((toPageNum ?? 0) + 1)}
-            className="grid w-[52px] place-items-center bg-surface-muted text-2xl text-accent"
-          >
-            +
-          </button>
+            teclado numérico y escribes 240 de una vez. El ajuste fino lo da
+            el teclado del marcapáginas; los chips, el salto grande. */}
+        <div className="flex items-baseline justify-center gap-2 font-serif">
+          <span className="text-[22px] text-muted-foreground">{fromPage ?? 0} →</span>
+          <Input
+            name="page"
+            type="number"
+            min={0}
+            max={total ?? undefined}
+            inputMode="numeric"
+            aria-label={t("finalPage")}
+            value={toPage}
+            onChange={(e) => updatePage(e.target.value)}
+            onBlur={() => toPageNum !== null && setPage(toPageNum)}
+            className="w-[5ch] shrink-0 border-0 bg-transparent p-0! text-center font-serif text-[34px]! font-semibold focus:ring-0"
+          />
+          {delta !== null && delta > 0 && (
+            <span className="font-mono text-[12px] text-[var(--st-gold)]">{tr("delta", { delta })}</span>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-1.5">
@@ -163,7 +160,7 @@ export function BookProgressField({
               key={n}
               type="button"
               onClick={() => setPage((toPageNum ?? fromPage ?? 0) + n)}
-              className="rounded-full border border-border bg-surface px-2.5 py-1.5 font-mono text-[11px] text-muted-foreground"
+              className={materials.brass}
             >
               {t("jump", { n })}
             </button>
@@ -213,11 +210,7 @@ export function BookProgressField({
                   type="button"
                   aria-pressed={manualMinutes === String(n)}
                   onClick={() => pickDuration(n)}
-                  className={`rounded-full border px-2.5 py-1.5 font-mono text-[11px] ${
-                    manualMinutes === String(n)
-                      ? "border-accent bg-accent/7 text-accent"
-                      : "border-border bg-surface text-muted-foreground"
-                  }`}
+                  className={materials.brass}
                 >
                   {n === 60 ? t("durationHour") : t("durationMinutes", { n })}
                 </button>
@@ -225,39 +218,44 @@ export function BookProgressField({
               <button
                 type="button"
                 onClick={() => pickDuration(null)}
-                className="rounded-full border border-border bg-surface px-2.5 py-1.5 font-mono text-[11px] text-muted-foreground"
+                className={materials.brass}
               >
                 {t("durationOther")}
               </button>
             </div>
-            <Input
-              ref={minutesRef}
-              id="session-duration"
-              name="durationMinutes"
-              type="number"
-              min={0}
-              inputMode="numeric"
-              placeholder="0"
-              aria-label={t("duration")}
-              value={manualMinutes}
-              onChange={(e) => setManualMinutes(e.target.value)}
-            />
-            <div className="flex flex-col gap-1">
-              <label
-                htmlFor="session-started-at-time"
-                className="font-mono text-[10px] tracking-wider uppercase text-muted-foreground"
-              >
-                {t("startedAtTime")}
-              </label>
+            <details ref={detailsRef} className="flex flex-col gap-2">
+              <summary className="cursor-pointer font-mono text-[10px] tracking-wider uppercase text-muted-foreground">
+                {customMinutes !== null ? tr("moreMinutes", { minutes: customMinutes }) : tr("more")}
+              </summary>
               <Input
-                id="session-started-at-time"
-                type="time"
-                aria-label={t("startedAtTime")}
-                value={startedAtTime}
-                onChange={(e) => setStartedAtTime(e.target.value)}
+                ref={minutesRef}
+                id="session-duration"
+                name="durationMinutes"
+                type="number"
+                min={0}
+                inputMode="numeric"
+                placeholder="0"
+                aria-label={t("duration")}
+                value={manualMinutes}
+                onChange={(e) => setManualMinutes(e.target.value)}
               />
-              <p className="text-[11px] text-muted-foreground">{t("startedAtTimeHint")}</p>
-            </div>
+              <div className="flex flex-col gap-1">
+                <label
+                  htmlFor="session-started-at-time"
+                  className="font-mono text-[10px] tracking-wider uppercase text-muted-foreground"
+                >
+                  {t("startedAtTime")}
+                </label>
+                <Input
+                  id="session-started-at-time"
+                  type="time"
+                  aria-label={t("startedAtTime")}
+                  value={startedAtTime}
+                  onChange={(e) => setStartedAtTime(e.target.value)}
+                />
+                <p className="text-[11px] text-muted-foreground">{t("startedAtTimeHint")}</p>
+              </div>
+            </details>
             {effectiveStartedAt && (
               <input type="hidden" name="startedAt" value={effectiveStartedAt} />
             )}

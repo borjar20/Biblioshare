@@ -506,3 +506,13 @@ pointer events»). Pasó con el «⋯» de curación de la ficha de saga: en `/s
 «Guardar cambios» no disparaba el POST. **Regla:** cierra el diálogo al pulsar el enlace y,
 como red, en la limpieza de un `useLayoutEffect` (ver `saga-curator-menu.tsx` y su test con
 `<Activity mode="hidden">`).
+
+**Variante con `useActionState` en la ruta interceptada:** al salir de `/sesion/[passId]` con
+`replace` a la ficha, la ruta `@modal` **sigue montada y visible** (solo se cierra su `<dialog>`;
+medido en e2e: ninguna limpieza de efecto corre). Al reabrir la hoja del mismo pase,
+`useActionState` devuelve aún el `{ ok: true }` de la sesión anterior: «Guardar sesión» salía
+deshabilitado y con la frase de guardado. **Regla:** lo que dispara una respuesta (deshabilitar,
+cerrar con retardo, apagar el cronómetro) se arma solo cuando llega un estado NUEVO (comparando con
+el anterior en el render) y se desarma al cambiar de ruta y en la limpieza de un `useLayoutEffect`;
+los efectos de un solo disparo se guardan con un ref del estado ya atendido. Ver `session-sheet.tsx`,
+su test con `<Activity>` y «dos sesiones seguidas» en `e2e/cierre-ritual.spec.ts`.

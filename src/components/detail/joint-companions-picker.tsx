@@ -13,11 +13,15 @@ export function JointCompanionsPicker({
   selected,
   onToggle,
   loading = false,
+  chipClassName,
 }: {
   people: JointPerson[];
   selected: ReadonlySet<string>;
   onToggle: (userId: string) => void;
   loading?: boolean;
+  // Opcional: piel de chapa para cada ficha (p. ej. `materials.brass` en el
+  // cierre), que marca el estado con `[aria-pressed="true"]`. Sin ella, la de siempre.
+  chipClassName?: string;
 }) {
   const t = useTranslations("passes.jointSheet");
 
@@ -35,11 +39,15 @@ export function JointCompanionsPicker({
               type="button"
               aria-pressed={on}
               onClick={() => onToggle(p.userId)}
-              className={`flex items-center gap-1.5 rounded-full border py-1 pr-2.5 pl-1 text-xs transition-colors ${
-                on
-                  ? "border-accent bg-accent/15 text-foreground"
-                  : "border-border bg-surface-muted text-muted-foreground hover:text-foreground"
-              }`}
+              className={
+                chipClassName
+                  ? `${chipClassName} flex items-center gap-1.5`
+                  : `flex items-center gap-1.5 rounded-full border py-1 pr-2.5 pl-1 text-xs transition-colors ${
+                      on
+                        ? "border-accent bg-accent/15 text-foreground"
+                        : "border-border bg-surface-muted text-muted-foreground hover:text-foreground"
+                    }`
+              }
             >
               <UserAvatar name={name} avatarUrl={p.avatarUrl} size={20} />
               <span className="max-w-[9rem] truncate">{name}</span>

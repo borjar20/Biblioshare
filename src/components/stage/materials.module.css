@@ -1,0 +1,63 @@
+/* Paleta y materiales del mueble (spec 2026-11-07, «Base compartida»). Salen de la
+   partida «Sacar un lomo»: madera, latón, piel, papel, tinta y lacre. Colores
+   fijos, iguales en claro y oscuro. */
+.palette {
+  --st-bg: #17110d; --st-panel: #241d18; --st-raise: #2f2620; --st-line: rgba(240,232,219,.12);
+  --st-fg: #f0e8db; --st-muted: #a99e8c; --st-cta: #d98a5c; --st-cta-ink: #1f1409; --st-gold: #e0a94a;
+  --wood: #5b3e27; --wood-dk: #3a2717; --wood-lt: #7d5737; --back: #1c130c;
+  --ink: #9b3a24; --wax: #8e1f1a; --wax-lt: #c23a2e; --paper-1: #f4ead3; --paper-2: #e9dbbb;
+  --f-display: var(--font-fraunces), Georgia, serif;
+  --f-body: var(--font-geist-sans), system-ui, sans-serif;
+  --f-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+/* Alcance de las hojas del ritual: además de la paleta, redefine los tokens de la
+   app (Tailwind v4 los lee como variables con `@theme inline`), así los Input,
+   Select y el cuaderno de dentro adoptan el espresso sin tocar sus componentes. */
+.ritualScope {
+  composes: palette;
+  --background: #17110d; --surface: #241d18; --surface-muted: #2f2620; --surface-3: #3a2f27;
+  --foreground: #f0e8db; --foreground-soft: #d9cdb9; --muted-foreground: #a99e8c; --foreground-faint: #7d7263;
+  --border: rgba(240,232,219,.14); --accent: #d98a5c; --accent-foreground: #1f1409; --accent-ink: #e9a574;
+  /* Errores legibles sobre el espresso: #e48b74 da ~6,5:1 sobre #17110d (el #b0492f
+     del tema claro no llega a 3:1). Lo usan text-status-dropped y el aviso del cronómetro. */
+  --status-dropped: #e48b74;
+  color-scheme: dark; background: var(--st-bg); color: var(--st-fg); font-family: var(--f-body);
+}
+.leather { border: 1px solid #6f3417; border-radius: 14px; padding: 13px 18px; color: #2a1206; font-weight: 700; cursor: pointer;
+  background: radial-gradient(120% 140% at 50% 0%, rgba(255,226,190,.35), transparent 55%), linear-gradient(180deg, #e9a574, #d1804f 48%, #b5612f);
+  text-shadow: 0 1px 0 rgba(255,222,186,.55); outline: 1px dashed rgba(70,28,8,.38); outline-offset: -6px;
+  box-shadow: inset 0 1px 0 rgba(255,236,214,.7), inset 0 -2px 0 rgba(90,36,10,.35), 0 4px 0 #6a3116, 0 12px 20px -8px rgba(0,0,0,.8);
+  transition: transform .08s, box-shadow .08s, filter .2s }
+.leather:hover:not(:disabled) { filter: brightness(1.06) }
+.leather:active:not(:disabled) { transform: translateY(3px); box-shadow: inset 0 1px 0 rgba(255,236,214,.5), 0 1px 0 #6a3116 }
+.leather:disabled { opacity: .5; filter: saturate(.4); cursor: default }
+.wood, .knob { color: #f3e6d0; border: 1px solid #24170d; cursor: pointer; text-shadow: 0 1px 1px rgba(0,0,0,.5);
+  background: repeating-linear-gradient(90deg, rgba(255,255,255,.04) 0 2px, transparent 2px 9px), linear-gradient(180deg, #7a5536, #5b3e27 55%, #45301e);
+  box-shadow: inset 0 1px 0 rgba(255,225,190,.28), inset 0 -2px 0 rgba(0,0,0,.25), 0 3px 0 #2a1b10, 0 10px 16px -8px rgba(0,0,0,.8);
+  transition: transform .08s, box-shadow .08s, filter .2s }
+.wood { border-radius: 14px; padding: 12px; font-weight: 600 }
+.knob { border-radius: 50%; width: 36px; height: 36px; display: grid; place-items: center; font-size: 13px }
+.wood:active:not(:disabled), .knob:active { transform: translateY(2px); box-shadow: inset 0 1px 0 rgba(255,225,190,.2), 0 1px 0 #2a1b10 }
+.brass { border: 1px solid #1e140b; border-radius: 999px; padding: 7px 12px; font-size: 12.5px; color: #f1e2c6; cursor: pointer;
+  text-shadow: 0 1px 1px rgba(0,0,0,.5); background: linear-gradient(180deg, #6e4b30, #4e3520); box-shadow: inset 0 1px 0 rgba(255,225,190,.22), 0 2px 0 #24170d }
+.brass[aria-pressed="true"], .brass:has(input:checked) { color: #2a1a06; text-shadow: 0 1px 0 rgba(255,240,200,.6); border-color: #6d5220;
+  background: radial-gradient(circle at 30% 20%, #fff0bf, transparent 50%), linear-gradient(180deg, #f0d083, #d4a747 55%, #a87f2e);
+  box-shadow: inset 0 1px 0 rgba(255,250,225,.8), 0 2px 0 #5e4517 }
+.paper { color: #2e2216; border-radius: 3px; background: repeating-linear-gradient(180deg, transparent 0 17px, rgba(90,120,170,.16) 17px 18px), linear-gradient(180deg, var(--paper-1), var(--paper-2));
+  box-shadow: 0 1px 0 rgba(255,255,255,.4) inset, 0 4px 8px -3px rgba(0,0,0,.6) }
+/* Ficha de papel (motivos de abandono): papel liso; la elegida (`:has(input:checked)`)
+   queda marcada con tinta, como un sello. */
+.paperChip { color: #2e2216; border: 1px solid rgba(46,34,22,.25); border-radius: 4px; background: linear-gradient(180deg, var(--paper-1), var(--paper-2));
+  box-shadow: 0 1px 0 rgba(255,255,255,.4) inset, 0 3px 6px -3px rgba(0,0,0,.6); transform: rotate(-.6deg) }
+.paperChip:nth-child(even) { transform: rotate(.6deg) }
+.paperChip:has(input:checked) { color: #6f2513; border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink), 0 3px 6px -3px rgba(0,0,0,.6);
+  background: linear-gradient(180deg, #f7ddc8, #ecc9ad) }
+/* Texto escrito a pluma sobre papel (dedicatoria / reverso / librito). */
+.dedication { width: 100%; resize: none; border: 0; background: transparent; color: #2a1d10; font-family: var(--f-display); font-style: italic;
+  font-size: 16px; line-height: 22px; background-image: repeating-linear-gradient(180deg, transparent 0 21px, rgba(90,120,170,.22) 21px 22px); padding: 0 2px }
+.dedication:focus { outline: none }
+.dedication::placeholder { color: rgba(42,29,16,.45) }
+.leather:focus-visible, .wood:focus-visible, .knob:focus-visible, .brass:focus-visible { outline: 2px solid var(--st-gold); outline-offset: 2px }
+/* Chapas y fichas con la casilla `sr-only` dentro: el foco de teclado se ve en la chapa. */
+.brass:has(input:focus-visible), .paperChip:has(input:focus-visible) { outline: 2px solid var(--st-gold); outline-offset: 2px }
+@media (prefers-reduced-motion: reduce) { .leather, .wood, .knob, .brass { transition: none } }

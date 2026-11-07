@@ -1,10 +1,5 @@
 .stage {
-  --st-bg: #17110d; --st-panel: #241d18; --st-raise: #2f2620; --st-line: rgba(240,232,219,.12);
-  --st-fg: #f0e8db; --st-muted: #a99e8c; --st-cta: #d98a5c; --st-cta-ink: #1f1409; --st-gold: #e0a94a;
-  --wood: #5b3e27; --wood-dk: #3a2717; --wood-lt: #7d5737; --back: #1c130c;
-  --f-display: var(--font-fraunces), Georgia, serif;
-  --f-body: var(--font-geist-sans), system-ui, sans-serif;
-  --f-mono: var(--font-geist-mono), ui-monospace, monospace;
+  composes: palette from "../stage/materials.module.css";
   font-family: var(--f-body);
 }
 
@@ -50,7 +45,7 @@
 @keyframes mote { from { transform: translate(0, 0); opacity: 0 } 15% { opacity: .9 } to { transform: translate(var(--dx), -220px); opacity: 0 } }
 
 /* El mueble */
-.case { --petscale: 1.5; --petsz: calc(96px * var(--petscale)); position: relative; z-index: 2; width: min(100%, 640px); padding: 12px 12px 0; border-radius: 6px 6px 2px 2px;
+.case { position: relative; z-index: 2; width: min(100%, 640px); padding: 12px 12px 0; border-radius: 6px 6px 2px 2px;
   background: repeating-linear-gradient(90deg, rgba(255,255,255,.035) 0 2px, transparent 2px 11px), linear-gradient(180deg, var(--wood-lt), var(--wood) 30%, var(--wood-dk));
   box-shadow: 0 30px 40px -24px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,230,200,.18); transition: filter .5s }
 .case::before { content: ""; position: absolute; left: -8px; right: -8px; top: -10px; height: 12px; border-radius: 4px 4px 0 0;
@@ -100,7 +95,7 @@
 .flat i:nth-of-type(1) { background: #4d6b5a; width: 88%; margin-left: 6% } .flat i:nth-of-type(2) { background: #a3553a } .flat i:nth-of-type(3) { background: #c9a24a; width: 94% }
 .bookend { width: calc(14px * var(--k)); height: 46%; background: linear-gradient(90deg, #8b6a2c, #e3be6a, #8b6a2c); border-radius: 3px 3px 0 0; margin-left: 3px }
 .spacer { flex: 1 }
-@media (max-width: 640px) { .plant { display: none } .case { --petscale: 1.1 } }
+@media (max-width: 640px) { .plant { display: none } }
 
 /* Foco del sorteo, dentro del mueble */
 .spot { position: absolute; inset: 0; z-index: 5; pointer-events: none; opacity: 0; transition: opacity .35s;
@@ -111,29 +106,6 @@
 .case.shakeAlt { animation: shakeAlt .5s }
 @keyframes shake { 20% { transform: translateX(-4px) rotate(-.3deg) } 40% { transform: translateX(4px) rotate(.3deg) } 60% { transform: translateX(-3px) } 80% { transform: translateX(2px) } }
 @keyframes shakeAlt { 20% { transform: translateX(-4px) rotate(-.3deg) } 40% { transform: translateX(4px) rotate(.3deg) } 60% { transform: translateX(-3px) } 80% { transform: translateX(2px) } }
-
-/* Mascota sentada en lo alto del mueble. La celda del sprite (92–104 px) lleva
-   un 30–40 % de relleno transparente: se posiciona la CAJA REAL del personaje
-   (--bx/--by/--bw/--bh, de spriteBox(), en px de celda), no la celda, para que
-   los pies apoyen en el copete (que asoma 10 px sobre el mueble) y el bocadillo
-   quede pegado a su izquierda sin taparlo. `.petzone` no genera caja: solo pasa
-   las variables a la mascota y al bocadillo, que se posicionan contra `.case`. */
-.petzone { display: contents; --pw: calc(var(--bw, 72) * var(--petscale) * 1px); --ph: calc(var(--bh, 68) * var(--petscale) * 1px) }
-.pet { position: absolute; right: 16px; bottom: calc(100% + 8px); z-index: 8; width: var(--pw); height: var(--ph); pointer-events: none;
-  transform: translateY(-40px); opacity: 0; transition: transform .7s cubic-bezier(.3,1.5,.5,1), opacity .3s }
-.pet.in { transform: none; opacity: 1 }
-.pet > .sprite-box { position: absolute; left: calc(var(--bx, 11) * var(--petscale) * -1px); top: calc(var(--by, 10) * var(--petscale) * -1px);
-  transform: scale(var(--petscale)); transform-origin: 0 0; image-rendering: pixelated }
-.pet.hop { animation: hop .5s 2 }
-@keyframes hop { 50% { translate: 0 -14px } }
-.bubble { position: absolute; right: calc(16px + var(--pw) + 8px); bottom: calc(100% + 8px + var(--ph) * .4); z-index: 9; width: min(300px, calc(100% - var(--pw) - 48px)); background: #fbf4e6; color: #2a1f15;
-  border-radius: 16px 16px 4px 16px; padding: 10px 14px; font-size: 13.5px; line-height: 1.4; box-shadow: 0 10px 24px -8px rgba(0,0,0,.6);
-  transform-origin: bottom right; transition: transform .25s cubic-bezier(.34,1.6,.64,1), opacity .2s }
-.bubble.off { transform: scale(.4); opacity: 0 }
-/* Sin mascota habla un narrador: el mismo bocadillo, pegado al borde del mueble. */
-.bubble.narrated { right: 8px; bottom: calc(100% + 8px); width: min(300px, calc(100% - 16px)) }
-.bubble b { font-family: var(--f-display); font-weight: 600 }
-@media (max-width: 640px) { .bubble { font-size: 12.5px; padding: 8px 12px } }
 
 /* Pedestales delante del mueble */
 .podium { position: absolute; inset: 0; z-index: 7; display: flex; justify-content: center; align-items: flex-end; gap: clamp(10px, 3vw, 30px); padding: 0 16px 60px }

@@ -26,6 +26,10 @@
 - [x] Partida «Sacar un lomo»: candidatos, mascota, duelo y apertura en el sitio (spec 2026-11-06).
   Entrada bajo 1100 px por `HomeDrawTile` y desde 1100 px por el lomo-botón «¿Cuál toca?»; sin migraciones
   ni `use cache`. [Spec](superpowers/specs/2026-11-06-sacar-lomo-partida-design.md), decisiones del 2026-11-06.
+- [x] Ritual de registrar sesión y cerrar lectura (spec 2026-11-07): marcapáginas sobre el libro de canto,
+  mascota con frases de datos, microrritual al guardar y cierre con objeto por tipo, lacre y dedicatoria.
+  Sin migraciones ni `use cache`. [Spec](superpowers/specs/2026-11-07-sesion-y-cierre-ritual-design.md),
+  decisiones del 2026-11-07.
 
 ## Moderación administrativa — #1183
 
