@@ -132,6 +132,44 @@ test("el modo oscuro del sistema pinta el ámbito de la obra oscuro y el claro, 
   expect(await luminance(dark)).toBeLessThan(0.3);
 });
 
+// Los tonos extraídos son centros de tramo (7,5 + 15k) y el hash es entero: un
+// entero aquí significa que la extracción no ha funcionado en build de producción.
+// En frío, la primera petición puede caer al hash por el presupuesto de 800 ms
+// (la extracción sigue y rellena la caché), por eso se recarga hasta verlo.
+const coloured = [
+  { name: "TMDB", table: "movies", query: "title=eq.Pearl&cover_url=like.*image.tmdb.org*", path: "/pelicula/" },
+  {
+    name: "OpenLibrary",
+    table: "books",
+    query: `title=eq.${encodeURIComponent("El imperio final")}&cover_url=like.*openlibrary*`,
+    path: "/libro/",
+  },
+] as const;
+
+for (const c of coloured) {
+  test(`el tono sale de la portada real · ${c.name}`, async ({ page }) => {
+    // 90 s: un fallo transitorio del origen deja «failed» un minuto en caché.
+    test.setTimeout(120_000);
+    const id = await needId(c.name, c.table, c.query);
+    await expect
+      .poll(
+        async () => {
+          await page.goto(`${c.path}${id}`);
+          const hue = await page
+            .getByTestId("work-scope")
+            .evaluate((el) => (el as HTMLElement).style.getPropertyValue("--work-hue"));
+          return Number(hue);
+        },
+        {
+          message: "el tono sigue siendo el hash del título: no se ha extraído de la portada",
+          timeout: 90_000,
+          intervals: [500, 1_000, 2_000],
+        },
+      )
+      .toSatisfy((hue: number) => !Number.isInteger(hue) && (hue - 7.5) % 15 === 0);
+  });
+}
+
 test("?tab= sigue abriendo la pestaña", async ({ page }) => {
   const id = await needId("película con TMDB", "movies", MOVIE_TMDB);
   await page.goto(`/pelicula/${id}?tab=community`);

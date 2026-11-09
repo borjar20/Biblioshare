@@ -4,7 +4,9 @@ import { after } from "next/server";
 import sharp from "sharp";
 import { hashTitleHue, hueFromPixels } from "./work-hue-core";
 
-const TIMEOUT_MS = 2000;
+// Límite de la descarga, no de la ficha (eso es REQUEST_BUDGET_MS): OpenLibrary
+// tarda ~2,1 s con sus redirecciones, así que con 2 s fallaba siempre.
+const TIMEOUT_MS = 5000;
 // El mismo tope que `uploadCover` (edit-actions.ts): una portada subida a Storage
 // que pasó ese límite nunca se rechaza aquí.
 const MAX_BYTES = 2 * 1024 * 1024;
@@ -13,7 +15,7 @@ const MAX_BYTES = 2 * 1024 * 1024;
 const MAX_INPUT_PIXELS = 16_000_000;
 const MAX_REDIRECTS = 3;
 // Lo más que un fallo de caché puede retener la ficha: medido, TMDB tarda
-// 40–270 ms y OpenLibrary 1–1,6 s.
+// 40–270 ms y OpenLibrary 1–2,2 s, que se queda fuera y entra en la siguiente visita.
 const REQUEST_BUDGET_MS = 800;
 // Next deja al `set` de la caché fuera de `waitUntil` cuando el valor se genera
 // dentro de un <Suspense> (`executeRevalidates` lee las escrituras pendientes al
