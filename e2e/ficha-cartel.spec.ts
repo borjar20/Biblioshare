@@ -33,11 +33,12 @@ async function rest<T>(path: string): Promise<T> {
 }
 
 async function patch(path: string, body: unknown) {
-  await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     method: "PATCH",
     headers: headers(),
     body: JSON.stringify(body),
   });
+  if (!res.ok) throw new Error(`PATCH ${path} falló: ${res.status}`);
 }
 
 async function devtestId(): Promise<string> {
@@ -54,9 +55,12 @@ async function login(page: Page) {
   await page.waitForURL("/");
 }
 
-async function firstId(table: string, query: string): Promise<string | undefined> {
-  const [row] = await rest<{ id: string }[]>(`${table}?select=id&${query}&limit=1`);
-  return row?.id;
+// Un fixture ausente falla en voz alta: saltarse el test dejaría la forma sin proteger.
+async function needId(what: string, table: string, query: string): Promise<string> {
+  const rows = await rest<{ id: string }[]>(`${table}?select=id&${query}&limit=1`);
+  const id = Array.isArray(rows) ? rows[0]?.id : undefined;
+  expect(id, `falta el fixture «${what}» (${table}?${query}) en este entorno`).toBeTruthy();
+  return id!;
 }
 
 const MOVIE_TMDB = "cover_url=like.*image.tmdb.org*";
@@ -74,11 +78,13 @@ for (const c of cases) {
   ] as const) {
     for (const scheme of ["light", "dark"] as const) {
       test(`${c.name} · ${label} · ${scheme}`, async ({ page }) => {
-        const id = await firstId(c.table, c.query);
-        test.skip(!id, `no hay ninguna fila de ${c.table} con ${c.query} en este entorno`);
+        const id = await needId(c.name, c.table, c.query);
         await page.setViewportSize(viewport);
         await page.emulateMedia({ colorScheme: scheme });
         await page.goto(`${c.path}${id}`);
+        // Durante el streaming el esqueleto y la ficha pueden coexistir un instante:
+        // al asentarse debe quedar UN solo cartel.
+        await expect(page.locator(`[data-poster="${c.kind}"]`)).toHaveCount(1);
         await expect(page.locator(`[data-poster="${c.kind}"]`)).toBeVisible();
         await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
         const hue = await page
@@ -97,8 +103,7 @@ for (const c of cases) {
 }
 
 test("el modo oscuro del sistema pinta el ámbito de la obra oscuro y el claro, claro", async ({ page }) => {
-  const id = await firstId("movies", MOVIE_TMDB);
-  test.skip(!id, "no hay película con póster de TMDB");
+  const id = await needId("película con TMDB", "movies", MOVIE_TMDB);
   const background = async () =>
     page.getByTestId("work-scope").evaluate((el) => getComputedStyle(el).backgroundColor);
   // Luminosidad relativa aproximada del color computado, vía canvas (el valor
@@ -128,15 +133,13 @@ test("el modo oscuro del sistema pinta el ámbito de la obra oscuro y el claro, 
 });
 
 test("?tab= sigue abriendo la pestaña", async ({ page }) => {
-  const id = await firstId("movies", MOVIE_TMDB);
-  test.skip(!id, "no hay película con póster de TMDB");
+  const id = await needId("película con TMDB", "movies", MOVIE_TMDB);
   await page.goto(`/pelicula/${id}?tab=community`);
   await expect(page.locator("#item-tabpanel-community")).toBeVisible();
 });
 
 test("en escritorio la columna de cartel se queda fija al hacer scroll", async ({ page }) => {
-  const id = await firstId("movies", MOVIE_TMDB);
-  test.skip(!id, "no hay película con póster de TMDB");
+  const id = await needId("película con TMDB", "movies", MOVIE_TMDB);
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(`/pelicula/${id}`);
   const poster = page.locator('[data-poster="bleed"]');
@@ -155,20 +158,25 @@ test("en escritorio la columna de cartel se queda fija al hacer scroll", async (
 // contraste se calcula aquí: color del texto contra el fondo opaco efectivo
 // (se mezclan las capas translúcidas hacia arriba), WCAG AA. Cubre lo que el
 // tinte por obra puede romper: título, autor, pestañas y títulos de sección.
-for (const scheme of ["light", "dark"] as const) {
-  test(`contraste AA del texto de la ficha · ${scheme}`, async ({ page }) => {
-    const id = await firstId("movies", MOVIE_TMDB);
-    test.skip(!id, "no hay película con póster de TMDB");
-    await page.setViewportSize({ width: 1440, height: 900 });
+for (const c of cases) {
+ for (const [label, viewport] of [
+  ["móvil", { width: 412, height: 915 }],
+  ["escritorio", { width: 1440, height: 900 }],
+ ] as const) {
+  for (const scheme of ["light", "dark"] as const) {
+  test(`contraste AA · ${c.name} · ${label} · ${scheme}`, async ({ page }) => {
+    const id = await needId(c.name, c.table, c.query);
+    const desktop = viewport.width >= 1280;
+    await page.setViewportSize(viewport);
     await page.emulateMedia({ colorScheme: scheme });
-    await page.goto(`/pelicula/${id}`);
+    await page.goto(`${c.path}${id}`);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     // Las pestañas llegan por streaming: se espera a que haya tabpanel con sus títulos.
     await expect(page.getByRole("tablist")).toBeVisible();
     await expect(page.locator('[role="tabpanel"] h2').first()).toBeVisible();
     await page.evaluate(async () => { await document.fonts.ready; });
 
-    const results = await page.getByTestId("work-scope").evaluate((scope) => {
+    const results = await page.getByTestId("work-scope").evaluate((scope, desktop) => {
       const rgba = (value: string): [number, number, number, number] => {
         const ctx = document.createElement("canvas").getContext("2d", { willReadFrequently: true })!;
         ctx.clearRect(0, 0, 1, 1);
@@ -208,18 +216,36 @@ for (const scheme of ["light", "dark"] as const) {
         [...scope.querySelectorAll(selector)]
           .filter((el) => (el as HTMLElement).offsetParent !== null && el.textContent?.trim())
           .map((el) => ({ selector, text: el.textContent!.trim().slice(0, 30), ratio: contrast(el), min }));
+      // `backdrop` solo ve background-color: la cabecera de móvil se apoya en el degradado
+      // del cartel (background-image), así que allí no se mide y la cubre el test de posición.
       return [
-        ...pick("h1", 3),
-        ...pick("h1 + p", 4.5),
+        ...(desktop ? [...pick("h1", 3), ...pick("h1 + p", 4.5)] : []),
         ...pick('[role="tab"]', 4.5),
         ...pick('[role="tabpanel"] h2', 3),
+        ...pick('[role="tabpanel"] p', 4.5),
       ];
-    });
+    }, desktop);
 
     expect(results.length).toBeGreaterThanOrEqual(4);
     for (const r of results) {
       expect(r.ratio, `${r.selector} «${r.text}» contra su fondo`).toBeGreaterThanOrEqual(r.min);
     }
+  });
+  }
+ }
+
+  // El título nunca va sobre la foto: en móvil la cabecera monta sobre el degradado del
+  // cartel, casi opaco desde el 55 % de su alto. Es lo que sustituye al contraste medido.
+  test(`el título no se monta sobre la foto · ${c.name} · móvil`, async ({ page }) => {
+    const id = await needId(c.name, c.table, c.query);
+    await page.setViewportSize({ width: 412, height: 915 });
+    await page.goto(`${c.path}${id}`);
+    const h1 = page.getByRole("heading", { level: 1 });
+    await expect(h1).toBeVisible();
+    await expect(page.locator(`[data-poster="${c.kind}"]`)).toHaveCount(1);
+    const poster = await page.locator(`[data-poster="${c.kind}"]`).boundingBox();
+    const title = await h1.boundingBox();
+    expect(title!.y).toBeGreaterThanOrEqual(poster!.y + poster!.height * 0.55);
   });
 }
 
@@ -268,10 +294,11 @@ test("la hoja de cierre dentro de una pestaña no adopta la letra del cartel", a
     await patch(`passes?id=eq.${pass.id}`, snapshot);
     const newIds = [...(await postIds())].filter((id) => !postsBefore.has(id));
     if (newIds.length) {
-      await fetch(`${SUPABASE_URL}/rest/v1/posts?id=in.(${newIds.join(",")})`, {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/posts?id=in.(${newIds.join(",")})`, {
         method: "DELETE",
         headers: headers(),
       });
+      if (!res.ok) throw new Error(`DELETE posts falló: ${res.status}`);
     }
   }
 });
