@@ -1,10 +1,25 @@
+import "server-only";
 import { cacheLife } from "next/cache";
+import { after } from "next/server";
 import sharp from "sharp";
 import { hashTitleHue, hueFromPixels } from "./work-hue-core";
 
 const TIMEOUT_MS = 2000;
-const MAX_BYTES = 2_000_000;
+// El mismo tope que `uploadCover` (edit-actions.ts): una portada subida a Storage
+// que pasó ese límite nunca se rechaza aquí.
+const MAX_BYTES = 2 * 1024 * 1024;
+// Un JPEG/PNG pequeño en bytes puede declarar dimensiones enormes y reventar la
+// memoria al decodificarse. Ninguna portada real se acerca a 16 Mpx.
+const MAX_INPUT_PIXELS = 16_000_000;
 const MAX_REDIRECTS = 3;
+// Lo más que un fallo de caché puede retener la ficha: medido, TMDB tarda
+// 40–270 ms y OpenLibrary 1–1,6 s.
+const REQUEST_BUDGET_MS = 800;
+// Next deja al `set` de la caché fuera de `waitUntil` cuando el valor se genera
+// dentro de un <Suspense> (`executeRevalidates` lee las escrituras pendientes al
+// emitir el shell). Sin este margen, Vercel podría congelar la función entre el
+// final de la extracción y el final de la escritura remota.
+const CACHE_WRITE_GRACE_MS = 500;
 
 // Solo los orígenes de images.remotePatterns: la URL sale del catálogo y el
 // servidor no debe descargar de cualquier sitio.
@@ -14,6 +29,14 @@ function isAllowedCover(url: URL): boolean {
     return true;
   }
   return url.hostname.endsWith(".supabase.co") && url.pathname.startsWith("/storage/v1/object/public/");
+}
+
+function isAllowedCoverUrl(coverUrl: string): boolean {
+  try {
+    return isAllowedCover(new URL(coverUrl));
+  } catch {
+    return false;
+  }
 }
 
 // OpenLibrary responde 302 a archive.org y este a un nodo `iaNNN.us.archive.org`
@@ -39,6 +62,7 @@ async function fetchCover(startUrl: string): Promise<Response> {
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
     const res = await fetch(target, { signal, redirect: "manual" });
     if (res.status < 300 || res.status >= 400) return res;
+    await res.body?.cancel();
     const location = res.headers.get("location");
     if (!location) throw new Error(`getWorkHue: redirección sin destino (HTTP ${res.status})`);
     const next = new URL(location, target);
@@ -48,25 +72,64 @@ async function fetchCover(startUrl: string): Promise<Response> {
   throw new Error("getWorkHue: demasiadas redirecciones");
 }
 
-// El tono depende solo de la imagen: igual para un anónimo, el dueño y un tercero
-// (regla #437). `null` es un resultado válido (portada sin color). Un fallo LANZA:
-// así no se guarda en caché y la siguiente visita lo reintenta.
-export async function getWorkHue(coverUrl: string): Promise<number | null> {
-  "use cache";
-  cacheLife("max");
-
-  const url = new URL(coverUrl);
-  if (!isAllowedCover(url)) throw new Error(`getWorkHue: origen no permitido ${url.hostname}`);
+async function extractHue(coverUrl: string): Promise<number | null> {
+  if (!isAllowedCoverUrl(coverUrl)) throw new Error("getWorkHue: origen no permitido");
 
   const res = await fetchCover(smallCoverUrl(coverUrl));
-  if (!res.ok) throw new Error(`getWorkHue: HTTP ${res.status}`);
+  if (!res.ok) {
+    await res.body?.cancel();
+    throw new Error(`getWorkHue: HTTP ${res.status}`);
+  }
+  if (Number(res.headers.get("content-length") ?? 0) > MAX_BYTES) {
+    await res.body?.cancel();
+    throw new Error("getWorkHue: imagen demasiado grande");
+  }
   const input = Buffer.from(await res.arrayBuffer());
   if (input.length > MAX_BYTES) throw new Error("getWorkHue: imagen demasiado grande");
 
-  const pixels = await sharp(input).resize(24, 36, { fit: "fill" }).removeAlpha().raw().toBuffer();
+  const pixels = await sharp(input, { limitInputPixels: MAX_INPUT_PIXELS })
+    .resize(24, 36, { fit: "fill" })
+    .removeAlpha()
+    .raw()
+    .toBuffer();
   return hueFromPixels(pixels);
 }
 
+// El tono depende solo de la imagen: igual para un anónimo, el dueño y un tercero
+// (regla #437). Un argumento escalar, sin Supabase, cookies ni headers.
+//
+// `use cache: remote` y no `use cache`: las fichas leen sesión y el tono se pide en
+// tiempo de petición, donde la memoria de cada instancia serverless no se comparte.
+//
+// `null` es un resultado válido (portada sin color) y dura lo que el tono. Un fallo
+// se cachea poco tiempo como `"failed"`: frena los reintentos contra un origen caído
+// sin dejar a la obra sin color. Es el único sitio que registra el fallo, así que
+// hay un log por extracción real y ninguno por acierto de caché.
+export async function getWorkHue(coverUrl: string): Promise<number | null | "failed"> {
+  "use cache: remote";
+  try {
+    const hue = await extractHue(coverUrl);
+    cacheLife("max");
+    return hue;
+  } catch (error) {
+    cacheLife("minutes");
+    console.error("getWorkHue", error);
+    return "failed";
+  }
+}
+
+const LATE = Symbol("late");
+
+// Mantiene viva la función hasta que el valor llegue a la caché: la respuesta ya
+// se habrá enviado con el tono de respaldo y la siguiente visita verá el real.
+function keepAliveUntilStored(extraction: Promise<unknown>) {
+  after(async () => {
+    await extraction.catch((error) => console.error("resolveWorkHue", error));
+    await new Promise((resolve) => setTimeout(resolve, CACHE_WRITE_GRACE_MS));
+  });
+}
+
+// Nunca rechaza: las fichas la lanzan sin await para no sumarla en serie a sus lecturas.
 export async function resolveWorkHue({
   coverUrl,
   title,
@@ -74,11 +137,23 @@ export async function resolveWorkHue({
   coverUrl: string | null;
   title: string;
 }): Promise<number> {
-  if (!coverUrl) return hashTitleHue(title);
+  const fallback = hashTitleHue(title);
+  if (!coverUrl || !isAllowedCoverUrl(coverUrl)) return fallback;
   try {
-    return (await getWorkHue(coverUrl)) ?? hashTitleHue(title);
+    const extraction = getWorkHue(coverUrl);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const budget = new Promise<typeof LATE>((resolve) => {
+      timer = setTimeout(() => resolve(LATE), REQUEST_BUDGET_MS);
+    });
+    const hue = await Promise.race([extraction, budget]);
+    clearTimeout(timer);
+    if (hue === LATE) {
+      keepAliveUntilStored(extraction);
+      return fallback;
+    }
+    return typeof hue === "number" ? hue : fallback;
   } catch (error) {
     console.error("resolveWorkHue", error);
-    return hashTitleHue(title);
+    return fallback;
   }
 }
