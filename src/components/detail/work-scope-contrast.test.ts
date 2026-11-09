@@ -38,6 +38,12 @@ function ratio(a: [number, number], b: [number, number], h: number) {
 const TEXT = ["--foreground", "--foreground-soft", "--muted-foreground", "--work-title", "--accent-ink"];
 const SURFACES = ["--background", "--surface", "--surface-muted"];
 
+describe("títulos de sección", () => {
+  it("la regla de h2 excluye los de dentro de un <dialog>", () => {
+    expect(css).toContain('[role="tabpanel"] h2:not(dialog h2)');
+  });
+});
+
 describe("espejo del tema oscuro del sistema", () => {
   it("el bloque @media (prefers-color-scheme: dark) iguala al de .dark", () => {
     const media = tokens(block(":global(:root:not(.light):not(.dark)) .scope {"));

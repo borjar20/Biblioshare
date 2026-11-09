@@ -12,7 +12,7 @@
   --foreground-soft: oklch(0.36 0.03 var(--work-hue));
   --muted-foreground: oklch(0.42 0.03 var(--work-hue));
   --foreground-faint: oklch(0.62 0.03 var(--work-hue));
-  --accent: oklch(0.51 0.16 var(--work-hue));
+  --accent: oklch(0.50 0.16 var(--work-hue));
   --accent-hover: oklch(0.46 0.16 var(--work-hue));
   --accent-foreground: oklch(0.99 0.005 var(--work-hue));
   --accent-ink: oklch(0.42 0.14 var(--work-hue));
@@ -57,8 +57,9 @@
     --border: oklch(0.9 0.07 var(--work-hue) / 0.18);
   }
 }
-/* Títulos de sección de las pestañas, en la letra de cartel. */
-.scope :global([role="tabpanel"] h2) {
+/* Títulos de sección de las pestañas, en la letra de cartel. Los <dialog> de las
+   pestañas (hojas de cierre, nueva pasada...) conservan sus títulos: de ahí el :not. */
+.scope :global([role="tabpanel"] h2:not(dialog h2)) {
   font-family: var(--font-poster), var(--font-geist-sans), sans-serif;
   font-size: 22px;
   font-weight: 400;
