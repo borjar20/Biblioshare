@@ -37,6 +37,26 @@
   --work-title: oklch(0.9 0.07 var(--work-hue));
   --border: oklch(0.9 0.07 var(--work-hue) / 0.18);
 }
+/* Tema «sistema» con SO oscuro: espeja el bloque .dark (mismo selector que globals.css).
+   Un .light explícito queda fuera por el :not(.light). El test impide que diverjan. */
+@media (prefers-color-scheme: dark) {
+  :global(:root:not(.light):not(.dark)) .scope {
+    --background: oklch(0.2 0.028 var(--work-hue));
+    --surface: oklch(0.25 0.03 var(--work-hue));
+    --surface-muted: oklch(0.29 0.03 var(--work-hue));
+    --surface-3: oklch(0.33 0.03 var(--work-hue));
+    --foreground: oklch(0.88 0.02 var(--work-hue));
+    --foreground-soft: oklch(0.82 0.02 var(--work-hue));
+    --muted-foreground: oklch(0.76 0.02 var(--work-hue));
+    --foreground-faint: oklch(0.5 0.02 var(--work-hue));
+    --accent: oklch(0.72 0.14 var(--work-hue));
+    --accent-hover: oklch(0.78 0.14 var(--work-hue));
+    --accent-foreground: oklch(0.18 0.02 var(--work-hue));
+    --accent-ink: oklch(0.8 0.12 var(--work-hue));
+    --work-title: oklch(0.9 0.07 var(--work-hue));
+    --border: oklch(0.9 0.07 var(--work-hue) / 0.18);
+  }
+}
 /* Títulos de sección de las pestañas, en la letra de cartel. */
 .scope :global([role="tabpanel"] h2) {
   font-family: var(--font-poster), var(--font-geist-sans), sans-serif;

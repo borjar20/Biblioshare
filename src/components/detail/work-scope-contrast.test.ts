@@ -38,6 +38,18 @@ function ratio(a: [number, number], b: [number, number], h: number) {
 const TEXT = ["--foreground", "--foreground-soft", "--muted-foreground", "--work-title", "--accent-ink"];
 const SURFACES = ["--background", "--surface", "--surface-muted"];
 
+describe("espejo del tema oscuro del sistema", () => {
+  it("el bloque @media (prefers-color-scheme: dark) iguala al de .dark", () => {
+    const media = tokens(block(":global(:root:not(.light):not(.dark)) .scope {"));
+    expect(Object.keys(media).length).toBeGreaterThan(0);
+    expect(media).toEqual(tokens(block(":global(.dark) .scope {")));
+  });
+  it("excluye .light explícito", () => {
+    expect(css).toContain("@media (prefers-color-scheme: dark)");
+    expect(css).toContain(":not(.light):not(.dark)");
+  });
+});
+
 describe.each([
   ["claro", tokens(block(".scope {"))],
   ["oscuro", tokens(block(":global(.dark) .scope {"))],
