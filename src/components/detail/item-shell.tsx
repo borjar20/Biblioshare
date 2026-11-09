@@ -9,8 +9,8 @@ import { PosterArtView } from "./poster-art-view";
 import { WorkScope } from "./work-scope";
 
 // La ficha como cartel propio de cada obra (spec 2026-11-09): un árbol para móvil
-// y PC. Hasta `xl` el cartel abre la página y la cabecera monta sobre su degradado;
-// desde `xl` el cartel es una columna fija a la izquierda.
+// y PC. Hasta `lg` el cartel abre la página y la cabecera monta sobre su degradado;
+// desde `lg` el cartel es una columna fija a la izquierda.
 //
 // Las pestañas siguen llegando como slot y se pintan UNA vez, así que el
 // <Suspense> que las envuelve (Fase B del plan 00) sigue intacto.

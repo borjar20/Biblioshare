@@ -519,7 +519,7 @@
       "label": "components/detail",
       "layer": "ui",
       "kind": "ui",
-      "summary": "Ficha como cartel propio de cada obra (spec 2026-11-09: PosterArtView a sangre/atmósfera/tipográfico según el origen de la imagen, WorkScope tiñe los tokens con el tono de la obra, columna de cartel desde xl; ItemHero sin backdrop_url), PassCard, pestañas con CTA pegado; InfoLayout (principal | datos pegajosa) y Episodios PC·1 en tres columnas; contenedor común DETAIL_CONTAINER (1320px). Hoja de cierre como ritual (spec 2026-11-07): recuento con loadClosingContext, ClosingObject por tipo, InkDateStamp, WaxSeal sobre RatingDots, dedicatoria y despedida ~1,6 s antes de cerrar el dialog.",
+      "summary": "Ficha como cartel propio de cada obra (spec 2026-11-09: PosterArtView a sangre/atmósfera/tipográfico según el origen de la imagen, WorkScope tiñe los tokens con el tono de la obra, columna de cartel desde lg; ItemHero sin backdrop_url), PassCard, pestañas con CTA pegado; InfoLayout (principal | datos pegajosa) y Episodios PC·1 en tres columnas; contenedor común DETAIL_CONTAINER (1320px). Hoja de cierre como ritual (spec 2026-11-07): recuento con loadClosingContext, ClosingObject por tipo, InkDateStamp, WaxSeal sobre RatingDots, dedicatoria y despedida ~1,6 s antes de cerrar el dialog.",
       "files": [
         "src/components/detail",
         "src/components/detail/close-pass-sheet.tsx",
