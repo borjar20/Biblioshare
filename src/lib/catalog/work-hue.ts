@@ -104,7 +104,7 @@ async function extractHue(coverUrl: string): Promise<number | null> {
 // tiempo de petición, donde la memoria de cada instancia serverless no se comparte.
 //
 // `null` es un resultado válido (portada sin color) y dura lo que el tono. Un fallo
-// se cachea poco tiempo como `"failed"`: frena los reintentos contra un origen caído
+// se cachea 5 minutos como `"failed"`: frena los reintentos contra un origen caído
 // sin dejar a la obra sin color. Es el único sitio que registra el fallo, así que
 // hay un log por extracción real y ninguno por acierto de caché.
 export async function getWorkHue(coverUrl: string): Promise<number | null | "failed"> {
@@ -114,7 +114,10 @@ export async function getWorkHue(coverUrl: string): Promise<number | null | "fai
     cacheLife("max");
     return hue;
   } catch (error) {
-    cacheLife("minutes");
+    // revalidate igual a expire: pasados 5 min es un fallo de caché limpio, que pasa
+    // por el `after()` de resolveWorkHue. Un stale-while-revalidate regeneraría fuera
+    // de él y Vercel podría congelarlo.
+    cacheLife({ revalidate: 300, expire: 300 });
     console.error("getWorkHue", error);
     return "failed";
   }

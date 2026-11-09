@@ -110,13 +110,13 @@ describe("getWorkHue", () => {
     vi.mocked(fetch).mockResolvedValue(new Response("", { status: 500 }));
     await expect(getWorkHue(TMDB)).resolves.toBe("failed");
     expect(cacheLife).toHaveBeenCalledTimes(1);
-    expect(cacheLife).toHaveBeenCalledWith("minutes");
+    expect(cacheLife).toHaveBeenCalledWith({ revalidate: 300, expire: 300 });
     expect(errorLog).toHaveBeenCalledTimes(1);
   });
   it("una imagen ilegible se cachea poco tiempo como «failed»", async () => {
     vi.mocked(fetch).mockResolvedValue(new Response("no soy una imagen", { status: 200 }));
     await expect(getWorkHue(TMDB)).resolves.toBe("failed");
-    expect(cacheLife).toHaveBeenCalledWith("minutes");
+    expect(cacheLife).toHaveBeenCalledWith({ revalidate: 300, expire: 300 });
   });
   it("un fallo de red no lanza", async () => {
     vi.mocked(fetch).mockRejectedValue(new Error("red"));
