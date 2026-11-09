@@ -7,6 +7,7 @@ import messages from "../../../../messages/es.json";
 import { PAGE_BOOK, PAGE_CASES, PAGE_PASS, PAGE_USER, pageFixture } from "@/lib/editions/edition-pages.test-fixture";
 
 const boundary = vi.hoisted(() => ({ createClient: vi.fn(), createPublicClient: vi.fn(), getCurrentUser: vi.fn(), getAccessToken: vi.fn() }));
+vi.mock("server-only", () => ({}));
 vi.mock("@/lib/supabase/server", () => boundary);
 vi.mock("next/navigation", () => ({
   notFound: () => { throw new Error("Unexpected notFound in page fixture"); },

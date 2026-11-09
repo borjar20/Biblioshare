@@ -158,7 +158,7 @@ for (const c of coloured) {
           const hue = await page
             .getByTestId("work-scope")
             .evaluate((el) => (el as HTMLElement).style.getPropertyValue("--work-hue"));
-          return Number(hue);
+          return !Number.isInteger(Number(hue)) && (Number(hue) - 7.5) % 15 === 0;
         },
         {
           message: "el tono sigue siendo el hash del título: no se ha extraído de la portada",
@@ -166,7 +166,7 @@ for (const c of coloured) {
           intervals: [500, 1_000, 2_000],
         },
       )
-      .toSatisfy((hue: number) => !Number.isInteger(hue) && (hue - 7.5) % 15 === 0);
+      .toBe(true);
   });
 }
 
