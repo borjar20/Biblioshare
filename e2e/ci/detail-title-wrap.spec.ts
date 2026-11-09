@@ -138,7 +138,6 @@ for (const viewport of [
         await expect(column.locator("p").first()).toHaveText(fixture.author);
         // Cartel (spec 2026-11-09): el título y «Seguir» viven en la cabecera, dentro
         // de la columna derecha; la portada va en el área del cartel, fuera de ella.
-        const grid = column.locator("..");
         const cover = page.getByRole("button", { name: "Ampliar imagen", exact: true });
         const follow = column.getByRole("button", { name: "Seguir", exact: true });
         await expect(cover).toHaveCount(1);

@@ -176,7 +176,7 @@ export function ItemDetailTabs({
                   {isActive && (
                     <span
                       aria-hidden
-                      className={`absolute inset-x-0 -bottom-px h-0.5 rounded-sm bg-accent`}
+                      className="absolute inset-x-0 -bottom-px h-0.5 rounded-sm bg-accent"
                     />
                   )}
                 </button>
