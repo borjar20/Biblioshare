@@ -798,7 +798,7 @@
       "layer": "domain",
       "kind": "module",
       "size": 27,
-      "summary": "Búsqueda federada, fusión de resultados, find-or-create, hidratación de libro, TMDB/OpenLibrary, ISBN, géneros y acentos por tipo. getWorkHue (use cache, argumentos escalares: descarga la imagen de orígenes permitidos; OpenLibrary redirige a archive.org y cada salto se valida; fallo no cacheado, respaldo por hash del título) y poster-art (forma del cartel por origen).",
+      "summary": "Búsqueda federada, fusión de resultados, find-or-create, hidratación de libro, TMDB/OpenLibrary, ISBN, géneros y acentos por tipo. getWorkHue (use cache: remote, argumento escalar: descarga la imagen de orígenes permitidos; OpenLibrary redirige a archive.org y cada salto se valida; fallo cacheado unos minutos como \"failed\"; resolveWorkHue espera 800 ms y si no, hash del título y after() para que la caché se llene) y poster-art (forma del cartel por origen).",
       "files": [
         "src/lib/catalog/search.ts",
         "src/lib/catalog/find-or-create.ts",
@@ -815,7 +815,7 @@
         "src/lib/catalog/poster-art.ts"
       ],
       "gotchas": [
-        "getWorkHue lleva use cache porque el dato depende solo de la imagen, igual para cualquiera que mire (regla #437); archive.org solo se admite como destino de una redirección."
+        "getWorkHue lleva use cache: remote porque el dato depende solo de la imagen, igual para cualquiera que mire (regla #437); archive.org solo se admite como destino de una redirección."
       ]
     },
     {

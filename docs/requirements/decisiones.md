@@ -8293,3 +8293,26 @@ se lee con `getPlannedItems`, memoizada por petición con `cache()` de React
 - **Una letra de cartel (Anton)**, cargada solo en la ficha. Rige los títulos de sección de las
   pestañas (h2 o `data-section-title`); los títulos de los diálogos dentro de las pestañas no.
 - Spec: `docs/superpowers/specs/2026-11-09-ficha-cartel-design.md`.
+
+## 2026-11-09 — El tono de la obra: caché persistente, presupuesto y freno de fallos
+
+Corrige la entrada anterior y sustituye en la spec del cartel «la siguiente visita reintenta» y
+«solo la primera visita lo nota».
+
+- **`use cache: remote` en `getWorkHue`.** Las fichas leen sesión, así que el tono se pide en tiempo
+  de petición, donde `use cache` en memoria no se comparte entre instancias serverless y cada visita
+  repetía la descarga. Sigue cumpliendo #437: un argumento escalar, sin Supabase, cookies ni headers.
+  Coste asumido: la caché remota no sobrevive a un deploy (la clave incluye el build), así que cada
+  portada vuelve a estar en frío una vez por deploy.
+- **Presupuesto de 800 ms por petición.** `resolveWorkHue` compite la extracción contra 800 ms. Si
+  pierde, esa respuesta usa el hash del título y un `after()` mantiene viva la función hasta que el
+  valor llega a la caché, con un margen de 500 ms: Next no mete en `waitUntil` las escrituras de
+  caché generadas dentro de un `<Suspense>`. La consecuencia visible es que una portada lenta
+  (OpenLibrary) enseña el color del hash en la primera visita tras un deploy y el real en las
+  siguientes.
+- **La descarga puede tardar hasta 5 s.** El presupuesto ya protege la ficha, y OpenLibrary tarda
+  unos 2,1 s con sus redirecciones: con el límite anterior de 2 s fallaba siempre.
+- **Fallos en caché unos minutos.** Un fallo de descarga o decodificación ya no lanza: devuelve
+  `"failed"` con `cacheLife("minutes")`, para no insistir contra un origen caído, y se registra una
+  vez por extracción real. Solo el éxito o `null` (portada sin color) usan `cacheLife("max")`. Un
+  origen fuera de la lista permitida cae al hash sin entrar en la caché.
