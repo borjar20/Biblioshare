@@ -20,4 +20,4 @@ export const POSTER_BAR = "absolute inset-x-4 top-3.5 z-10 flex items-center jus
 // DEBAJO de la barra de pestañas, que también se pega: 49px de barra (py-3.5 +
 // línea de 20px + borde) y 24px de aire. Antes cada lateral calculaba el suyo
 // desde el raíl de PC (topbar + 34px) y, con la barra pegada, se metía debajo.
-export const DETAIL_ASIDE_STICKY = "lg:sticky lg:top-[calc(var(--topbar-h)+73px)]";
+export const DETAIL_ASIDE_STICKY = "xl:sticky xl:top-[calc(var(--topbar-h)+73px)]";

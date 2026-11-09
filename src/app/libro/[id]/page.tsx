@@ -578,7 +578,6 @@ async function BookTabs({
 
   return (
     <ItemDetailTabs
-      itemType="book"
       tablistLabel={tDetail("tabsLabel")}
       labels={{
         info: tDetail("tabInfo"),
@@ -613,7 +612,7 @@ async function BookTabs({
           <InfoLayout
             main={
               <>
-                <div className="order-2 lg:order-none">
+                <div className="order-2 xl:order-none">
                   <InfoPanel
                     aboutLabel={tDetail("about")}
                     synopsis={book.synopsis}
@@ -622,8 +621,8 @@ async function BookTabs({
                   />
                 </div>
                 {sagas.length > 0 && (
-                  <section className="order-1 flex flex-col gap-3.5 lg:order-none">
-                    <span className="font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
+                  <section className="order-1 flex flex-col gap-3.5 xl:order-none">
+                    <span data-section-title className="font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
                       {tDetail("sagasCount", { count: sagas.length })}
                     </span>
                     {stripShown && mainSaga && (
@@ -644,7 +643,7 @@ async function BookTabs({
                     />
                   </section>
                 )}
-                <div className="order-4 lg:order-none">
+                <div className="order-4 xl:order-none">
                   <EditionsSection
                     itemType="book"
                     itemId={book.id}
@@ -660,7 +659,7 @@ async function BookTabs({
               </>
             }
             aside={
-              <div className="order-3 lg:order-none">
+              <div className="order-3 xl:order-none">
                 <MetadataSidebar
                   rows={metaRows}
                   genres={genres}

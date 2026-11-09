@@ -496,10 +496,12 @@ export function EpisodePanel({
           {/* El marco `.ep3` del frame PC·1: temporadas | episodios | detalle.
               En julio se quedó en dos columnas porque el cuerpo de la ficha
               medía 771px (plan 06 §6e); con el contenedor de la ficha
-              cinemática la tercera vuelve a caber. En móvil no hay marco: cada
+              cinemática la tercera vuelve a caber. Desde `xl` el cartel ocupa la
+              izquierda y el panel mide ~780px a 1280: columnas más estrechas
+              (180 | resto | 260), si no la central se queda en ~220px. En móvil no hay marco: cada
               nivel ocupa la pantalla por turnos y el detalle se abre bajo su
               fila. */}
-          <div className="lg:grid lg:grid-cols-[220px_minmax(0,1fr)_340px] lg:overflow-hidden lg:rounded-[14px] lg:border lg:border-border lg:bg-surface">
+          <div className="lg:grid lg:grid-cols-[220px_minmax(0,1fr)_340px] xl:grid-cols-[180px_minmax(0,1fr)_260px] lg:overflow-hidden lg:rounded-[14px] lg:border lg:border-border lg:bg-surface">
             <SeasonRail
               stats={stats}
               activeSeason={activeSeason}

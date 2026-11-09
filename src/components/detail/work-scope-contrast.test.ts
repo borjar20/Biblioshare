@@ -42,6 +42,10 @@ describe("títulos de sección", () => {
   it("la regla de h2 excluye los de dentro de un <dialog>", () => {
     expect(css).toContain('[role="tabpanel"] h2:not(dialog h2)');
   });
+  it("los rótulos que no son h2 se suman con data-section-title y la cabecera de episodios queda fuera", () => {
+    expect(css).toContain('[role="tabpanel"] [data-section-title]');
+    expect(css).toContain(":not([data-plain-title])");
+  });
 });
 
 describe("espejo del tema oscuro del sistema", () => {

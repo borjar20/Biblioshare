@@ -26,7 +26,7 @@ export async function MarginSection({
   return (
     <section className="flex flex-col gap-3" aria-labelledby="margin-title">
       <div className="flex items-center justify-between gap-2">
-        <h3 id="margin-title" className="label-section">{t("sectionTitle")}</h3>
+        <h3 id="margin-title" data-section-title className="label-section">{t("sectionTitle")}</h3>
         <MarginComposerButton itemType={itemType} itemId={itemId} pages={pages} />
       </div>
       {found.length === 0 ? (

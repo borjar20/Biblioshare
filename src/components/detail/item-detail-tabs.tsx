@@ -2,8 +2,6 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import type { ItemType } from "@/lib/catalog/types";
-import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { useItemStatus } from "./item-status-context";
 import { DETAIL_CONTAINER } from "./detail-container";
 import {
@@ -18,7 +16,6 @@ import {
 // lee de `?tab=` (usado por los deep links de notificaciones, EPIC-05 Bloque B)
 // y por defecto sigue siendo "info" si no hay query param, igual que antes.
 export function ItemDetailTabs({
-  itemType,
   tablistLabel,
   labels,
   info,
@@ -27,7 +24,6 @@ export function ItemDetailTabs({
   log,
   stickyAction,
 }: {
-  itemType: ItemType;
   /** Nombre accesible del grupo de pestañas («Secciones de la ficha»). */
   tablistLabel: string;
   labels: Partial<Record<DetailTabId, string>>;
@@ -75,7 +71,6 @@ export function ItemDetailTabs({
     if (next !== tab) setTab(next);
   }
 
-  const accent = MEDIA_ACCENT[itemType];
   const slots: Record<DetailTabId, ReactNode> = {
     info,
     episodes,
@@ -181,7 +176,7 @@ export function ItemDetailTabs({
                   {isActive && (
                     <span
                       aria-hidden
-                      className={`absolute inset-x-0 -bottom-px h-0.5 rounded-sm ${accent.bg}`}
+                      className={`absolute inset-x-0 -bottom-px h-0.5 rounded-sm bg-accent`}
                     />
                   )}
                 </button>

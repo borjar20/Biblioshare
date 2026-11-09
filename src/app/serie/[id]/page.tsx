@@ -544,7 +544,6 @@ async function SeriesTabs({
 
   return (
     <ItemDetailTabs
-      itemType="series"
       tablistLabel={tDetail("tabsLabel")}
       labels={{
         info: tDetail("tabInfo"),
@@ -582,7 +581,7 @@ async function SeriesTabs({
           <InfoLayout
             main={
               <>
-                <div className="order-2 lg:order-none">
+                <div className="order-2 xl:order-none">
                   <InfoPanel
                     aboutLabel={tDetail("about")}
                     synopsis={series.synopsis}
@@ -591,13 +590,13 @@ async function SeriesTabs({
                   />
                 </div>
                 {(credits.cast.length > 0 || credits.crew.length > 0) && (
-                  <div className="order-3 min-w-0 lg:order-none">
+                  <div className="order-3 min-w-0 xl:order-none">
                     <CreditsSection credits={credits} />
                   </div>
                 )}
                 {sagas.length > 0 && (
-                  <section className="order-1 flex flex-col gap-3.5 lg:order-none">
-                    <span className="font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
+                  <section className="order-1 flex flex-col gap-3.5 xl:order-none">
+                    <span data-section-title className="font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
                       {tDetail("sagasCount", { count: sagas.length })}
                     </span>
                     {stripShown && mainSaga && (
@@ -622,7 +621,7 @@ async function SeriesTabs({
             }
             aside={
               <>
-                <div className="order-5 lg:order-none">
+                <div className="order-5 xl:order-none">
                   <MetadataSidebar
                     rows={metaRows}
                     genres={genres}
@@ -630,7 +629,7 @@ async function SeriesTabs({
                   />
                 </div>
                 {watchProviders && (
-                  <div className="order-4 lg:order-none">
+                  <div className="order-4 xl:order-none">
                     <WatchProviders data={watchProviders} />
                   </div>
                 )}

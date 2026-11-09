@@ -129,7 +129,7 @@ export function EpisodeList(props: EpisodeListProps) {
 
       {/* `.lh` de PC·1: rótulo pegajoso de la columna central. */}
       <div className="sticky top-0 z-10 hidden items-center gap-3 border-b border-border bg-surface px-4 pt-3.5 pb-2.5 font-mono text-[10px] tracking-[0.1em] text-muted-foreground uppercase lg:flex">
-        <h2 className="flex-1 font-mono text-[10px] font-normal tracking-[0.1em] text-muted-foreground uppercase">
+        <h2 data-plain-title className="flex-1 font-mono text-[10px] font-normal tracking-[0.1em] text-muted-foreground uppercase">
           {t("season", { n: group.season })}
           {isLoggedIn && ` · ${stat.watched}/${stat.total}`}
           {stat.avg !== null && ` · ${formatDots(stat.avg)}`}
