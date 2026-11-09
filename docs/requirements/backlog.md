@@ -30,6 +30,10 @@
   mascota con frases de datos, microrritual al guardar y cierre con objeto por tipo, lacre y dedicatoria.
   Sin migraciones ni `use cache`. [Spec](superpowers/specs/2026-11-07-sesion-y-cierre-ritual-design.md),
   decisiones del 2026-11-07.
+- [x] Ficha como cartel propio de cada obra (spec 2026-11-09): cartel a sangre, sobre atmósfera o
+  tipográfico según el origen de la imagen, tema teñido con el tono de la obra y columna de cartel
+  desde 1280 px. Sin migraciones; `getWorkHue` con `use cache` (regla #437).
+  [Spec](superpowers/specs/2026-11-09-ficha-cartel-design.md), decisiones del 2026-11-09.
 
 ## Moderación administrativa — #1183
 
