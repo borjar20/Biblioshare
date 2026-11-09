@@ -8271,3 +8271,25 @@ se lee con `getPlannedItems`, memoizada por petición con `cache()` de React
   flag local `leaving` que solo se activa con una respuesta nueva y se limpia al cambiar de ruta o
   al ocultarse; así la segunda sesión seguida del mismo pase no hereda el `ok` de la anterior
   (variante añadida a `docs/TRAMPAS.md` #26).
+
+## 2026-11-09 — La ficha como cartel propio de cada obra
+
+- Cada ficha es un cartel con la imagen y el color de su obra; sin juego ni pasos nuevos.
+- **Forma por origen de la imagen:** TMDB a sangre (780 px); el resto, portada nítida sobre su
+  atmósfera (las portadas de libros rondan 180–340 px y no aguantan a toda pantalla); sin imagen o si
+  falla, cartel tipográfico.
+- **Tema teñido:** `WorkScope` redefine los tokens de la app en la ficha con OKLCH (solo varía el
+  tono); un test defiende AA en los 360 tonos y los dos temas. Con el tema «sistema» el tinte tiene un
+  bloque propio para `prefers-color-scheme: dark`, porque la app distingue ese caso de `.dark`.
+- **Color en servidor con caché:** `getWorkHue` lleva `use cache` porque el dato depende solo de la
+  imagen, igual para cualquiera que mire (regla #437). Solo descarga de los orígenes permitidos y un
+  fallo no se cachea. Las portadas de OpenLibrary redirigen a archive.org: la descarga valida cada
+  salto y archive.org solo se admite como destino de una redirección. Portada sin color o sin portada:
+  hash del título.
+- **Escritorio:** columna de cartel desde 1280 px (`xl`); `backdrop_url` deja de usarse en la ficha.
+  Información y Comunidad pasan a dos columnas solo desde ese ancho y Episodios estrecha las suyas a
+  180 | 1fr | 260. `DETAIL_CONTAINER` no cambia porque también lo usan las sagas. La tarjeta del pase va
+  debajo del título, no a su lado.
+- **Una letra de cartel (Anton)**, cargada solo en la ficha. Rige los títulos de sección de las
+  pestañas (h2 o `data-section-title`); los títulos de los diálogos dentro de las pestañas no.
+- Spec: `docs/superpowers/specs/2026-11-09-ficha-cartel-design.md`.
