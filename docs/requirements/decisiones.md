@@ -8312,7 +8312,21 @@ Corrige la entrada anterior y sustituye en la spec del cartel «la siguiente vis
   siguientes.
 - **La descarga puede tardar hasta 5 s.** El presupuesto ya protege la ficha, y OpenLibrary tarda
   unos 2,1 s con sus redirecciones: con el límite anterior de 2 s fallaba siempre.
-- **Fallos en caché unos minutos.** Un fallo de descarga o decodificación ya no lanza: devuelve
-  `"failed"` con `cacheLife("minutes")`, para no insistir contra un origen caído, y se registra una
-  vez por extracción real. Solo el éxito o `null` (portada sin color) usan `cacheLife("max")`. Un
-  origen fuera de la lista permitida cae al hash sin entrar en la caché.
+- **Fallos en caché 5 minutos.** Un fallo de descarga o decodificación ya no lanza: devuelve
+  `"failed"` con `cacheLife({ revalidate: 300, expire: 300 })`, para no insistir contra un origen
+  caído, y se registra una vez por extracción real. `revalidate` igual a `expire` hace que al vencer
+  sea un fallo de caché limpio, que pasa por el `after()`, y no un stale-while-revalidate que Vercel
+  podría congelar. Solo el éxito o `null` (portada sin color) usan `cacheLife("max")`. Un origen
+  fuera de la lista permitida cae al hash sin entrar en la caché.
+
+## 2026-11-09 — La columna de cartel empieza en 1024 px
+
+La columna de cartel empieza en 1024 px, no en 1280, porque el póster a toda la anchura se veía
+borroso y cortaba la cara en ese rango. Por debajo de 1024 el cartel sigue a toda la anchura.
+
+- Con el cartel, la columna de contenido a 1024 px mide unos 680 px (unos 600 útiles), así que lo
+  demás no se mueve con él: Información y Comunidad siguen a dos columnas desde 1280.
+- Mi registro (columna de 340 px) y Episodios (tres columnas) pasan a una sola columna hasta 1280.
+  Episodios usa de 1024 a 1279 el mismo recorrido que el móvil: temporadas, lista y detalle bajo la
+  fila.
+- El título conserva sus tamaños grandes desde 1280: el de 88 px no cabe en 600 px.
