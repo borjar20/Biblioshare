@@ -31,6 +31,7 @@ import {
   EditFichaButton,
 } from "@/components/detail/catalog-editor";
 import { ItemShell } from "@/components/detail/item-shell";
+import { resolveWorkHue } from "@/lib/catalog/work-hue";
 import { ItemDetailTabs } from "@/components/detail/item-detail-tabs";
 import { InfoPanel } from "@/components/detail/info-panel";
 import { InfoLayout } from "@/components/detail/info-layout";
@@ -299,6 +300,10 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
       : null;
 
   const jointInvites = await jointInvitesPromise;
+  const workHue = await resolveWorkHue({
+    coverUrl: book.cover_url,
+    title: book.title ?? tDetail("untitled"),
+  });
 
   return (
     <ItemStatusProvider initialStatus={activeStatus}>
@@ -316,7 +321,7 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
         byline={byline}
         genres={genres}
         coverUrl={book.cover_url}
-        backdropUrl={null}
+        workHue={workHue}
         avgRating={ratingSummary.avgRating}
         ratingsLabel={tDetail("ratings", { count: ratingSummary.ratingCount })}
         backLabel={tDetail("back")}

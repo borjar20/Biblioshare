@@ -30,6 +30,7 @@ import { HeroMenu } from "@/components/detail/hero-menu";
 import { WatchProviders } from "@/components/watch-providers";
 import { CreditsSection } from "@/components/credits-section";
 import { ItemShell } from "@/components/detail/item-shell";
+import { resolveWorkHue } from "@/lib/catalog/work-hue";
 import { ItemDetailTabs } from "@/components/detail/item-detail-tabs";
 import { InfoPanel } from "@/components/detail/info-panel";
 import { InfoLayout } from "@/components/detail/info-layout";
@@ -296,6 +297,10 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
       : null;
 
   const jointInvites = await jointInvitesPromise;
+  const workHue = await resolveWorkHue({
+    coverUrl: series.cover_url,
+    title: series.title ?? tDetail("untitled"),
+  });
 
   return (
     <ItemStatusProvider initialStatus={activeStatus}>
@@ -306,7 +311,7 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
         byline={byline}
         genres={genres}
         coverUrl={series.cover_url}
-        backdropUrl={series.backdrop_url ?? null}
+        workHue={workHue}
         avgRating={ratingSummary.avgRating}
         ratingsLabel={tDetail("ratings", { count: ratingSummary.ratingCount })}
         backLabel={tDetail("back")}
