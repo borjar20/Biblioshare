@@ -75,11 +75,11 @@ export function EpisodeList(props: EpisodeListProps) {
   );
 
   return (
-    <div className="lg:max-h-[560px] lg:overflow-y-auto">
+    <div className="xl:max-h-[560px] xl:overflow-y-auto">
       {/* Cabecera del nivel 2 en móvil: volver al índice y el resumen de la
           temporada. En PC no hay nivel 2 — el raíl de la izquierda ya dice
           dónde estás — así que esto no se pinta. */}
-      <div className="lg:hidden">
+      <div className="xl:hidden">
         <button
           type="button"
           onClick={onBack}
@@ -128,7 +128,7 @@ export function EpisodeList(props: EpisodeListProps) {
       </div>
 
       {/* `.lh` de PC·1: rótulo pegajoso de la columna central. */}
-      <div className="sticky top-0 z-10 hidden items-center gap-3 border-b border-border bg-surface px-4 pt-3.5 pb-2.5 font-mono text-[10px] tracking-[0.1em] text-muted-foreground uppercase lg:flex">
+      <div className="sticky top-0 z-10 hidden items-center gap-3 border-b border-border bg-surface px-4 pt-3.5 pb-2.5 font-mono text-[10px] tracking-[0.1em] text-muted-foreground uppercase xl:flex">
         <h2 data-plain-title className="flex-1 font-mono text-[10px] font-normal tracking-[0.1em] text-muted-foreground uppercase">
           {t("season", { n: group.season })}
           {isLoggedIn && ` · ${stat.watched}/${stat.total}`}
@@ -184,13 +184,13 @@ function EpisodeItem({
     .join(" · ");
 
   return (
-    <li className="border-t border-border first:border-t-0 lg:border-t-0 lg:border-b">
+    <li className="border-t border-border first:border-t-0 xl:border-t-0 xl:border-b">
       <div
-        className={`flex items-center gap-3 px-[15px] py-[11px] lg:gap-[11px] lg:px-4 ${
+        className={`flex items-center gap-3 px-[15px] py-[11px] xl:gap-[11px] xl:px-4 ${
           // En PC la fila seleccionada se tiñe del acento (frame PC·1): señala
           // qué episodio está anclado en la columna de detalle. En móvil el
           // desplegable inline ya lo dice solo.
-          selected ? "lg:bg-type-series/7" : ""
+          selected ? "xl:bg-type-series/7" : ""
         }`}
       >
         {canAct ? (
@@ -221,9 +221,9 @@ function EpisodeItem({
           {...(inlineDetail
             ? { "aria-expanded": selected }
             : { "aria-pressed": selected, "aria-controls": "episode-detail-column" })}
-          className="flex min-w-0 flex-1 items-center gap-3 text-left lg:gap-[11px]"
+          className="flex min-w-0 flex-1 items-center gap-3 text-left xl:gap-[11px]"
         >
-          <span className="relative block h-[34px] w-[58px] shrink-0 overflow-hidden rounded-[5px] bg-surface-3 lg:h-[38px] lg:w-16">
+          <span className="relative block h-[34px] w-[58px] shrink-0 overflow-hidden rounded-[5px] bg-surface-3 xl:h-[38px] xl:w-16">
             {episode.stillUrl && (
               <Image
                 src={episode.stillUrl}
@@ -237,9 +237,9 @@ function EpisodeItem({
           <span className="min-w-0 flex-1">
             <span className="flex items-baseline gap-1.5">
               <span
-                className={`truncate text-[12.5px] lg:text-[13px] ${
+                className={`truncate text-[12.5px] xl:text-[13px] ${
                   own.watched
-                    ? "font-medium text-foreground lg:font-semibold"
+                    ? "font-medium text-foreground xl:font-semibold"
                     : episode.aired
                       ? "font-medium text-muted-foreground"
                       : "font-medium text-muted-foreground/60 italic"
@@ -278,7 +278,7 @@ function EpisodeItem({
       {selected && inlineDetail && (
         <div
           data-testid="episode-inline-detail"
-          className="border-t border-border pr-[15px] pb-3.5 pl-[49px] lg:pl-[57px]"
+          className="border-t border-border pr-[15px] pb-3.5 pl-[49px] xl:pl-[57px]"
         >
           <EpisodeInlineDetail
             episode={episode}

@@ -148,8 +148,7 @@ const coloured = [
 
 for (const c of coloured) {
   test(`el tono sale de la portada real · ${c.name}`, async ({ page }) => {
-    // 90 s: un fallo transitorio del origen deja «failed» un minuto en caché.
-    test.setTimeout(120_000);
+    test.setTimeout(60_000);
     const id = await needId(c.name, c.table, c.query);
     await expect
       .poll(
@@ -162,7 +161,7 @@ for (const c of coloured) {
         },
         {
           message: "el tono sigue siendo el hash del título: no se ha extraído de la portada",
-          timeout: 90_000,
+          timeout: 45_000,
           intervals: [500, 1_000, 2_000],
         },
       )
@@ -190,6 +189,50 @@ test("en escritorio la columna de cartel se queda fija al hacer scroll", async (
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(100);
   await page.waitForTimeout(300);
   expect((await poster.boundingBox())!.y).toBeCloseTo(before!.y, 0);
+});
+
+// La columna de cartel empieza en lg. Debe ser una columna a toda altura y no la
+// franja superior del móvil, y quedarse fija al bajar.
+for (const width of [1024, 1100] as const) {
+  test(`a ${width} px el cartel es una columna fija y entera`, async ({ page }) => {
+    const id = await needId("película con TMDB", "movies", MOVIE_TMDB);
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto(`/pelicula/${id}`);
+    const poster = page.locator('[data-poster="bleed"]');
+    await expect(poster).toBeVisible();
+    await expect(page.getByRole("tablist")).toBeVisible();
+
+    const before = (await poster.boundingBox())!;
+    const topbar = before.y;
+    expect(before.x).toBe(0);
+    expect(before.width).toBeLessThan(width * 0.34);
+    expect(before.height).toBeGreaterThanOrEqual(800 - topbar - 2);
+    const image = (await poster.locator("img").boundingBox())!;
+    expect(image.height).toBeGreaterThanOrEqual(before.height - 2);
+
+    const panel = (await page.getByRole("tabpanel").boundingBox())!;
+    expect(panel.x).toBeGreaterThanOrEqual(before.x + before.width - 1);
+
+    const overflow = () =>
+      page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(await overflow()).toBeLessThanOrEqual(0);
+
+    await page.mouse.move(width - 200, 500);
+    await page.mouse.wheel(0, 500);
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(100);
+    await page.waitForTimeout(300);
+    expect((await poster.boundingBox())!.y).toBeCloseTo(before.y, 0);
+    expect(await overflow()).toBeLessThanOrEqual(0);
+  });
+}
+
+test("a 1023 px el cartel sigue a toda la anchura", async ({ page }) => {
+  const id = await needId("película con TMDB", "movies", MOVIE_TMDB);
+  await page.setViewportSize({ width: 1023, height: 800 });
+  await page.goto(`/pelicula/${id}`);
+  const poster = page.locator('[data-poster="bleed"]');
+  await expect(poster).toBeVisible();
+  expect((await poster.boundingBox())!.width).toBeGreaterThanOrEqual(1000);
 });
 
 // El repo no depende de axe (ver a11y-landmark-main.spec.ts), así que el

@@ -341,9 +341,10 @@ function ManagedLog({
           un lienzo sin la tarjeta que envuelve nuestra pestaña: sumadas con el
           hueco se salen por la derecha. Se fija solo la DERECHA —340 es el
           ancho de diseño del panel— y la izquierda toma lo que quede, que
-          además aguanta anchos intermedios sin desbordar. */}
-      <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-x-11 lg:gap-y-0">
-        <div className="contents lg:flex lg:flex-col lg:gap-4">
+          además aguanta anchos intermedios sin desbordar. Solo desde `xl`: de
+          1024 a 1279 la columna de cartel deja unos 600 px y no caben dos. */}
+      <div className="flex flex-col gap-4 xl:grid xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start xl:gap-x-11 xl:gap-y-0">
+        <div className="contents xl:flex xl:flex-col xl:gap-4">
           <div className="order-1 flex flex-col gap-1.5">
             {/* .pase-hd del frame 3: el eyebrow y la cuenta de pases sustituyen al
             rótulo "Tu estado", que además repetía el aria-label del propio
@@ -445,7 +446,7 @@ function ManagedLog({
         </div>
 
         {/* Columna derecha en PC: los datos del pase y el quitar. */}
-        <div className="contents lg:flex lg:flex-col lg:gap-4">
+        <div className="contents xl:flex xl:flex-col xl:gap-4">
           {openPass && (
             // key={openPass.id}: fuerza un remount cuando cambia de pase (p. ej.
             // una relectura), para que el inicializador de useState que lee

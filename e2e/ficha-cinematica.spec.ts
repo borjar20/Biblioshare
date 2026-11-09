@@ -16,7 +16,7 @@ test.describe("PC 1600", () => {
   test.use({ viewport: { width: 1600, height: 1000 } });
 
   test("el cuerpo de las pestañas llena la columna derecha, junto al cartel", async ({ page }) => {
-    // Desde xl el cartel es una columna fija a la izquierda (spec 2026-11-09) y el
+    // Desde lg el cartel es una columna fija a la izquierda (spec 2026-11-09) y el
     // cuerpo comparte fila con él: ya no mide >1100px, pero sí ocupa TODA la
     // columna derecha — su borde izquierdo queda tras el cartel y el derecho llega
     // al borde del contenedor.
@@ -103,6 +103,37 @@ test.describe("PC 1600", () => {
     const list = await firstEpisode.boundingBox();
     const detail = await column.boundingBox();
     expect(detail!.x).toBeGreaterThan(list!.x + list!.width - 1);
+  });
+});
+
+test.describe("tableta 1100, con la columna de cartel", () => {
+  test.use({ viewport: { width: 1100, height: 800 } });
+  const noOverflow = async (page: import("@playwright/test").Page) => {
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+  };
+
+  test("Info sigue a una columna: las dos columnas empiezan en xl", async ({ page }) => {
+    await page.goto(BOOK);
+    const synopsis = await page.getByRole("heading", { name: "Sinopsis" }).boundingBox();
+    const ficha = await page.locator("aside").filter({ hasText: "Primera publicación" }).boundingBox();
+    expect(ficha!.y).toBeGreaterThan(synopsis!.y);
+    expect(ficha!.x).toBeLessThan(synopsis!.x + 400);
+    await noOverflow(page);
+  });
+
+  test("Episodios: sin columnas laterales, el detalle se abre bajo su fila", async ({ page }) => {
+    await page.goto(`${SERIES}?tab=episodes`);
+    await expect(page.getByTestId("episode-detail-column")).toBeHidden();
+    await page.getByRole("button", { name: "Ver Temporada 1" }).click();
+    const firstEpisode = page.locator("li button[aria-expanded]").first();
+    await firstEpisode.click();
+    await expect(firstEpisode).toHaveAttribute("aria-expanded", "true");
+    const row = firstEpisode.locator("xpath=ancestor::li[1]");
+    await expect(row.getByTestId("episode-inline-detail")).toBeVisible();
+    await noOverflow(page);
   });
 });
 

@@ -117,9 +117,9 @@ for (const viewport of [
           expect(background).toBeUndefined();
           expect(tmdbImageIdentity(front.currentSrc)).toEqual(tmdbImageIdentity(fixture.cover));
           expect(new URL(front.currentSrc).pathname).toContain("/w780/");
-          // A sangre llena el área del cartel: todo el ancho hasta xl; desde xl, su columna (min(33%, 520px)).
+          // A sangre llena el área del cartel: todo el ancho hasta lg; desde lg, su columna (min(33%, 520px)).
           const clientWidth = await page.evaluate(() => document.documentElement.clientWidth);
-          expect(front.coverWidth).toBeCloseTo(viewport.width >= 1280 ? Math.min(clientWidth * 0.33, 520) : clientWidth, 0);
+          expect(front.coverWidth).toBeCloseTo(viewport.width >= 1024 ? Math.min(clientWidth * 0.33, 520) : clientWidth, 0);
         } else {
           expect(background).toBeDefined();
           expect(background!.currentSrc).toBe(front.currentSrc);

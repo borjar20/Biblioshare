@@ -157,9 +157,9 @@ for (const viewport of [
           if (!column || !grid || !byline || !layout) {
             throw new Error("Missing actual hero title column, grid or byline");
           }
-          // Desde xl el cartel y la columna derecha son una rejilla de dos columnas.
-          if (window.innerWidth >= 1280 && getComputedStyle(layout).display !== "grid") {
-            throw new Error("Poster layout is not a grid from xl");
+          // Desde lg el cartel y la columna derecha son una rejilla de dos columnas.
+          if (window.innerWidth >= 1024 && getComputedStyle(layout).display !== "grid") {
+            throw new Error("Poster layout is not a grid from lg");
           }
           const rect = (value: DOMRect) => ({
             left: value.left, right: value.right, top: value.top, bottom: value.bottom,
@@ -234,7 +234,7 @@ for (const viewport of [
         // La portada ya no tiene un ancho fijo: la fija el cartel. Debe caber en el
         // viewport y, en escritorio, quedar a la izquierda de la columna del título.
         expect(coverBox!.width).toBeGreaterThan(0);
-        if (viewport.width >= 1280) expect(coverBox!.x + coverBox!.width).toBeLessThanOrEqual(geometry.grid.left + 1);
+        if (viewport.width >= 1024) expect(coverBox!.x + coverBox!.width).toBeLessThanOrEqual(geometry.grid.left + 1);
         for (const control of [coverBox!, followBox!]) {
           expect(control.x).toBeGreaterThanOrEqual(0);
           expect(control.x + control.width).toBeLessThanOrEqual(viewport.width);

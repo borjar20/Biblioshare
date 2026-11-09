@@ -62,7 +62,7 @@ export function PosterArtView({ art, title }: { art: PosterArt; title: string })
             fill
             loading="eager"
             fetchPriority="high"
-            sizes="(min-width: 1280px) 520px, 100vw"
+            sizes="(min-width: 1024px) 520px, 100vw"
             onError={onError}
             className="object-cover object-top"
           />
@@ -89,7 +89,7 @@ export function PosterArtView({ art, title }: { art: PosterArt; title: string })
       />
       {/* La altura cede en pantallas bajas para no meterse bajo el título. Con foco
           sube sobre el degradado, para que el anillo se vea entero. */}
-      <div className="absolute top-[max(12%,56px)] left-1/2 aspect-[178/256] h-[min(256px,46%)] -translate-x-1/2 has-[:focus-visible]:z-[1] xl:top-[18%]">
+      <div className="absolute top-[max(12%,56px)] left-1/2 aspect-[178/256] h-[min(256px,46%)] -translate-x-1/2 has-[:focus-visible]:z-[1] lg:top-[18%]">
         <ImageZoom
           src={art.src}
           alt={title}
