@@ -823,8 +823,6 @@ return (
 
 ```tsx
 <div className={`relative ${DETAIL_CONTAINER} -mt-[clamp(110px,20svh,170px)] pb-5 xl:mt-0 xl:pt-10 xl:pb-8`}>
-  {/* la barra ← · tipo · ⋯ de móvil, igual que hoy, pero fija arriba del cartel:
-      absolute con top negativo no sirve aquí; colócala en ItemShell si hace falta */}
   <div className="flex flex-wrap items-center gap-1.5">{/* tipo y GenreTag, como hoy */}</div>
   <h1
     className={`mt-2 uppercase [overflow-wrap:anywhere] leading-[0.97] ${posterTitleClass(title)}`}
