@@ -75,7 +75,7 @@ for (const viewport of [
   test.describe(viewport.name, () => {
     test.use({ viewport: { width: viewport.width, height: viewport.height }, deviceScaleFactor: viewport.dpr });
     for (const fixture of fixtures) {
-      test(`${fixture.label}: selected hero resources, one high priority and shared cover resource`, async ({ page }, info) => {
+      test(`${fixture.label}: poster resources, one high priority and shared cover resource`, async ({ page }, info) => {
         const requests: string[] = [], errors: string[] = [];
         const ours = (url: string) => url.includes(marker) || url.includes(`/id/${namespace}-`);
         // Only owned synthetic images are served here. Bytes/LCP of the public CDN are not measured.
@@ -92,37 +92,40 @@ for (const viewport of [
         page.on("pageerror", error => errors.push(error.message));
         await page.goto(`/${fixture.route}/${fixture.id}`);
         await expect(page.getByRole("heading", { level: 1, name: `${marker} ${fixture.label}`, exact: true })).toBeVisible();
-        // Only the two visible hero images belong to this resource check.
-        // ImageZoom mounts its original on demand (#1278).
+        // El cartel (spec 2026-11-09) tiene dos formas según el origen de la portada: «a sangre»
+        // (TMDB, pedida en w780) con UNA imagen visible, y «atmósfera» (el resto) con DOS: la
+        // portada nítida y su copia desenfocada, que comparten recurso. El backdrop de TMDB
+        // ya no se pinta en la ficha. ImageZoom monta el original bajo demanda (#1278).
+        const bleed = fixture.cover.startsWith("https://image.tmdb.org/");
         const images = page.locator(`img[src*="${marker}"], img[src*="/id/${namespace}-"]`).filter({ visible: true });
-        await expect(images).toHaveCount(2);
+        await expect(images).toHaveCount(bleed ? 1 : 2);
         await expect.poll(() => images.evaluateAll(nodes => nodes.every(node => (node as HTMLImageElement).complete && (node as HTMLImageElement).naturalWidth > 0))).toBe(true);
         const resources = await images.evaluateAll(nodes => nodes.map(node => {
           const image = node as HTMLImageElement;
           return { currentSrc: image.currentSrc, priority: image.fetchPriority, alt: image.alt, width: image.getBoundingClientRect().width, coverWidth: image.closest("button")?.getBoundingClientRect().width, sizes: image.sizes };
         }));
         const front = resources.find(image => image.alt !== "")!;
-        const background = resources.find(image => image.alt === "")!;
+        const background = resources.find(image => image.alt === "");
         // page.route() disables HTTP cache (Playwright API). A duplicate request for the
         // same selected URL is transport detail; a second selected size is not.
-        const expectedUrls = fixture.backdrop ? [front.currentSrc, background.currentSrc] : [front.currentSrc];
         const requestedUrls = [...new Set(requests)].sort();
-        await info.attach("image-resources", { body: JSON.stringify({ viewport, fixture: fixture.label, resources, requests, requestedUrls, expectedUrls }), contentType: "application/json" });
+        await info.attach("image-resources", { body: JSON.stringify({ viewport, fixture: fixture.label, resources, requests, requestedUrls }), contentType: "application/json" });
         expect(resources.filter(image => image.priority === "high")).toHaveLength(1);
-        expect(front.coverWidth).toBe(viewport.width >= 1024 ? 200 : viewport.width >= 640 ? 140 : 110);
-        expect(requestedUrls).toEqual([...new Set(expectedUrls)].sort());
-        if (fixture.backdrop) {
+        expect(front.priority).toBe("high");
+        expect(requestedUrls).toEqual([front.currentSrc]);
+        if (bleed) {
+          expect(background).toBeUndefined();
           expect(tmdbImageIdentity(front.currentSrc)).toEqual(tmdbImageIdentity(fixture.cover));
-          expect(tmdbImageIdentity(background.currentSrc)).toEqual(tmdbImageIdentity(fixture.backdrop));
-          expect(front.currentSrc).not.toBe(background.currentSrc);
-          expect(background.priority).toBe("high");
-          expect(front.priority).toBe("auto");
-          const bucket = viewport.width <= 640 && viewport.dpr < 3 ? 780 : 1280;
-          expect(new URL(background.currentSrc).pathname).toContain(`/w${bucket}/`);
+          expect(new URL(front.currentSrc).pathname).toContain("/w780/");
+          // A sangre llena el área del cartel: todo el ancho hasta xl; desde xl, su columna (min(33%, 520px)).
+          const clientWidth = await page.evaluate(() => document.documentElement.clientWidth);
+          expect(front.coverWidth).toBeCloseTo(viewport.width >= 1280 ? Math.min(clientWidth * 0.33, 520) : clientWidth, 0);
         } else {
-          expect(front.priority).toBe("high");
-          expect(background.currentSrc).toBe(front.currentSrc);
-          expect(background.sizes).toBe(front.sizes);
+          expect(background).toBeDefined();
+          expect(background!.currentSrc).toBe(front.currentSrc);
+          expect(background!.sizes).toBe(front.sizes);
+          // La portada nítida nunca pasa de 180px de ancho sobre su atmósfera.
+          expect(front.width).toBeLessThanOrEqual(180.5);
         }
         expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
         expect(errors).toEqual([]);

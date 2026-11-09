@@ -15,11 +15,14 @@ const movieId = randomUUID(), bookId = randomUUID(), clubId = randomUUID();
 const credentials = { email: `${marker}@example.test`, password: `Qa1278!${randomUUID()}` };
 const username = marker.replace("-", "_");
 const fixtures = [
-  { label: "movie", path: `/pelicula/${movieId}`, src: `https://image.tmdb.org/t/p/w342/${marker}.jpg`, name: `${marker} movie`, distinctOriginal: true },
+  { label: "movie", path: `/pelicula/${movieId}`, src: `https://image.tmdb.org/t/p/w342/${marker}.jpg`, name: `${marker} movie`, distinctOriginal: true,
+    // El cartel «a sangre» pide el póster en w780 (spec 2026-11-09): esa es ahora la imagen que se amplía.
+    original: `https://image.tmdb.org/t/p/w780/${marker}.jpg` },
   { label: "book", path: `/libro/${bookId}`, src: `https://books.google.com/books/content?id=${marker}&img=1`, name: `${marker} book`, distinctOriginal: true },
   { label: "profile", path: `/u/${username}`, src: `https://qa1278.supabase.co/storage/v1/object/public/avatars/${marker}.png`, name: `${marker} profile`, distinctOriginal: true },
   { label: "club", path: `/club/${marker}`, src: `https://qa1278.supabase.co/storage/v1/object/public/club-covers/${marker}.png`, name: `${marker} club`, distinctOriginal: false },
 ];
+const fixtureOriginal = (fixture: (typeof fixtures)[number]) => ("original" in fixture ? fixture.original : fixture.src);
 const owned: Array<{ table: string; id: string }> = [];
 let actorId: string | undefined;
 function check<T>({ data, error }: { data: T; error: { message: string } | null }): T {
@@ -116,10 +119,10 @@ for (const viewport of [
           const trigger = page.getByRole("button", { name: "Ampliar imagen", exact: true });
           await expect(trigger).toHaveCount(1);
           await expect.poll(() => trigger.locator("img").evaluate(node => (node as HTMLImageElement).complete && (node as HTMLImageElement).naturalWidth > 0)).toBe(true);
-          const original = page.locator(`dialog img[src="${fixture.src}"]`);
+          const original = page.locator(`dialog img[src="${fixtureOriginal(fixture)}"]`);
           const before = [...requests];
           await expect(original).toHaveCount(0);
-          if (fixture.distinctOriginal) expect(before.filter(url => url === fixture.src)).toEqual([]);
+          if (fixture.distinctOriginal) expect(before.filter(url => url === fixtureOriginal(fixture))).toEqual([]);
           // The club already uses its full URL for the visible cover; no byte-saving claim there.
           else expect(before).toContain(fixture.src);
           await trigger.click();
@@ -128,7 +131,7 @@ for (const viewport of [
           expect(await dialog.evaluate(node => node.matches(":modal"))).toBe(true);
           await expect(original).toBeVisible();
           await expect.poll(() => original.evaluate(node => (node as HTMLImageElement).complete && (node as HTMLImageElement).naturalWidth === 600)).toBe(true);
-          if (fixture.distinctOriginal) expect(requests.filter(url => url === fixture.src)).toHaveLength(1);
+          if (fixture.distinctOriginal) expect(requests.filter(url => url === fixtureOriginal(fixture))).toHaveLength(1);
           const afterOpen = [...requests];
           if (close === "escape") await page.keyboard.press("Escape");
           else await original.click();

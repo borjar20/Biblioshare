@@ -136,9 +136,11 @@ for (const viewport of [
         await expect(heading).toHaveText(fixture.title);
         const column = heading.locator("..");
         await expect(column.locator("p").first()).toHaveText(fixture.author);
+        // Cartel (spec 2026-11-09): el título y «Seguir» viven en la cabecera, dentro
+        // de la columna derecha; la portada va en el área del cartel, fuera de ella.
         const grid = column.locator("..");
-        const cover = grid.getByRole("button", { name: "Ampliar imagen", exact: true });
-        const follow = grid.getByRole("button", { name: "Seguir", exact: true });
+        const cover = page.getByRole("button", { name: "Ampliar imagen", exact: true });
+        const follow = column.getByRole("button", { name: "Seguir", exact: true });
         await expect(cover).toHaveCount(1);
         await expect(follow).toHaveCount(1);
         await expect(follow).toBeEnabled();
@@ -152,8 +154,13 @@ for (const viewport of [
           const column = title.parentElement;
           const grid = column?.parentElement;
           const byline = column?.querySelector("p");
-          if (!column || !grid || !byline || getComputedStyle(grid).display !== "grid") {
+          const layout = document.querySelector('[data-testid="work-scope"]')?.firstElementChild;
+          if (!column || !grid || !byline || !layout) {
             throw new Error("Missing actual hero title column, grid or byline");
+          }
+          // Desde xl el cartel y la columna derecha son una rejilla de dos columnas.
+          if (window.innerWidth >= 1280 && getComputedStyle(layout).display !== "grid") {
+            throw new Error("Poster layout is not a grid from xl");
           }
           const rect = (value: DOMRect) => ({
             left: value.left, right: value.right, top: value.top, bottom: value.bottom,
@@ -217,17 +224,24 @@ for (const viewport of [
         else if (viewport.width < 640 || fixture.label === "spaced-long") {
           expect(geometry.heading.lines.length).toBeGreaterThan(1);
         }
-        expect(Number.parseFloat(geometry.heading.fontSize)).toBe(viewport.width >= 1024
-          ? fixture.title.length > 40 ? 34 : 44
-          : 25);
+        // posterTitleClass: [móvil, xl] por longitud del título.
+        const [mobileSize, xlSize] = fixture.title.length <= 20 ? [64, 88]
+          : fixture.title.length <= 45 ? [50, 66]
+          : fixture.title.length <= 80 ? [38, 50]
+          : [30, 38];
+        expect(Number.parseFloat(geometry.heading.fontSize)).toBe(viewport.width >= 1280 ? xlSize : mobileSize);
         expect(coverBox).not.toBeNull();
         expect(followBox).not.toBeNull();
-        expect(coverBox!.width).toBe(viewport.width >= 1024 ? 200 : 110);
+        // La portada ya no tiene un ancho fijo: la fija el cartel. Debe caber en el
+        // viewport y, en escritorio, quedar a la izquierda de la columna del título.
+        expect(coverBox!.width).toBeGreaterThan(0);
+        if (viewport.width >= 1280) expect(coverBox!.x + coverBox!.width).toBeLessThanOrEqual(geometry.grid.left + 1);
         for (const control of [coverBox!, followBox!]) {
-          expect(control.x).toBeGreaterThanOrEqual(geometry.grid.left - 1);
-          expect(control.x + control.width).toBeLessThanOrEqual(geometry.grid.right + 1);
+          expect(control.x).toBeGreaterThanOrEqual(0);
           expect(control.x + control.width).toBeLessThanOrEqual(viewport.width);
         }
+        expect(followBox!.x).toBeGreaterThanOrEqual(geometry.grid.left - 1);
+        expect(followBox!.x + followBox!.width).toBeLessThanOrEqual(geometry.grid.right + 1);
         expect(errors).toEqual([]);
       });
     }
