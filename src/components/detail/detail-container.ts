@@ -9,7 +9,7 @@ export const DETAIL_CONTAINER = "mx-auto w-full max-w-[1320px] px-4 sm:px-6 lg:p
 // su esqueleto para que al llegar la ficha no salte nada.
 export const POSTER_LAYOUT = "xl:grid xl:grid-cols-[min(33%,520px)_minmax(0,1fr)]";
 export const POSTER_AREA =
-  "relative h-[min(68svh,560px)] overflow-hidden xl:sticky xl:top-[var(--topbar-h)] xl:h-[calc(100dvh-var(--topbar-h))]";
+  "relative isolate h-[min(68svh,560px)] overflow-hidden xl:sticky xl:top-[var(--topbar-h)] xl:h-[calc(100dvh-var(--topbar-h))]";
 // El título nunca va sobre la foto: el degradado llega al fondo antes.
 export const POSTER_GRADIENT =
   "pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent from-30% via-background/85 via-60% to-background to-[82%] xl:bg-gradient-to-r xl:from-transparent xl:from-[70%] xl:via-transparent xl:to-background xl:to-100%";

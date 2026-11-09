@@ -146,6 +146,13 @@ async function MovieDetail({ params, searchParams }: MovieDetailProps) {
 
   if (!movie) notFound();
 
+  // Sin await: en un fallo de caché no se suma en serie a las lecturas de abajo.
+  // Nunca rechaza, así que la promesa suelta es segura.
+  const workHuePromise = resolveWorkHue({
+    coverUrl: movie.cover_url,
+    title: movie.title ?? tDetail("untitled"),
+  });
+
   // Iníciala dentro del render, antes de registrar `after()`: la sección de
   // notas recibe esta promesa y no crea un cliente tardío (#754).
   const notesPromise = user
@@ -239,10 +246,7 @@ async function MovieDetail({ params, searchParams }: MovieDetailProps) {
   const railLabels = await statusVerbs("movie");
 
   const jointInvites = await jointInvitesPromise;
-  const workHue = await resolveWorkHue({
-    coverUrl: movie.cover_url,
-    title: movie.title ?? tDetail("untitled"),
-  });
+  const workHue = await workHuePromise;
 
   return (
     <ItemStatusProvider initialStatus={activeStatus}>

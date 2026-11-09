@@ -28,6 +28,13 @@ describe("PosterArtView", () => {
     expect(container.querySelectorAll("img")).toHaveLength(2);
     expect(container.querySelector('[data-poster="atmosphere"]')).toBeTruthy();
   });
+  it("atmosphere: grano decorativo sobre el fondo y bajo la portada", () => {
+    const { container } = render(<PosterArtView art={{ kind: "atmosphere", src: "/a.jpg" }} title="X" />);
+    const grain = container.querySelector("[data-grain]");
+    expect(grain?.getAttribute("aria-hidden")).toBe("true");
+    expect(grain?.previousElementSibling?.tagName).toBe("IMG");
+    expect(grain?.nextElementSibling?.contains(screen.getByAltText("X"))).toBe(true);
+  });
   it("type: el título como imagen, oculto al lector de pantalla", () => {
     const { container } = render(<PosterArtView art={{ kind: "type" }} title="Tress" />);
     expect(container.querySelector("img")).toBeNull();
@@ -39,6 +46,13 @@ describe("PosterArtView", () => {
     fireEvent.error(screen.getByAltText("X"));
     expect(container.querySelector('[data-poster="type"]')).toBeTruthy();
     expect(container.querySelector("img")).toBeNull();
+  });
+  it("si falla la portada de atmosphere pasa a type, sin fondo ni grano", () => {
+    const { container } = render(<PosterArtView art={{ kind: "atmosphere", src: "/a.jpg" }} title="X" />);
+    fireEvent.error(screen.getByAltText("X"));
+    expect(container.querySelector('[data-poster="type"]')).toBeTruthy();
+    expect(container.querySelector("img")).toBeNull();
+    expect(container.querySelector("[data-grain]")).toBeNull();
   });
   it("si cambia la imagen vuelve a intentarlo", () => {
     const { container, rerender } = render(<PosterArtView art={{ kind: "bleed", src: "/a.jpg" }} title="X" />);

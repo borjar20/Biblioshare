@@ -143,6 +143,13 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
 
   if (!series) notFound();
 
+  // Sin await: en un fallo de caché no se suma en serie a las lecturas de abajo.
+  // Nunca rechaza, así que la promesa suelta es segura.
+  const workHuePromise = resolveWorkHue({
+    coverUrl: series.cover_url,
+    title: series.title ?? tDetail("untitled"),
+  });
+
   // La consulta pertenece al render de la ficha; pasar la promesa evita que
   // NotesSection construya un cliente una vez que `after()` ya está activo.
   const notesPromise = user
@@ -297,10 +304,7 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
       : null;
 
   const jointInvites = await jointInvitesPromise;
-  const workHue = await resolveWorkHue({
-    coverUrl: series.cover_url,
-    title: series.title ?? tDetail("untitled"),
-  });
+  const workHue = await workHuePromise;
 
   return (
     <ItemStatusProvider initialStatus={activeStatus}>

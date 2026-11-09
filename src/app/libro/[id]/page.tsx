@@ -142,6 +142,13 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
 
   if (!book) notFound();
 
+  // Sin await: en un fallo de caché no se suma en serie a las lecturas de abajo.
+  // Nunca rechaza, así que la promesa suelta es segura.
+  const workHuePromise = resolveWorkHue({
+    coverUrl: book.cover_url,
+    title: book.title ?? tDetail("untitled"),
+  });
+
   // Debe empezar durante el render y antes de cualquier `after()`: NotesSection
   // ya no construye un cliente tardío cuando se resuelva el límite de Tabs.
   const notesPromise = user
@@ -300,10 +307,7 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
       : null;
 
   const jointInvites = await jointInvitesPromise;
-  const workHue = await resolveWorkHue({
-    coverUrl: book.cover_url,
-    title: book.title ?? tDetail("untitled"),
-  });
+  const workHue = await workHuePromise;
 
   return (
     <ItemStatusProvider initialStatus={activeStatus}>

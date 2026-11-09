@@ -1,6 +1,6 @@
 // Fondo del hero de saga (spec 2026-10-27 §1). Las sagas no tienen backdrop
 // propio: el de TMDB de su primera película, o un mosaico de portadas de sus
-// obras. Puro para poder probarlo, como `pickHeroBackground` de la ficha de obra.
+// obras. Puro para poder probarlo, como `pickPosterArt` de la ficha de obra.
 export type SagaHeroBackground =
   | { kind: "backdrop"; src: string }
   | { kind: "mosaic"; covers: string[] }

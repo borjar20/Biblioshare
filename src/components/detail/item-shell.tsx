@@ -50,9 +50,8 @@ export function ItemShell({
     <WorkScope hue={workHue}>
       <div className={POSTER_LAYOUT}>
         <div className={POSTER_AREA}>
-          <PosterArtView art={pickPosterArt({ coverUrl })} title={title} />
-          <div aria-hidden className={POSTER_GRADIENT} />
-          {/* ← · tipo · ⋯ solo en móvil: en PC ya está la topbar del sitio. */}
+          {/* ← · tipo · ⋯ solo en móvil: en PC ya está la topbar del sitio. Antes que el
+              cartel en el DOM: el orden de tabulación es volver, menú y zoom. */}
           <div className={POSTER_BAR}>
             <BackButton label={backLabel} />
             <span
@@ -62,6 +61,8 @@ export function ItemShell({
             </span>
             {menuSlot ?? <span aria-hidden className="h-[34px] w-[34px] shrink-0" />}
           </div>
+          <PosterArtView art={pickPosterArt({ coverUrl })} title={title} />
+          <div aria-hidden className={POSTER_GRADIENT} />
         </div>
         <div className="relative min-w-0">
           <ItemHero
