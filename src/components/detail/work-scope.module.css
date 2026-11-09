@@ -1,0 +1,49 @@
+/* src/components/detail/work-scope.module.css */
+/* El tema del usuario teñido por la obra (spec 2026-11-09). Redefine los tokens
+   de la app en este ámbito: Tailwind v4 los lee como variables, así que las
+   pestañas cambian sin tocarlas. Solo varía el tono: luminosidad y croma son
+   fijos por tema y el test de contraste los defiende en los 360 tonos. */
+.scope {
+  --background: oklch(0.945 0.018 var(--work-hue));
+  --surface: oklch(0.975 0.01 var(--work-hue));
+  --surface-muted: oklch(0.92 0.02 var(--work-hue));
+  --surface-3: oklch(0.89 0.025 var(--work-hue));
+  --foreground: oklch(0.27 0.03 var(--work-hue));
+  --foreground-soft: oklch(0.36 0.03 var(--work-hue));
+  --muted-foreground: oklch(0.42 0.03 var(--work-hue));
+  --foreground-faint: oklch(0.62 0.03 var(--work-hue));
+  --accent: oklch(0.51 0.16 var(--work-hue));
+  --accent-hover: oklch(0.46 0.16 var(--work-hue));
+  --accent-foreground: oklch(0.99 0.005 var(--work-hue));
+  --accent-ink: oklch(0.42 0.14 var(--work-hue));
+  --work-title: oklch(0.36 0.12 var(--work-hue));
+  --border: oklch(0.36 0.12 var(--work-hue) / 0.18);
+  background: var(--background);
+  color: var(--foreground);
+}
+:global(.dark) .scope {
+  --background: oklch(0.2 0.028 var(--work-hue));
+  --surface: oklch(0.25 0.03 var(--work-hue));
+  --surface-muted: oklch(0.29 0.03 var(--work-hue));
+  --surface-3: oklch(0.33 0.03 var(--work-hue));
+  --foreground: oklch(0.88 0.02 var(--work-hue));
+  --foreground-soft: oklch(0.82 0.02 var(--work-hue));
+  --muted-foreground: oklch(0.76 0.02 var(--work-hue));
+  --foreground-faint: oklch(0.5 0.02 var(--work-hue));
+  --accent: oklch(0.72 0.14 var(--work-hue));
+  --accent-hover: oklch(0.78 0.14 var(--work-hue));
+  --accent-foreground: oklch(0.18 0.02 var(--work-hue));
+  --accent-ink: oklch(0.8 0.12 var(--work-hue));
+  --work-title: oklch(0.9 0.07 var(--work-hue));
+  --border: oklch(0.9 0.07 var(--work-hue) / 0.18);
+}
+/* Títulos de sección de las pestañas, en la letra de cartel. */
+.scope :global([role="tabpanel"] h2) {
+  font-family: var(--font-poster), var(--font-geist-sans), sans-serif;
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: 0.015em;
+  text-transform: uppercase;
+  color: var(--work-title);
+}
