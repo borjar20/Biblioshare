@@ -43,6 +43,7 @@ import { CommunityPanel } from "@/components/detail/community-panel";
 import { SagaStrip } from "@/components/detail/saga-strip";
 import { EditionsSection } from "@/components/detail/edition-details";
 import { ItemStatusProvider } from "@/components/detail/item-status-context";
+import { PassActionsProvider } from "@/components/detail/pass-actions-provider";
 import { HydrationWatch } from "@/components/detail/hydration-watch";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import {
@@ -65,7 +66,11 @@ import { getItemSagas } from "@/lib/sagas/get-item-sagas";
 import { SagaList } from "@/components/detail/saga-list";
 import { getSaga } from "@/lib/sagas/get-saga";
 import type { SagaMember, SagaMembership } from "@/lib/sagas/types";
-import { parsePosition, type BookPosition } from "@/lib/library/position";
+import {
+  formatPosition,
+  parsePosition,
+  type BookPosition,
+} from "@/lib/library/position";
 import { getSessions } from "@/lib/sessions/get-sessions";
 import type { ProgressSession } from "@/lib/sessions/types";
 import { getPasses } from "@/lib/passes/get-passes";
@@ -309,8 +314,32 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
   const jointInvites = await jointInvitesPromise;
   const workHue = await workHuePromise;
 
+  // `?cerrar` (auto-cierre al terminar una sesión, §Tarea 7): validado aquí,
+  // en el server component, contra el pase ACTIVO — `activePass` es la fila
+  // con `is_active = true` de la consulta del hero, nunca uno archivado —, para
+  // que un `?cerrar` forjado con un pase viejo ya cerrado no reabra su hoja
+  // (hallazgo de seguridad f35106b). Al calcularse en el servidor y viajar
+  // como prop, la hoja de cierre se abre desde el PRIMER pintado, sin el
+  // rezago de un render que sufre useSearchParams tras el redirect de la
+  // server action (hallazgo de revisión de la Tarea 7).
+  const initialClosingPassId =
+    cerrar && cerrar === activePass?.id ? cerrar : null;
+
   return (
     <ItemStatusProvider initialStatus={activeStatus}>
+      <PassActionsProvider
+        itemType="book"
+        itemId={book.id}
+        isLoggedIn={Boolean(user)}
+        activePassId={activePass?.id ?? null}
+        activePassOpen={
+          activePass?.status === "planned" ||
+          activePass?.status === "in_progress"
+        }
+        sessionHref={activePass ? `/sesion/${activePass.id}` : null}
+        droppedAtLabel={activePass ? formatPosition("book", bookPosition) : null}
+        initialClosingPassId={initialClosingPassId}
+      >
       {/* Fila aún sin hidratar (recién creada, o su hidratación falló y el
           after() de arriba la acaba de relanzar): la isla sonda hydrated_at y
           refresca la ficha cuando la hidratación de fondo termina — sin ella,
@@ -364,11 +393,11 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
               // edición del pase), no `book.total_pages` a secas.
               marginPages={totalPages > 0 ? totalPages : null}
               ratingSummary={ratingSummary}
-              cerrar={cerrar}
             />
           </Suspense>
         }
       />
+      </PassActionsProvider>
     </ItemStatusProvider>
   );
 }
@@ -382,7 +411,6 @@ async function BookTabs({
   marginPromise,
   marginPages,
   ratingSummary,
-  cerrar,
 }: {
   book: BookRow;
   userId: string | null;
@@ -390,7 +418,6 @@ async function BookTabs({
   marginPromise: ReturnType<typeof getItemMarginNotes> | null;
   marginPages: number | null;
   ratingSummary: RatingSummary;
-  cerrar?: string;
 }) {
   const supabase = await createClient();
   const tDetail = await getTranslations("detail");
@@ -497,17 +524,6 @@ async function BookTabs({
       passes.find((p) => p.finishedOn === null)?.id ?? passes[0]?.id ?? null;
     sessions = await getSessions(supabase, currentPassId, "book");
   }
-
-  // `?cerrar` (auto-cierre al terminar una sesión, §Tarea 7): validado aquí,
-  // en el server component, contra el pase ACTIVO — nunca uno archivado, para
-  // que un `?cerrar` forjado con un pase viejo ya cerrado no reabra su hoja
-  // (hallazgo de seguridad f35106b). Al calcularse en el servidor y viajar
-  // como prop, la hoja de cierre se abre desde el PRIMER pintado, sin el
-  // rezago de un render que sufre useSearchParams tras el redirect de la
-  // server action (hallazgo de revisión de la Tarea 7).
-  const activePassId = passes.find((p) => p.isActive)?.id ?? null;
-  const initialClosingPassId =
-    cerrar && cerrar === activePassId ? cerrar : null;
 
   // Asignar saga a mano es contribución curada → colaborador+ (§7.35). El rol
   // ya viaja resuelto desde el bloque paralelo de arriba.
@@ -687,7 +703,9 @@ async function BookTabs({
             passes={passes}
             sessions={sessions}
             editions={editions}
-            initialClosingPassId={initialClosingPassId}
+            // `?cerrar` lo atiende ya PassActionsProvider (por encima de las
+            // pestañas); pasarlo aquí también abriría la hoja dos veces.
+            initialClosingPassId={null}
             canContribute={canContribute}
           />
           {userId && notesPromise && <NotesSection itemType="book" notesPromise={notesPromise} />}

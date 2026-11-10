@@ -41,6 +41,7 @@ import { SagaStrip } from "@/components/detail/saga-strip";
 import { EditionsSection } from "@/components/detail/edition-details";
 import { EditionsLoading } from "@/components/detail/editions-loading";
 import { ItemStatusProvider } from "@/components/detail/item-status-context";
+import { PassActionsProvider } from "@/components/detail/pass-actions-provider";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getWatchProviders } from "@/lib/catalog/tmdb";
 import { ensureMovieHydrated } from "@/lib/catalog/hydrate-screen";
@@ -62,7 +63,7 @@ import { getItemSagas } from "@/lib/sagas/get-item-sagas";
 import { SagaList } from "@/components/detail/saga-list";
 import { getSaga } from "@/lib/sagas/get-saga";
 import type { SagaMember, SagaMembership } from "@/lib/sagas/types";
-import { parsePosition } from "@/lib/library/position";
+import { formatPosition, parsePosition } from "@/lib/library/position";
 import type { MediaStatus } from "@/lib/library/types";
 import { getPasses } from "@/lib/passes/get-passes";
 import type { Pass } from "@/lib/passes/types";
@@ -248,8 +249,37 @@ async function MovieDetail({ params, searchParams }: MovieDetailProps) {
   const jointInvites = await jointInvitesPromise;
   const workHue = await workHuePromise;
 
+  // `?cerrar` (auto-cierre al terminar una sesión, §Tarea 7): validado aquí
+  // contra el pase ACTIVO (`activePass` es la fila `is_active = true` de la
+  // consulta del hero) — ver el comentario largo en la ficha de libro
+  // (src/app/libro/[id]/page.tsx), mismo mecanismo. Las películas no generan
+  // sesiones (§7.14) así que este path solo importa por el manual "marcar
+  // completado", que no depende de la URL — se deja aquí por consistencia y
+  // para que un `?cerrar` forjado tampoco reabra nada.
+  const initialClosingPassId =
+    cerrar && cerrar === activePass?.id ? cerrar : null;
+
   return (
     <ItemStatusProvider initialStatus={activeStatus}>
+      <PassActionsProvider
+        itemType="movie"
+        itemId={movie.id}
+        isLoggedIn={Boolean(user)}
+        activePassId={activePass?.id ?? null}
+        activePassOpen={
+          activePass?.status === "planned" ||
+          activePass?.status === "in_progress"
+        }
+        // La película no tiene sesiones ni episodios: su acción principal
+        // nunca es «Registrar sesión».
+        sessionHref={null}
+        droppedAtLabel={
+          activePass
+            ? formatPosition("movie", parsePosition("movie", activePass.position))
+            : null
+        }
+        initialClosingPassId={initialClosingPassId}
+      >
       <ItemShell
         itemType="movie"
         mediaLabel={tDetail("mediaLabel.movie")}
@@ -293,11 +323,11 @@ async function MovieDetail({ params, searchParams }: MovieDetailProps) {
               notesPromise={notesPromise}
               marginPromise={marginPromise}
               ratingSummary={ratingSummary}
-              cerrar={cerrar}
             />
           </Suspense>
         }
       />
+      </PassActionsProvider>
     </ItemStatusProvider>
   );
 }
@@ -310,14 +340,12 @@ async function MovieTabs({
   notesPromise,
   marginPromise,
   ratingSummary,
-  cerrar,
 }: {
   movie: MovieRow;
   userId: string | null;
   notesPromise: ReturnType<typeof getNotesForItem> | null;
   marginPromise: ReturnType<typeof getItemMarginNotes> | null;
   ratingSummary: RatingSummary;
-  cerrar?: string;
 }) {
   const supabase = await createClient();
   const tDetail = await getTranslations("detail");
@@ -404,16 +432,6 @@ async function MovieTabs({
       notes: reviewRow?.review ?? null,
     };
   }
-
-  // `?cerrar` (auto-cierre al terminar una sesión, §Tarea 7): validado aquí
-  // contra el pase ACTIVO — ver el comentario largo en la ficha de libro
-  // (src/app/libro/[id]/page.tsx), mismo mecanismo. Las películas no generan
-  // sesiones (§7.14) así que este path solo importa por el manual "marcar
-  // completado", que no depende de la URL — se deja aquí por consistencia y
-  // para que un `?cerrar` forjado tampoco reabra nada.
-  const activePassId = passes.find((p) => p.isActive)?.id ?? null;
-  const initialClosingPassId =
-    cerrar && cerrar === activePassId ? cerrar : null;
 
   // El rol ya viaja resuelto desde el bloque paralelo de arriba.
   const canContribute = role ? hasMinRole(role, "collaborator") : false;
@@ -584,7 +602,9 @@ async function MovieTabs({
             passes={passes}
             sessions={[]}
             editions={editions}
-            initialClosingPassId={initialClosingPassId}
+            // `?cerrar` lo atiende ya PassActionsProvider (por encima de las
+            // pestañas); pasarlo aquí también abriría la hoja dos veces.
+            initialClosingPassId={null}
             canContribute={canContribute}
           />
           {userId && notesPromise && <NotesSection itemType="movie" notesPromise={notesPromise} />}

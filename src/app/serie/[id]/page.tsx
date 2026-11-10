@@ -42,6 +42,7 @@ import { CommunityPanel } from "@/components/detail/community-panel";
 import { EpisodePanel } from "@/components/detail/episode-panel";
 import { SagaStrip } from "@/components/detail/saga-strip";
 import { ItemStatusProvider } from "@/components/detail/item-status-context";
+import { PassActionsProvider } from "@/components/detail/pass-actions-provider";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getWatchProviders } from "@/lib/catalog/tmdb";
 import { ensureSeriesHydrated } from "@/lib/catalog/hydrate-screen";
@@ -63,7 +64,7 @@ import { getItemSagas } from "@/lib/sagas/get-item-sagas";
 import { SagaList } from "@/components/detail/saga-list";
 import { getSaga } from "@/lib/sagas/get-saga";
 import type { SagaMember, SagaMembership } from "@/lib/sagas/types";
-import { parsePosition } from "@/lib/library/position";
+import { formatPosition, parsePosition } from "@/lib/library/position";
 import { getSessions } from "@/lib/sessions/get-sessions";
 import type { ProgressSession } from "@/lib/sessions/types";
 import { getPasses } from "@/lib/passes/get-passes";
@@ -306,8 +307,33 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
   const jointInvites = await jointInvitesPromise;
   const workHue = await workHuePromise;
 
+  // `?cerrar` (auto-cierre al terminar una sesión, §Tarea 7): validado aquí
+  // contra el pase ACTIVO (`activePass` es la fila `is_active = true` de la
+  // consulta del hero) — ver el comentario largo en la ficha de libro
+  // (src/app/libro/[id]/page.tsx), mismo mecanismo.
+  const initialClosingPassId =
+    cerrar && cerrar === activePass?.id ? cerrar : null;
+
   return (
     <ItemStatusProvider initialStatus={activeStatus}>
+      <PassActionsProvider
+        itemType="series"
+        itemId={series.id}
+        isLoggedIn={Boolean(user)}
+        activePassId={activePass?.id ?? null}
+        activePassOpen={
+          activePass?.status === "planned" ||
+          activePass?.status === "in_progress"
+        }
+        // «Marcar episodio» lleva a la pestaña Episodios, como el botón de hoy.
+        sessionHref={activePass ? `/serie/${series.id}?tab=episodes` : null}
+        droppedAtLabel={
+          activePass
+            ? formatPosition("series", parsePosition("series", activePass.position))
+            : null
+        }
+        initialClosingPassId={initialClosingPassId}
+      >
       <ItemShell
         itemType="series"
         mediaLabel={tDetail("mediaLabel.series")}
@@ -351,11 +377,11 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
               notesPromise={notesPromise}
               marginPromise={marginPromise}
               ratingSummary={ratingSummary}
-              cerrar={cerrar}
             />
           </Suspense>
         }
       />
+      </PassActionsProvider>
     </ItemStatusProvider>
   );
 }
@@ -368,14 +394,12 @@ async function SeriesTabs({
   notesPromise,
   marginPromise,
   ratingSummary,
-  cerrar,
 }: {
   series: SeriesRow;
   userId: string | null;
   notesPromise: ReturnType<typeof getNotesForItem> | null;
   marginPromise: ReturnType<typeof getItemMarginNotes> | null;
   ratingSummary: RatingSummary;
-  cerrar?: string;
 }) {
   const supabase = await createClient();
   const t = await getTranslations("item");
@@ -482,12 +506,10 @@ async function SeriesTabs({
     }
   }
 
-  // `?cerrar` (auto-cierre al terminar una sesión, §Tarea 7): validado aquí
-  // contra el pase ACTIVO — ver el comentario largo en la ficha de libro
-  // (src/app/libro/[id]/page.tsx), mismo mecanismo.
+  // Pase ACTIVO de la obra: la pestaña Episodios lo usa más abajo. (El
+  // `?cerrar` ya no se valida aquí sino en SeriesDetail, para
+  // PassActionsProvider.)
   const activePassId = passes.find((p) => p.isActive)?.id ?? null;
-  const initialClosingPassId =
-    cerrar && cerrar === activePassId ? cerrar : null;
 
   const canContribute = userId ? hasMinRole(role, "collaborator") : false;
 
@@ -508,8 +530,8 @@ async function SeriesTabs({
     });
 
   const genres = series.genres ?? [];
-  // El pase activo ya se calculó arriba (`activePassId`) para validar
-  // `?cerrar`: la pestaña Episodios lo reutiliza para separar la capa cursor
+  // El pase activo ya se calculó arriba (`activePassId`): la pestaña
+  // Episodios lo usa para separar la capa cursor
   // (este pase) de "visto alguna vez" (Tarea 8, hub).
   const [episodeData, episodeReviewsResult] = await Promise.all([
     getEpisodeData(supabase, series.id, userId, activePassId),
@@ -672,7 +694,9 @@ async function SeriesTabs({
             // Las series no tienen ediciones (getEditions ni siquiera
             // consulta la BD para este tipo): no hace falta cargarlas.
             editions={[]}
-            initialClosingPassId={initialClosingPassId}
+            // `?cerrar` lo atiende ya PassActionsProvider (por encima de las
+            // pestañas); pasarlo aquí también abriría la hoja dos veces.
+            initialClosingPassId={null}
             canContribute={canContribute}
           />
           {userId && notesPromise && <NotesSection itemType="series" notesPromise={notesPromise} />}
