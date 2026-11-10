@@ -42,11 +42,15 @@ export function StatusSegments({
   itemType,
   onChange,
   disabled = false,
+  compact = false,
 }: {
   status: MediaStatus;
   itemType: ItemType;
   onChange: (next: MediaStatus) => void;
   disabled?: boolean;
+  /** Para la tarjeta del hero (~300px útiles a 360px): pastillas más
+   *  apretadas para que «Abandonado» quepa sin desbordar. */
+  compact?: boolean;
 }) {
   const tLibrary = useTranslations("library");
   const tSegments = useTranslations("detail.statusSegments");
@@ -65,7 +69,7 @@ export function StatusSegments({
     <div
       role="group"
       aria-label={tSegments("groupLabel")}
-      className="flex gap-1.5 rounded-[10px] bg-surface-muted p-1"
+      className={`flex rounded-[10px] bg-surface-muted p-1 ${compact ? "gap-1" : "gap-1.5"}`}
     >
       {order.map((option) => {
         const isActive = option === status;
@@ -85,7 +89,9 @@ export function StatusSegments({
               // solo avisamos al padre cuando cambia de verdad.
               if (!isActive) onChange(option);
             }}
-            className={`flex flex-1 flex-col items-center gap-1 rounded-[7px] px-1 py-2 text-center text-[11.5px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+            className={`flex flex-1 flex-col items-center gap-1 rounded-[7px] py-2 text-center font-semibold ${
+              compact ? "min-w-0 px-0.5 text-[11px] leading-tight" : "px-1 text-[11.5px]"
+            } transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
               isActive
                 ? "bg-surface text-foreground shadow-card"
                 : "text-muted-foreground hover:text-foreground"

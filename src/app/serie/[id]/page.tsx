@@ -3,7 +3,6 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { after } from "next/server";
 import { getTranslations } from "next-intl/server";
-import { statusVerbs } from "@/lib/library/hero-status-labels";
 import { PassCard } from "@/components/detail/pass-card";
 import { PendingJointInvites } from "@/components/social/pending-joint-invites";
 import { getPendingJointInvites } from "@/lib/social/joint-viewings";
@@ -56,7 +55,6 @@ import { ensureSeriesEpisodes } from "@/lib/library/ensure-series-episodes";
 import { getEpisodeData } from "@/lib/series/get-episode-data";
 import { getEpisodeReviews } from "@/lib/series/get-episode-reviews";
 import { todayISO } from "@/lib/series/aired";
-import { isUpToDate } from "@/lib/series/follow-state";
 import { ensureItemEnriched } from "@/lib/people/enrich-item";
 import { expireItemCredits } from "@/lib/reactivity/revalidate";
 import { getItemCredits } from "@/lib/people/get-item-credits";
@@ -132,7 +130,6 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
   const { id } = await params;
   const { cerrar } = await searchParams;
   const tDetail = await getTranslations("detail");
-  const tEpisode = await getTranslations("episode");
   const supabase = await createClient();
 
   const [{ data: series }, user, accessToken] = await Promise.all([
@@ -264,10 +261,9 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
 
   const genres = series.genres ?? [];
 
-  // Tarjeta «tu pase», solo lectura (ver pass-card.tsx). El total sale del
-  // catálogo (lo mismo que cuenta la pestaña Episodios); en la primera visita
-  // el catálogo aún no está sincronizado y el fallback es la columna de TMDB.
-  const baseRailLabels = await statusVerbs("series");
+  // Tarjeta «tu pase» (ver pass-card.tsx). El total sale del catálogo (lo
+  // mismo que cuenta la pestaña Episodios); en la primera visita el catálogo
+  // aún no está sincronizado y el fallback es la columna de TMDB.
   // Con el catálogo vivo ya sincronizado, `total_episodes` son los EMITIDOS con
   // la regla exacta (airedFlags: los «sin fecha» de una temporada anunciada
   // fuera); `catalogEpisodes` es la aproximación SQL (sin fecha = emitido), que
@@ -278,20 +274,6 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
     series.total_episodes ||
     0;
 
-  // «Al día» (fase 2, estado DERIVADO — src/lib/series/follow-state.ts): la
-  // píldora y el rail dicen «Al día» en vez de «Viendo» cuando has visto todo lo
-  // emitido y la serie sigue en emisión. Solo cambia la etiqueta de in_progress:
-  // el estado guardado sigue siendo ese, y ambos sitios son de solo lectura.
-  const upToDate = isUpToDate({
-    status: activeStatus,
-    watched: watchedEpisodes,
-    aired: totalEpisodes,
-    tmdbStatus: series.tmdb_status,
-  });
-  const upToDateLabel = tEpisode("upToDate");
-  const railLabels = upToDate
-    ? { ...baseRailLabels, in_progress: upToDateLabel }
-    : baseRailLabels;
   const railProgress =
     activePass && totalEpisodes > 0
       ? {
@@ -357,15 +339,8 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
             <PendingJointInvites invites={jointInvites} variant="item" />
             <PassCard
               itemType="series"
-              itemId={series.id}
-              isLoggedIn={Boolean(user)}
-              labels={railLabels}
               progress={railProgress}
               rating={activePass?.rating ?? null}
-              ctaHref={activePass ? `/serie/${series.id}?tab=episodes` : null}
-              ctaLabel={tDetail("rail.cta.series")}
-              ratingLabel={tDetail("rail.yourRating")}
-              goToLogLabel={tDetail("rail.goToLog")}
             />
           </div>
         }
@@ -574,10 +549,7 @@ async function SeriesTabs({
         log: tDetail("tabLog"),
       }}
       stickyAction={
-        <StickyPassCta
-          href={activeRow ? `/serie/${series.id}?tab=episodes` : null}
-          label={tDetail("rail.cta.series")}
-        />
+        <StickyPassCta itemType="series" />
       }
       info={
         <CatalogEditor

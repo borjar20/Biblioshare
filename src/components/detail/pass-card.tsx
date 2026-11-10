@@ -1,93 +1,112 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import type { ItemType } from "@/lib/catalog/types";
-import type { MediaStatus } from "@/lib/library/types";
+import { intentsFor, primaryAction } from "@/lib/passes/pass-actions";
 import { Button } from "@/components/ui/button";
-import { PlusIcon } from "@/components/ui/icons";
 import { RatingDots } from "@/components/ui/rating-dots";
 import { useItemStatus } from "./item-status-context";
-import { useFollow } from "./use-follow";
-
-const STATUS_DOT_CLASSES: Record<MediaStatus, string> = {
-  planned: "bg-status-planned",
-  in_progress: "bg-status-in-progress",
-  completed: "bg-status-completed",
-  dropped: "bg-status-dropped",
-};
+import { usePassActions } from "./pass-actions-provider";
+import { StatusSegments } from "./status-segments";
 
 export type PassCardProps = {
   itemType: ItemType;
-  itemId: string;
-  isLoggedIn: boolean;
-  /** Verbo por tipo de medio («Leyendo», «Viendo»…); `statusVerbs()` del servidor. */
-  labels: Record<MediaStatus, string>;
   /** Solo donde hay cursor (libro, serie). La película no lleva barra. */
   progress: { percent: number; left: string; right: string } | null;
   /** Nota propia 1–10 del pase activo. */
   rating: number | null;
-  /** null = sin pase activo, o el tipo no ofrece acción. */
-  ctaHref: string | null;
-  ctaLabel: string;
-  ratingLabel: string;
-  goToLogLabel: string;
 };
 
-// «Tu pase» en la cabecera cinemática (spec 2026-09-23 §1): la fusión del panel
-// del raíl de PC (ItemRailActions) y de la píldora + CTA del hero móvil
-// (HeroStatusOrFollow). Una sola instancia en el DOM; ItemHero la recoloca por
-// CSS (bajo el título en móvil y lg, tercera columna en xl).
+// «Tu pase» en la cabecera de la ficha, y el MANDO de la obra (spec
+// 2026-11-10-ficha-acciones): sin pase ofrece las intenciones («Quiero leerlo»,
+// «Lo estoy leyendo», «Ya lo leí»); con pase, el estado se cambia aquí mismo, la
+// acción principal depende del estado y la nota se pone sin ir a Mi registro.
+// Todo lo que escribe pasa por usePassActions: la tarjeta no sabe de server
+// actions, de login ni de hojas.
 //
-// El CTA es SIEMPRE el naranja del rol (`bg-accent`, F3-006), no el color del
-// tipo de medio: el color de tipo es del CONTENIDO, el del CTA es de la acción.
-export function PassCard({
-  itemType,
-  itemId,
-  isLoggedIn,
-  labels,
-  progress,
-  rating,
-  ctaHref,
-  ctaLabel,
-  ratingLabel,
-  goToLogLabel,
-}: PassCardProps) {
+// El botón principal es SIEMPRE el naranja del rol (`bg-accent`, F3-006), no el
+// color del tipo de medio: el color de tipo es del CONTENIDO, el del CTA es de
+// la acción.
+export function PassCard({ itemType, progress, rating }: PassCardProps) {
   const t = useTranslations("item");
+  const tRail = useTranslations("detail.rail");
   const { status, isSaving } = useItemStatus();
-  const pathname = usePathname();
-  const { follow, isPending } = useFollow(itemType, itemId, isLoggedIn);
+  const { isPending, error, addWith, changeStatus, runPrimary, rate } = usePassActions();
+
+  // Nota optimista: los dots cambian al tocar, sin esperar al refresh. Cuando
+  // el servidor trae otra nota (la escrita, o la de antes si falló) manda la
+  // prop: ajuste durante el render con `prev`, sin efectos.
+  const [shownRating, setShownRating] = useState(rating);
+  const [prevRating, setPrevRating] = useState(rating);
+  if (rating !== prevRating) {
+    setPrevRating(rating);
+    setShownRating(rating);
+  }
+  // Si la escritura falla no hay refresh y la prop no cambia: al llegar el
+  // error se vuelve a la nota que hay en BD.
+  const [prevError, setPrevError] = useState(error);
+  if (error !== prevError) {
+    setPrevError(error);
+    if (error) setShownRating(rating);
+  }
 
   const shell =
     "flex flex-col gap-3 rounded-[14px] border border-border bg-surface/90 p-3.5 shadow-[0_18px_40px_-22px_rgba(60,35,15,0.55)] backdrop-blur-md";
 
+  const errorLine = error && (
+    <p role="alert" className="px-1 text-[13px] text-status-dropped">
+      {t(error)}
+    </p>
+  );
+
   if (!status) {
+    const [first, ...rest] = intentsFor(itemType);
     return (
       <div className={shell}>
-        <Button type="button" disabled={isPending} onClick={follow} className="w-full">
-          {isPending ? t("following") : t("follow")}
+        <Button
+          type="button"
+          disabled={isPending}
+          onClick={() => addWith(first)}
+          className="w-full py-3 font-semibold"
+        >
+          {t(`intent.${first}.${itemType}`)}
         </Button>
+        {rest.length > 0 && (
+          <div className={`grid gap-2 ${rest.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+            {rest.map((intent) => (
+              <Button
+                key={intent}
+                type="button"
+                variant="secondary"
+                disabled={isPending}
+                onClick={() => addWith(intent)}
+                className="w-full px-3 text-[13px] font-semibold"
+              >
+                {t(`intent.${intent}.${itemType}`)}
+              </Button>
+            ))}
+          </div>
+        )}
+        {errorLine}
       </div>
     );
   }
 
+  const action = primaryAction(itemType, status);
+
   return (
     <div className={shell}>
-      {/* data-testid: lo localiza pase-hub.spec.ts. */}
-      <Link
-        href={`${pathname}?tab=log`}
-        title={goToLogLabel}
-        data-testid="status-badge"
-        aria-busy={isSaving}
-        className="flex items-center gap-2.5 rounded-[10px] px-1 py-0.5 text-sm font-semibold text-foreground transition-colors hover:text-foreground-soft"
-      >
-        <span
-          aria-hidden
-          className={`h-[9px] w-[9px] shrink-0 rounded-full ${STATUS_DOT_CLASSES[status]}`}
+      {/* data-testid: los e2e esperan a que aria-busy vuelva a false (#106). */}
+      <div data-testid="status-badge" aria-busy={isSaving || isPending}>
+        <StatusSegments
+          status={status}
+          itemType={itemType}
+          onChange={changeStatus}
+          disabled={isPending}
+          compact
         />
-        {labels[status]}
-      </Link>
+      </div>
 
       {progress && (
         <div className="px-0.5">
@@ -111,22 +130,39 @@ export function PassCard({
         </div>
       )}
 
-      {ctaHref && (
-        <Link
-          href={ctaHref}
-          className="flex items-center justify-center gap-2 rounded-[10px] bg-accent px-4 py-3 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent-hover"
+      {/* Un <button>, no un enlace: a dónde se va (sesión, episodios) lo
+          decide el proveedor, que antes cierra lo que hubiera abierto. */}
+      <Button
+        type="button"
+        disabled={isPending}
+        onClick={runPrimary}
+        className="w-full rounded-[10px] py-3 font-semibold"
+      >
+        {t(`action.${action}.${itemType}`)}
+      </Button>
+
+      {status !== "planned" && (
+        <div
+          data-testid="pass-card-rating"
+          data-value={shownRating ?? ""}
+          className="flex items-center justify-between gap-2.5 px-1"
         >
-          <PlusIcon aria-hidden className="h-4 w-4" />
-          {ctaLabel}
-        </Link>
+          <span className="font-mono text-[10px] tracking-wide text-muted-foreground uppercase">
+            {tRail("yourRating")}
+          </span>
+          <RatingDots
+            value={shownRating}
+            itemType={itemType}
+            disabled={isPending}
+            onChange={(next) => {
+              setShownRating(next);
+              rate(next);
+            }}
+          />
+        </div>
       )}
 
-      <div className="flex items-center justify-between gap-2.5 px-1">
-        <span className="font-mono text-[10px] tracking-wide text-muted-foreground uppercase">
-          {ratingLabel}
-        </span>
-        <RatingDots value={rating} itemType={itemType} />
-      </div>
+      {errorLine}
     </div>
   );
 }

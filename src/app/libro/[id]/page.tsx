@@ -3,7 +3,6 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { after } from "next/server";
 import { getTranslations } from "next-intl/server";
-import { statusVerbs } from "@/lib/library/hero-status-labels";
 import { PassCard } from "@/components/detail/pass-card";
 import { PendingJointInvites } from "@/components/social/pending-joint-invites";
 import { getPendingJointInvites } from "@/lib/social/joint-viewings";
@@ -284,9 +283,8 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
 
   const genres = book.genres ?? [];
 
-  // Tarjeta «tu pase», solo lectura (ver pass-card.tsx). La barra de
-  // progreso solo tiene sentido con total de páginas conocido.
-  const railLabels = await statusVerbs("book");
+  // Tarjeta «tu pase» (ver pass-card.tsx). La barra de progreso solo tiene
+  // sentido con total de páginas conocido.
   const bookPosition = parsePosition(
     "book",
     activePass?.position,
@@ -370,15 +368,8 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
             <PendingJointInvites invites={jointInvites} variant="item" />
             <PassCard
               itemType="book"
-              itemId={book.id}
-              isLoggedIn={Boolean(user)}
-              labels={railLabels}
               progress={railProgress}
               rating={activePass?.rating ?? null}
-              ctaHref={activePass ? `/sesion/${activePass.id}` : null}
-              ctaLabel={tDetail("rail.cta.book")}
-              ratingLabel={tDetail("rail.yourRating")}
-              goToLogLabel={tDetail("rail.goToLog")}
             />
           </div>
         }
@@ -601,10 +592,7 @@ async function BookTabs({
         log: tDetail("tabLog"),
       }}
       stickyAction={
-        <StickyPassCta
-          href={activeRow ? `/sesion/${activeRow.id}` : null}
-          label={tDetail("rail.cta.book")}
-        />
+        <StickyPassCta itemType="book" />
       }
       info={
         <CatalogEditor

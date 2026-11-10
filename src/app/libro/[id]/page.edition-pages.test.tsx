@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { isValidElement, type ReactElement, type ReactNode } from "react";
 import { createTranslator, NextIntlClientProvider } from "next-intl";
@@ -7,13 +7,15 @@ import messages from "../../../../messages/es.json";
 import { PAGE_BOOK, PAGE_CASES, PAGE_PASS, PAGE_USER, pageFixture } from "@/lib/editions/edition-pages.test-fixture";
 
 const boundary = vi.hoisted(() => ({ createClient: vi.fn(), createPublicClient: vi.fn(), getCurrentUser: vi.fn(), getAccessToken: vi.fn() }));
+const router = vi.hoisted(() => ({ refresh: vi.fn(), push: vi.fn() }));
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/supabase/server", () => boundary);
 vi.mock("next/navigation", () => ({
   notFound: () => { throw new Error("Unexpected notFound in page fixture"); },
+  unstable_rethrow: () => {},
   usePathname: () => "/libro/page-fixture-book",
   useSearchParams: () => new URLSearchParams(),
-  useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
+  useRouter: () => router,
 }));
 vi.mock("next/link", () => ({ default: ({ href, children }: { href: string; children: ReactNode }) => <a href={href}>{children}</a> }));
 vi.mock("next/server", () => ({ after: () => { throw new Error("Unexpected background work in #901"); } }));
@@ -87,7 +89,10 @@ describe("la ficha aplica la precedencia al rail de progreso (#901)", () => {
     boundary.createPublicClient.mockReturnValue(client);
     const detail = await resolveDetail();
     render(<NextIntlClientProvider locale="es" messages={messages}>{detail}</NextIntlClientProvider>);
-    expect(screen.getByRole("link", { name: "Registrar sesión" }).getAttribute("href")).toBe(`/sesion/${PAGE_PASS}`);
+    // El botón principal es un <button>: a dónde lleva lo decide el proveedor
+    // con el `sessionHref` que le pasa la página.
+    fireEvent.click(screen.getByRole("button", { name: "Registrar sesión" }));
+    expect(router.push).toHaveBeenCalledWith(`/sesion/${PAGE_PASS}`);
     if (sample.expectedPages === null) expect(screen.queryByRole("progressbar")).toBeNull();
     else {
       const progress = screen.queryByRole("progressbar", { name: `pág. 100 / ${sample.expectedPages}` });

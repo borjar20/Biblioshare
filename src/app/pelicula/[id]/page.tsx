@@ -3,7 +3,6 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { after } from "next/server";
 import { getTranslations } from "next-intl/server";
-import { statusVerbs } from "@/lib/library/hero-status-labels";
 import { PassCard } from "@/components/detail/pass-card";
 import { PendingJointInvites } from "@/components/social/pending-joint-invites";
 import { getPendingJointInvites } from "@/lib/social/joint-viewings";
@@ -242,10 +241,6 @@ async function MovieDetail({ params, searchParams }: MovieDetailProps) {
 
   const genres = movie.genres ?? [];
 
-  // Tarjeta «tu pase», solo lectura (ver pass-card.tsx). La película NO
-  // lleva barra de progreso: su estado es binario y el frame 12 no la pinta.
-  const railLabels = await statusVerbs("movie");
-
   const jointInvites = await jointInvitesPromise;
   const workHue = await workHuePromise;
 
@@ -301,17 +296,11 @@ async function MovieDetail({ params, searchParams }: MovieDetailProps) {
         passCard={
           <div className="flex flex-col gap-3">
             <PendingJointInvites invites={jointInvites} variant="item" />
+            {/* La película NO lleva barra de progreso: se ve de una sentada. */}
             <PassCard
               itemType="movie"
-              itemId={movie.id}
-              isLoggedIn={Boolean(user)}
-              labels={railLabels}
               progress={null}
               rating={activePass?.rating ?? null}
-              ctaHref={activePass ? `/pelicula/${movie.id}?tab=log` : null}
-              ctaLabel={tDetail("rail.cta.movie")}
-              ratingLabel={tDetail("rail.yourRating")}
-              goToLogLabel={tDetail("rail.goToLog")}
             />
           </div>
         }
@@ -486,10 +475,7 @@ async function MovieTabs({
         log: tDetail("tabLog"),
       }}
       stickyAction={
-        <StickyPassCta
-          href={activeRow ? `/pelicula/${movie.id}?tab=log` : null}
-          label={tDetail("rail.cta.movie")}
-        />
+        <StickyPassCta itemType="movie" />
       }
       info={
         <CatalogEditor
