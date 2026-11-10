@@ -8,7 +8,7 @@ import {
   useTransition,
   type ReactNode,
 } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { unstable_rethrow, usePathname, useRouter } from "next/navigation";
 import type { ItemType } from "@/lib/catalog/types";
 import type { MediaStatus } from "@/lib/library/types";
 import { updateStatus } from "@/lib/library/manage-actions";
@@ -143,13 +143,31 @@ export function PassActionsProvider({
     }
   }
 
-  // Envoltorio de toda escritura: ignora la llamada si hay otra en vuelo,
-  // limpia el aviso anterior y publica `isSaving` en ItemStatusContext (el
-  // badge lo expone como aria-busy, issue #106). El optimismo desmonta a veces
-  // el botón que disparó la acción —y con él su `isPending`—, así que sin esto
-  // NADA en el DOM diría que la escritura sigue en vuelo.
+  // Puerta de toda escritura, ANTES de cualquier optimismo:
+  // - Anónimo: a login recordando la ficha para volver tras entrar, sin
+  //   escribir. Antes disparaba la acción y el server redirigía a /login pelado
+  //   (ida y vuelta inútil y sin retorno) — issue #358.
+  // - Con otra escritura en vuelo, la llamada se ignora.
+  function canWrite(): boolean {
+    if (!isLoggedIn) {
+      router.push(loginHref(pathname));
+      return false;
+    }
+    return !busy.current;
+  }
+
+  // Envoltorio de toda escritura: limpia el aviso anterior y publica `isSaving`
+  // en ItemStatusContext (el badge lo expone como aria-busy, issue #106). El
+  // optimismo desmonta a veces el botón que disparó la acción —y con él su
+  // `isPending`—, así que sin esto NADA en el DOM diría que la escritura sigue
+  // en vuelo.
+  //
+  // El `setStatus` optimista lo hace SIEMPRE el llamador antes de llamar aquí:
+  // un setState dentro de `startTransition(async …)` es parte de la transición
+  // y React 19 no lo pinta hasta que la acción entera termina, así que el
+  // estado «optimista» llegaría a la vez que el del servidor. Dentro de la
+  // tarea solo van las reversiones (tras el await).
   function write(task: () => Promise<void>) {
-    if (busy.current) return;
     busy.current = true;
     setError(null);
     setSaving(true);
@@ -161,6 +179,21 @@ export function PassActionsProvider({
         setSaving(false);
       }
     });
+  }
+
+  // Cada `catch` de las escrituras empieza aquí: con la sesión caducada las
+  // server actions hacen `redirect("/login")`, que llega como un error que Next
+  // tiene que recibir tal cual (unstable_rethrow, ver la guía de Next). Sin
+  // esto el redirect se convertiría en «No se pudo guardar».
+  // `revertTo` undefined = no hay estado optimista que deshacer.
+  function fail(
+    caught: unknown,
+    revertTo: MediaStatus | null | undefined,
+    code: PassActionsError,
+  ) {
+    unstable_rethrow(caught);
+    if (revertTo !== undefined) setStatus(revertTo);
+    setError(code);
   }
 
   function openClose(passId: string, closing: MediaStatus) {
@@ -178,35 +211,36 @@ export function PassActionsProvider({
     router.push(href);
   }
 
-  async function doChangeStatus(next: MediaStatus) {
+  // Sin puerta: la llaman changeStatus y runPrimary, que ya la han pasado.
+  function startStatusChange(next: MediaStatus) {
     const previous = status;
     setStatus(next);
-    try {
-      const outcome = await updateStatus(itemType, itemId, next);
-      if (outcome.kind === "askResume") {
-        setStatus(previous);
-        setResumeOpen(true);
-        return;
+    write(async () => {
+      try {
+        const outcome = await updateStatus(itemType, itemId, next);
+        if (outcome.kind === "askResume") {
+          setStatus(previous);
+          setResumeOpen(true);
+          return;
+        }
+        router.refresh();
+        // Hallazgo de la revisión de la Task 5: en una carrera de doble-submit
+        // sin pase activo previo, closed puede llegar true con passId vacío.
+        // No abrir la hoja de cierre contra un pase inexistente.
+        if (outcome.closed && outcome.passId) {
+          openClose(outcome.passId, next);
+        }
+      } catch (caught) {
+        fail(caught, previous, "actionError");
       }
-      router.refresh();
-      // Hallazgo de la revisión de la Task 5: en una carrera de doble-submit
-      // sin pase activo previo, closed puede llegar true con passId vacío.
-      // No abrir la hoja de cierre contra un pase inexistente.
-      if (outcome.closed && outcome.passId) {
-        openClose(outcome.passId, next);
-      }
-    } catch {
-      setStatus(previous);
-      setError("actionError");
-    }
+    });
   }
 
   // Con el pase ya cerrado no hay nada que preguntar: "de cero" sobre un
   // completado/abandonado es exactamente la transición archiveAndCreate que la
   // máquina ya sabe hacer. El `restart` evita el askResume de un abandonado —
-  // "Nuevo pase" ya ES la respuesta "de cero".
-  function doNewPass() {
-    if (busy.current) return;
+  // "Nuevo pase" ya ES la respuesta "de cero". Sin puerta, como la anterior.
+  function startNewPass() {
     if (activePassOpen) {
       setNewPassOpen(true);
       return;
@@ -227,9 +261,8 @@ export function PassActionsProvider({
           if (outcome.kind === "done" && outcome.closed && outcome.passId) {
             openClose(outcome.passId, "completed");
           }
-        } catch {
-          setStatus(previous);
-          setError("actionError");
+        } catch (caught) {
+          fail(caught, previous, "actionError");
         }
       });
       return;
@@ -239,30 +272,21 @@ export function PassActionsProvider({
       try {
         await updateStatus(itemType, itemId, "in_progress", "restart");
         router.refresh();
-      } catch {
-        setStatus(previous);
-        setError("actionError");
+      } catch (caught) {
+        fail(caught, previous, "actionError");
       }
     });
   }
 
   function addWith(intent: Intent) {
-    if (!isLoggedIn) {
-      // Anónimo: a login recordando la ficha para volver tras entrar. Antes
-      // disparaba la acción y el server redirigía a /login pelado (ida y vuelta
-      // inútil y sin retorno) — issue #358.
-      router.push(loginHref(pathname));
-      return;
-    }
-    if (busy.current) return;
+    if (!canWrite()) return;
     const target = intentStatus(intent);
     setStatus(target);
     write(async () => {
       try {
         await addExistingItemToLibrary(itemType, itemId);
-      } catch {
-        setStatus(null);
-        setError("actionError");
+      } catch (caught) {
+        fail(caught, null, "actionError");
         return;
       }
       if (intent === "want") {
@@ -278,20 +302,25 @@ export function PassActionsProvider({
         if (outcome.kind === "done" && outcome.closed && outcome.passId) {
           openClose(outcome.passId, "completed");
         }
-      } catch {
-        setStatus("planned");
-        setError("doneButPlanned");
+      } catch (caught) {
+        fail(caught, "planned", "doneButPlanned");
         router.refresh();
       }
     });
   }
 
   function changeStatus(next: MediaStatus) {
-    write(() => doChangeStatus(next));
+    if (!canWrite()) return;
+    startStatusChange(next);
+  }
+
+  function newPass() {
+    if (!canWrite()) return;
+    startNewPass();
   }
 
   function runPrimary() {
-    if (!status || busy.current) return;
+    if (!status || !canWrite()) return;
     switch (primaryAction(itemType, status)) {
       case "start": {
         // «Empezar a leer»: pasa a en curso y abre la hoja de sesión del pase.
@@ -304,9 +333,8 @@ export function PassActionsProvider({
             if (outcome.kind === "done" && outcome.passId) {
               leaveTo(`/sesion/${outcome.passId}`);
             }
-          } catch {
-            setStatus(previous);
-            setError("actionError");
+          } catch (caught) {
+            fail(caught, previous, "actionError");
           }
         });
         return;
@@ -316,26 +344,26 @@ export function PassActionsProvider({
         if (sessionHref) leaveTo(sessionHref);
         return;
       case "watched":
-        changeStatus("completed");
+        startStatusChange("completed");
         return;
       case "again":
-        doNewPass();
+        startNewPass();
         return;
       case "resume":
-        changeStatus("in_progress");
+        startStatusChange("in_progress");
         return;
     }
   }
 
   function rate(rating: number) {
-    if (!activePassId) return;
+    if (!activePassId || !canWrite()) return;
     const passId = activePassId;
     write(async () => {
       try {
         await ratePass(passId, itemType, itemId, rating);
         router.refresh();
-      } catch {
-        setError("actionError");
+      } catch (caught) {
+        fail(caught, undefined, "actionError");
       }
     });
   }
@@ -348,7 +376,7 @@ export function PassActionsProvider({
         addWith,
         changeStatus,
         runPrimary,
-        newPass: doNewPass,
+        newPass,
         rate,
       }}
     >

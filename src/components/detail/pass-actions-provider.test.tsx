@@ -1,7 +1,8 @@
 // src/components/detail/pass-actions-provider.test.tsx
 // @vitest-environment jsdom
 import { act, cleanup, render, screen } from "@testing-library/react";
-import { useLayoutEffect } from "react";
+import { Component, useLayoutEffect, type ReactNode } from "react";
+import { redirect } from "next/navigation";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MediaStatus } from "@/lib/library/types";
 
@@ -11,7 +12,10 @@ const h = vi.hoisted(() => ({
 vi.mock("@/lib/library/manage-actions", () => ({ updateStatus: h.updateStatus }));
 vi.mock("@/lib/library/add-existing-item", () => ({ addExistingItemToLibrary: h.add }));
 vi.mock("@/lib/passes/actions", () => ({ ratePass: h.rate }));
-vi.mock("next/navigation", () => ({
+// Se conservan el `redirect` y el `unstable_rethrow` reales: el test de la
+// sesión caducada necesita un error de redirect que Next reconozca de verdad.
+vi.mock("next/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/navigation")>()),
   useRouter: () => ({ push: h.push, replace: vi.fn(), refresh: h.refresh }),
   usePathname: () => "/libro/b1",
 }));
@@ -224,4 +228,87 @@ it("usePassActions fuera del proveedor lanza", () => {
   const spy = vi.spyOn(console, "error").mockImplementation(() => {});
   expect(() => render(<Probe />)).toThrow();
   spy.mockRestore();
+});
+
+// Promesa que el test resuelve o rechaza a mano: deja ver el estado mientras la
+// escritura sigue en vuelo.
+function deferred<T>() {
+  let resolve!: (v: T) => void;
+  let reject!: (e: unknown) => void;
+  const promise = new Promise<T>((res, rej) => { resolve = res; reject = rej; });
+  return { promise, resolve, reject };
+}
+
+describe("optimismo: el estado cambia antes de que responda el servidor", () => {
+  it("changeStatus pinta el estado nuevo al instante y revierte si falla", async () => {
+    const d = deferred<unknown>();
+    h.updateStatus.mockReturnValue(d.promise);
+    mount({}, "in_progress");
+    act(() => api.changeStatus("completed"));
+    expect(screen.getByTestId("status").textContent).toBe("completed");
+    await act(async () => { d.reject(new Error("x")); await d.promise.catch(() => {}); });
+    await flush();
+    expect(screen.getByTestId("status").textContent).toBe("in_progress");
+    expect(api.error).toBe("actionError");
+  });
+  it("película pendiente: «Marcar vista» pinta vista al instante y revierte si falla", async () => {
+    const d = deferred<unknown>();
+    h.updateStatus.mockReturnValue(d.promise);
+    mount({ itemType: "movie" }, "planned");
+    act(() => api.runPrimary());
+    expect(screen.getByTestId("status").textContent).toBe("completed");
+    await act(async () => { d.reject(new Error("x")); await d.promise.catch(() => {}); });
+    await flush();
+    expect(screen.getByTestId("status").textContent).toBe("planned");
+  });
+});
+
+class Boundary extends Component<{ children: ReactNode }, { caught: unknown }> {
+  state = { caught: null as unknown };
+  static getDerivedStateFromError(caught: unknown) { return { caught }; }
+  render() {
+    return this.state.caught
+      ? <div data-testid="caught">{String((this.state.caught as { digest?: string }).digest ?? "")}</div>
+      : this.props.children;
+  }
+}
+
+describe("sesión caducada", () => {
+  it("el redirect a /login de la server action no se convierte en «actionError»", async () => {
+    let redirectError: unknown;
+    try { redirect("/login"); } catch (e) { redirectError = e; }
+    h.updateStatus.mockRejectedValue(redirectError);
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    render(
+      <Boundary>
+        <ItemStatusProvider initialStatus="in_progress">
+          <PassActionsProvider itemType="book" itemId="b1" isLoggedIn activePassId={null} activePassOpen={false}
+            sessionHref={null} droppedAtLabel="" initialClosingPassId={null}><Probe /></PassActionsProvider>
+        </ItemStatusProvider>
+      </Boundary>,
+    );
+    act(() => api.changeStatus("completed"));
+    await flush();
+    await flush();
+    spy.mockRestore();
+    // Llega a Next (aquí, al boundary) tal cual, como un redirect.
+    expect(screen.getByTestId("caught").textContent).toMatch(/^NEXT_REDIRECT/);
+    expect(api.error).toBeNull();
+  });
+});
+
+describe("sin sesión, ninguna escritura", () => {
+  it("changeStatus va a login sin escribir ni cambiar el estado", () => {
+    mount({ isLoggedIn: false }, "in_progress");
+    act(() => api.changeStatus("completed"));
+    expect(h.updateStatus).not.toHaveBeenCalled();
+    expect(h.push).toHaveBeenCalledWith(expect.stringContaining("/login"));
+    expect(screen.getByTestId("status").textContent).toBe("in_progress");
+  });
+  it("rate va a login sin escribir", () => {
+    mount({ isLoggedIn: false, activePassId: "p1" }, "completed");
+    act(() => api.rate(8));
+    expect(h.rate).not.toHaveBeenCalled();
+    expect(h.push).toHaveBeenCalledWith(expect.stringContaining("/login"));
+  });
 });
