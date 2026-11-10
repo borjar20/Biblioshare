@@ -39,8 +39,8 @@ estética de la ficha sin tocar cómo se actúa en ella. Recoge los hallazgos 1 
 - Ningún botón cambia de pestaña.
 - Sin sesión iniciada, los tres llevan a `/login` y vuelven a la ficha (`loginHref`), sin escribir
   nada.
-- La palabra «Seguir» desaparece de la ficha de obra. En el menú ⋯, «Dejar de seguir» pasa a «Quitar
-  de mi biblioteca», con la misma confirmación.
+- La palabra «Seguir» desaparece de la ficha de obra. El menú ⋯ ya dice «Quitar de mi biblioteca» y
+  no cambia.
 
 ## Obra que ya está en la biblioteca
 
