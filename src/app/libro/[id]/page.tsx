@@ -479,28 +479,11 @@ async function BookTabs({
   let sessions: ProgressSession[] = [];
   let passes: Pass[] = [];
   if (userId && activeRow) {
-    // La nota (notes) sale de pass_reviews (privacidad ya aplicada) — ningún
-    // consumidor de ManagedEntry la renderiza hoy, pero se resuelve igualmente
-    // para no dejar el campo con un dato inventado.
-    //
-    // pass_reviews y getPasses no se necesitan entre sí: solo dependen del pase
-    // activo, que ya lo tenemos. En paralelo.
-    const [reviewRow, loadedPasses] = await Promise.all([
-      supabase
-        .from("pass_reviews")
-        .select("review")
-        .eq("id", activeRow.id)
-        .maybeSingle()
-        .then(({ data }) => data),
-      getPasses(supabase, "book", book.id, userId),
-    ]);
-    passes = loadedPasses;
+    passes = await getPasses(supabase, "book", book.id, userId);
     entry = {
       entryId: activeRow.id,
       status: activeRow.status as MediaStatus,
-      rating: activeRow.rating,
       position: parsePosition("book", activeRow.position),
-      notes: reviewRow?.review ?? null,
     };
     // Las sesiones son del pase ABIERTO, no de toda la entrada (Hallazgo 4):
     // en una relectura, las sesiones de la lectura anterior no deben colarse

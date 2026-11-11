@@ -2,7 +2,6 @@
 
 import { createContext, useContext, useState, type ReactNode } from "react";
 import type { MediaStatus } from "@/lib/library/types";
-import { StatusBadge } from "@/components/ui/status-badge";
 
 // El estado del pase activo se lee en varias islas de la ficha que son
 // hermanas, no padre/hijo: la tarjeta del hero (PassCard y su StickyPassCta,
@@ -74,23 +73,4 @@ export function useItemStatus(): ItemStatusValue {
     throw new Error("useItemStatus necesita un <ItemStatusProvider> por encima");
   }
   return value;
-}
-
-// El badge del hero, ahora vivo. Las etiquetas llegan traducidas desde el
-// server component (un record de 4 strings): así esta isla de cliente no
-// arrastra nada de i18n y el resto del hero sigue siendo server component.
-export function StatusBadgeLive({
-  labels,
-}: {
-  labels: Record<MediaStatus, string>;
-}) {
-  const { status, isSaving } = useItemStatus();
-  if (!status) return null;
-  // `aria-busy` mientras la escritura está en vuelo: es la señal que el badge
-  // optimista se había llevado por delante (issue #106). Sirve a los lectores
-  // de pantalla y le da a los e2e algo determinista que esperar antes de
-  // comprobar que la obra ya está en Colección.
-  return (
-    <StatusBadge status={status} label={labels[status]} variant="hero" busy={isSaving} />
-  );
 }

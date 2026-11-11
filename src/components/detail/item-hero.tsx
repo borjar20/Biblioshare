@@ -27,6 +27,7 @@ export function ItemHero({
   avgRating,
   ratingsLabel,
   passCard,
+  desktopMenu,
 }: {
   itemType: ItemType;
   mediaLabel: string;
@@ -37,6 +38,8 @@ export function ItemHero({
   avgRating: number | null;
   ratingsLabel: string;
   passCard: ReactNode;
+  /** El ⋯ de la ficha desde `lg` (en móvil va en la barra del cartel). */
+  desktopMenu?: ReactNode;
 }) {
   const accent = MEDIA_ACCENT[itemType];
   const Icon = TYPE_ICON[itemType];
@@ -53,6 +56,14 @@ export function ItemHero({
         {genres.slice(0, 3).map((g) => (
           <GenreTag key={g} label={g} />
         ))}
+        {/* Desde `lg` la barra del cartel (← · tipo · ⋯) no se pinta: el ⋯
+            pasa aquí, a la derecha de los chips. Sin él, en escritorio no
+            habría forma de quitar la obra de la biblioteca. */}
+        {desktopMenu && (
+          <div data-testid="hero-menu-desktop" className="ml-auto hidden lg:block">
+            {desktopMenu}
+          </div>
+        )}
       </div>
 
       <h1

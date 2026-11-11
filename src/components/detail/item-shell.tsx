@@ -40,7 +40,10 @@ export function ItemShell({
   avgRating: number | null;
   ratingsLabel: string;
   backLabel: string;
-  /** El menú ⋯ de la barra superior — solo móvil. */
+  /** El menú ⋯ (HeroMenu): en la barra superior en móvil y en la fila de
+   *  chips de la cabecera desde `lg`. Se monta una vez por punto de corte —
+   *  cada instancia tiene su propio <dialog> cerrado y no lleva ids, así que no
+   *  chocan—. Es el ÚNICO sitio para quitar la obra de la biblioteca. */
   menuSlot?: ReactNode;
   /** <PassCard/>, una sola instancia. */
   passCard: ReactNode;
@@ -74,6 +77,7 @@ export function ItemShell({
             avgRating={avgRating}
             ratingsLabel={ratingsLabel}
             passCard={passCard}
+            desktopMenu={menuSlot}
           />
           {tabs}
         </div>

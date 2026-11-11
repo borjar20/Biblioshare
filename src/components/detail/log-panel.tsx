@@ -55,9 +55,7 @@ function writeEditionAsked(passId: string) {
 export type ManagedEntry = {
   entryId: string;
   status: MediaStatus;
-  rating: number | null;
   position: Position;
-  notes: string | null;
 };
 
 // Pestaña «Mi registro» (mockup "Paper - Ficha de título completa", pantalla

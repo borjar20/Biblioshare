@@ -56,7 +56,7 @@ function renderLog({ status = "in_progress" as MediaStatus } = {}) {
       <ItemStatusProvider initialStatus={status}>
         <LogPanel
           itemType="book" itemId="b1"
-          entry={{ entryId: "p1", status, position: {}, rating: null, notes: null }}
+          entry={{ entryId: "p1", status, position: {} }}
           passes={[pass(status)]} sessions={[]} editions={[]}
         />
       </ItemStatusProvider>

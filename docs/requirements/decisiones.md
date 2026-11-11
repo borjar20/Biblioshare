@@ -8330,3 +8330,7 @@ borroso y cortaba la cara en ese rango. Por debajo de 1024 el cartel sigue a tod
   Episodios usa de 1024 a 1279 el mismo recorrido que el móvil: temporadas, lista y detalle bajo la
   fila.
 - El título conserva sus tamaños grandes desde 1280: el de 88 px no cabe en 600 px.
+
+## 2026-11-11 — El menú ⋯ de la ficha también en escritorio
+
+El menú ⋯ de la ficha también está en escritorio: es el único sitio para quitar una obra de la biblioteca desde que Mi registro perdió ese enlace.

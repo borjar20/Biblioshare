@@ -398,27 +398,11 @@ async function MovieTabs({
   let entry: ManagedEntry | null = null;
   let passes: Pass[] = [];
   if (userId && activeRow) {
-    // La nota (notes) sale de pass_reviews (privacidad ya aplicada) — ningún
-    // consumidor de ManagedEntry la renderiza hoy, pero se resuelve igualmente
-    // para no dejar el campo con un dato inventado.
-    //
-    // pass_reviews y getPasses no se necesitan entre sí: en paralelo.
-    const [reviewRow, loadedPasses] = await Promise.all([
-      supabase
-        .from("pass_reviews")
-        .select("review")
-        .eq("id", activeRow.id)
-        .maybeSingle()
-        .then(({ data }) => data),
-      getPasses(supabase, "movie", movie.id, userId),
-    ]);
-    passes = loadedPasses;
+    passes = await getPasses(supabase, "movie", movie.id, userId);
     entry = {
       entryId: activeRow.id,
       status: activeRow.status as MediaStatus,
-      rating: activeRow.rating,
       position: parsePosition("movie", activeRow.position),
-      notes: reviewRow?.review ?? null,
     };
   }
 

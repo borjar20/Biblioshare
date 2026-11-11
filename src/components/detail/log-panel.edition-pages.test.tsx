@@ -48,7 +48,7 @@ describe("LogPanel aplica la precedencia en su barra real (#901)", () => {
         <ItemStatusProvider initialStatus="in_progress">
           <LogPanel
             itemType="book" itemId={PAGE_BOOK}
-            entry={{ entryId: PAGE_PASS, status: "in_progress", position: { page: 100 }, rating: null, notes: null }}
+            entry={{ entryId: PAGE_PASS, status: "in_progress", position: { page: 100 } }}
             passes={[pass]} sessions={[]} editions={editions} workTotalUnits={sample.workPages}
           />
         </ItemStatusProvider>

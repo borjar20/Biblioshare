@@ -4,10 +4,9 @@ import { useOptimistic, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { followSaga, unfollowSaga } from "@/lib/sagas/follow-actions";
 
-// Isla cliente del hero de saga: mismo patrón que HeroStatusOrFollow/useFollow
-// (item), pero autocontenido (sin contexto de estado de biblioteca — seguir
-// una saga no tiene "pase"). useOptimistic evita el parpadeo entre el click y
-// la revalidación del server action.
+// Isla cliente del hero de saga, autocontenida (sin contexto de estado de
+// biblioteca — seguir una saga no tiene "pase"). useOptimistic evita el
+// parpadeo entre el click y la revalidación del server action.
 //
 // Dos variantes:
 // - `full` (default): el botón grande del hero de la ficha.

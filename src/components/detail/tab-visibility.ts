@@ -14,9 +14,9 @@ export function detailTabOrder(
   return followed ? [...base, "log"] : base;
 }
 
-// La pestaña pedida por ?tab= (deep link, o el ?tab=log que pone el botón
-// "Seguir" del hero) se acota a las disponibles: pedir "log" sin seguir cae a
-// "info", igual que un valor desconocido o ausente.
+// La pestaña pedida por ?tab= (deep link: notificaciones, o el `?tab=episodes`
+// de «Marcar episodio») se acota a las disponibles: pedir "log" sin la obra en
+// la biblioteca cae a "info", igual que un valor desconocido o ausente.
 export function clampDetailTab(
   requested: string | null,
   order: DetailTabId[],

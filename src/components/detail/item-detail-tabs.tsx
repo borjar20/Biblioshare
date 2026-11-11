@@ -55,11 +55,13 @@ export function ItemDetailTabs({
   );
 
   // Re-sincroniza la pestaña activa cuando cambia la ?tab= de FUERA (deep link,
-  // o el ?tab=log que pone el botón "Seguir" del hero) O cuando cambia el estado
-  // de seguido. La clave combinada evita la carrera: al seguir, `setStatus` y
-  // `router.replace(?tab=log)` pueden aterrizar en renders distintos; cualquiera
-  // que llegue el segundo re-dispara este ajuste y conmuta a "log" ya con el
-  // order que incluye la pestaña. Ajuste durante el render, no useEffect.
+  // o un `router.push` a la misma ficha) O cuando la obra entra o sale de la
+  // biblioteca. Añadirla desde la tarjeta ya NO navega a ?tab=log (spec
+  // 2026-11-10-ficha-acciones): se queda en la pestaña en la que estaba. La
+  // clave combinada sigue haciendo falta para que una ?tab=log que llegue antes
+  // que el estado se resuelva bien cuando la pestaña aparezca, y para volver a
+  // "info" si se quita la obra estando en "log". Ajuste durante el render, no
+  // useEffect.
   const syncKey = `${urlTab ?? ""}|${followed}`;
   const [prevSyncKey, setPrevSyncKey] = useState(syncKey);
   if (syncKey !== prevSyncKey) {

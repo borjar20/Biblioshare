@@ -459,27 +459,11 @@ async function SeriesTabs({
   {
     const row = activeRow;
     if (userId && row) {
-      // La nota (notes) sale de pass_reviews (privacidad ya aplicada) — ningún
-      // consumidor de ManagedEntry la renderiza hoy, pero se resuelve igualmente
-      // para no dejar el campo con un dato inventado.
-      //
-      // pass_reviews y getPasses no se necesitan entre sí: en paralelo.
-      const [reviewRow, loadedPasses] = await Promise.all([
-        supabase
-          .from("pass_reviews")
-          .select("review")
-          .eq("id", row.id)
-          .maybeSingle()
-          .then(({ data }) => data),
-        getPasses(supabase, "series", series.id, userId),
-      ]);
-      passes = loadedPasses;
+      passes = await getPasses(supabase, "series", series.id, userId);
       entry = {
         entryId: row.id,
         status: row.status as MediaStatus,
-        rating: row.rating,
         position: parsePosition("series", row.position),
-        notes: reviewRow?.review ?? null,
       };
       // Las sesiones sí esperan a getPasses: son del pase ABIERTO, no de toda
       // la entrada (Hallazgo 4) — en una relectura, las sesiones de la lectura
