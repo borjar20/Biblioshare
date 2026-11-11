@@ -128,23 +128,22 @@ function statusGroup(page: Page) {
   return page.getByRole("group", { name: "Tu estado" });
 }
 
-// La píldora de estado del hero (ItemHero) y el pill activo de StatusSegments
-// contienen el MISMO texto ("Pendiente", "Leyendo"...): un getByText a secas
-// es ambiguo. data-testid="status-badge" (src/components/ui/status-badge.tsx)
-// distingue la píldora de solo lectura del control. El filtro es por
-// SUBcadena, así que casa igual con solo el verbo ("Leyendo"), que es lo
-// único que pinta hoy la tarjeta del hero.
+// El estado ACTUAL del pase, tal como lo pinta la tarjeta del hero. Desde la
+// spec 2026-11-10-ficha-acciones la tarjeta ya no tiene una píldora de solo
+// lectura: `data-testid="status-badge"` envuelve el control de estado entero
+// (StatusSegments, con sus cuatro pastillas), así que filtrar por texto casaría
+// con «Leído» aunque el pase estuviera pendiente. El estado actual es la
+// pastilla PULSADA (aria-pressed), con nombre exacto.
 //
 // Ojo con el verbo: "en curso" y "completado" cambian por tipo de medio
-// (Leyendo/Viendo, Leído/Vista), como en el control. Los genéricos "En curso"
-// y "Completado" NO aparecen en la píldora; "Pendiente" y "Abandonado" sí,
-// que no tienen verbo propio.
-// `:visible` por robustez: desde la ficha cinemática (2026-09) el estado se
-// pinta en UN solo sitio, el enlace de estado de PassCard, a cualquier ancho.
+// (Leyendo/Viendo, Leído/Vista). "Pendiente" y "Abandonado" no tienen verbo
+// propio.
+// `:visible` por robustez: el estado se pinta en UN solo sitio, la tarjeta del
+// hero, a cualquier ancho.
 function statusBadge(page: Page, label: string) {
   return page
     .locator('[data-testid="status-badge"]:visible')
-    .filter({ hasText: label });
+    .getByRole("button", { name: label, exact: true, pressed: true });
 }
 
 // Una tarjeta del diario de pases por su ordinal. El ordinal va por tipo de
@@ -156,12 +155,15 @@ function diaryEntry(page: Page, itemType: "book" | "series", n: number) {
   return page.getByTestId("diary-entry").filter({ hasText: ordinal });
 }
 
-// "Seguir" ahora vive en el HERO (visible desde cualquier pestaña), no dentro
-// de la pestaña Mi registro. Ya no abre el selector de edición: la edición se
-// difiere a cuando se empieza a leer (panel Progreso). Tras seguir, la app
-// revela "Mi registro" y salta a ella.
-async function followItem(page: Page) {
-  await page.getByRole("button", { name: "Seguir" }).click();
+// Añadir la obra es la intención «Quiero leerlo» / «Quiero verla» de la tarjeta
+// del hero (spec 2026-11-10-ficha-acciones; antes, «Seguir»). No abre el
+// selector de edición: la edición se difiere a cuando se empieza a leer (panel
+// Progreso). Añadir YA NO salta a Mi registro (ninguna intención cambia de
+// pestaña), así que los tests que siguen allí van a ella con la pestaña.
+const WANT = { book: "Quiero leerlo", movie: "Quiero verla", series: "Quiero verla" } as const;
+
+async function followItem(page: Page, itemType: "book" | "movie" | "series") {
+  await page.getByRole("button", { name: WANT[itemType], exact: true }).click();
   // El badge "Pendiente" es OPTIMISTA: lo publica el cliente en el mismo tick
   // en que dispara la acción, cuando todavía NO hay fila en `passes`. Verlo no
   // prueba nada (docs/TRAMPAS.md §16). `aria-busy` baja a false cuando la
@@ -173,6 +175,16 @@ async function followItem(page: Page) {
   const badge = page.locator('[data-testid="status-badge"]:visible').first();
   await expect(badge).toBeVisible({ timeout: 15_000 });
   await expect(badge).toHaveAttribute("aria-busy", "false", { timeout: 20_000 });
+  // La intención no cambia de pestaña, pero estos tests llegan con `?tab=log`
+  // en la URL (deep link previo, que sin pase cae a Información): cuando la
+  // pestaña aparece, ItemDetailTabs atiende esa ?tab= pendiente y puede entrar
+  // sola. Se pulsa la pestaña de todos modos para no depender de esa carrera.
+  // Que una intención sin ?tab= se queda en Información lo cubre
+  // ficha-acciones.spec.ts.
+  const log = page.getByRole("tab", { name: "Mi registro" });
+  await expect(log).toBeVisible({ timeout: 15_000 });
+  await log.click();
+  await expect(log).toHaveAttribute("aria-selected", "true");
 }
 
 // El botón de guardar de la HOJA DE CIERRE. Acotado al diálogo y con
@@ -345,9 +357,9 @@ test.describe
       page.getByRole("tab", { name: "Mi registro" }),
     ).toHaveCount(0);
 
-    // "Seguir" es accesible en el hero. Al seguir, la obra pasa a Pendiente y
-    // aparece la pestaña "Mi registro".
-    await followItem(page);
+    // «Quiero leerlo» está en la tarjeta del hero. Al pulsarlo, la obra pasa a
+    // Pendiente y aparece la pestaña "Mi registro" (followItem entra en ella).
+    await followItem(page, "book");
     await expect(statusBadge(page, "Pendiente")).toBeVisible({
       timeout: 15_000,
     });
@@ -398,7 +410,12 @@ test.describe
 
     // La nota máxima. Las mitades de cada dot se anuncian por su valor real
     // 1-10 (RatingDots), no en estrellas: la app ya no tiene ninguna.
-    await page.getByRole("button", { name: "10/10", exact: true }).click();
+    // Acotado a la hoja: desde la spec 2026-11-10 la tarjeta del hero también
+    // tiene sus puntos de nota interactivos, con los mismos nombres.
+    await page
+      .getByRole("dialog", { name: "¿Qué te ha parecido?" })
+      .getByRole("button", { name: "10/10", exact: true })
+      .click();
     await closeSheetSave(page).click();
 
     await expect(
@@ -517,7 +534,7 @@ test.describe("abandonar y retomar (ambas ramas)", () => {
 
       await page.goto(`/libro/${bookId}?tab=log`);
       await page.waitForLoadState("networkidle").catch(() => {});
-      await followItem(page);
+      await followItem(page, "book");
       await expect(statusBadge(page, "Pendiente")).toBeVisible({
         timeout: 15_000,
       });
@@ -654,7 +671,7 @@ test.describe("película de un gesto", () => {
 
       await page.goto(`/pelicula/${movieId}?tab=log`);
       await page.waitForLoadState("networkidle").catch(() => {});
-      await followItem(page);
+      await followItem(page, "movie");
       await expect(statusBadge(page, "Pendiente")).toBeVisible({
         timeout: 15_000,
       });
@@ -710,7 +727,7 @@ test.describe("película de un gesto", () => {
       movieId = await openSearchResult(page, "movie", "whiplash", "Whiplash");
       await page.goto(`/pelicula/${movieId}?tab=log`);
       await page.waitForLoadState("networkidle").catch(() => {});
-      await followItem(page);
+      await followItem(page, "movie");
       await expect(statusBadge(page, "Pendiente")).toBeVisible({
         timeout: 15_000,
       });
@@ -798,7 +815,7 @@ test.describe("serie con revisionado", () => {
 
       await page.goto(`/serie/${seriesId}?tab=log`);
       await page.waitForLoadState("networkidle").catch(() => {});
-      await followItem(page);
+      await followItem(page, "series");
       await expect(statusBadge(page, "Pendiente")).toBeVisible({
         timeout: 15_000,
       });
@@ -899,7 +916,7 @@ test.describe("nuevo pase", () => {
 
       await page.goto(`/libro/${bookId}?tab=log`);
       await page.waitForLoadState("networkidle").catch(() => {});
-      await followItem(page);
+      await followItem(page, "book");
       await expect(statusBadge(page, "Pendiente")).toBeVisible({
         timeout: 15_000,
       });

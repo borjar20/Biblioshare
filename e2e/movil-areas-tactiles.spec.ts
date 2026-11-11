@@ -104,7 +104,13 @@ test.describe("Áreas táctiles en móvil (auditoría 2026-08)", () => {
     await page.goto(`/libro/${libroId}?tab=log`);
     await page.getByRole("button", { name: "Editar" }).first().click();
 
-    const grupo = page.getByRole("group", { name: "Tu valoración" }).first();
+    // Acotado al diario: desde la spec 2026-11-10 la tarjeta del hero también
+    // tiene unos RatingDots interactivos (y van antes en el DOM). Los de aquí son
+    // los del editor del pase (size="sm"), que es lo que se audita.
+    const grupo = page
+      .getByTestId("diary-entry")
+      .getByRole("group", { name: "Tu valoración" })
+      .first();
     await expect(grupo).toBeVisible();
 
     // La mitad derecha del último dot es el 10/10: el target más pequeño del
@@ -126,7 +132,13 @@ test.describe("Áreas táctiles en móvil (auditoría 2026-08)", () => {
     await page.goto(`/libro/${libroId}?tab=log`);
     await page.getByRole("button", { name: "Editar" }).first().click();
 
-    const grupo = page.getByRole("group", { name: "Tu valoración" }).first();
+    // Acotado al diario: desde la spec 2026-11-10 la tarjeta del hero también
+    // tiene unos RatingDots interactivos (y van antes en el DOM). Los de aquí son
+    // los del editor del pase (size="sm"), que es lo que se audita.
+    const grupo = page
+      .getByTestId("diary-entry")
+      .getByRole("group", { name: "Tu valoración" })
+      .first();
     await expect(grupo).toBeVisible();
     // La FILA de dots, no el grupo: el grupo es un bloque que ocupa todo el
     // ancho de la columna y la nota se calcula sobre el ancho de la fila.

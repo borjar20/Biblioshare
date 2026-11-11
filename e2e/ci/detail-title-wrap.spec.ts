@@ -136,10 +136,11 @@ for (const viewport of [
         await expect(heading).toHaveText(fixture.title);
         const column = heading.locator("..");
         await expect(column.locator("p").first()).toHaveText(fixture.author);
-        // Cartel (spec 2026-11-09): el título y «Seguir» viven en la cabecera, dentro
+        // Cartel (spec 2026-11-09): el título y «Quiero leerlo» (la intención que sustituye
+        // a «Seguir», spec 2026-11-10) viven en la cabecera, dentro
         // de la columna derecha; la portada va en el área del cartel, fuera de ella.
         const cover = page.getByRole("button", { name: "Ampliar imagen", exact: true });
-        const follow = column.getByRole("button", { name: "Seguir", exact: true });
+        const follow = column.getByRole("button", { name: "Quiero leerlo", exact: true });
         await expect(cover).toHaveCount(1);
         await expect(follow).toHaveCount(1);
         await expect(follow).toBeEnabled();

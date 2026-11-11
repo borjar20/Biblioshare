@@ -4,7 +4,8 @@ import { expect, test } from "@playwright/test";
 // 1. El bug que motivó el rediseño, con número: el cuerpo de las pestañas
 //    medía ~771px a CUALQUIER viewport (raíl de 300 + tope de 1200). Con el cartel
 //    (spec 2026-11-09) comparte fila con él: debe llenar la columna derecha.
-// 2. La tarjeta «tu pase» existe una sola vez y se coloca donde toca.
+// 2. La tarjeta «tu pase» existe una sola vez y se coloca donde toca (sin pase,
+//    su botón principal es la intención «Quiero leerlo», spec 2026-11-10).
 // 3. En móvil no hay scroll horizontal.
 const BOOK = "/libro/3e80b690-ceef-49fb-b442-ecd2ea88be83";
 // "Juego de tronos" (7fa0c2eb-755e-49c6-80c4-2b1f1245f48c): la serie con más
@@ -33,7 +34,7 @@ test.describe("PC 1600", () => {
 
   test("una sola tarjeta, debajo del título", async ({ page }) => {
     await page.goto(BOOK);
-    const follow = page.getByRole("button", { name: /^seguir$/i });
+    const follow = page.getByRole("button", { name: "Quiero leerlo", exact: true });
     await expect(follow).toHaveCount(1);
     const title = await page.getByRole("heading", { level: 1 }).boundingBox();
     const card = await follow.boundingBox();
@@ -142,7 +143,7 @@ test.describe("móvil 375", () => {
 
   test("la tarjeta va bajo el hero, antes de las pestañas, sin scroll horizontal", async ({ page }) => {
     await page.goto(BOOK);
-    const follow = page.getByRole("button", { name: /^seguir$/i });
+    const follow = page.getByRole("button", { name: "Quiero leerlo", exact: true });
     await expect(follow).toBeVisible();
     const card = await follow.boundingBox();
     const tabs = await page.getByRole("tablist").boundingBox();

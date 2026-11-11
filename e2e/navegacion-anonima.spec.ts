@@ -60,7 +60,7 @@ test("anónimo abre un perfil público sin error (grants de los helpers de bloqu
 
 // Acciones in-page (issue #358): para el anónimo, seguir un perfil es un ENLACE
 // a login con retorno, no un botón que dispara la acción y redirige a /login
-// pelado. El mismo patrón (loginHref) cubre el "Seguir" de la ficha (useFollow)
+// pelado. El mismo patrón (loginHref) cubre las intenciones de la ficha («Quiero leerlo»)
 // y el link de comentar de reseñas/actividad.
 test("anónimo: seguir un perfil es un enlace a /login?next=", async ({ page }) => {
   await page.goto("/u/devtest");
@@ -69,14 +69,15 @@ test("anónimo: seguir un perfil es un enlace a /login?next=", async ({ page }) 
   ).toHaveAttribute("href", /\/login\?next=%2Fu%2Fdevtest/);
 });
 
-test("anónimo: 'Seguir' en una ficha lleva a /login?next= con la ficha", async ({ page }) => {
-  // Ficha pública cacheada en DEV (Cien años de soledad). El "Seguir" del hero/
-  // rail (useFollow) es un botón que, para el anónimo, hace router.push a login
-  // recordando la ficha — no dispara la acción.
+test("anónimo: 'Quiero leerlo' en una ficha lleva a /login?next= con la ficha", async ({ page }) => {
+  // Ficha pública cacheada en DEV (Cien años de soledad). «Quiero leerlo» (antes
+  // «Seguir», spec 2026-11-10-ficha-acciones) es un botón de la tarjeta del hero
+  // que, para el anónimo, hace router.push a login recordando la ficha
+  // (PassActionsProvider.canWrite) — no dispara la acción.
   const bookPath = "/libro/3e80b690-ceef-49fb-b442-ecd2ea88be83";
   await page.goto(bookPath);
   await page
-    .getByRole("button", { name: /^seguir$/i })
+    .getByRole("button", { name: "Quiero leerlo", exact: true })
     .filter({ visible: true })
     .first()
     .click();
