@@ -81,35 +81,6 @@
     --type-series-ink: var(--accent-ink);
   }
 }
-/* Las hojas <dialog> de la ficha (cierre, nuevo pase, retomar) llevan su propio
-   ámbito de materiales y heredarían el alias de arriba: recuperan los colores de
-   tipo globales. Son copia de globals.css; el test impide que diverjan. */
-.scope :global(dialog) {
-  --type-book: #a15a34;
-  --type-movie: #3f6b6e;
-  --type-series: #7a5676;
-  --type-book-ink: #844a2b;
-  --type-movie-ink: #375e61;
-  --type-series-ink: #6e4d6a;
-}
-:global(.dark) .scope :global(dialog) {
-  --type-book: #cf8a54;
-  --type-movie: #6bb0b4;
-  --type-series: #b592bd;
-  --type-book-ink: #d79d6f;
-  --type-movie-ink: #75b5b9;
-  --type-series-ink: #bea0c5;
-}
-@media (prefers-color-scheme: dark) {
-  :global(:root:not(.light):not(.dark)) .scope :global(dialog) {
-    --type-book: #cf8a54;
-    --type-movie: #6bb0b4;
-    --type-series: #b592bd;
-    --type-book-ink: #d79d6f;
-    --type-movie-ink: #75b5b9;
-    --type-series-ink: #bea0c5;
-  }
-}
 /* Títulos de sección de las pestañas, en la letra de cartel. Los <dialog> de las
    pestañas (hojas de cierre, nueva pasada...) conservan sus títulos: de ahí el :not.
    Un título que no puede ser <h2> (el de «Sesiones» es un h3 de los e2e, y «Ediciones»

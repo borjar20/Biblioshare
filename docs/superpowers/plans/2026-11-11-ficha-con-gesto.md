@@ -16,7 +16,7 @@
 - Toda animación va dentro de `@media (prefers-reduced-motion: no-preference)`. Con movimiento reducido la ficha queda como hoy.
 - No cambian roles, `aria-*`, etiquetas ni `data-testid` existentes. Los e2e actuales de la ficha deben pasar sin editarlos.
 - Fuera de la ficha (feed, biblioteca, perfil, `/post/[id]`) la nota sigue con el color del tipo, y `RatingDots` / `RatingHistogram` se comportan como hoy si no reciben la prop nueva.
-- Las hojas `<dialog>` de la ficha (cierre, nuevo pase, retomar) conservan los colores de tipo globales.
+- Las hojas de cierre, nuevo pase y retomar se montan fuera de `WorkScope` y conservan los colores de tipo globales; los `<dialog>` de dentro siguen el tinte de la obra. No hay regla CSS que restaure colores en `dialog` (corrección del 2026-11-11 a la tarea 1).
 - Vitest no procesa CSS: `styles.x` no es una clase real en los tests. Los tests se apoyan en atributos `data-*`, no en nombres de clase.
 - Un solo implementador a la vez en este árbol; commits pequeños, uno por tarea.
 - Curvas y tiempos, copiados de la spec:

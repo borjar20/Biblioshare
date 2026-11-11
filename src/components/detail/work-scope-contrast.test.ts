@@ -85,28 +85,9 @@ describe.each([
 });
 
 // ── Color de tipo dentro de la ficha (spec 2026-11-11-ficha-con-gesto) ──────
-const globalsCss = readFileSync(join(__dirname, "../../app/globals.css"), "utf8");
-const KINDS = ["book", "movie", "series"] as const;
-
 function aliases(text: string) {
   const out: Record<string, string> = {};
   for (const m of text.matchAll(/(--type-[\w-]+):\s*var\((--[\w-]+)\)/g)) out[m[1]] = m[2];
-  return out;
-}
-function hexes(text: string) {
-  const out: Record<string, string> = {};
-  for (const m of text.matchAll(/(--type-[\w-]+):\s*(#[0-9a-f]{6})/gi)) out[m[1]] = m[2].toLowerCase();
-  return out;
-}
-/** Los valores de `--type-*` de globals.css, por orden de aparición: claro, .dark, sistema oscuro. */
-function globalTypeColors(index: number) {
-  const out: Record<string, string> = {};
-  for (const kind of KINDS) for (const suffix of ["", "-ink"]) {
-    const name = `--type-${kind}${suffix}`;
-    const found = [...globalsCss.matchAll(new RegExp(`${name}:\\s*(#[0-9a-f]{6})`, "gi"))];
-    expect(found.length, name).toBeGreaterThanOrEqual(3);
-    out[name] = found[index][1].toLowerCase();
-  }
   return out;
 }
 // El tinte `bg-type-*/10` es el color al 10 % de alfa: el navegador lo compone
@@ -127,17 +108,17 @@ const EXPECTED_ALIASES = {
 };
 
 describe.each([
-  ["claro", ".scope {", ".scope :global(dialog) {", 0],
-  ["oscuro", ":global(.dark) .scope {", ":global(.dark) .scope :global(dialog) {", 1],
-  ["sistema oscuro", ":global(:root:not(.light):not(.dark)) .scope {", ":global(:root:not(.light):not(.dark)) .scope :global(dialog) {", 2],
-] as const)("color de tipo en la ficha, tema %s", (_name, scopeSelector, dialogSelector, globalsIndex) => {
+  ["claro", ".scope {"],
+  ["oscuro", ":global(.dark) .scope {"],
+  ["sistema oscuro", ":global(:root:not(.light):not(.dark)) .scope {"],
+] as const)("color de tipo en la ficha, tema %s", (_name, scopeSelector) => {
   const t = tokens(block(scopeSelector));
 
   it("el color de tipo es el acento de la obra", () => {
     expect(aliases(block(scopeSelector))).toEqual(EXPECTED_ALIASES);
   });
-  it("las hojas <dialog> recuperan los colores de tipo de globals.css", () => {
-    expect(hexes(block(dialogSelector))).toEqual(globalTypeColors(globalsIndex));
+  it("no hay regla que cambie el color de tipo dentro de un <dialog>", () => {
+    expect(css).not.toMatch(/dialog\)\s*\{[^}]*--type-/);
   });
   it("como gráfico: 3:1 sobre fondo y tarjeta en los 360 tonos", () => {
     for (let h = 0; h < 360; h++) for (const bg of ["--background", "--surface"]) {
