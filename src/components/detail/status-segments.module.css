@@ -1,0 +1,36 @@
+/* Pastilla deslizante del selector de estado (spec 2026-11-11-ficha-con-gesto).
+   `--n` = opciones, `--at` = índice de la activa. El hueco entre opciones es el
+   `gap-1` (4px) y el relleno el `p-1` (4px) del grupo: si cambian allí, aquí. */
+.thumb {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc((100% - 8px - (var(--n) - 1) * 4px) / var(--n));
+  transform: translateX(calc(var(--at) * (100% + 4px)));
+  pointer-events: none;
+}
+.option {
+  position: relative;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .thumb {
+    transition: transform 460ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .dot[data-beat] {
+    animation: beat 560ms ease-out;
+  }
+  @keyframes beat {
+    0% {
+      transform: scale(1);
+      box-shadow: 0 0 0 0 color-mix(in oklab, currentColor 70%, transparent);
+    }
+    40% {
+      transform: scale(1.6);
+    }
+    100% {
+      transform: scale(1);
+      box-shadow: 0 0 0 9px transparent;
+    }
+  }
+}
