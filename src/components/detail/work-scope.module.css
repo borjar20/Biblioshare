@@ -18,6 +18,14 @@
   --accent-ink: oklch(0.42 0.14 var(--work-hue));
   --work-title: oklch(0.36 0.12 var(--work-hue));
   --border: oklch(0.36 0.12 var(--work-hue) / 0.18);
+  /* Dentro de la ficha el color de TIPO es el de la obra (spec 2026-11-11):
+     nota, histograma y chip de tipo dejan de chocar con el tinte. */
+  --type-book: var(--accent);
+  --type-movie: var(--accent);
+  --type-series: var(--accent);
+  --type-book-ink: var(--accent-ink);
+  --type-movie-ink: var(--accent-ink);
+  --type-series-ink: var(--accent-ink);
   background: var(--background);
   color: var(--foreground);
 }
@@ -36,6 +44,14 @@
   --accent-ink: oklch(0.8 0.12 var(--work-hue));
   --work-title: oklch(0.9 0.07 var(--work-hue));
   --border: oklch(0.9 0.07 var(--work-hue) / 0.18);
+  /* Dentro de la ficha el color de TIPO es el de la obra (spec 2026-11-11):
+     nota, histograma y chip de tipo dejan de chocar con el tinte. */
+  --type-book: var(--accent);
+  --type-movie: var(--accent);
+  --type-series: var(--accent);
+  --type-book-ink: var(--accent-ink);
+  --type-movie-ink: var(--accent-ink);
+  --type-series-ink: var(--accent-ink);
 }
 /* Tema «sistema» con SO oscuro: espeja el bloque .dark (mismo selector que globals.css).
    Un .light explícito queda fuera por el :not(.light). El test impide que diverjan. */
@@ -55,6 +71,43 @@
     --accent-ink: oklch(0.8 0.12 var(--work-hue));
     --work-title: oklch(0.9 0.07 var(--work-hue));
     --border: oklch(0.9 0.07 var(--work-hue) / 0.18);
+    /* Dentro de la ficha el color de TIPO es el de la obra (spec 2026-11-11):
+       nota, histograma y chip de tipo dejan de chocar con el tinte. */
+    --type-book: var(--accent);
+    --type-movie: var(--accent);
+    --type-series: var(--accent);
+    --type-book-ink: var(--accent-ink);
+    --type-movie-ink: var(--accent-ink);
+    --type-series-ink: var(--accent-ink);
+  }
+}
+/* Las hojas <dialog> de la ficha (cierre, nuevo pase, retomar) llevan su propio
+   ámbito de materiales y heredarían el alias de arriba: recuperan los colores de
+   tipo globales. Son copia de globals.css; el test impide que diverjan. */
+.scope :global(dialog) {
+  --type-book: #a15a34;
+  --type-movie: #3f6b6e;
+  --type-series: #7a5676;
+  --type-book-ink: #844a2b;
+  --type-movie-ink: #375e61;
+  --type-series-ink: #6e4d6a;
+}
+:global(.dark) .scope :global(dialog) {
+  --type-book: #cf8a54;
+  --type-movie: #6bb0b4;
+  --type-series: #b592bd;
+  --type-book-ink: #d79d6f;
+  --type-movie-ink: #75b5b9;
+  --type-series-ink: #bea0c5;
+}
+@media (prefers-color-scheme: dark) {
+  :global(:root:not(.light):not(.dark)) .scope :global(dialog) {
+    --type-book: #cf8a54;
+    --type-movie: #6bb0b4;
+    --type-series: #b592bd;
+    --type-book-ink: #d79d6f;
+    --type-movie-ink: #75b5b9;
+    --type-series-ink: #bea0c5;
   }
 }
 /* Títulos de sección de las pestañas, en la letra de cartel. Los <dialog> de las
