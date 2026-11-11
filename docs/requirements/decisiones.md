@@ -8334,3 +8334,24 @@ borroso y cortaba la cara en ese rango. Por debajo de 1024 el cartel sigue a tod
 ## 2026-11-11 — El menú ⋯ de la ficha también en escritorio
 
 El menú ⋯ de la ficha también está en escritorio: es el único sitio para quitar una obra de la biblioteca desde que Mi registro perdió ese enlace.
+
+## 2026-11-10 — Botones y acciones de la ficha
+
+- **Tres intenciones sustituyen a «Seguir»** en la ficha de obra («Quiero leerlo», «Lo estoy
+  leyendo», «Ya lo leí», y sus equivalentes; la película no tiene la segunda). «Seguir» añadía como
+  pendiente sin decirlo y se confundía con seguir a personas.
+- **La tarjeta del pase es el mando:** estado, acción principal y nota se cambian en ella. Mi registro
+  queda para el historial y pierde el selector de estado.
+- **Un solo proveedor de acciones** (`PassActionsProvider`) monta las hojas de cierre, nuevo pase y
+  retomar. Antes vivían en `LogPanel`, que solo existe con su pestaña activa; por eso el cierre tras
+  una sesión dependía de `&tab=log`.
+- La marca «Al día» de las series se conserva en la tarjeta, junto al progreso.
+- Los controles de la tarjeta se deshabilitan también mientras otra isla está guardando
+  (`isSaving` de `ItemStatusContext`), no solo con la escritura propia en vuelo.
+- Al añadir una obra ya no se salta a Mi registro: la pestaña aparece, pero no se abre sola.
+- Quitar la obra queda solo en el menú ⋯, también en escritorio (entrada anterior, mismo trabajo).
+- Sin cambios en server actions ni esquema. Resuelve los hallazgos 1 y 2 de #1164, y el 5 solo en
+  la tarjeta: sus errores llevan `role="alert"`, pero las hojas de sesión y cierre que cita el
+  hallazgo siguen sin anuncio.
+- Se publica en la misma PR que la ficha cartel (#1617), no en una aparte como decía la spec.
+- Spec: `docs/superpowers/specs/2026-11-10-ficha-acciones-design.md`.

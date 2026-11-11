@@ -34,6 +34,10 @@
   tipográfico según el origen de la imagen, tema teñido con el tono de la obra y columna de cartel
   desde 1280 px. Sin migraciones; `getWorkHue` con `use cache` (regla #437).
   [Spec](superpowers/specs/2026-11-09-ficha-cartel-design.md), decisiones del 2026-11-09.
+- [x] Botones y acciones de la ficha (spec 2026-11-10): tres intenciones sustituyen a «Seguir», la
+  tarjeta del pase es el mando (estado, acción principal y nota) y Mi registro queda para el
+  historial. Sin migraciones ni `use cache`; misma PR que la ficha cartel (#1617).
+  [Spec](superpowers/specs/2026-11-10-ficha-acciones-design.md), decisiones del 2026-11-10 y 2026-11-11.
 
 ## Moderación administrativa — #1183
 
