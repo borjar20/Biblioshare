@@ -1999,7 +1999,7 @@
       "resume": { "book": "Retomar", "movie": "Retomar", "series": "Retomar" }
     },
     "actionError": "No se pudo guardar. Inténtalo de nuevo.",
-    "doneButPlanned": "Se añadió como pendiente, pero no se pudo marcar como terminada. Inténtalo de nuevo.",
+    "addedButPending": "Se añadió como pendiente, pero no se pudo cambiar su estado. Inténtalo de nuevo.",
     "pages": "págs.",
     "minutes": "min",
     "seasons": "temporadas",

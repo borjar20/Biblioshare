@@ -206,16 +206,16 @@ async function parkBookPassBeforeEnd(passId: string, total: number) {
   });
 }
 
-// La ficha (?tab=log) puede tener VARIOS enlaces a /sesion/<passId>: el CTA
-// del rail (junto a la portada) para libro, y el de la sección Sesiones
-// (session-list.tsx, SIEMPRE "Registrar sesión" mientras haya un pase
-// activo). Para SERIE el CTA del rail no apunta a /sesion en absoluto — va a
-// `?tab=episodes` ("Marcar episodio", ver src/app/serie/[id]/page.tsx) — así
-// que contar índices por href (nth(1)) NO es fiable entre tipos de medio: en
-// libro hay 2-3 enlaces con ese href, en serie solo 1. En vez de adivinar un
-// índice, se ancla al propio bloque "Sesiones" (session-list.tsx: el h3 y el
-// link son hermanos en el mismo contenedor) — funciona igual para los dos
-// tipos y no depende de cuántos otros enlaces compartan el href.
+// La ficha (?tab=log) puede tener VARIOS enlaces a /sesion/<passId>: el de la
+// sección Sesiones (session-list.tsx, SIEMPRE "Registrar sesión" mientras haya
+// un pase activo) y el «añadir sesión» del pase abierto en Mi registro
+// (log-panel.tsx). El botón principal de la tarjeta del hero (PassCard,
+// «Registrar sesión» / «Marcar episodio») ya NO es un enlace: es un <button>
+// que navega por router.push desde PassActionsProvider, así que no tiene href
+// que buscar. Contar índices por href (nth(1)) tampoco es fiable entre tipos de
+// medio, de modo que se ancla al propio bloque "Sesiones" (session-list.tsx: el
+// h3 y el link son hermanos en el mismo contenedor) — funciona igual para libro
+// y serie y no depende de cuántos otros enlaces compartan el href.
 function sessionLink(page: Page, passId: string) {
   const heading = page.getByRole("heading", { name: "Sesiones", level: 3 });
   return heading

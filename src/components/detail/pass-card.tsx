@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { ItemType } from "@/lib/catalog/types";
-import { intentsFor, primaryAction } from "@/lib/passes/pass-actions";
+import { intentsFor, primaryAction, type Intent } from "@/lib/passes/pass-actions";
 import { Button } from "@/components/ui/button";
 import { RatingDots } from "@/components/ui/rating-dots";
 import { useItemStatus } from "./item-status-context";
@@ -66,6 +66,24 @@ export function PassCard({ itemType, progress, rating, upToDate = false }: PassC
     if (error) setShownRating(rating);
   }
 
+  // Foco tras elegir una intención: el estado optimista desmonta los botones
+  // de intención y el foco caería a <body>. Se lleva al botón principal, pero
+  // solo cuando deja de estar deshabilitado (un botón disabled no recibe foco)
+  // y solo si el foco se perdió de verdad: si mientras tanto se abrió la hoja
+  // de cierre («Ya lo leí»), el foco es suyo. Si el añadir falla y se vuelve a
+  // «sin pase», la marca se olvida. En un efecto que solo llama a .focus(): el
+  // foco es del DOM, no estado de React.
+  const primaryRef = useRef<HTMLButtonElement>(null);
+  const focusPrimaryAfterIntent = useRef(false);
+  useEffect(() => {
+    if (!focusPrimaryAfterIntent.current || busy) return;
+    focusPrimaryAfterIntent.current = false;
+    if (!status) return;
+    const active = document.activeElement;
+    if (active && active !== document.body && active.isConnected) return;
+    primaryRef.current?.focus();
+  }, [status, busy]);
+
   const shell =
     "flex flex-col gap-3 rounded-[14px] border border-border bg-surface/90 p-3.5 shadow-[0_18px_40px_-22px_rgba(60,35,15,0.55)] backdrop-blur-md";
 
@@ -75,6 +93,11 @@ export function PassCard({ itemType, progress, rating, upToDate = false }: PassC
     </p>
   );
 
+  function chooseIntent(intent: Intent) {
+    focusPrimaryAfterIntent.current = true;
+    addWith(intent);
+  }
+
   if (!status) {
     const [first, ...rest] = intentsFor(itemType);
     return (
@@ -82,7 +105,7 @@ export function PassCard({ itemType, progress, rating, upToDate = false }: PassC
         <Button
           type="button"
           disabled={busy}
-          onClick={() => addWith(first)}
+          onClick={() => chooseIntent(first)}
           className={`w-full py-3 font-semibold ${PRIMARY_SHAPE}`}
         >
           {t(`intent.${first}.${itemType}`)}
@@ -95,7 +118,7 @@ export function PassCard({ itemType, progress, rating, upToDate = false }: PassC
                 type="button"
                 variant="secondary"
                 disabled={busy}
-                onClick={() => addWith(intent)}
+                onClick={() => chooseIntent(intent)}
                 className={`w-full px-3 text-[13px] font-semibold ${PRIMARY_SHAPE}`}
               >
                 {t(`intent.${intent}.${itemType}`)}
@@ -156,6 +179,7 @@ export function PassCard({ itemType, progress, rating, upToDate = false }: PassC
       {/* Un <button>, no un enlace: a dónde se va (sesión, episodios) lo
           decide el proveedor, que antes cierra lo que hubiera abierto. */}
       <Button
+        ref={primaryRef}
         type="button"
         disabled={busy}
         onClick={runPrimary}
@@ -178,8 +202,10 @@ export function PassCard({ itemType, progress, rating, upToDate = false }: PassC
             itemType={itemType}
             disabled={busy}
             onChange={(next) => {
-              setShownRating(next);
-              rate(next);
+              // Solo si de verdad arrancó la escritura: sin pase activo, sin
+              // sesión o con otra escritura en vuelo, la nota parecería
+              // guardada sin que nada llegue a BD.
+              if (rate(next)) setShownRating(next);
             }}
           />
         </div>

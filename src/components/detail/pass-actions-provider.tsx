@@ -33,7 +33,10 @@ import { ResumePassSheet } from "./resume-pass-sheet";
 //
 // Sin `use cache` en ningún sitio (regla #437): todo depende de quién mira.
 
-export type PassActionsError = "actionError" | "doneButPlanned";
+// `addedButPending`: el añadir fue bien pero el segundo paso de «Lo estoy
+// leyendo» / «Ya lo leí» no; el texto no nombra el estado destino porque vale
+// para las dos intenciones.
+export type PassActionsError = "actionError" | "addedButPending";
 
 type PassActionsValue = {
   isPending: boolean;
@@ -42,7 +45,10 @@ type PassActionsValue = {
   changeStatus: (next: MediaStatus) => void;
   runPrimary: () => void;
   newPass: () => void;
-  rate: (rating: number) => void;
+  /** true si arrancó una escritura; false si no hay pase activo o la puerta
+   *  (login, otra escritura en vuelo) la rechazó. La tarjeta solo pinta la
+   *  nota optimista con true. */
+  rate: (rating: number) => boolean;
 };
 
 const PassActionsContext = createContext<PassActionsValue | null>(null);
@@ -304,7 +310,7 @@ export function PassActionsProvider({
           openClose(outcome.passId, "completed");
         }
       } catch (caught) {
-        fail(caught, "planned", "doneButPlanned");
+        fail(caught, "planned", "addedButPending");
         router.refresh();
       }
     });
@@ -330,10 +336,15 @@ export function PassActionsProvider({
         write(async () => {
           try {
             const outcome = await updateStatus(itemType, itemId, "in_progress");
-            router.refresh();
             if (outcome.kind === "done" && outcome.passId) {
+              // Sin router.refresh() antes de salir: con un refresh en vuelo
+              // Next convierte el push en replace (ver session-origin.tsx) y la
+              // ficha desaparecería del historial. La server action ya
+              // revalida, así que la vuelta trae los datos frescos.
               leaveTo(`/sesion/${outcome.passId}`);
+              return;
             }
+            router.refresh();
           } catch (caught) {
             fail(caught, previous, "actionError");
           }
@@ -356,8 +367,8 @@ export function PassActionsProvider({
     }
   }
 
-  function rate(rating: number) {
-    if (!activePassId || !canWrite()) return;
+  function rate(rating: number): boolean {
+    if (!activePassId || !canWrite()) return false;
     const passId = activePassId;
     write(async () => {
       try {
@@ -367,6 +378,7 @@ export function PassActionsProvider({
         fail(caught, undefined, "actionError");
       }
     });
+    return true;
   }
 
   return (

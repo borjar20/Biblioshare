@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { useLayoutEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextIntlClientProvider } from "next-intl";
 import messages from "../../../messages/es.json";
@@ -11,7 +12,7 @@ import { PassCard, type PassCardProps } from "./pass-card";
 // aquí solo importa qué ofrece la tarjeta y a qué método llama.
 const actions = vi.hoisted(() => ({
   isPending: false,
-  error: null as null | "actionError" | "doneButPlanned",
+  error: null as null | "actionError" | "addedButPending",
   addWith: vi.fn(),
   changeStatus: vi.fn(),
   runPrimary: vi.fn(),
@@ -26,6 +27,7 @@ beforeEach(() => {
   for (const fn of [actions.addWith, actions.changeStatus, actions.runPrimary, actions.newPass, actions.rate]) {
     fn.mockReset();
   }
+  actions.rate.mockReturnValue(true);
 });
 afterEach(cleanup);
 
@@ -90,6 +92,76 @@ describe("PassCard", () => {
     renderCard({ itemType: "book", rating: null }, "completed");
     fireEvent.click(screen.getByRole("button", { name: "8/10" }));
     expect(actions.rate).toHaveBeenCalledWith(8);
+  });
+
+  it("la nota optimista solo se pinta si arrancó la escritura", () => {
+    actions.rate.mockReturnValue(false);
+    renderCard({ itemType: "book", rating: 4 }, "completed");
+    fireEvent.click(screen.getByRole("button", { name: "8/10" }));
+    expect(actions.rate).toHaveBeenCalledWith(8);
+    expect(screen.getByTestId("pass-card-rating").getAttribute("data-value")).toBe("4");
+  });
+
+  it("la nota optimista se pinta al arrancar la escritura", () => {
+    renderCard({ itemType: "book", rating: 4 }, "completed");
+    fireEvent.click(screen.getByRole("button", { name: "8/10" }));
+    expect(screen.getByTestId("pass-card-rating").getAttribute("data-value")).toBe("8");
+  });
+
+  it("tras elegir una intención, el foco pasa al botón principal cuando deja de guardar", () => {
+    // Como el proveedor real: estado optimista y escritura en vuelo.
+    function Harness() {
+      const { setStatus, setSaving } = useItemStatus();
+      useLayoutEffect(() => {
+        actions.addWith.mockImplementation(() => {
+          setStatus("planned");
+          setSaving(true);
+        });
+      });
+      return (
+        <>
+          <span data-testid="finish" onClick={() => setSaving(false)} />
+          <PassCard {...base} />
+        </>
+      );
+    }
+    render(
+      <NextIntlClientProvider locale="es" messages={messages}>
+        <ItemStatusProvider initialStatus={null}>
+          <Harness />
+        </ItemStatusProvider>
+      </NextIntlClientProvider>,
+    );
+    const intent = screen.getByRole("button", { name: "Quiero leerlo" });
+    intent.focus();
+    act(() => { fireEvent.click(intent); });
+    // Mientras guarda el principal está deshabilitado: el foco aún no puede ir.
+    const primary = screen.getByRole("button", { name: "Empezar a leer" });
+    expect(document.activeElement).not.toBe(primary);
+    // fireEvent sobre un span no mueve el foco (no es enfocable).
+    fireEvent.click(screen.getByTestId("finish"));
+    expect(document.activeElement).toBe(primary);
+  });
+
+  it("sin intención elegida en la tarjeta, un cambio de estado no mueve el foco", () => {
+    function Harness() {
+      const { setStatus } = useItemStatus();
+      return (
+        <>
+          <button type="button" data-testid="outside" onClick={() => setStatus("planned")} />
+          <PassCard {...base} />
+        </>
+      );
+    }
+    render(
+      <NextIntlClientProvider locale="es" messages={messages}>
+        <ItemStatusProvider initialStatus={null}>
+          <Harness />
+        </ItemStatusProvider>
+      </NextIntlClientProvider>,
+    );
+    act(() => { fireEvent.click(screen.getByTestId("outside")); });
+    expect(document.activeElement).not.toBe(screen.getByRole("button", { name: "Empezar a leer" }));
   });
 
   it("la nota optimista se resincroniza con la prop", () => {

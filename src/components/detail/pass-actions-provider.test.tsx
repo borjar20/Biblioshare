@@ -79,14 +79,17 @@ describe("addWith", () => {
     await flush();
     expect(screen.getByTestId("close-sheet").textContent).toBe("p1:completed");
   });
-  it("si falla el segundo paso, queda pendiente y avisa", async () => {
-    h.updateStatus.mockRejectedValue(new Error("x"));
-    mount();
-    act(() => api.addWith("done"));
-    await flush();
-    expect(screen.getByTestId("status").textContent).toBe("planned");
-    expect(api.error).toBe("doneButPlanned");
-  });
+  it.each(["done", "started"] as const)(
+    "si falla el segundo paso de «%s», queda pendiente y avisa con un aviso neutro",
+    async (intent) => {
+      h.updateStatus.mockRejectedValue(new Error("x"));
+      mount();
+      act(() => api.addWith(intent));
+      await flush();
+      expect(screen.getByTestId("status").textContent).toBe("planned");
+      expect(api.error).toBe("addedButPending");
+    },
+  );
   it("si falla el añadir, vuelve a no estar en la biblioteca", async () => {
     h.add.mockRejectedValue(new Error("x"));
     mount();
@@ -149,6 +152,17 @@ describe("runPrimary", () => {
     await flush();
     expect(h.updateStatus).toHaveBeenCalledWith("book", "b1", "in_progress");
     expect(h.push).toHaveBeenCalledWith("/sesion/p1");
+    // Un refresh en vuelo convierte el push en replace (session-origin.tsx):
+    // la ficha se perdería del historial.
+    expect(h.refresh).not.toHaveBeenCalled();
+  });
+  it("libro pendiente sin passId de vuelta: refresca y no navega", async () => {
+    h.updateStatus.mockResolvedValue(done({ passId: "" }));
+    mount({}, "planned");
+    act(() => api.runPrimary());
+    await flush();
+    expect(h.push).not.toHaveBeenCalled();
+    expect(h.refresh).toHaveBeenCalled();
   });
   it("libro en curso: va a la sesión sin escribir", () => {
     mount({ sessionHref: "/sesion/p9" }, "in_progress");
@@ -199,14 +213,30 @@ describe("newPass", () => {
 describe("rate", () => {
   it("puntúa el pase activo", async () => {
     mount({ activePassId: "p1" }, "completed");
-    act(() => api.rate(8));
+    let started: boolean | undefined;
+    act(() => { started = api.rate(8); });
     await flush();
+    expect(started).toBe(true);
     expect(h.rate).toHaveBeenCalledWith("p1", "book", "b1", 8);
   });
-  it("sin pase activo no hace nada", () => {
+  it("sin pase activo no hace nada y devuelve false", () => {
     mount({}, null);
-    act(() => api.rate(8));
+    let started: boolean | undefined;
+    act(() => { started = api.rate(8); });
+    expect(started).toBe(false);
     expect(h.rate).not.toHaveBeenCalled();
+  });
+  it("con otra escritura en vuelo, devuelve false sin escribir", async () => {
+    const d = deferred<unknown>();
+    h.updateStatus.mockReturnValue(d.promise);
+    mount({ activePassId: "p1" }, "in_progress");
+    act(() => api.changeStatus("completed"));
+    let started: boolean | undefined;
+    act(() => { started = api.rate(8); });
+    expect(started).toBe(false);
+    expect(h.rate).not.toHaveBeenCalled();
+    await act(async () => { d.resolve(done()); await d.promise; });
+    await flush();
   });
 });
 
@@ -307,7 +337,9 @@ describe("sin sesión, ninguna escritura", () => {
   });
   it("rate va a login sin escribir", () => {
     mount({ isLoggedIn: false, activePassId: "p1" }, "completed");
-    act(() => api.rate(8));
+    let started: boolean | undefined;
+    act(() => { started = api.rate(8); });
+    expect(started).toBe(false);
     expect(h.rate).not.toHaveBeenCalled();
     expect(h.push).toHaveBeenCalledWith(expect.stringContaining("/login"));
   });
