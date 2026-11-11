@@ -21,11 +21,11 @@ export default async function SessionModalPage({
 
   const ctx = await loadSessionContext(passId);
 
-  // `?tab=log`: se vuelve a "Mi registro", que es de donde se entra a registrar
-  // una sesión y donde se ve lo que se acaba de guardar. ItemDetailTabs solo
-  // monta la pestaña activa, así que sin esto la ficha abriría en
-  // "Información" — con back() esto salía gratis porque la URL anterior ya lo
-  // llevaba.
+  // `?tab=log`: se vuelve a "Mi registro" porque es donde se ve lo que se acaba
+  // de guardar (la sección Sesiones y el historial de pases). Ya no es de donde
+  // se entra: el botón principal de la tarjeta del hero vive por encima de las
+  // pestañas (spec 2026-11-10-ficha-acciones). ItemDetailTabs solo monta la
+  // pestaña activa, así que sin esto la ficha abriría en "Información".
   return (
     <RouteMessages ns={["episode", "library", "margin", "notes", "passes", "ritual", "session"]}>
       <SessionModal exitHref={`${itemHref(ctx.itemType, ctx.itemId)}?tab=log`}>

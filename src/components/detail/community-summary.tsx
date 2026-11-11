@@ -27,29 +27,29 @@ export function CommunitySummary({
   const accent = MEDIA_ACCENT[itemType];
 
   return (
-    <div className="flex items-center gap-5 rounded-[12px] border border-border bg-surface p-4 lg:flex-col lg:gap-0 lg:p-6 lg:text-center">
+    <div className="flex items-center gap-5 rounded-[12px] border border-border bg-surface p-4 xl:flex-col xl:gap-0 xl:p-6 xl:text-center">
       <div className="shrink-0 text-center">
         {/* `formatDots`, NO `avgRating.toFixed(1)`: la media se guarda 1–10 y
             se ENSEÑA sobre 5. Con toFixed, esta pestaña decía "8,4" mientras
             el hero de la misma ficha decía "4,2" — dos números para la misma
             nota. Y de paso el punto pasa a ser coma (es-ES). */}
         <div
-          className={`font-serif text-[42px] leading-none font-semibold lg:text-[58px] ${accent.text}`}
+          className={`font-serif text-[42px] leading-none font-semibold xl:text-[58px] ${accent.text}`}
         >
           {formatDots(avgRating)}
         </div>
-        <div className="mt-1 flex justify-center lg:mt-2.5">
-          <RatingDots value={avgRating} size="sm" className="lg:hidden" itemType={itemType} />
-          <RatingDots value={avgRating} size="md" className="hidden lg:flex" itemType={itemType} />
+        <div className="mt-1 flex justify-center xl:mt-2.5">
+          <RatingDots value={avgRating} size="sm" className="xl:hidden" itemType={itemType} />
+          <RatingDots value={avgRating} size="md" className="hidden xl:flex" itemType={itemType} />
         </div>
-        <div className="mt-[5px] font-mono text-[10px] text-muted-foreground lg:text-[11px]">
+        <div className="mt-[5px] font-mono text-[10px] text-muted-foreground xl:text-[11px]">
           {ratingsLabel}
         </div>
       </div>
 
       {/* El histograma: al lado en móvil (flex-1), debajo y a lo ancho en PC.
           Mismo componente que el raíl OBRA de `/post/[id]` (RatingHistogram). */}
-      <div className="flex-1 lg:mt-5 lg:w-full lg:flex-none">
+      <div className="flex-1 xl:mt-5 xl:w-full xl:flex-none">
         <RatingHistogram itemType={itemType} distribution={distribution} />
       </div>
     </div>

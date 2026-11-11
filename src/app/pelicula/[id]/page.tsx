@@ -3,7 +3,6 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { after } from "next/server";
 import { getTranslations } from "next-intl/server";
-import { statusVerbs } from "@/lib/library/hero-status-labels";
 import { PassCard } from "@/components/detail/pass-card";
 import { PendingJointInvites } from "@/components/social/pending-joint-invites";
 import { getPendingJointInvites } from "@/lib/social/joint-viewings";
@@ -28,6 +27,7 @@ import { HeroMenu } from "@/components/detail/hero-menu";
 import { WatchProviders } from "@/components/watch-providers";
 import { CreditsSection } from "@/components/credits-section";
 import { ItemShell } from "@/components/detail/item-shell";
+import { resolveWorkHue } from "@/lib/catalog/work-hue";
 import { ItemDetailTabs } from "@/components/detail/item-detail-tabs";
 import { InfoPanel } from "@/components/detail/info-panel";
 import { InfoLayout } from "@/components/detail/info-layout";
@@ -40,6 +40,7 @@ import { SagaStrip } from "@/components/detail/saga-strip";
 import { EditionsSection } from "@/components/detail/edition-details";
 import { EditionsLoading } from "@/components/detail/editions-loading";
 import { ItemStatusProvider } from "@/components/detail/item-status-context";
+import { PassActionsProvider } from "@/components/detail/pass-actions-provider";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getWatchProviders } from "@/lib/catalog/tmdb";
 import { ensureMovieHydrated } from "@/lib/catalog/hydrate-screen";
@@ -61,7 +62,7 @@ import { getItemSagas } from "@/lib/sagas/get-item-sagas";
 import { SagaList } from "@/components/detail/saga-list";
 import { getSaga } from "@/lib/sagas/get-saga";
 import type { SagaMember, SagaMembership } from "@/lib/sagas/types";
-import { parsePosition } from "@/lib/library/position";
+import { formatPosition, parsePosition } from "@/lib/library/position";
 import type { MediaStatus } from "@/lib/library/types";
 import { getPasses } from "@/lib/passes/get-passes";
 import type { Pass } from "@/lib/passes/types";
@@ -144,6 +145,13 @@ async function MovieDetail({ params, searchParams }: MovieDetailProps) {
   ]);
 
   if (!movie) notFound();
+
+  // Sin await: en un fallo de caché no se suma en serie a las lecturas de abajo.
+  // Nunca rechaza, así que la promesa suelta es segura.
+  const workHuePromise = resolveWorkHue({
+    coverUrl: movie.cover_url,
+    title: movie.title ?? tDetail("untitled"),
+  });
 
   // Iníciala dentro del render, antes de registrar `after()`: la sección de
   // notas recibe esta promesa y no crea un cliente tardío (#754).
@@ -233,14 +241,40 @@ async function MovieDetail({ params, searchParams }: MovieDetailProps) {
 
   const genres = movie.genres ?? [];
 
-  // Tarjeta «tu pase», solo lectura (ver pass-card.tsx). La película NO
-  // lleva barra de progreso: su estado es binario y el frame 12 no la pinta.
-  const railLabels = await statusVerbs("movie");
-
   const jointInvites = await jointInvitesPromise;
+  const workHue = await workHuePromise;
+
+  // `?cerrar` (auto-cierre al terminar una sesión, §Tarea 7): validado aquí
+  // contra el pase ACTIVO (`activePass` es la fila `is_active = true` de la
+  // consulta del hero) — ver el comentario largo en la ficha de libro
+  // (src/app/libro/[id]/page.tsx), mismo mecanismo. Las películas no generan
+  // sesiones (§7.14) así que este path solo importa por el manual "marcar
+  // completado", que no depende de la URL — se deja aquí por consistencia y
+  // para que un `?cerrar` forjado tampoco reabra nada.
+  const initialClosingPassId =
+    cerrar && cerrar === activePass?.id ? cerrar : null;
 
   return (
     <ItemStatusProvider initialStatus={activeStatus}>
+      <PassActionsProvider
+        itemType="movie"
+        itemId={movie.id}
+        isLoggedIn={Boolean(user)}
+        activePassId={activePass?.id ?? null}
+        activePassOpen={
+          activePass?.status === "planned" ||
+          activePass?.status === "in_progress"
+        }
+        // La película no tiene sesiones ni episodios: su acción principal
+        // nunca es «Registrar sesión».
+        sessionHref={null}
+        droppedAtLabel={
+          activePass
+            ? formatPosition("movie", parsePosition("movie", activePass.position))
+            : null
+        }
+        initialClosingPassId={initialClosingPassId}
+      >
       <ItemShell
         itemType="movie"
         mediaLabel={tDetail("mediaLabel.movie")}
@@ -248,7 +282,7 @@ async function MovieDetail({ params, searchParams }: MovieDetailProps) {
         byline={byline}
         genres={genres}
         coverUrl={movie.cover_url}
-        backdropUrl={movie.backdrop_url ?? null}
+        workHue={workHue}
         avgRating={ratingSummary.avgRating}
         ratingsLabel={tDetail("ratings", { count: ratingSummary.ratingCount })}
         backLabel={tDetail("back")}
@@ -262,17 +296,11 @@ async function MovieDetail({ params, searchParams }: MovieDetailProps) {
         passCard={
           <div className="flex flex-col gap-3">
             <PendingJointInvites invites={jointInvites} variant="item" />
+            {/* La película NO lleva barra de progreso: se ve de una sentada. */}
             <PassCard
               itemType="movie"
-              itemId={movie.id}
-              isLoggedIn={Boolean(user)}
-              labels={railLabels}
               progress={null}
               rating={activePass?.rating ?? null}
-              ctaHref={activePass ? `/pelicula/${movie.id}?tab=log` : null}
-              ctaLabel={tDetail("rail.cta.movie")}
-              ratingLabel={tDetail("rail.yourRating")}
-              goToLogLabel={tDetail("rail.goToLog")}
             />
           </div>
         }
@@ -284,11 +312,11 @@ async function MovieDetail({ params, searchParams }: MovieDetailProps) {
               notesPromise={notesPromise}
               marginPromise={marginPromise}
               ratingSummary={ratingSummary}
-              cerrar={cerrar}
             />
           </Suspense>
         }
       />
+      </PassActionsProvider>
     </ItemStatusProvider>
   );
 }
@@ -301,14 +329,12 @@ async function MovieTabs({
   notesPromise,
   marginPromise,
   ratingSummary,
-  cerrar,
 }: {
   movie: MovieRow;
   userId: string | null;
   notesPromise: ReturnType<typeof getNotesForItem> | null;
   marginPromise: ReturnType<typeof getItemMarginNotes> | null;
   ratingSummary: RatingSummary;
-  cerrar?: string;
 }) {
   const supabase = await createClient();
   const tDetail = await getTranslations("detail");
@@ -372,39 +398,13 @@ async function MovieTabs({
   let entry: ManagedEntry | null = null;
   let passes: Pass[] = [];
   if (userId && activeRow) {
-    // La nota (notes) sale de pass_reviews (privacidad ya aplicada) — ningún
-    // consumidor de ManagedEntry la renderiza hoy, pero se resuelve igualmente
-    // para no dejar el campo con un dato inventado.
-    //
-    // pass_reviews y getPasses no se necesitan entre sí: en paralelo.
-    const [reviewRow, loadedPasses] = await Promise.all([
-      supabase
-        .from("pass_reviews")
-        .select("review")
-        .eq("id", activeRow.id)
-        .maybeSingle()
-        .then(({ data }) => data),
-      getPasses(supabase, "movie", movie.id, userId),
-    ]);
-    passes = loadedPasses;
+    passes = await getPasses(supabase, "movie", movie.id, userId);
     entry = {
       entryId: activeRow.id,
       status: activeRow.status as MediaStatus,
-      rating: activeRow.rating,
       position: parsePosition("movie", activeRow.position),
-      notes: reviewRow?.review ?? null,
     };
   }
-
-  // `?cerrar` (auto-cierre al terminar una sesión, §Tarea 7): validado aquí
-  // contra el pase ACTIVO — ver el comentario largo en la ficha de libro
-  // (src/app/libro/[id]/page.tsx), mismo mecanismo. Las películas no generan
-  // sesiones (§7.14) así que este path solo importa por el manual "marcar
-  // completado", que no depende de la URL — se deja aquí por consistencia y
-  // para que un `?cerrar` forjado tampoco reabra nada.
-  const activePassId = passes.find((p) => p.isActive)?.id ?? null;
-  const initialClosingPassId =
-    cerrar && cerrar === activePassId ? cerrar : null;
 
   // El rol ya viaja resuelto desde el bloque paralelo de arriba.
   const canContribute = role ? hasMinRole(role, "collaborator") : false;
@@ -452,7 +452,6 @@ async function MovieTabs({
 
   return (
     <ItemDetailTabs
-      itemType="movie"
       tablistLabel={tDetail("tabsLabel")}
       labels={{
         info: tDetail("tabInfo"),
@@ -460,10 +459,7 @@ async function MovieTabs({
         log: tDetail("tabLog"),
       }}
       stickyAction={
-        <StickyPassCta
-          href={activeRow ? `/pelicula/${movie.id}?tab=log` : null}
-          label={tDetail("rail.cta.movie")}
-        />
+        <StickyPassCta itemType="movie" />
       }
       info={
         <CatalogEditor
@@ -488,7 +484,7 @@ async function MovieTabs({
           <InfoLayout
             main={
               <>
-                <div className="order-2 lg:order-none">
+                <div className="order-2 xl:order-none">
                   <InfoPanel
                     aboutLabel={tDetail("about")}
                     synopsis={movie.synopsis}
@@ -497,13 +493,13 @@ async function MovieTabs({
                   />
                 </div>
                 {(credits.cast.length > 0 || credits.crew.length > 0) && (
-                  <div className="order-4 min-w-0 lg:order-none">
+                  <div className="order-4 min-w-0 xl:order-none">
                     <CreditsSection credits={credits} />
                   </div>
                 )}
                 {sagas.length > 0 && (
-                  <section className="order-1 flex flex-col gap-3.5 lg:order-none">
-                    <span className="font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
+                  <section className="order-1 flex flex-col gap-3.5 xl:order-none">
+                    <span data-section-title className="font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
                       {tDetail("sagasCount", { count: sagas.length })}
                     </span>
                     {stripShown && mainSaga && (
@@ -524,7 +520,7 @@ async function MovieTabs({
                     />
                   </section>
                 )}
-                <div className="order-3 lg:order-none">
+                <div className="order-3 xl:order-none">
                   <EditionsSection
                     itemType="movie"
                     itemId={movie.id}
@@ -541,7 +537,7 @@ async function MovieTabs({
             }
             aside={
               <>
-                <div className="order-6 lg:order-none">
+                <div className="order-6 xl:order-none">
                   <MetadataSidebar
                     rows={metaRows}
                     genres={genres}
@@ -549,7 +545,7 @@ async function MovieTabs({
                   />
                 </div>
                 {watchProviders && (
-                  <div className="order-5 lg:order-none">
+                  <div className="order-5 xl:order-none">
                     <WatchProviders data={watchProviders} />
                   </div>
                 )}
@@ -576,7 +572,6 @@ async function MovieTabs({
             passes={passes}
             sessions={[]}
             editions={editions}
-            initialClosingPassId={initialClosingPassId}
             canContribute={canContribute}
           />
           {userId && notesPromise && <NotesSection itemType="movie" notesPromise={notesPromise} />}

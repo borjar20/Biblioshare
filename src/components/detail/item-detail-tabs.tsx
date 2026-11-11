@@ -2,8 +2,6 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import type { ItemType } from "@/lib/catalog/types";
-import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { useItemStatus } from "./item-status-context";
 import { DETAIL_CONTAINER } from "./detail-container";
 import {
@@ -18,7 +16,6 @@ import {
 // lee de `?tab=` (usado por los deep links de notificaciones, EPIC-05 Bloque B)
 // y por defecto sigue siendo "info" si no hay query param, igual que antes.
 export function ItemDetailTabs({
-  itemType,
   tablistLabel,
   labels,
   info,
@@ -27,7 +24,6 @@ export function ItemDetailTabs({
   log,
   stickyAction,
 }: {
-  itemType: ItemType;
   /** Nombre accesible del grupo de pestañas («Secciones de la ficha»). */
   tablistLabel: string;
   labels: Partial<Record<DetailTabId, string>>;
@@ -59,11 +55,13 @@ export function ItemDetailTabs({
   );
 
   // Re-sincroniza la pestaña activa cuando cambia la ?tab= de FUERA (deep link,
-  // o el ?tab=log que pone el botón "Seguir" del hero) O cuando cambia el estado
-  // de seguido. La clave combinada evita la carrera: al seguir, `setStatus` y
-  // `router.replace(?tab=log)` pueden aterrizar en renders distintos; cualquiera
-  // que llegue el segundo re-dispara este ajuste y conmuta a "log" ya con el
-  // order que incluye la pestaña. Ajuste durante el render, no useEffect.
+  // o un `router.push` a la misma ficha) O cuando la obra entra o sale de la
+  // biblioteca. Añadirla desde la tarjeta ya NO navega a ?tab=log (spec
+  // 2026-11-10-ficha-acciones): se queda en la pestaña en la que estaba. La
+  // clave combinada sigue haciendo falta para que una ?tab=log que llegue antes
+  // que el estado se resuelva bien cuando la pestaña aparezca, y para volver a
+  // "info" si se quita la obra estando en "log". Ajuste durante el render, no
+  // useEffect.
   const syncKey = `${urlTab ?? ""}|${followed}`;
   const [prevSyncKey, setPrevSyncKey] = useState(syncKey);
   if (syncKey !== prevSyncKey) {
@@ -75,7 +73,6 @@ export function ItemDetailTabs({
     if (next !== tab) setTab(next);
   }
 
-  const accent = MEDIA_ACCENT[itemType];
   const slots: Record<DetailTabId, ReactNode> = {
     info,
     episodes,
@@ -181,7 +178,7 @@ export function ItemDetailTabs({
                   {isActive && (
                     <span
                       aria-hidden
-                      className={`absolute inset-x-0 -bottom-px h-0.5 rounded-sm ${accent.bg}`}
+                      className="absolute inset-x-0 -bottom-px h-0.5 rounded-sm bg-accent"
                     />
                   )}
                 </button>

@@ -18,11 +18,11 @@ function stubMatchMedia(matches: boolean) {
 }
 
 describe("useIsDesktop", () => {
-  it("true a partir de lg (1024px)", () => {
+  it("true a partir de xl (1280px)", () => {
     stubMatchMedia(true);
     const { result } = renderHook(() => useIsDesktop());
     expect(result.current).toBe(true);
-    expect(window.matchMedia).toHaveBeenCalledWith("(min-width: 1024px)");
+    expect(window.matchMedia).toHaveBeenCalledWith("(min-width: 1280px)");
   });
 
   it("false por debajo", () => {

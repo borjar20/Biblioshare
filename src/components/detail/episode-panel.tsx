@@ -350,7 +350,7 @@ export function EpisodePanel({
 
   useEffect(() => {
     if (typeof window.matchMedia !== "function") return;
-    const media = window.matchMedia("(min-width: 1024px)");
+    const media = window.matchMedia("(min-width: 1280px)");
     breakpointAtLastEvent.current = media.matches;
     const onChange = () => saveFocusedReviewOnBreakpoint(media.matches);
     media.addEventListener("change", onChange);
@@ -496,16 +496,18 @@ export function EpisodePanel({
           {/* El marco `.ep3` del frame PC·1: temporadas | episodios | detalle.
               En julio se quedó en dos columnas porque el cuerpo de la ficha
               medía 771px (plan 06 §6e); con el contenedor de la ficha
-              cinemática la tercera vuelve a caber. En móvil no hay marco: cada
-              nivel ocupa la pantalla por turnos y el detalle se abre bajo su
-              fila. */}
-          <div className="lg:grid lg:grid-cols-[220px_minmax(0,1fr)_340px] lg:overflow-hidden lg:rounded-[14px] lg:border lg:border-border lg:bg-surface">
+              cinemática la tercera vuelve a caber. El cartel ocupa la izquierda y
+              el panel mide ~780px a 1280: columnas más estrechas (180 | resto |
+              260), si no la central se queda en ~220px. Por debajo de `xl` no hay
+              marco, tampoco de 1024 a 1279, donde el cartel deja ~600px: cada
+              nivel ocupa el panel por turnos y el detalle se abre bajo su fila. */}
+          <div className="xl:grid xl:grid-cols-[180px_minmax(0,1fr)_260px] xl:overflow-hidden xl:rounded-[14px] xl:border xl:border-border xl:bg-surface">
             <SeasonRail
               stats={stats}
               activeSeason={activeSeason}
               isLoggedIn={isLoggedIn}
               onSelect={setOpenSeason}
-              className="hidden lg:block lg:border-r lg:border-border"
+              className="hidden xl:block xl:border-r xl:border-border"
             />
 
             <SeasonIndex
@@ -513,10 +515,10 @@ export function EpisodePanel({
               activeSeason={cursorSeason}
               isLoggedIn={isLoggedIn}
               onSelect={setOpenSeason}
-              className={openSeason === null ? "lg:hidden" : "hidden"}
+              className={openSeason === null ? "xl:hidden" : "hidden"}
             />
 
-            <div className={openSeason === null ? "hidden lg:block" : ""}>
+            <div className={openSeason === null ? "hidden xl:block" : ""}>
               <EpisodeList
                 group={activeGroup}
                 stat={activeStat}
@@ -548,7 +550,7 @@ export function EpisodePanel({
               data-testid="episode-detail-column"
               role="region"
               aria-label={t("detailRegion")}
-              className="hidden lg:block lg:max-h-[560px] lg:overflow-y-auto lg:border-l lg:border-border"
+              className="hidden xl:block xl:max-h-[560px] xl:overflow-y-auto xl:border-l xl:border-border"
             >
               <EpisodeDetailColumn
                 episode={isDesktop ? selectedEpisode : null}

@@ -34,8 +34,13 @@ async function loggedInPage(browser: Browser, actor: { email: string; password: 
 
 async function leaveBookNote(page: Page, bookId: string, pageNo: string, chapter: string, body: string) {
   await page.goto(`/libro/${bookId}`);
-  // «Mi registro» (donde vive el margen) solo existe si la obra está seguida: la autora la añade.
-  await page.getByRole("button", { name: "Seguir", exact: true }).click();
+  // «Mi registro» (donde vive el margen) solo existe si la obra está en la
+  // biblioteca: la autora la añade con «Quiero leerlo», que ya no cambia de
+  // pestaña (spec 2026-11-10-ficha-acciones), así que entra ella en Mi registro.
+  await page.getByRole("button", { name: "Quiero leerlo", exact: true }).click();
+  const log = page.getByRole("tab", { name: "Mi registro" });
+  await log.click();
+  await expect(log).toHaveAttribute("aria-selected", "true");
   await page.getByRole("button", { name: "Dejar una nota en el margen" }).click();
   const sheet = page.getByRole("dialog", { name: "Una nota en el margen" });
   await sheet.getByLabel("Página").fill(pageNo);

@@ -44,7 +44,7 @@ export function ResumePassSheet({
   function pick(resume: "continue" | "restart") {
     // Elegir cualquiera de las dos opciones acaba en "in_progress": badge y
     // pills lo enseñan ya. Cancelar no pasa por aquí — el estado se quedó en
-    // el revert que hizo ManagedLog al recibir askResume.
+    // el revert que hizo PassActionsProvider al recibir askResume.
     setStatus("in_progress");
     startTransition(async () => {
       // Este updateStatus siempre resuelve a un pase abierto (to ===

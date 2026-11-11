@@ -3,7 +3,6 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { after } from "next/server";
 import { getTranslations } from "next-intl/server";
-import { statusVerbs } from "@/lib/library/hero-status-labels";
 import { PassCard } from "@/components/detail/pass-card";
 import { PendingJointInvites } from "@/components/social/pending-joint-invites";
 import { getPendingJointInvites } from "@/lib/social/joint-viewings";
@@ -31,6 +30,7 @@ import {
   EditFichaButton,
 } from "@/components/detail/catalog-editor";
 import { ItemShell } from "@/components/detail/item-shell";
+import { resolveWorkHue } from "@/lib/catalog/work-hue";
 import { ItemDetailTabs } from "@/components/detail/item-detail-tabs";
 import { InfoPanel } from "@/components/detail/info-panel";
 import { InfoLayout } from "@/components/detail/info-layout";
@@ -42,6 +42,7 @@ import { CommunityPanel } from "@/components/detail/community-panel";
 import { SagaStrip } from "@/components/detail/saga-strip";
 import { EditionsSection } from "@/components/detail/edition-details";
 import { ItemStatusProvider } from "@/components/detail/item-status-context";
+import { PassActionsProvider } from "@/components/detail/pass-actions-provider";
 import { HydrationWatch } from "@/components/detail/hydration-watch";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import {
@@ -64,7 +65,11 @@ import { getItemSagas } from "@/lib/sagas/get-item-sagas";
 import { SagaList } from "@/components/detail/saga-list";
 import { getSaga } from "@/lib/sagas/get-saga";
 import type { SagaMember, SagaMembership } from "@/lib/sagas/types";
-import { parsePosition, type BookPosition } from "@/lib/library/position";
+import {
+  formatPosition,
+  parsePosition,
+  type BookPosition,
+} from "@/lib/library/position";
 import { getSessions } from "@/lib/sessions/get-sessions";
 import type { ProgressSession } from "@/lib/sessions/types";
 import { getPasses } from "@/lib/passes/get-passes";
@@ -140,6 +145,13 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
   ]);
 
   if (!book) notFound();
+
+  // Sin await: en un fallo de caché no se suma en serie a las lecturas de abajo.
+  // Nunca rechaza, así que la promesa suelta es segura.
+  const workHuePromise = resolveWorkHue({
+    coverUrl: book.cover_url,
+    title: book.title ?? tDetail("untitled"),
+  });
 
   // Debe empezar durante el render y antes de cualquier `after()`: NotesSection
   // ya no construye un cliente tardío cuando se resuelva el límite de Tabs.
@@ -271,9 +283,8 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
 
   const genres = book.genres ?? [];
 
-  // Tarjeta «tu pase», solo lectura (ver pass-card.tsx). La barra de
-  // progreso solo tiene sentido con total de páginas conocido.
-  const railLabels = await statusVerbs("book");
+  // Tarjeta «tu pase» (ver pass-card.tsx). La barra de progreso solo tiene
+  // sentido con total de páginas conocido.
   const bookPosition = parsePosition(
     "book",
     activePass?.position,
@@ -299,9 +310,34 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
       : null;
 
   const jointInvites = await jointInvitesPromise;
+  const workHue = await workHuePromise;
+
+  // `?cerrar` (auto-cierre al terminar una sesión, §Tarea 7): validado aquí,
+  // en el server component, contra el pase ACTIVO — `activePass` es la fila
+  // con `is_active = true` de la consulta del hero, nunca uno archivado —, para
+  // que un `?cerrar` forjado con un pase viejo ya cerrado no reabra su hoja
+  // (hallazgo de seguridad f35106b). Al calcularse en el servidor y viajar
+  // como prop, la hoja de cierre se abre desde el PRIMER pintado, sin el
+  // rezago de un render que sufre useSearchParams tras el redirect de la
+  // server action (hallazgo de revisión de la Tarea 7).
+  const initialClosingPassId =
+    cerrar && cerrar === activePass?.id ? cerrar : null;
 
   return (
     <ItemStatusProvider initialStatus={activeStatus}>
+      <PassActionsProvider
+        itemType="book"
+        itemId={book.id}
+        isLoggedIn={Boolean(user)}
+        activePassId={activePass?.id ?? null}
+        activePassOpen={
+          activePass?.status === "planned" ||
+          activePass?.status === "in_progress"
+        }
+        sessionHref={activePass ? `/sesion/${activePass.id}` : null}
+        droppedAtLabel={activePass ? formatPosition("book", bookPosition) : null}
+        initialClosingPassId={initialClosingPassId}
+      >
       {/* Fila aún sin hidratar (recién creada, o su hidratación falló y el
           after() de arriba la acaba de relanzar): la isla sonda hydrated_at y
           refresca la ficha cuando la hidratación de fondo termina — sin ella,
@@ -316,7 +352,7 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
         byline={byline}
         genres={genres}
         coverUrl={book.cover_url}
-        backdropUrl={null}
+        workHue={workHue}
         avgRating={ratingSummary.avgRating}
         ratingsLabel={tDetail("ratings", { count: ratingSummary.ratingCount })}
         backLabel={tDetail("back")}
@@ -332,15 +368,8 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
             <PendingJointInvites invites={jointInvites} variant="item" />
             <PassCard
               itemType="book"
-              itemId={book.id}
-              isLoggedIn={Boolean(user)}
-              labels={railLabels}
               progress={railProgress}
               rating={activePass?.rating ?? null}
-              ctaHref={activePass ? `/sesion/${activePass.id}` : null}
-              ctaLabel={tDetail("rail.cta.book")}
-              ratingLabel={tDetail("rail.yourRating")}
-              goToLogLabel={tDetail("rail.goToLog")}
             />
           </div>
         }
@@ -355,11 +384,11 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
               // edición del pase), no `book.total_pages` a secas.
               marginPages={totalPages > 0 ? totalPages : null}
               ratingSummary={ratingSummary}
-              cerrar={cerrar}
             />
           </Suspense>
         }
       />
+      </PassActionsProvider>
     </ItemStatusProvider>
   );
 }
@@ -373,7 +402,6 @@ async function BookTabs({
   marginPromise,
   marginPages,
   ratingSummary,
-  cerrar,
 }: {
   book: BookRow;
   userId: string | null;
@@ -381,7 +409,6 @@ async function BookTabs({
   marginPromise: ReturnType<typeof getItemMarginNotes> | null;
   marginPages: number | null;
   ratingSummary: RatingSummary;
-  cerrar?: string;
 }) {
   const supabase = await createClient();
   const tDetail = await getTranslations("detail");
@@ -452,28 +479,11 @@ async function BookTabs({
   let sessions: ProgressSession[] = [];
   let passes: Pass[] = [];
   if (userId && activeRow) {
-    // La nota (notes) sale de pass_reviews (privacidad ya aplicada) — ningún
-    // consumidor de ManagedEntry la renderiza hoy, pero se resuelve igualmente
-    // para no dejar el campo con un dato inventado.
-    //
-    // pass_reviews y getPasses no se necesitan entre sí: solo dependen del pase
-    // activo, que ya lo tenemos. En paralelo.
-    const [reviewRow, loadedPasses] = await Promise.all([
-      supabase
-        .from("pass_reviews")
-        .select("review")
-        .eq("id", activeRow.id)
-        .maybeSingle()
-        .then(({ data }) => data),
-      getPasses(supabase, "book", book.id, userId),
-    ]);
-    passes = loadedPasses;
+    passes = await getPasses(supabase, "book", book.id, userId);
     entry = {
       entryId: activeRow.id,
       status: activeRow.status as MediaStatus,
-      rating: activeRow.rating,
       position: parsePosition("book", activeRow.position),
-      notes: reviewRow?.review ?? null,
     };
     // Las sesiones son del pase ABIERTO, no de toda la entrada (Hallazgo 4):
     // en una relectura, las sesiones de la lectura anterior no deben colarse
@@ -488,17 +498,6 @@ async function BookTabs({
       passes.find((p) => p.finishedOn === null)?.id ?? passes[0]?.id ?? null;
     sessions = await getSessions(supabase, currentPassId, "book");
   }
-
-  // `?cerrar` (auto-cierre al terminar una sesión, §Tarea 7): validado aquí,
-  // en el server component, contra el pase ACTIVO — nunca uno archivado, para
-  // que un `?cerrar` forjado con un pase viejo ya cerrado no reabra su hoja
-  // (hallazgo de seguridad f35106b). Al calcularse en el servidor y viajar
-  // como prop, la hoja de cierre se abre desde el PRIMER pintado, sin el
-  // rezago de un render que sufre useSearchParams tras el redirect de la
-  // server action (hallazgo de revisión de la Tarea 7).
-  const activePassId = passes.find((p) => p.isActive)?.id ?? null;
-  const initialClosingPassId =
-    cerrar && cerrar === activePassId ? cerrar : null;
 
   // Asignar saga a mano es contribución curada → colaborador+ (§7.35). El rol
   // ya viaja resuelto desde el bloque paralelo de arriba.
@@ -569,7 +568,6 @@ async function BookTabs({
 
   return (
     <ItemDetailTabs
-      itemType="book"
       tablistLabel={tDetail("tabsLabel")}
       labels={{
         info: tDetail("tabInfo"),
@@ -577,10 +575,7 @@ async function BookTabs({
         log: tDetail("tabLog"),
       }}
       stickyAction={
-        <StickyPassCta
-          href={activeRow ? `/sesion/${activeRow.id}` : null}
-          label={tDetail("rail.cta.book")}
-        />
+        <StickyPassCta itemType="book" />
       }
       info={
         <CatalogEditor
@@ -604,7 +599,7 @@ async function BookTabs({
           <InfoLayout
             main={
               <>
-                <div className="order-2 lg:order-none">
+                <div className="order-2 xl:order-none">
                   <InfoPanel
                     aboutLabel={tDetail("about")}
                     synopsis={book.synopsis}
@@ -613,8 +608,8 @@ async function BookTabs({
                   />
                 </div>
                 {sagas.length > 0 && (
-                  <section className="order-1 flex flex-col gap-3.5 lg:order-none">
-                    <span className="font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
+                  <section className="order-1 flex flex-col gap-3.5 xl:order-none">
+                    <span data-section-title className="font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
                       {tDetail("sagasCount", { count: sagas.length })}
                     </span>
                     {stripShown && mainSaga && (
@@ -635,7 +630,7 @@ async function BookTabs({
                     />
                   </section>
                 )}
-                <div className="order-4 lg:order-none">
+                <div className="order-4 xl:order-none">
                   <EditionsSection
                     itemType="book"
                     itemId={book.id}
@@ -651,7 +646,7 @@ async function BookTabs({
               </>
             }
             aside={
-              <div className="order-3 lg:order-none">
+              <div className="order-3 xl:order-none">
                 <MetadataSidebar
                   rows={metaRows}
                   genres={genres}
@@ -679,7 +674,6 @@ async function BookTabs({
             passes={passes}
             sessions={sessions}
             editions={editions}
-            initialClosingPassId={initialClosingPassId}
             canContribute={canContribute}
           />
           {userId && notesPromise && <NotesSection itemType="book" notesPromise={notesPromise} />}

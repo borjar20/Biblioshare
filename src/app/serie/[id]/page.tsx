@@ -3,7 +3,6 @@ import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { after } from "next/server";
 import { getTranslations } from "next-intl/server";
-import { statusVerbs } from "@/lib/library/hero-status-labels";
 import { PassCard } from "@/components/detail/pass-card";
 import { PendingJointInvites } from "@/components/social/pending-joint-invites";
 import { getPendingJointInvites } from "@/lib/social/joint-viewings";
@@ -30,6 +29,7 @@ import { HeroMenu } from "@/components/detail/hero-menu";
 import { WatchProviders } from "@/components/watch-providers";
 import { CreditsSection } from "@/components/credits-section";
 import { ItemShell } from "@/components/detail/item-shell";
+import { resolveWorkHue } from "@/lib/catalog/work-hue";
 import { ItemDetailTabs } from "@/components/detail/item-detail-tabs";
 import { InfoPanel } from "@/components/detail/info-panel";
 import { InfoLayout } from "@/components/detail/info-layout";
@@ -41,6 +41,7 @@ import { CommunityPanel } from "@/components/detail/community-panel";
 import { EpisodePanel } from "@/components/detail/episode-panel";
 import { SagaStrip } from "@/components/detail/saga-strip";
 import { ItemStatusProvider } from "@/components/detail/item-status-context";
+import { PassActionsProvider } from "@/components/detail/pass-actions-provider";
 import { getCurrentUserRole, hasMinRole } from "@/lib/auth/roles";
 import { getWatchProviders } from "@/lib/catalog/tmdb";
 import { ensureSeriesHydrated } from "@/lib/catalog/hydrate-screen";
@@ -62,7 +63,7 @@ import { getItemSagas } from "@/lib/sagas/get-item-sagas";
 import { SagaList } from "@/components/detail/saga-list";
 import { getSaga } from "@/lib/sagas/get-saga";
 import type { SagaMember, SagaMembership } from "@/lib/sagas/types";
-import { parsePosition } from "@/lib/library/position";
+import { formatPosition, parsePosition } from "@/lib/library/position";
 import { getSessions } from "@/lib/sessions/get-sessions";
 import type { ProgressSession } from "@/lib/sessions/types";
 import { getPasses } from "@/lib/passes/get-passes";
@@ -130,7 +131,6 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
   const { id } = await params;
   const { cerrar } = await searchParams;
   const tDetail = await getTranslations("detail");
-  const tEpisode = await getTranslations("episode");
   const supabase = await createClient();
 
   const [{ data: series }, user, accessToken] = await Promise.all([
@@ -141,6 +141,13 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
   ]);
 
   if (!series) notFound();
+
+  // Sin await: en un fallo de caché no se suma en serie a las lecturas de abajo.
+  // Nunca rechaza, así que la promesa suelta es segura.
+  const workHuePromise = resolveWorkHue({
+    coverUrl: series.cover_url,
+    title: series.title ?? tDetail("untitled"),
+  });
 
   // La consulta pertenece al render de la ficha; pasar la promesa evita que
   // NotesSection construya un cliente una vez que `after()` ya está activo.
@@ -255,10 +262,9 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
 
   const genres = series.genres ?? [];
 
-  // Tarjeta «tu pase», solo lectura (ver pass-card.tsx). El total sale del
-  // catálogo (lo mismo que cuenta la pestaña Episodios); en la primera visita
-  // el catálogo aún no está sincronizado y el fallback es la columna de TMDB.
-  const baseRailLabels = await statusVerbs("series");
+  // Tarjeta «tu pase» (ver pass-card.tsx). El total sale del catálogo (lo
+  // mismo que cuenta la pestaña Episodios); en la primera visita el catálogo
+  // aún no está sincronizado y el fallback es la columna de TMDB.
   // Con el catálogo vivo ya sincronizado, `total_episodes` son los EMITIDOS con
   // la regla exacta (airedFlags: los «sin fecha» de una temporada anunciada
   // fuera); `catalogEpisodes` es la aproximación SQL (sin fecha = emitido), que
@@ -269,20 +275,17 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
     series.total_episodes ||
     0;
 
-  // «Al día» (fase 2, estado DERIVADO — src/lib/series/follow-state.ts): la
-  // píldora y el rail dicen «Al día» en vez de «Viendo» cuando has visto todo lo
-  // emitido y la serie sigue en emisión. Solo cambia la etiqueta de in_progress:
-  // el estado guardado sigue siendo ese, y ambos sitios son de solo lectura.
+  // «Al día» (estado DERIVADO, src/lib/series/follow-state.ts): todo lo emitido
+  // visto y la serie sigue en emisión. La tarjeta lo marca junto al progreso;
+  // el estado guardado sigue siendo «Viendo». Sin consultas nuevas: son los
+  // mismos recuentos de la barra.
   const upToDate = isUpToDate({
     status: activeStatus,
     watched: watchedEpisodes,
     aired: totalEpisodes,
     tmdbStatus: series.tmdb_status,
   });
-  const upToDateLabel = tEpisode("upToDate");
-  const railLabels = upToDate
-    ? { ...baseRailLabels, in_progress: upToDateLabel }
-    : baseRailLabels;
+
   const railProgress =
     activePass && totalEpisodes > 0
       ? {
@@ -296,9 +299,35 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
       : null;
 
   const jointInvites = await jointInvitesPromise;
+  const workHue = await workHuePromise;
+
+  // `?cerrar` (auto-cierre al terminar una sesión, §Tarea 7): validado aquí
+  // contra el pase ACTIVO (`activePass` es la fila `is_active = true` de la
+  // consulta del hero) — ver el comentario largo en la ficha de libro
+  // (src/app/libro/[id]/page.tsx), mismo mecanismo.
+  const initialClosingPassId =
+    cerrar && cerrar === activePass?.id ? cerrar : null;
 
   return (
     <ItemStatusProvider initialStatus={activeStatus}>
+      <PassActionsProvider
+        itemType="series"
+        itemId={series.id}
+        isLoggedIn={Boolean(user)}
+        activePassId={activePass?.id ?? null}
+        activePassOpen={
+          activePass?.status === "planned" ||
+          activePass?.status === "in_progress"
+        }
+        // «Marcar episodio» lleva a la pestaña Episodios, como el botón de hoy.
+        sessionHref={activePass ? `/serie/${series.id}?tab=episodes` : null}
+        droppedAtLabel={
+          activePass
+            ? formatPosition("series", parsePosition("series", activePass.position))
+            : null
+        }
+        initialClosingPassId={initialClosingPassId}
+      >
       <ItemShell
         itemType="series"
         mediaLabel={tDetail("mediaLabel.series")}
@@ -306,7 +335,7 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
         byline={byline}
         genres={genres}
         coverUrl={series.cover_url}
-        backdropUrl={series.backdrop_url ?? null}
+        workHue={workHue}
         avgRating={ratingSummary.avgRating}
         ratingsLabel={tDetail("ratings", { count: ratingSummary.ratingCount })}
         backLabel={tDetail("back")}
@@ -322,15 +351,9 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
             <PendingJointInvites invites={jointInvites} variant="item" />
             <PassCard
               itemType="series"
-              itemId={series.id}
-              isLoggedIn={Boolean(user)}
-              labels={railLabels}
               progress={railProgress}
               rating={activePass?.rating ?? null}
-              ctaHref={activePass ? `/serie/${series.id}?tab=episodes` : null}
-              ctaLabel={tDetail("rail.cta.series")}
-              ratingLabel={tDetail("rail.yourRating")}
-              goToLogLabel={tDetail("rail.goToLog")}
+              upToDate={upToDate}
             />
           </div>
         }
@@ -342,11 +365,11 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
               notesPromise={notesPromise}
               marginPromise={marginPromise}
               ratingSummary={ratingSummary}
-              cerrar={cerrar}
             />
           </Suspense>
         }
       />
+      </PassActionsProvider>
     </ItemStatusProvider>
   );
 }
@@ -359,14 +382,12 @@ async function SeriesTabs({
   notesPromise,
   marginPromise,
   ratingSummary,
-  cerrar,
 }: {
   series: SeriesRow;
   userId: string | null;
   notesPromise: ReturnType<typeof getNotesForItem> | null;
   marginPromise: ReturnType<typeof getItemMarginNotes> | null;
   ratingSummary: RatingSummary;
-  cerrar?: string;
 }) {
   const supabase = await createClient();
   const t = await getTranslations("item");
@@ -438,27 +459,11 @@ async function SeriesTabs({
   {
     const row = activeRow;
     if (userId && row) {
-      // La nota (notes) sale de pass_reviews (privacidad ya aplicada) — ningún
-      // consumidor de ManagedEntry la renderiza hoy, pero se resuelve igualmente
-      // para no dejar el campo con un dato inventado.
-      //
-      // pass_reviews y getPasses no se necesitan entre sí: en paralelo.
-      const [reviewRow, loadedPasses] = await Promise.all([
-        supabase
-          .from("pass_reviews")
-          .select("review")
-          .eq("id", row.id)
-          .maybeSingle()
-          .then(({ data }) => data),
-        getPasses(supabase, "series", series.id, userId),
-      ]);
-      passes = loadedPasses;
+      passes = await getPasses(supabase, "series", series.id, userId);
       entry = {
         entryId: row.id,
         status: row.status as MediaStatus,
-        rating: row.rating,
         position: parsePosition("series", row.position),
-        notes: reviewRow?.review ?? null,
       };
       // Las sesiones sí esperan a getPasses: son del pase ABIERTO, no de toda
       // la entrada (Hallazgo 4) — en una relectura, las sesiones de la lectura
@@ -473,12 +478,10 @@ async function SeriesTabs({
     }
   }
 
-  // `?cerrar` (auto-cierre al terminar una sesión, §Tarea 7): validado aquí
-  // contra el pase ACTIVO — ver el comentario largo en la ficha de libro
-  // (src/app/libro/[id]/page.tsx), mismo mecanismo.
+  // Pase ACTIVO de la obra: la pestaña Episodios lo usa más abajo. (El
+  // `?cerrar` ya no se valida aquí sino en SeriesDetail, para
+  // PassActionsProvider.)
   const activePassId = passes.find((p) => p.isActive)?.id ?? null;
-  const initialClosingPassId =
-    cerrar && cerrar === activePassId ? cerrar : null;
 
   const canContribute = userId ? hasMinRole(role, "collaborator") : false;
 
@@ -499,8 +502,8 @@ async function SeriesTabs({
     });
 
   const genres = series.genres ?? [];
-  // El pase activo ya se calculó arriba (`activePassId`) para validar
-  // `?cerrar`: la pestaña Episodios lo reutiliza para separar la capa cursor
+  // El pase activo ya se calculó arriba (`activePassId`): la pestaña
+  // Episodios lo usa para separar la capa cursor
   // (este pase) de "visto alguna vez" (Tarea 8, hub).
   const [episodeData, episodeReviewsResult] = await Promise.all([
     getEpisodeData(supabase, series.id, userId, activePassId),
@@ -535,7 +538,6 @@ async function SeriesTabs({
 
   return (
     <ItemDetailTabs
-      itemType="series"
       tablistLabel={tDetail("tabsLabel")}
       labels={{
         info: tDetail("tabInfo"),
@@ -544,10 +546,7 @@ async function SeriesTabs({
         log: tDetail("tabLog"),
       }}
       stickyAction={
-        <StickyPassCta
-          href={activeRow ? `/serie/${series.id}?tab=episodes` : null}
-          label={tDetail("rail.cta.series")}
-        />
+        <StickyPassCta itemType="series" />
       }
       info={
         <CatalogEditor
@@ -573,7 +572,7 @@ async function SeriesTabs({
           <InfoLayout
             main={
               <>
-                <div className="order-2 lg:order-none">
+                <div className="order-2 xl:order-none">
                   <InfoPanel
                     aboutLabel={tDetail("about")}
                     synopsis={series.synopsis}
@@ -582,13 +581,13 @@ async function SeriesTabs({
                   />
                 </div>
                 {(credits.cast.length > 0 || credits.crew.length > 0) && (
-                  <div className="order-3 min-w-0 lg:order-none">
+                  <div className="order-3 min-w-0 xl:order-none">
                     <CreditsSection credits={credits} />
                   </div>
                 )}
                 {sagas.length > 0 && (
-                  <section className="order-1 flex flex-col gap-3.5 lg:order-none">
-                    <span className="font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
+                  <section className="order-1 flex flex-col gap-3.5 xl:order-none">
+                    <span data-section-title className="font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
                       {tDetail("sagasCount", { count: sagas.length })}
                     </span>
                     {stripShown && mainSaga && (
@@ -613,7 +612,7 @@ async function SeriesTabs({
             }
             aside={
               <>
-                <div className="order-5 lg:order-none">
+                <div className="order-5 xl:order-none">
                   <MetadataSidebar
                     rows={metaRows}
                     genres={genres}
@@ -621,7 +620,7 @@ async function SeriesTabs({
                   />
                 </div>
                 {watchProviders && (
-                  <div className="order-4 lg:order-none">
+                  <div className="order-4 xl:order-none">
                     <WatchProviders data={watchProviders} />
                   </div>
                 )}
@@ -664,7 +663,6 @@ async function SeriesTabs({
             // Las series no tienen ediciones (getEditions ni siquiera
             // consulta la BD para este tipo): no hace falta cargarlas.
             editions={[]}
-            initialClosingPassId={initialClosingPassId}
             canContribute={canContribute}
           />
           {userId && notesPromise && <NotesSection itemType="series" notesPromise={notesPromise} />}

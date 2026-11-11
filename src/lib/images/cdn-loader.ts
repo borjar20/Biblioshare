@@ -15,10 +15,12 @@
 const TMDB_POSTER_WIDTHS = [92, 154, 185, 342] as const;
 const TMDB_BACKDROP_WIDTHS = [300, 780, 1280] as const;
 
-// Solo tratamos w342: es el único bucket que este repo usa para pósters
-// (ver TMDB_IMAGE_BASE en src/lib/catalog/tmdb.ts), así que la familia es
-// inequívoca. Los demás (w92 logo, w185 perfil, w300 fotograma) ya son
-// pequeños y cada familia admite buckets distintos: tocarlos daría 404.
+// Solo tratamos w342: es el bucket con el que se guardan los pósters (ver
+// TMDB_IMAGE_BASE en src/lib/catalog/tmdb.ts), así que la familia es inequívoca.
+// El w780 del cartel a sangre (poster-art.ts) no pasa por aquí a propósito: es el
+// tamaño de una foto a toda pantalla y se sirve tal cual. Los demás (w92 logo,
+// w185 perfil, w300 fotograma) ya son pequeños y cada familia admite buckets
+// distintos: tocarlos daría 404.
 const TMDB_POSTER_RE = /^https:\/\/image\.tmdb\.org\/t\/p\/w342\//;
 // Los backdrops guardados por tmdbBackdropUrl usan w1280; su familia de
 // tamaños es distinta de la de pósters, perfiles y fotogramas.

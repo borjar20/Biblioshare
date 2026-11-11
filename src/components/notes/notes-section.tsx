@@ -25,7 +25,7 @@ export async function NotesSection({
 
   return (
     <section className="flex flex-col gap-3">
-      <h3 className="label-section">
+      <h3 data-section-title className="label-section">
         {t("sectionTitle")}
       </h3>
       {sorted.length === 0 ? (

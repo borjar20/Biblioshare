@@ -141,11 +141,11 @@ export async function CommunityPanel({
   const reviewCount = rows.length;
 
   return (
-    <div className="flex flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-x-11">
+    <div className="flex flex-col xl:grid xl:grid-cols-[minmax(0,1fr)_280px] xl:items-start xl:gap-x-8">
       {/* Reseñas. En el DOM van PRIMERO para caer en la columna izquierda en
           PC; en móvil `order-2` las manda debajo del resumen, que es el orden
           del frame 2. */}
-      <section className="order-2 flex flex-col lg:order-none">
+      <section className="order-2 flex flex-col xl:order-none">
         {/* `.h5` con el recuento dentro ("Reseñas · 312") como el frame: la
             cifra sale del mismo dato que el rótulo, no es un badge aparte. */}
         <h2 className="mb-[11px] label-section lg:mb-[15px]">
@@ -182,7 +182,7 @@ export async function CommunityPanel({
       {/* Resumen de notas. En PC es la tarjeta pegada de la derecha
           (`.rate-card` del frame 9): se queda quieta mientras suben las
           reseñas, pegada BAJO la barra de pestañas (DETAIL_ASIDE_STICKY). */}
-      <aside className={`order-1 mb-[22px] lg:order-none lg:mb-0 ${DETAIL_ASIDE_STICKY}`}>
+      <aside className={`order-1 mb-[22px] xl:order-none xl:mb-0 ${DETAIL_ASIDE_STICKY}`}>
         {community.avgRating === null ? (
           <p className="text-sm text-muted-foreground">{t("noRatings")}</p>
         ) : (

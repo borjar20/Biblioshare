@@ -2,8 +2,10 @@ import { expect, test } from "@playwright/test";
 
 // Ficha cinemática (spec 2026-09-23). Lo que protege:
 // 1. El bug que motivó el rediseño, con número: el cuerpo de las pestañas
-//    medía ~771px a CUALQUIER viewport (raíl de 300 + tope de 1200).
-// 2. La tarjeta «tu pase» existe una sola vez y se coloca donde toca.
+//    medía ~771px a CUALQUIER viewport (raíl de 300 + tope de 1200). Con el cartel
+//    (spec 2026-11-09) comparte fila con él: debe llenar la columna derecha.
+// 2. La tarjeta «tu pase» existe una sola vez y se coloca donde toca (sin pase,
+//    su botón principal es la intención «Quiero leerlo», spec 2026-11-10).
 // 3. En móvil no hay scroll horizontal.
 const BOOK = "/libro/3e80b690-ceef-49fb-b442-ecd2ea88be83";
 // "Juego de tronos" (7fa0c2eb-755e-49c6-80c4-2b1f1245f48c): la serie con más
@@ -14,21 +16,31 @@ const SERIES = "/serie/7fa0c2eb-755e-49c6-80c4-2b1f1245f48c";
 test.describe("PC 1600", () => {
   test.use({ viewport: { width: 1600, height: 1000 } });
 
-  test("el cuerpo de las pestañas usa el ancho (> 1100px)", async ({ page }) => {
+  test("el cuerpo de las pestañas llena la columna derecha, junto al cartel", async ({ page }) => {
+    // Desde lg el cartel es una columna fija a la izquierda (spec 2026-11-09) y el
+    // cuerpo comparte fila con él: ya no mide >1100px, pero sí ocupa TODA la
+    // columna derecha — su borde izquierdo queda tras el cartel y el derecho llega
+    // al borde del contenedor.
     await page.goto(BOOK);
     const panel = page.getByRole("tabpanel");
     await expect(panel).toBeVisible();
     const box = await panel.boundingBox();
-    expect(box!.width).toBeGreaterThan(1100);
+    const poster = await page.locator("[data-poster]").boundingBox();
+    const viewportWidth = await page.evaluate(() => document.documentElement.clientWidth);
+    expect(box!.x).toBeGreaterThanOrEqual(poster!.x + poster!.width - 1);
+    expect(box!.x + box!.width).toBeGreaterThanOrEqual(viewportWidth - 2);
+    expect(box!.width).toBeGreaterThan(900);
   });
 
-  test("una sola tarjeta, a la derecha del título", async ({ page }) => {
+  test("una sola tarjeta, debajo del título", async ({ page }) => {
     await page.goto(BOOK);
-    const follow = page.getByRole("button", { name: /^seguir$/i });
+    const follow = page.getByRole("button", { name: "Quiero leerlo", exact: true });
     await expect(follow).toHaveCount(1);
     const title = await page.getByRole("heading", { level: 1 }).boundingBox();
     const card = await follow.boundingBox();
-    expect(card!.x).toBeGreaterThan(title!.x + 200);
+    // La tarjeta va bajo el título, en su misma columna (no a su derecha).
+    expect(card!.y).toBeGreaterThanOrEqual(title!.y + title!.height - 1);
+    expect(card!.x).toBeLessThan(title!.x + title!.width);
   });
 
   test("Info a dos columnas: la ficha técnica a la derecha, una sola vez, pegada bajo las pestañas", async ({ page }) => {
@@ -95,12 +107,43 @@ test.describe("PC 1600", () => {
   });
 });
 
+test.describe("tableta 1100, con la columna de cartel", () => {
+  test.use({ viewport: { width: 1100, height: 800 } });
+  const noOverflow = async (page: import("@playwright/test").Page) => {
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+  };
+
+  test("Info sigue a una columna: las dos columnas empiezan en xl", async ({ page }) => {
+    await page.goto(BOOK);
+    const synopsis = await page.getByRole("heading", { name: "Sinopsis" }).boundingBox();
+    const ficha = await page.locator("aside").filter({ hasText: "Primera publicación" }).boundingBox();
+    expect(ficha!.y).toBeGreaterThan(synopsis!.y);
+    expect(ficha!.x).toBeLessThan(synopsis!.x + 400);
+    await noOverflow(page);
+  });
+
+  test("Episodios: sin columnas laterales, el detalle se abre bajo su fila", async ({ page }) => {
+    await page.goto(`${SERIES}?tab=episodes`);
+    await expect(page.getByTestId("episode-detail-column")).toBeHidden();
+    await page.getByRole("button", { name: "Ver Temporada 1" }).click();
+    const firstEpisode = page.locator("li button[aria-expanded]").first();
+    await firstEpisode.click();
+    await expect(firstEpisode).toHaveAttribute("aria-expanded", "true");
+    const row = firstEpisode.locator("xpath=ancestor::li[1]");
+    await expect(row.getByTestId("episode-inline-detail")).toBeVisible();
+    await noOverflow(page);
+  });
+});
+
 test.describe("móvil 375", () => {
   test.use({ viewport: { width: 375, height: 812 } });
 
   test("la tarjeta va bajo el hero, antes de las pestañas, sin scroll horizontal", async ({ page }) => {
     await page.goto(BOOK);
-    const follow = page.getByRole("button", { name: /^seguir$/i });
+    const follow = page.getByRole("button", { name: "Quiero leerlo", exact: true });
     await expect(follow).toBeVisible();
     const card = await follow.boundingBox();
     const tabs = await page.getByRole("tablist").boundingBox();

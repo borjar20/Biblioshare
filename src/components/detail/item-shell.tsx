@@ -1,14 +1,16 @@
 import type { ReactNode } from "react";
 import type { ItemType } from "@/lib/catalog/types";
+import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
+import { pickPosterArt } from "@/lib/catalog/poster-art";
+import { BackButton } from "./back-button";
+import { POSTER_AREA, POSTER_BAR, POSTER_GRADIENT, POSTER_LAYOUT } from "./detail-container";
 import { ItemHero } from "./item-hero";
+import { PosterArtView } from "./poster-art-view";
+import { WorkScope } from "./work-scope";
 
-// La ficha: hero cinemático + pestañas (spec 2026-09-23-ficha-cinematica-design.md).
-//
-// Hasta el 2026-09 eran DOS árboles —hero de móvil y raíl de 300px + cabecera
-// de PC— escondidos por breakpoint, dentro de un contenedor de 1200px: el cuerpo
-// de cualquier pestaña se quedaba en ~771px a cualquier viewport (plan 06 §6e).
-// Ahora es un árbol: el ancho lo fija DETAIL_CONTAINER, compartido con las
-// pestañas.
+// La ficha como cartel propio de cada obra (spec 2026-11-09): un árbol para móvil
+// y PC. Hasta `lg` el cartel abre la página y la cabecera monta sobre su degradado;
+// desde `lg` el cartel es una columna fija a la izquierda.
 //
 // Las pestañas siguen llegando como slot y se pintan UNA vez, así que el
 // <Suspense> que las envuelve (Fase B del plan 00) sigue intacto.
@@ -19,7 +21,7 @@ export function ItemShell({
   byline,
   genres,
   coverUrl,
-  backdropUrl,
+  workHue,
   avgRating,
   ratingsLabel,
   backLabel,
@@ -33,34 +35,53 @@ export function ItemShell({
   byline: string | null;
   genres: string[];
   coverUrl: string | null;
-  /** Backdrop de TMDB (PR 1); null en libros y en obras sin él. */
-  backdropUrl: string | null;
+  /** Tono de la obra, 0–359 (`resolveWorkHue`). */
+  workHue: number;
   avgRating: number | null;
   ratingsLabel: string;
   backLabel: string;
-  /** El menú ⋯ de la barra superior — solo móvil. */
+  /** El menú ⋯ (HeroMenu): en la barra superior en móvil y en la fila de
+   *  chips de la cabecera desde `lg`. Se monta una vez por punto de corte —
+   *  cada instancia tiene su propio <dialog> cerrado y no lleva ids, así que no
+   *  chocan—. Es el ÚNICO sitio para quitar la obra de la biblioteca. */
   menuSlot?: ReactNode;
   /** <PassCard/>, una sola instancia. */
   passCard: ReactNode;
   tabs: ReactNode;
 }) {
   return (
-    <div className="w-full">
-      <ItemHero
-        itemType={itemType}
-        mediaLabel={mediaLabel}
-        title={title}
-        byline={byline}
-        genres={genres}
-        coverUrl={coverUrl}
-        backdropUrl={backdropUrl}
-        avgRating={avgRating}
-        ratingsLabel={ratingsLabel}
-        backLabel={backLabel}
-        menuSlot={menuSlot}
-        passCard={passCard}
-      />
-      {tabs}
-    </div>
+    <WorkScope hue={workHue}>
+      <div className={POSTER_LAYOUT}>
+        <div className={POSTER_AREA}>
+          {/* ← · tipo · ⋯ solo en móvil: en PC ya está la topbar del sitio. Antes que el
+              cartel en el DOM: el orden de tabulación es volver, menú y zoom. */}
+          <div className={POSTER_BAR}>
+            <BackButton label={backLabel} />
+            <span
+              className={`truncate rounded-chip bg-background/85 px-2.5 py-1 font-mono text-[10.5px] font-medium tracking-[0.12em] uppercase backdrop-blur ${MEDIA_ACCENT[itemType].text}`}
+            >
+              {mediaLabel}
+            </span>
+            {menuSlot ?? <span aria-hidden className="h-[34px] w-[34px] shrink-0" />}
+          </div>
+          <PosterArtView art={pickPosterArt({ coverUrl })} title={title} />
+          <div aria-hidden className={POSTER_GRADIENT} />
+        </div>
+        <div className="relative min-w-0">
+          <ItemHero
+            itemType={itemType}
+            mediaLabel={mediaLabel}
+            title={title}
+            byline={byline}
+            genres={genres}
+            avgRating={avgRating}
+            ratingsLabel={ratingsLabel}
+            passCard={passCard}
+            desktopMenu={menuSlot}
+          />
+          {tabs}
+        </div>
+      </div>
+    </WorkScope>
   );
 }

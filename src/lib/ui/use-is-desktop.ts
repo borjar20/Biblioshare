@@ -2,16 +2,17 @@
 
 import { useSyncExternalStore } from "react";
 
-// ¿Estamos en el breakpoint `lg` de Tailwind (≥ 1024px)? Para lo que NO se puede
+// ¿Estamos en el breakpoint `xl` de Tailwind (≥ 1280px)? Para lo que NO se puede
 // resolver con CSS: montar un componente en un sitio u otro, no solo
 // esconderlo. Caso de uso: el detalle de un episodio lleva un <textarea> con
 // guardado al salir del foco, y montado dos veces (uno oculto) habría dos
-// cuadros con el mismo borrador (ficha cinemática, PR 4).
+// cuadros con el mismo borrador (ficha cinemática, PR 4). Es `xl` y no `lg`
+// porque hasta 1280 la columna de cartel no deja sitio a las tres de Episodios.
 //
 // useSyncExternalStore y no useState+useEffect: sin setState en efecto (#856) y
 // con instantánea de servidor, así que la hidratación no descuadra: en el
 // servidor y en el primer render del cliente vale `false`, y se corrige solo.
-const QUERY = "(min-width: 1024px)";
+const QUERY = "(min-width: 1280px)";
 
 // Caché perezosa a nivel de módulo: `subscribe` y `getSnapshot` se llaman
 // muchas veces por render (useSyncExternalStore) y cada `matchMedia(QUERY)`

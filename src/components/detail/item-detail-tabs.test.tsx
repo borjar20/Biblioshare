@@ -34,7 +34,6 @@ function renderTabs() {
   return render(
     <ItemStatusProvider initialStatus="in_progress">
       <ItemDetailTabs
-        itemType="book"
         tablistLabel="Secciones de la ficha"
         labels={{ info: "Información", community: "Comunidad", log: "Mi registro" }}
         info={<p>info</p>}
@@ -46,6 +45,15 @@ function renderTabs() {
     </ItemStatusProvider>,
   );
 }
+
+describe("ItemDetailTabs · subrayado", () => {
+  it("la pestaña activa se subraya con el acento de la obra (bg-accent)", () => {
+    renderTabs();
+    const active = screen.getByRole("tab", { selected: true });
+    const underline = active.querySelector("span[aria-hidden]")!;
+    expect(underline.className.split(" ")).toContain("bg-accent");
+  });
+});
 
 describe("ItemDetailTabs · stickyAction", () => {
   it("el CTA no se ve mientras la barra no está pegada", () => {

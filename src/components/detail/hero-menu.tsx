@@ -8,15 +8,15 @@ import { removeFromLibrary } from "@/lib/library/manage-actions";
 import { useItemStatus } from "@/components/detail/item-status-context";
 import { PencilIcon, XIcon } from "@/components/ui/icons";
 
-// El `⋯` de la barra superior del hero móvil (P2 del plan 06, DECIDIDO):
-// quitar de mi biblioteca y editar ficha (colaborador+). Las dos acciones
-// conservan su sitio de siempre (el enlace rojo del Registro y el botón junto
-// a la Sinopsis) — esto es el segundo punto de entrada que el frame dibuja,
-// no un traslado.
+// El `⋯` de la ficha (P2 del plan 06): quitar de mi biblioteca y editar ficha
+// (colaborador+). Editar ficha tiene además el botón junto a la Sinopsis; quitar
+// de la biblioteca vive SOLO aquí desde que Mi registro perdió su enlace rojo
+// (spec 2026-11-10-ficha-acciones).
 //
 // Mismo <dialog> nativo que las hojas de pase (foco, Escape y clic fuera
-// gratis). Solo existe en móvil: la barra superior del hero es `.hero-top`,
-// que en PC no se pinta (§2bis.30).
+// gratis). ItemShell lo monta dos veces: en la barra del cartel en móvil
+// (`lg:hidden`) y junto a los chips de la cabecera desde `lg` (`hidden
+// lg:block`). Cada instancia lleva su estado y su <dialog>, sin ids: no chocan.
 export function HeroMenu({
   itemType,
   itemId,
@@ -99,12 +99,10 @@ export function HeroMenu({
               type="button"
               disabled={isPending}
               onClick={() => {
-                // La misma acción que el enlace rojo del Registro y, por
-                // tanto, la misma pregunta (F3-012): borra todos los pases.
+                // Pregunta antes (F3-012): borra TODOS los pases de la obra.
                 if (!window.confirm(t("unfollowConfirm"))) return;
-                // Mismo gesto que el enlace rojo del Registro: sin pase
-                // activo el badge del hero debe desaparecer ya, no cuando
-                // aterrice la revalidación.
+                // Optimista: sin pase activo la tarjeta del hero vuelve a las
+                // intenciones ya, no cuando aterrice la revalidación.
                 setStatus(null);
                 dialogRef.current?.close();
                 startTransition(() => removeFromLibrary(itemType, itemId));

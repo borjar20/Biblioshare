@@ -32,11 +32,12 @@ const VERB_KEY: Partial<Record<MediaStatus, "inProgress" | "completed">> = {
   completed: "completed",
 };
 
-// Segmented control de estado para la pestaña Registro (mockup .seg): cuatro
-// pastillas con un punto de color, la activa resaltada con fondo y sombra
-// suave. Control "tonto": el padre decide qué hacer con el cambio (llamar a
-// updateStatus, abrir la hoja de cierre de pase si toca...) y nos pasa
-// `disabled` mientras esa acción está en curso.
+// Segmented control de estado (mockup .seg): cuatro pastillas con un punto de
+// color, la activa resaltada con fondo y sombra suave. Vive en la tarjeta del
+// hero (PassCard, spec 2026-11-10-ficha-acciones), que a 360px deja ~300px
+// útiles: de ahí las pastillas apretadas, para que «Abandonado» quepa sin
+// desbordar. Control "tonto": el padre decide qué hacer con el cambio (vía
+// usePassActions) y nos pasa `disabled` mientras esa acción está en curso.
 export function StatusSegments({
   status,
   itemType,
@@ -65,7 +66,7 @@ export function StatusSegments({
     <div
       role="group"
       aria-label={tSegments("groupLabel")}
-      className="flex gap-1.5 rounded-[10px] bg-surface-muted p-1"
+      className="flex gap-1 rounded-[10px] bg-surface-muted p-1"
     >
       {order.map((option) => {
         const isActive = option === status;
@@ -85,7 +86,7 @@ export function StatusSegments({
               // solo avisamos al padre cuando cambia de verdad.
               if (!isActive) onChange(option);
             }}
-            className={`flex flex-1 flex-col items-center gap-1 rounded-[7px] px-1 py-2 text-center text-[11.5px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+            className={`flex min-w-0 flex-1 flex-col items-center gap-1 rounded-[7px] px-0.5 py-2 text-center text-[11px] leading-tight font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
               isActive
                 ? "bg-surface text-foreground shadow-card"
                 : "text-muted-foreground hover:text-foreground"

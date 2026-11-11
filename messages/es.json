@@ -1985,6 +1985,21 @@
     "categoryPetHint": "Tu racha en peligro y cuando lleve días sin verte. Si escondes a la compañera, tampoco te escribe."
   },
   "item": {
+    "intent": {
+      "want": { "book": "Quiero leerlo", "movie": "Quiero verla", "series": "Quiero verla" },
+      "started": { "book": "Lo estoy leyendo", "series": "La estoy viendo" },
+      "done": { "book": "Ya lo leí", "movie": "Ya la vi", "series": "Ya la vi" }
+    },
+    "action": {
+      "start": { "book": "Empezar a leer" },
+      "session": { "book": "Registrar sesión" },
+      "episode": { "series": "Marcar episodio" },
+      "watched": { "movie": "Marcar vista" },
+      "again": { "book": "Volver a leer", "movie": "Registrar otro visionado", "series": "Volver a verla" },
+      "resume": { "book": "Retomar", "movie": "Retomar", "series": "Retomar" }
+    },
+    "actionError": "No se pudo guardar. Inténtalo de nuevo.",
+    "addedButPending": "Se añadió como pendiente, pero no se pudo cambiar su estado. Inténtalo de nuevo.",
     "pages": "págs.",
     "minutes": "min",
     "seasons": "temporadas",
@@ -1992,8 +2007,7 @@
     "notFoundTitle": "No encontrado",
     "notFoundDescription": "Este título no existe en el catálogo.",
     "backHome": "Ir al inicio",
-    "follow": "Seguir",
-    "following": "Añadiendo...",
+    "addingToLibrary": "Añadiendo…",
     "unfollow": "Quitar de mi biblioteca",
     "unfollowConfirm": "Quitarla de tu biblioteca borra TODOS sus pases, con sus notas, reseñas y publicaciones. No se puede deshacer.",
     "addToCollection": "Añadir a colección",
@@ -2151,12 +2165,6 @@
     },
     "rail": {
       "yourRating": "Tu nota",
-      "goToLog": "Ver y cambiar en Mi registro",
-      "cta": {
-        "book": "Registrar sesión",
-        "series": "Marcar episodio",
-        "movie": "Registrar visionado"
-      },
       "pages": "pág. {page} / {total}",
       "episodes": "{watched} / {total} vistos"
     },

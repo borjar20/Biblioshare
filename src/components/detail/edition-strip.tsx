@@ -127,6 +127,7 @@ export function EditionStrip({
     <section className="flex flex-col gap-3.5">
       <div className="flex items-baseline justify-between gap-2">
         <span
+          data-section-title
           className={`font-mono text-[10px] tracking-wider ${accent.text} uppercase`}
         >
           {isMovie ? t("titleMovie") : t("titleBook")}
