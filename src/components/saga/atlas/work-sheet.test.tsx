@@ -204,7 +204,7 @@ describe("mini-ficha", () => {
   });
 
   it("el corte móvil es 639,98 px: a 640 ya es tarjeta flotante", async () => {
-    const { NARROW_QUERY } = await import("./use-dismissable");
+    const { NARROW_QUERY } = await import("@/components/atlas/use-dismissable");
     expect(NARROW_QUERY).toBe("(max-width: 639.98px)");
   });
 });

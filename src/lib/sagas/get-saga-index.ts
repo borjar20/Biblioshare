@@ -24,7 +24,6 @@ export type SagaIndexData = {
 // progreso/colección, todo derivado, sin tablas nuevas).
 export async function getSagaIndexData(
   supabase: SupabaseServerClient,
-  query: string,
 ): Promise<SagaIndexData> {
   const user = await getCurrentUser();
 
@@ -41,10 +40,10 @@ export async function getSagaIndexData(
       user
         ? supabase
             .from("passes")
-            .select("item_type, item_id, status")
+            .select("item_type, item_id, status, updated_at")
             .eq("user_id", user.id)
             .eq("is_active", true)
-        : Promise.resolve({ data: [] as { item_type: string; item_id: string; status: string }[] }),
+        : Promise.resolve({ data: [] as { item_type: string; item_id: string; status: string; updated_at: string | null }[] }),
       user
         ? supabase.from("saga_route_choices").select("saga_id, route_slug").eq("user_id", user.id)
         : Promise.resolve({ data: [] as { saga_id: string; route_slug: string }[] }),
@@ -84,7 +83,7 @@ export async function getSagaIndexData(
   );
 
   return {
-    cards: buildSagaIndex(sagasRes.data ?? [], itemsRes.data ?? [], query, {
+    cards: buildSagaIndex(sagasRes.data ?? [], itemsRes.data ?? [], {
       isAuthenticated: user !== null,
       routes: routesRes.data ?? [],
       passes: passesRes.data ?? [],

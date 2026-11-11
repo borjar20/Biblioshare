@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { sagaHref } from "@/lib/catalog/item-href";
 import { AdoptRouteButton } from "./adopt-route-button";
-import { useDismissable } from "./use-dismissable";
+import { useDismissable } from "@/components/atlas/use-dismissable";
 import styles from "./atlas.module.css";
 
 export type AtlasRoute = { slug: string; name: string; summary: string | null; curated: boolean };

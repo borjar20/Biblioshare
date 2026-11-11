@@ -1,11 +1,11 @@
-import type { Extent } from "@/lib/atlas/types";
+import type { Extent, Orientation } from "@/lib/atlas/types";
 import { SAGA_ITEM_ROLES } from "../roles";
 import type { AtlasModel, AtlasWork } from "./model";
 
 // Layouts del atlas de la saga (spec 2026-10-28 §5.1). Puros y deterministas.
 // Todo se calcula en horizontal: `a` es el eje del orden y `c` el transversal.
 // Con orientación `v` se intercambian x↔y al final (`swap`).
-export type Orientation = "h" | "v";
+export type { Orientation } from "@/lib/atlas/types";
 export type Lens = "orden" | "rol" | "publicacion";
 
 /** Carriles de la lente Rol y orden de la lista: «principal» y luego los roles, en su orden. */
