@@ -4,24 +4,27 @@ import { createContext, useContext, useState, type ReactNode } from "react";
 import type { MediaStatus } from "@/lib/library/types";
 import { StatusBadge } from "@/components/ui/status-badge";
 
-// El estado del pase activo se pinta en DOS sitios que son hermanos, no
-// padre/hijo: el badge del hero (statusSlot, fuera del <Suspense> de las
-// pestañas) y los pills de StatusSegments (dentro de LogPanel). Hasta ahora
-// los pills eran optimistas y el badge no: al pulsar "Viendo" el pill cambiaba
-// al instante y el badge seguía diciendo "Pendiente" los 2-6 s que tarda la
-// revalidación contra un Supabase remoto. Este contexto es el único estado
-// compartido entre ambos: quien muta publica aquí, el badge lee de aquí.
+// El estado del pase activo se lee en varias islas de la ficha que son
+// hermanas, no padre/hijo: la tarjeta del hero (PassCard y su StickyPassCta,
+// fuera del <Suspense> de las pestañas), Mi registro (LogPanel, para «Nuevo
+// pase») y la tarjeta de seguimiento de series (SeriesFollowCard). Nació porque
+// los pills eran optimistas y el badge del hero no: al pulsar "Viendo" el pill
+// cambiaba al instante y el badge seguía diciendo "Pendiente" los 2-6 s que
+// tarda la revalidación contra un Supabase remoto. Este contexto es el único
+// estado compartido: quien muta publica aquí, los demás leen de aquí.
 //
-// null = sin pase activo (la obra no está en la biblioteca): el badge no se
-// pinta. No es un estado más, es la ausencia de todos.
+// null = sin pase activo (la obra no está en la biblioteca): la tarjeta ofrece
+// las intenciones. No es un estado más, es la ausencia de todos.
 //
 // `isSaving` existe porque el optimismo se comía su propia señal (issue #106):
-// "Seguir" publica el estado aquí en el MISMO tick en que dispara la acción, y
-// HeroStatusOrFollow cambia entonces el botón —dueño de su `isPending`— por el
-// badge. Resultado: nada en el DOM decía que la escritura seguía en vuelo, así
-// que ni el usuario ni un test podían esperarla, y quien se iba a /coleccion en
-// ese medio segundo no encontraba la obra. Ahora quien muta publica también si
-// está guardando, y el badge lo expone como `aria-busy`.
+// una intención («Quiero leerlo») publica el estado aquí en el MISMO tick en
+// que dispara la acción, y la tarjeta cambia entonces los botones —dueños de su
+// `isPending`— por el control de estado. Sin él nada en el DOM decía que la
+// escritura seguía en vuelo, así que ni el usuario ni un test podían esperarla,
+// y quien se iba a /coleccion en ese medio segundo no encontraba la obra. Ahora
+// quien muta publica también si está guardando: la tarjeta lo expone como
+// `aria-busy` y deshabilita sus controles, también cuando la escritura es de
+// otra isla (SeriesFollowCard escribe en su propia transición).
 type ItemStatusValue = {
   status: MediaStatus | null;
   setStatus: (next: MediaStatus | null) => void;
@@ -61,10 +64,10 @@ export function ItemStatusProvider({
   );
 }
 
-// Sin fallback silencioso: los tres consumidores (badge del hero, LogPanel,
-// ResumePassSheet) viven siempre dentro de una ficha, y una ficha sin
-// provider es un bug de integración que conviene que explote en desarrollo,
-// no que degrade a un badge congelado.
+// Sin fallback silencioso: todos los consumidores (PassCard, LogPanel,
+// PassActionsProvider, las hojas…) viven siempre dentro de una ficha, y una
+// ficha sin provider es un bug de integración que conviene que explote en
+// desarrollo, no que degrade a una tarjeta congelada.
 export function useItemStatus(): ItemStatusValue {
   const value = useContext(ItemStatusContext);
   if (!value) {

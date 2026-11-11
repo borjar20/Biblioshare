@@ -691,9 +691,6 @@ async function BookTabs({
             passes={passes}
             sessions={sessions}
             editions={editions}
-            // `?cerrar` lo atiende ya PassActionsProvider (por encima de las
-            // pestañas); pasarlo aquí también abriría la hoja dos veces.
-            initialClosingPassId={null}
             canContribute={canContribute}
           />
           {userId && notesPromise && <NotesSection itemType="book" notesPromise={notesPromise} />}

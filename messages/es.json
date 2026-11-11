@@ -1999,7 +1999,7 @@
       "resume": { "book": "Retomar", "movie": "Retomar", "series": "Retomar" }
     },
     "actionError": "No se pudo guardar. Inténtalo de nuevo.",
-    "doneButPlanned": "La añadimos como pendiente, pero no se pudo marcar como terminada.",
+    "doneButPlanned": "Se añadió como pendiente, pero no se pudo marcar como terminada. Inténtalo de nuevo.",
     "pages": "págs.",
     "minutes": "min",
     "seasons": "temporadas",
@@ -2007,7 +2007,7 @@
     "notFoundTitle": "No encontrado",
     "notFoundDescription": "Este título no existe en el catálogo.",
     "backHome": "Ir al inicio",
-    "following": "Añadiendo...",
+    "addingToLibrary": "Añadiendo…",
     "unfollow": "Quitar de mi biblioteca",
     "unfollowConfirm": "Quitarla de tu biblioteca borra TODOS sus pases, con sus notas, reseñas y publicaciones. No se puede deshacer.",
     "addToCollection": "Añadir a colección",
@@ -2165,12 +2165,6 @@
     },
     "rail": {
       "yourRating": "Tu nota",
-      "goToLog": "Ver y cambiar en Mi registro",
-      "cta": {
-        "book": "Registrar sesión",
-        "series": "Marcar episodio",
-        "movie": "Registrar visionado"
-      },
       "pages": "pág. {page} / {total}",
       "episodes": "{watched} / {total} vistos"
     },

@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Select } from "@/components/ui/select";
 import { RatingDots } from "@/components/ui/rating-dots";
@@ -11,22 +10,18 @@ import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { PassProgress } from "./pass-progress";
 import { SessionList } from "@/components/session-list";
 import { NoteForm } from "@/components/notes/note-form";
-import { StatusSegments } from "@/components/detail/status-segments";
 import { useItemStatus } from "@/components/detail/item-status-context";
-import { ClosePassSheet } from "@/components/detail/close-pass-sheet";
-import { ResumePassSheet } from "@/components/detail/resume-pass-sheet";
-import { NewPassSheet } from "@/components/detail/new-pass-sheet";
+import { usePassActions } from "@/components/detail/pass-actions-provider";
 import { AddToCollectionSheet } from "@/components/library/add-to-collection-sheet";
 import { PassDiary } from "@/components/detail/pass-diary";
 import { EditionPicker } from "@/components/detail/edition-picker";
 import { shouldAskForEdition } from "@/components/detail/edition-question";
 import type { ItemType } from "@/lib/catalog/types";
 import type { MediaStatus } from "@/lib/library/types";
-import { formatPosition, type Position } from "@/lib/library/position";
+import type { Position } from "@/lib/library/position";
 import type { ProgressSession } from "@/lib/sessions/types";
 import type { Pass } from "@/lib/passes/types";
 import type { Edition } from "@/lib/editions/types";
-import { updateStatus, removeFromLibrary } from "@/lib/library/manage-actions";
 import { ratePass, setPassEdition } from "@/lib/passes/actions";
 import { formatEdition, pagesForPass } from "@/lib/editions/edition-label";
 import { editionAskedStorageKey } from "@/lib/passes/edition-asked";
@@ -65,10 +60,12 @@ export type ManagedEntry = {
   notes: string | null;
 };
 
-// Pestaña "Registro" completa (mockup "Paper - Ficha de título completa",
-// pantalla 3): estado → progreso del pase abierto → sesiones → diario de
-// pases → quitar de la biblioteca. Si el ítem no está en la biblioteca, el
-// panel es solo el botón de añadir.
+// Pestaña «Mi registro» (mockup "Paper - Ficha de título completa", pantalla
+// 3), solo historial desde la spec 2026-11-10-ficha-acciones: cabecera del
+// pase con «Nuevo pase» → progreso del pase abierto → sesiones → diario de
+// pases → notas. El estado, la acción principal, la nota y sus hojas viven en
+// la tarjeta del hero (PassCard + PassActionsProvider); quitar la obra, en el
+// menú «···» del hero.
 export function LogPanel({
   itemType,
   itemId,
@@ -76,7 +73,6 @@ export function LogPanel({
   passes,
   sessions,
   editions,
-  initialClosingPassId,
   workTotalUnits,
   canContribute = false,
 }: {
@@ -88,23 +84,17 @@ export function LogPanel({
   editions: Edition[];
   /** Colaborador+: habilita "+ Es una edición nueva" en el selector. */
   canContribute?: boolean;
-  // Pase a abrir en la hoja de cierre desde el primer pintado (§Tarea 7,
-  // hallazgo de revisión): lo calcula el SERVER component de la ficha leyendo
-  // `?cerrar` de `searchParams` (que no se retrasa, a diferencia de
-  // useSearchParams en cliente) y ya validado contra el pase activo. Ver el
-  // comentario largo en ManagedLog.
-  initialClosingPassId?: string | null;
   /** Páginas de la OBRA: respaldo cuando la edición del pase no las trae.
    *  Mismo criterio que addSession (src/lib/sessions/actions.ts), que valida
    *  contra la edición si tiene páginas y si no contra books.total_pages. */
   workTotalUnits?: number | null;
 }) {
   if (!entry) {
-    // Sin pase activo la pestaña "Mi registro" ni se enseña (ItemDetailTabs la
-    // oculta), así que llegar aquí es la ventana transitoria del "Seguir" del
-    // hero: estado optimista "planned" mientras la revalidación trae la entry.
-    // Un placeholder breve, no el botón "Seguir" (que ahora vive en el hero).
-    return <FollowingPlaceholder />;
+    // Sin pase activo la pestaña «Mi registro» ni se enseña (ItemDetailTabs la
+    // oculta), así que llegar aquí es la ventana transitoria de una intención
+    // de la tarjeta («Quiero leerlo»…): estado optimista mientras la
+    // revalidación trae la entry. Un placeholder breve.
+    return <AddingPlaceholder />;
   }
 
   return (
@@ -116,21 +106,20 @@ export function LogPanel({
       passes={passes}
       sessions={sessions}
       editions={editions}
-      initialClosingPassId={initialClosingPassId ?? null}
       canContribute={canContribute}
     />
   );
 }
 
-// Placeholder de la ventana transitoria tras pulsar "Seguir" en el hero: el
-// estado ya es "planned" (optimista) pero la entry del servidor aún no ha
+// Placeholder de la ventana transitoria tras elegir una intención en la
+// tarjeta: el estado ya es optimista pero la entry del servidor aún no ha
 // llegado. Texto sobrio, centrado; desaparece solo cuando la revalidación monta
 // ManagedLog.
-function FollowingPlaceholder() {
+function AddingPlaceholder() {
   const t = useTranslations("item");
   return (
     <p className="py-8 text-center text-sm text-muted-foreground">
-      {t("following")}
+      {t("addingToLibrary")}
     </p>
   );
 }
@@ -143,7 +132,6 @@ function ManagedLog({
   passes,
   sessions,
   editions,
-  initialClosingPassId,
   canContribute,
 }: {
   workTotalUnits?: number | null;
@@ -153,145 +141,24 @@ function ManagedLog({
   passes: Pass[];
   sessions: ProgressSession[];
   editions: Edition[];
-  initialClosingPassId: string | null;
   canContribute: boolean;
 }) {
   const t = useTranslations("item");
   const tPasses = useTranslations("passes");
   const accent = MEDIA_ACCENT[itemType];
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  // El estado ya no es local: vive en ItemStatusContext, compartido con el
-  // badge del hero, para que ambos cambien en el mismo commit optimista. El
-  // `?? entry.status` cubre la ventana de "Quitar de mi biblioteca": ahí se
-  // publica null (el badge desaparece), pero este panel sigue montado con la
-  // entry vieja hasta que la revalidación lo desmonta — los pills no deben
-  // quedarse sin estado que pintar mientras tanto.
-  const { status: sharedStatus, setStatus } = useItemStatus();
+  // El estado se cambia en la tarjeta del hero (PassCard); aquí solo se lee,
+  // del mismo ItemStatusContext, para saber si «Nuevo pase» tiene sentido. El
+  // `?? entry.status` cubre la ventana de «Quitar de mi biblioteca» (menú del
+  // hero): ahí se publica null, pero este panel sigue montado con la entry
+  // vieja hasta que la revalidación lo desmonta.
+  const { status: sharedStatus } = useItemStatus();
   const status = sharedStatus ?? entry.status;
+  // «Nuevo pase» y sus hojas son del proveedor (montado por encima de las
+  // pestañas): así la pregunta de cierre es la misma se pulse donde se pulse.
+  const { isPending, newPass } = usePassActions();
 
-  // Pase ACTIVO de la obra (is_active): dueño de las sesiones y objetivo de
-  // la hoja de cierre por URL. Se calcula arriba porque el auto-cierre por
-  // sesión (más abajo) lo necesita para validar el ?cerrar.
+  // Pase ACTIVO de la obra (is_active): dueño de las sesiones.
   const activePass = passes.find((p) => p.isActive) ?? null;
-
-  // Resincroniza el estado local con las props tras cada revalidación del
-  // servidor. Ajuste durante el render, no un useEffect (mismo patrón que
-  // EditionStrip, ver src/components/detail/edition-strip.tsx), porque aquí
-  // dispararía react-hooks/set-state-in-effect. El estado (status) ya no se
-  // resincroniza aquí: lo hace el ItemStatusProvider con su propia prop de
-  // servidor, que cambia en la misma revalidación que esta entry.
-  const [prevEntry, setPrevEntry] = useState(entry);
-  if (entry !== prevEntry) {
-    setPrevEntry(entry);
-  }
-
-  // Al marcar "completado" (o "dejado") updateStatus ya cierra el pase en BD
-  // (o abre-y-cierra uno si el ítem venía de "planificado") y nos devuelve
-  // directamente su id: no hace falta rebuscar entre los pases tras
-  // refrescar, basta con encadenar la hoja de cierre con ese passId.
-  //
-  // El auto-cierre por sesión (§Tarea 7) hace lo mismo por URL: la sesión que
-  // alcanza el final redirige a `?cerrar=<passId>&tab=log`. `initialClosingPassId`
-  // lo lee y valida el SERVER component de la ficha (contra el pase ACTIVO —
-  // nunca uno archivado; ver los tres `page.tsx` de libro/película/serie), así
-  // que llega aquí ya validado. Arreglo de la revisión de la Tarea 7: leer
-  // `?cerrar` con useSearchParams (cliente) iba un render por detrás tras el
-  // redirect de la server action, así que la hoja no se abría sola al
-  // terminar un libro — solo tras recargar a mano. El servidor no sufre ese
-  // rezago, pero SÍ hace falta el ajuste "durante el render" de abajo (mismo
-  // patrón que `entry`/`status` arriba): la ida y vuelta a `/sesion/[passId]`
-  // vuelve al MISMO `id` de obra, así que Next reutiliza la instancia ya
-  // montada de esta página en vez de remontarla — un `useState` inicializado
-  // una sola vez con la prop nunca vería el `cerrar` nuevo sin este
-  // seguimiento de `prev`. El `&tab=log` del redirect sigue siendo
-  // obligatorio: ItemDetailTabs solo monta la pestaña activa, sin él la ficha
-  // abriría en "Información" y este componente ni existiría.
-  const [closingPassId, setClosingPassId] = useState<string | null>(
-    initialClosingPassId,
-  );
-  // El auto-cierre por sesión (initialClosingPassId) solo dispara al
-  // terminar un libro: siempre "completed". handleStatusChange lo pisa con
-  // el `next` real cuando el cierre lo dispara marcar un estado a mano.
-  const [closingStatus, setClosingStatus] = useState<MediaStatus>("completed");
-  const [prevInitialClosingPassId, setPrevInitialClosingPassId] =
-    useState(initialClosingPassId);
-  if (initialClosingPassId !== prevInitialClosingPassId) {
-    setPrevInitialClosingPassId(initialClosingPassId);
-    if (initialClosingPassId) {
-      // Auto-cierre por sesión: siempre "completed" (no existe abandonar vía
-      // sesión, solo se abandona a mano desde StatusSegments). Sin este pisado,
-      // `closingStatus` arrastraba el valor de una interacción anterior no
-      // relacionada (p. ej. un "dropped" manual descartado sin enviar).
-      setClosingStatus("completed");
-      setClosingPassId(initialClosingPassId);
-    }
-  }
-
-  // Retomar un abandonado (dropped → in_progress) es la única transición que
-  // la máquina no resuelve sola: askResume significa que no se escribió nada
-  // en BD todavía (el pill optimista de abajo se revierte) y que hace falta
-  // preguntar "¿continuar o de cero?" antes de reintentar con `resume`.
-  const [resumeOpen, setResumeOpen] = useState(false);
-
-  // "Nuevo pase" con el actual TODAVÍA abierto: hay que saber cómo se cierra
-  // el que se deja atrás antes de crear el siguiente (NewPassSheet pregunta).
-  const [newPassOpen, setNewPassOpen] = useState(false);
-
-  // Con el pase ya cerrado no hay nada que preguntar: "de cero" sobre un
-  // completado/abandonado es exactamente la transición archiveAndCreate que la
-  // máquina ya sabe hacer. El `restart` evita el askResume de un abandonado —
-  // "Nuevo pase" ya ES la respuesta "de cero".
-  function handleNewPass() {
-    const active = passes.find((p) => p.isActive) ?? null;
-    if (active && (active.status === "planned" || active.status === "in_progress")) {
-      setNewPassOpen(true);
-      return;
-    }
-    // Películas: un revisionado es otro pase "vista" directo, sin pasar por "en
-    // curso" (ese estado no existe para pelis, ver StatusSegments). Una sola
-    // transición —completed + restart— archiva el anterior y crea el nuevo ya
-    // cerrado; encadenamos la hoja de cierre para puntuarlo, igual que marcar
-    // "Vista". Antes eran dos (in_progress + restart, luego completed) y la
-    // primera publicaba en el feed «ha empezado» una peli que ya estaba vista.
-    if (itemType === "movie") {
-      setStatus("completed");
-      startTransition(async () => {
-        const outcome = await updateStatus(itemType, itemId, "completed", "restart");
-        router.refresh();
-        if (outcome.kind === "done" && outcome.closed && outcome.passId) {
-          setClosingStatus("completed");
-          setClosingPassId(outcome.passId);
-        }
-      });
-      return;
-    }
-    setStatus("in_progress");
-    startTransition(async () => {
-      await updateStatus(itemType, itemId, "in_progress", "restart");
-      router.refresh();
-    });
-  }
-
-  function handleStatusChange(next: MediaStatus) {
-    setStatus(next);
-    startTransition(async () => {
-      const outcome = await updateStatus(itemType, itemId, next);
-      if (outcome.kind === "askResume") {
-        setStatus(entry.status);
-        setResumeOpen(true);
-        return;
-      }
-      router.refresh();
-      // Hallazgo de la revisión de la Task 5: en una carrera de doble-submit
-      // sin pase activo previo, closed puede llegar true con passId vacío.
-      // No abrir la hoja de cierre contra un pase inexistente.
-      if (outcome.closed && outcome.passId) {
-        setClosingStatus(next);
-        setClosingPassId(outcome.passId);
-      }
-    });
-  }
 
   // El pase ACTIVO (is_active) no siempre es el "abierto": si el ítem está
   // completado/dejado sigue habiendo un pase activo (el cerrado que
@@ -328,8 +195,10 @@ function ManagedLog({
   return (
     <div className="rounded-card border border-border bg-surface p-4 shadow-card">
       {/* Frame 10: en PC el Registro son DOS columnas — a la izquierda la
-          historia del pase (cabecera, estado, progreso, sesiones, diario) y a
-          la derecha sus datos y el quitar.
+          historia del pase (cabecera, progreso, sesiones, diario) y a la
+          derecha sus datos. El estado ya no se cambia aquí: es de la tarjeta
+          del hero (spec 2026-11-10-ficha-acciones), y quitar la obra vive en
+          el menú «···» del hero.
 
           El DOM es UNO solo. Los envoltorios van en `display:contents` en
           móvil, así que sus hijos caen directos en la columna flex de fuera y
@@ -345,14 +214,12 @@ function ManagedLog({
           1024 a 1279 la columna de cartel deja unos 600 px y no caben dos. */}
       <div className="flex flex-col gap-4 xl:grid xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start xl:gap-x-11 xl:gap-y-0">
         <div className="contents xl:flex xl:flex-col xl:gap-4">
-          <div className="order-1 flex flex-col gap-1.5">
-            {/* .pase-hd del frame 3: el eyebrow y la cuenta de pases sustituyen al
-            rótulo "Tu estado", que además repetía el aria-label del propio
-            control (StatusSegments ya se anuncia como grupo "Tu estado"). El
+          <div className="order-1">
+            {/* .pase-hd del frame 3: el eyebrow y la cuenta de pases. El
             ordinal del pase activo es passes.length: vienen del más reciente
             al más antiguo, así que el activo es el último cronológico —
             mismo criterio que el diario. */}
-            <div className="mb-2 flex items-center justify-between gap-3">
+            <div className="flex items-center justify-between gap-3">
               <div>
                 <span className="block font-mono text-[9.5px] tracking-wider text-muted-foreground uppercase">
                   {tPasses("activeLabel")}
@@ -366,13 +233,13 @@ function ManagedLog({
               pinta sobre un PENDIENTE: ahí no hay nada que cerrar todavía (el
               pase no ha empezado), así que archivarlo para crear otro igual de
               vacío no diría nada nuevo — y "¿completado o abandonado?" no
-              tendría respuesta honesta. Con el pase ya cerrado el botón actúa
-              directo; solo pregunta si sigue abierto. */}
+              tendría respuesta honesta. Con el pase ya cerrado el proveedor actúa
+              directo; solo pregunta (NewPassSheet) si sigue abierto. */}
               {status !== "planned" && (
                 <button
                   type="button"
                   disabled={isPending}
-                  onClick={handleNewPass}
+                  onClick={newPass}
                   // `.newpase` del frame: mono 10, TEÑIDO del acento del medio y
                   // con el borde a medio camino entre el acento y --border
                   // (color-mix al 35%). En #56 salió gris, que lo hacía parecer un
@@ -383,12 +250,6 @@ function ManagedLog({
                 </button>
               )}
             </div>
-            <StatusSegments
-              status={status}
-              itemType={itemType}
-              onChange={handleStatusChange}
-              disabled={isPending}
-            />
           </div>
 
           {/* La barra va FUERA del panel y encima, como el `.prg` del frame; en
@@ -398,7 +259,7 @@ function ManagedLog({
             page !== undefined &&
             totalPages !== null &&
             totalPages > 0 && (
-              <div className="order-3">
+              <div className="order-2">
                 <PassProgress
                   itemType={itemType}
                   page={page}
@@ -408,7 +269,7 @@ function ManagedLog({
             )}
 
           {itemType !== "movie" && activePass && (
-            <div className="order-5">
+            <div className="order-4">
               <SessionList
                 passId={activePass.id}
                 itemType={itemType}
@@ -423,7 +284,7 @@ function ManagedLog({
             </div>
           )}
 
-          <div className="order-6">
+          <div className="order-5">
             <PassDiary
               itemType={itemType}
               itemId={itemId}
@@ -434,7 +295,7 @@ function ManagedLog({
 
           {/* Añadir a Memorizar sin sesión (P7): también para películas. El
               anclaje arranca en la posición actual del pase si es un libro. */}
-          <div className="order-7">
+          <div className="order-6">
             <NoteForm
               itemType={itemType}
               itemId={itemId}
@@ -445,7 +306,7 @@ function ManagedLog({
           </div>
         </div>
 
-        {/* Columna derecha en PC: los datos del pase y el quitar. */}
+        {/* Columna derecha en PC: los datos del pase y «Añadir a colección». */}
         <div className="contents xl:flex xl:flex-col xl:gap-4">
           {openPass && (
             // key={openPass.id}: fuerza un remount cuando cambia de pase (p. ej.
@@ -477,7 +338,7 @@ function ManagedLog({
               <button
                 type="button"
                 onClick={open}
-                className="order-7 flex items-center justify-center gap-2 rounded-[10px] border border-border py-3 text-sm font-medium text-foreground transition-colors hover:bg-surface-muted"
+                className="order-6 flex items-center justify-center gap-2 rounded-[10px] border border-border py-3 text-sm font-medium text-foreground transition-colors hover:bg-surface-muted"
               >
                 <span aria-hidden>▤</span>
                 {t("addToCollection")}
@@ -485,67 +346,8 @@ function ManagedLog({
             )}
           />
 
-          <button
-            type="button"
-            disabled={isPending}
-            onClick={() => {
-              // Pregunta antes (F3-012): esto borra TODOS los pases de la obra,
-              // y hasta ahora se ejecutaba al primer clic. Es la excepción
-              // consciente a «lo destructivo vive tras un ···»: no está sembrado
-              // por fila, es una acción única al final de un panel de gestión al
-              // que se entra a propósito, así que esconderla la volvería
-              // inencontrable sin reducir el riesgo de misclick.
-              if (!window.confirm(t("unfollowConfirm"))) return;
-              // Quitar de la biblioteca = quedarse sin pase activo: el badge del
-              // hero debe desaparecer ya, no cuando aterrice la revalidación.
-              setStatus(null);
-              startTransition(() => removeFromLibrary(itemType, itemId));
-            }}
-            // `.unfollow` del frame: centrado, rojo y subrayado. No se esconde en
-            // gris — quitar una obra de la biblioteca borra TODOS sus pases (ver
-            // removeFromLibrary), así que el color dice lo que hace.
-            className="order-7 py-3 text-center text-xs text-status-dropped underline underline-offset-2 disabled:opacity-60"
-          >
-            {t("unfollow")}
-          </button>
         </div>
       </div>
-
-      {closingPassId && (
-        <ClosePassSheet
-          passId={closingPassId}
-          itemType={itemType}
-          itemId={itemId}
-          status={closingStatus}
-          open
-          onClose={() => setClosingPassId(null)}
-        />
-      )}
-
-      {newPassOpen && (
-        <NewPassSheet
-          itemType={itemType}
-          itemId={itemId}
-          open
-          onClose={() => {
-            setNewPassOpen(false);
-            router.refresh();
-          }}
-        />
-      )}
-
-      {resumeOpen && (
-        <ResumePassSheet
-          itemType={itemType}
-          itemId={itemId}
-          droppedAtLabel={formatPosition(itemType, entry.position)}
-          open
-          onClose={() => {
-            setResumeOpen(false);
-            router.refresh();
-          }}
-        />
-      )}
     </div>
   );
 }
@@ -630,7 +432,7 @@ function PassDataPanel({
   return (
     <details
       open
-      className="order-4 group flex flex-col rounded-[12px] border border-border bg-surface"
+      className="order-3 group flex flex-col rounded-[12px] border border-border bg-surface"
     >
       <summary className="flex cursor-pointer list-none items-center justify-between px-[15px] py-[13px] text-[13px] font-semibold text-foreground">
         {t("progressTitle")}

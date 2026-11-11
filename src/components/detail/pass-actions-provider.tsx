@@ -23,10 +23,11 @@ import { ResumePassSheet } from "./resume-pass-sheet";
 
 // Las acciones del pase de una obra (spec 2026-11-10-ficha-acciones): añadir
 // con una intención, cambiar de estado, la acción principal, nuevo pase y
-// puntuar. Antes estaban repartidas entre LogPanel (estado, nuevo pase y las
-// tres hojas) y useFollow (el «Seguir» del hero). LogPanel solo existe con su
-// pestaña activa, dentro del <Suspense> de las pestañas, así que la tarjeta del
-// hero no podía abrir sus hojas: por eso este proveedor envuelve el hero Y las
+// puntuar. Las usan la tarjeta del hero (PassCard: intenciones, estado, acción
+// principal y nota), su versión pegajosa (StickyPassCta) y «Nuevo pase» de Mi
+// registro (LogPanel, que ya solo es historial). LogPanel solo existe con su
+// pestaña activa, dentro del <Suspense> de las pestañas, así que sus hojas no
+// podían abrirse desde el hero: por eso este proveedor envuelve el hero Y las
 // pestañas (va dentro de ItemStatusProvider, alrededor de ItemShell) y monta
 // las hojas UNA sola vez.
 //

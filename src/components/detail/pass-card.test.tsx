@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextIntlClientProvider } from "next-intl";
 import messages from "../../../messages/es.json";
 import type { MediaStatus } from "@/lib/library/types";
-import { ItemStatusProvider } from "./item-status-context";
+import { ItemStatusProvider, useItemStatus } from "./item-status-context";
 import { PassCard, type PassCardProps } from "./pass-card";
 
 // El proveedor real (escrituras, hojas, navegación) tiene sus propios tests;
@@ -30,6 +30,12 @@ beforeEach(() => {
 afterEach(cleanup);
 
 const base: PassCardProps = { itemType: "book", progress: null, rating: null };
+
+// Publica isSaving como lo hace SeriesFollowCard (otra isla de la ficha).
+function SavingSwitch() {
+  const { setSaving } = useItemStatus();
+  return <span data-testid="saving-switch" onClick={() => setSaving(true)} />;
+}
 
 function renderCard(props: Partial<PassCardProps>, status: MediaStatus | null) {
   return render(
@@ -125,6 +131,67 @@ describe("PassCard", () => {
     renderCard({ itemType: "book" }, "in_progress");
     screen.getAllByRole("button").forEach((b) => expect(b).toHaveProperty("disabled", true));
     expect(screen.getByTestId("status-badge").getAttribute("aria-busy")).toBe("true");
+  });
+
+  // SeriesFollowCard escribe en su propia transición y solo publica
+  // setSaving(true): sin esto la tarjeta lanzaría una segunda escritura a la vez.
+  it("mientras otra isla guarda (isSaving), los controles se deshabilitan", () => {
+    render(
+      <NextIntlClientProvider locale="es" messages={messages}>
+        <ItemStatusProvider initialStatus="in_progress">
+          <SavingSwitch />
+          <PassCard {...base} />
+        </ItemStatusProvider>
+      </NextIntlClientProvider>,
+    );
+    fireEvent.click(screen.getByTestId("saving-switch"));
+    const group = screen.getByRole("group", { name: "Tu estado" });
+    within(group).getAllByRole("button").forEach((b) => expect(b).toHaveProperty("disabled", true));
+    expect(screen.getByRole("button", { name: "Registrar sesión" })).toHaveProperty("disabled", true);
+    fireEvent.click(within(group).getByRole("button", { name: /Leído/ }));
+    expect(actions.changeStatus).not.toHaveBeenCalled();
+  });
+
+  it("sin pase, isSaving también deshabilita las intenciones", () => {
+    render(
+      <NextIntlClientProvider locale="es" messages={messages}>
+        <ItemStatusProvider initialStatus={null}>
+          <SavingSwitch />
+          <PassCard {...base} />
+        </ItemStatusProvider>
+      </NextIntlClientProvider>,
+    );
+    fireEvent.click(screen.getByTestId("saving-switch"));
+    expect(screen.getByRole("button", { name: "Quiero leerlo" })).toHaveProperty("disabled", true);
+  });
+
+  it("serie al día: marca «Al día» junto al progreso, sin tocar las pastillas", () => {
+    renderCard(
+      { itemType: "series", upToDate: true, progress: { percent: 100, left: "10 / 10 vistos", right: "100%" } },
+      "in_progress",
+    );
+    expect(screen.getByText("Al día")).not.toBeNull();
+    const group = screen.getByRole("group", { name: "Tu estado" });
+    expect(within(group).getByRole("button", { name: /Viendo/ }).getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("serie no al día (o ya no en curso): sin marca", () => {
+    renderCard({ itemType: "series", upToDate: false, progress: { percent: 50, left: "5 / 10 vistos", right: "50%" } }, "in_progress");
+    expect(screen.queryByText("Al día")).toBeNull();
+    cleanup();
+    // El estado optimista manda: si se marca Vista, la marca no se queda colgada.
+    renderCard({ itemType: "series", upToDate: true, progress: { percent: 100, left: "10 / 10 vistos", right: "100%" } }, "completed");
+    expect(screen.queryByText("Al día")).toBeNull();
+  });
+
+  it("el botón principal tiene la misma forma con y sin pase", () => {
+    renderCard({ itemType: "book" }, null);
+    const intentClass = screen.getByRole("button", { name: "Quiero leerlo" }).className;
+    cleanup();
+    renderCard({ itemType: "book" }, "planned");
+    const controlClass = screen.getByRole("button", { name: "Empezar a leer" }).className;
+    const radius = (c: string) => c.split(/\s+/).filter((k) => k.startsWith("rounded"));
+    expect(radius(intentClass)).toEqual(radius(controlClass));
   });
 
   it("muestra el error con role=alert", () => {

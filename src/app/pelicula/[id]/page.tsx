@@ -588,9 +588,6 @@ async function MovieTabs({
             passes={passes}
             sessions={[]}
             editions={editions}
-            // `?cerrar` lo atiende ya PassActionsProvider (por encima de las
-            // pestañas); pasarlo aquí también abriría la hoja dos veces.
-            initialClosingPassId={null}
             canContribute={canContribute}
           />
           {userId && notesPromise && <NotesSection itemType="movie" notesPromise={notesPromise} />}

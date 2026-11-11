@@ -12,13 +12,15 @@ import { usePassActions } from "./pass-actions-provider";
 // ItemDetailTabs decide CUÁNDO se ve.
 export function StickyPassCta({ itemType }: { itemType: ItemType }) {
   const t = useTranslations("item");
-  const { status } = useItemStatus();
+  const { status, isSaving } = useItemStatus();
   const { isPending, runPrimary } = usePassActions();
   if (!status) return null;
   return (
     <button
       type="button"
-      disabled={isPending}
+      // Como la tarjeta: también con la escritura de otra isla (isSaving, p. ej.
+      // SeriesFollowCard), para no lanzar dos cambios de estado a la vez.
+      disabled={isPending || isSaving}
       onClick={runPrimary}
       className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3.5 py-1.5 text-[13px] font-semibold whitespace-nowrap text-accent-foreground transition-colors hover:bg-accent-hover disabled:opacity-60"
     >

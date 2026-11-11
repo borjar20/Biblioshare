@@ -22,9 +22,10 @@ vi.mock("@/components/notes/note-form", () => ({ NoteForm: () => null }));
 vi.mock("@/components/detail/pass-diary", () => ({ PassDiary: () => null }));
 vi.mock("@/components/detail/edition-picker", () => ({ EditionPicker: () => null }));
 vi.mock("@/components/library/add-to-collection-sheet", () => ({ AddToCollectionSheet: () => null }));
-vi.mock("@/components/detail/close-pass-sheet", () => ({ ClosePassSheet: () => null }));
-vi.mock("@/components/detail/resume-pass-sheet", () => ({ ResumePassSheet: () => null }));
-vi.mock("@/components/detail/new-pass-sheet", () => ({ NewPassSheet: () => null }));
+// «Nuevo pase» y las hojas son del proveedor de la ficha (pass-actions-provider).
+vi.mock("@/components/detail/pass-actions-provider", () => ({
+  usePassActions: () => ({ isPending: false, newPass: vi.fn() }),
+}));
 import { LogPanel } from "@/components/detail/log-panel";
 
 beforeEach(() => {

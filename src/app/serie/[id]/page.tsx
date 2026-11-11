@@ -55,6 +55,7 @@ import { ensureSeriesEpisodes } from "@/lib/library/ensure-series-episodes";
 import { getEpisodeData } from "@/lib/series/get-episode-data";
 import { getEpisodeReviews } from "@/lib/series/get-episode-reviews";
 import { todayISO } from "@/lib/series/aired";
+import { isUpToDate } from "@/lib/series/follow-state";
 import { ensureItemEnriched } from "@/lib/people/enrich-item";
 import { expireItemCredits } from "@/lib/reactivity/revalidate";
 import { getItemCredits } from "@/lib/people/get-item-credits";
@@ -274,6 +275,17 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
     series.total_episodes ||
     0;
 
+  // «Al día» (estado DERIVADO, src/lib/series/follow-state.ts): todo lo emitido
+  // visto y la serie sigue en emisión. La tarjeta lo marca junto al progreso;
+  // el estado guardado sigue siendo «Viendo». Sin consultas nuevas: son los
+  // mismos recuentos de la barra.
+  const upToDate = isUpToDate({
+    status: activeStatus,
+    watched: watchedEpisodes,
+    aired: totalEpisodes,
+    tmdbStatus: series.tmdb_status,
+  });
+
   const railProgress =
     activePass && totalEpisodes > 0
       ? {
@@ -341,6 +353,7 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
               itemType="series"
               progress={railProgress}
               rating={activePass?.rating ?? null}
+              upToDate={upToDate}
             />
           </div>
         }
@@ -666,9 +679,6 @@ async function SeriesTabs({
             // Las series no tienen ediciones (getEditions ni siquiera
             // consulta la BD para este tipo): no hace falta cargarlas.
             editions={[]}
-            // `?cerrar` lo atiende ya PassActionsProvider (por encima de las
-            // pestañas); pasarlo aquí también abriría la hoja dos veces.
-            initialClosingPassId={null}
             canContribute={canContribute}
           />
           {userId && notesPromise && <NotesSection itemType="series" notesPromise={notesPromise} />}
