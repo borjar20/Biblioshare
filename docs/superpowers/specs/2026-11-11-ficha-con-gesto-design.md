@@ -46,6 +46,10 @@ No se toca ningún componente: cambian solos `RatingDots`, la media del hero y d
 `RatingHistogram`, el chip de tipo, los chips de edición y episodio, y las marcas de la pestaña
 Episodios.
 
+Las hojas `<dialog>` de la ficha (cierre, nuevo pase, retomar) cuelgan de `WorkScope` y heredarían
+el alias. Llevan su propio ámbito de materiales, así que recuperan los colores de tipo globales con
+una regla `.scope dialog` que copia los valores de `globals.css`; un test impide que diverjan.
+
 `work-scope-contrast.test.ts` se amplía en los 360 tonos y los dos temas:
 
 - `--type-*` como gráfico: 3:1 sobre `--background` y sobre `--surface`.
