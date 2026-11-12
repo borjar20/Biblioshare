@@ -30,6 +30,19 @@ describe("RatingDots con lively", () => {
     expect(dots().map((d) => d.getAttribute("data-pop"))).toEqual(["b", "b", null, null, null]);
     expect(screen.getByLabelText("3/10")).toBe(half);
   });
+  it("el salto no se corta ni se repite al deshabilitarse mientras guarda", () => {
+    const { rerender } = render(<RatingDots value={null} onChange={() => {}} lively />);
+    fireEvent.click(screen.getByLabelText("8/10"));
+    rerender(<RatingDots value={null} onChange={() => {}} lively disabled />);
+    expect(document.querySelectorAll('span[data-pop="a"]')).toHaveLength(4);
+    rerender(<RatingDots value={null} onChange={() => {}} lively />);
+    expect(dots().map((d) => d.getAttribute("data-pop"))).toEqual(["a", "a", "a", "a", null]);
+  });
+  it("no salta si la nota se rechaza", () => {
+    render(<RatingDots value={null} onChange={() => false} lively />);
+    fireEvent.click(screen.getByLabelText("8/10"));
+    expect(dots().some((d) => d.hasAttribute("data-pop"))).toBe(false);
+  });
   it("no salta al montar con una nota ya puesta", () => {
     render(<RatingDots value={8} onChange={() => {}} lively />);
     expect(dots().some((d) => d.hasAttribute("data-pop"))).toBe(false);

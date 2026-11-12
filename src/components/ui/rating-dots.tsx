@@ -59,7 +59,7 @@ export function RatingDots({
   /** Nota 1–10, o null si no hay. */
   value: number | null;
   /** Si se pasa, el control es interactivo (precisión de media nota). */
-  onChange?: (rating: number) => void;
+  onChange?: (rating: number) => void | boolean;
   size?: keyof typeof SIZES | number;
   disabled?: boolean;
   className?: string;
@@ -87,10 +87,13 @@ export function RatingDots({
   // Última nota fijada AQUÍ (no la que llega por `value`): `n` cuenta las
   // veces, para alternar el nombre de la animación y relanzarla.
   const [pop, setPop] = useState<{ n: number; upTo: number }>({ n: 0, upTo: 0 });
-  const gestures = lively && interactive;
+  // No depende de `disabled`: mientras guarda, la clase y `data-pop` deben
+  // seguir iguales o el salto se corta y se repite al terminar.
+  const gestures = lively && Boolean(onChange);
   function commit(next: number) {
-    onChange!(next);
-    if (lively) setPop((p) => ({ n: p.n + 1, upTo: next }));
+    // `false` = el consumidor rechazó la nota: no hay salto.
+    const accepted = onChange!(next);
+    if (lively && accepted !== false) setPop((p) => ({ n: p.n + 1, upTo: next }));
   }
 
   // Nota bajo el dedo. El reparto en diez tramos vive en `lib/rating/dots` para

@@ -207,7 +207,9 @@ export function PassCard({ itemType, progress, rating, upToDate = false }: PassC
               // Solo si de verdad arrancó la escritura: sin pase activo, sin
               // sesión o con otra escritura en vuelo, la nota parecería
               // guardada sin que nada llegue a BD.
-              if (rate(next)) setShownRating(next);
+              const ok = rate(next);
+              if (ok) setShownRating(next);
+              return ok;
             }}
           />
         </div>
