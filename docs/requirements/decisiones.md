@@ -8355,3 +8355,24 @@ El menú ⋯ de la ficha también está en escritorio: es el único sitio para q
   hallazgo siguen sin anuncio.
 - Se publica en la misma PR que la ficha cartel (#1617), no en una aparte como decía la spec.
 - Spec: `docs/superpowers/specs/2026-11-10-ficha-acciones-design.md`.
+
+## 2026-11-12 — Ficha con gesto
+
+- **Dentro de la ficha de obra, el color de tipo es el de la obra.** `WorkScope` redefine
+  `--type-*` como el acento de la obra (y `--type-*-ink` como su acento de texto), así que la nota,
+  el histograma y el chip de tipo dejan de chocar con el tinte (naranja sobre rojo, turquesa sobre
+  verde). Matiza la decisión que tiñó la nota con el tipo: fuera de la ficha (feed, biblioteca,
+  perfil, `/post/[id]`) sigue con el color del tipo.
+- Las hojas de cierre, nuevo pase y retomar las monta `PassActionsProvider` fuera de `WorkScope` y
+  conservan el color de tipo global. Los `<dialog>` de dentro (menú ⋯, añadir a colección, nota en
+  el margen) siguen el tinte como el resto de la ficha. No hay regla que restaure colores en
+  `dialog`: un primer intento la añadió y se retiró.
+- **La tarjeta del pase responde:** la pastilla de estado se desliza y el punto late, la barra de
+  progreso se llena, los puntos de nota crecen bajo el cursor y saltan al fijarla, y el botón
+  principal se hunde. El histograma de Comunidad crece al pintarse.
+- Solo CSS, dentro de `prefers-reduced-motion: no-preference`. Sin textos nuevos, sin esquema, sin
+  caché. No se añade celebración al terminar: ya la da el ritual de cierre.
+- Los gestos de `RatingDots` (`lively`) y de `RatingHistogram` (`animate`) van tras una prop que
+  solo enciende la ficha. El salto de la nota no depende de `disabled` (la tarjeta se deshabilita
+  mientras guarda) y no se dispara si la escritura se rechaza: `onChange` puede devolver `false`.
+- Spec: `docs/superpowers/specs/2026-11-11-ficha-con-gesto-design.md`.
