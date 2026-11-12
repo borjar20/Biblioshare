@@ -201,6 +201,7 @@ export function PassCard({ itemType, progress, rating, upToDate = false }: PassC
             value={shownRating}
             itemType={itemType}
             disabled={busy}
+            lively
             onChange={(next) => {
               // Solo si de verdad arrancó la escritura: sin pase activo, sin
               // sesión o con otra escritura en vuelo, la nota parecería

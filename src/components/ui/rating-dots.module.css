@@ -1,0 +1,31 @@
+/* Gestos de la nota (prop `lively`, spec 2026-11-11-ficha-con-gesto). `--i` es
+   el índice del punto. El salto usa `backwards` y no `both`: al terminar, el
+   punto vuelve a su estilo normal y la escala bajo el cursor sigue funcionando.
+   Dos keyframes idénticos (pop-a / pop-b): alternar el nombre relanza la
+   animación sin remontar el punto, que se llevaría el foco de sus botones. */
+@media (prefers-reduced-motion: no-preference) {
+  .dot {
+    transition: transform 140ms ease-out;
+  }
+  .dot[data-lift] {
+    transform: scale(1.38);
+  }
+  .dot[data-pop="a"] {
+    animation: pop-a 420ms cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+    animation-delay: calc(var(--i) * 55ms);
+  }
+  .dot[data-pop="b"] {
+    animation: pop-b 420ms cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+    animation-delay: calc(var(--i) * 55ms);
+  }
+  @keyframes pop-a {
+    0% { transform: scale(1); }
+    45% { transform: scale(1.7) translateY(-3px); }
+    100% { transform: scale(1); }
+  }
+  @keyframes pop-b {
+    0% { transform: scale(1); }
+    45% { transform: scale(1.7) translateY(-3px); }
+    100% { transform: scale(1); }
+  }
+}
