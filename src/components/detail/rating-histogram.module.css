@@ -1,0 +1,12 @@
+/* Las barras crecen desde la base al pintarse (prop `animate`, spec
+   2026-11-11-ficha-con-gesto). `--i` es el índice de la barra. */
+@media (prefers-reduced-motion: no-preference) {
+  .bar[data-grow] {
+    transform-origin: bottom;
+    animation: grow 620ms cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+    animation-delay: calc(var(--i) * 45ms);
+  }
+  @keyframes grow {
+    from { transform: scaleY(0); }
+  }
+}

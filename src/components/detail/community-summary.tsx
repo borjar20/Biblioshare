@@ -50,7 +50,7 @@ export function CommunitySummary({
       {/* El histograma: al lado en móvil (flex-1), debajo y a lo ancho en PC.
           Mismo componente que el raíl OBRA de `/post/[id]` (RatingHistogram). */}
       <div className="flex-1 xl:mt-5 xl:w-full xl:flex-none">
-        <RatingHistogram itemType={itemType} distribution={distribution} />
+        <RatingHistogram itemType={itemType} distribution={distribution} animate />
       </div>
     </div>
   );
