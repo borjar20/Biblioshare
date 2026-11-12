@@ -9,6 +9,7 @@ import { RatingDots } from "@/components/ui/rating-dots";
 import { useItemStatus } from "./item-status-context";
 import { usePassActions } from "./pass-actions-provider";
 import { StatusSegments } from "./status-segments";
+import styles from "./pass-card.module.css";
 
 // La misma forma para el botón principal con y sin pase (y para las
 // intenciones secundarias): la tarjeta cambia de contenido, no de lenguaje.
@@ -106,7 +107,7 @@ export function PassCard({ itemType, progress, rating, upToDate = false }: PassC
           type="button"
           disabled={busy}
           onClick={() => chooseIntent(first)}
-          className={`w-full py-3 font-semibold ${PRIMARY_SHAPE}`}
+          className={`w-full py-3 font-semibold ${PRIMARY_SHAPE} ${styles.primary}`}
         >
           {t(`intent.${first}.${itemType}`)}
         </Button>
@@ -119,7 +120,7 @@ export function PassCard({ itemType, progress, rating, upToDate = false }: PassC
                 variant="secondary"
                 disabled={busy}
                 onClick={() => chooseIntent(intent)}
-                className={`w-full px-3 text-[13px] font-semibold ${PRIMARY_SHAPE}`}
+                className={`w-full px-3 text-[13px] font-semibold ${PRIMARY_SHAPE} ${styles.secondary}`}
               >
                 {t(`intent.${intent}.${itemType}`)}
               </Button>
@@ -156,7 +157,7 @@ export function PassCard({ itemType, progress, rating, upToDate = false }: PassC
             className="h-2 overflow-hidden rounded-full border border-border bg-surface-muted"
           >
             <div
-              className="h-full rounded-full bg-status-in-progress"
+              className={`h-full rounded-full bg-status-in-progress ${styles.fill}`}
               style={{ width: `${progress.percent}%` }}
             />
           </div>
@@ -183,7 +184,7 @@ export function PassCard({ itemType, progress, rating, upToDate = false }: PassC
         type="button"
         disabled={busy}
         onClick={runPrimary}
-        className={`w-full py-3 font-semibold ${PRIMARY_SHAPE}`}
+        className={`w-full py-3 font-semibold ${PRIMARY_SHAPE} ${styles.primary}`}
       >
         {t(`action.${action}.${itemType}`)}
       </Button>
