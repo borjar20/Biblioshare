@@ -1,0 +1,31 @@
+/* Gestos de la tarjeta del pase (spec 2026-11-11-ficha-con-gesto). */
+
+/* El labio inferior del botón principal es estático: también se ve con
+   movimiento reducido. Lo que se anima es hundirlo. */
+.primary {
+  box-shadow: 0 3px 0 0 var(--accent-hover);
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* La barra se llena desde cero al montarse y anima el ancho cuando cambia. */
+  .fill {
+    transition: width 800ms cubic-bezier(0.22, 1, 0.36, 1);
+    animation: fill-in 800ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  }
+  @keyframes fill-in {
+    from { width: 0; }
+  }
+  .primary,
+  .secondary {
+    transition:
+      transform 110ms ease-out,
+      box-shadow 110ms ease-out,
+      background-color 150ms ease;
+  }
+  .primary:active:not(:disabled) {
+    transform: translateY(3px) scale(0.985);
+    box-shadow: 0 0 0 0 var(--accent-hover);
+  }
+  .secondary:active:not(:disabled) {
+    transform: translateY(2px) scale(0.985);
+  }
+}

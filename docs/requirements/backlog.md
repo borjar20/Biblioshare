@@ -38,6 +38,13 @@
   tarjeta del pase es el mando (estado, acción principal y nota) y Mi registro queda para el
   historial. Sin migraciones ni `use cache`; misma PR que la ficha cartel (#1617).
   [Spec](superpowers/specs/2026-11-10-ficha-acciones-design.md), decisiones del 2026-11-10 y 2026-11-11.
+- [x] Ficha con gesto (spec 2026-11-11): dentro de la ficha la nota y el color de tipo toman el tono
+  de la obra, y la tarjeta del pase responde con gestos (pastilla de estado deslizante, barra que se
+  llena, puntos de nota que crecen y saltan, botón que se hunde); el histograma de Comunidad crece al
+  pintarse. Sin librerías de animación; respeta el movimiento reducido.
+  [Spec](superpowers/specs/2026-11-11-ficha-con-gesto-design.md), decisiones del 2026-11-12.
+- [ ] «Mi registro» como línea de lectura en libros, con limpieza de duplicados en los tres tipos.
+  [Spec](superpowers/specs/2026-11-11-ficha-linea-de-lectura-design.md).
 
 ## Moderación administrativa — #1183
 

@@ -1,8 +1,10 @@
 "use client";
 
+import { useState, type CSSProperties } from "react";
 import { useTranslations } from "next-intl";
 import type { ItemType } from "@/lib/catalog/types";
 import type { MediaStatus } from "@/lib/library/types";
+import styles from "./status-segments.module.css";
 
 const STATUS_ORDER: MediaStatus[] = [
   "planned",
@@ -21,6 +23,14 @@ const STATUS_DOT_CLASSES: Record<MediaStatus, string> = {
   in_progress: "bg-status-in-progress",
   completed: "bg-status-completed",
   dropped: "bg-status-dropped",
+};
+
+// Color de texto del punto: el halo del latido usa `currentColor`.
+const STATUS_TEXT_CLASSES: Record<MediaStatus, string> = {
+  planned: "text-status-planned",
+  in_progress: "text-status-in-progress",
+  completed: "text-status-completed",
+  dropped: "text-status-dropped",
 };
 
 // El verbo de "en curso"/"completado" cambia por tipo de medio (Leyendo/
@@ -62,12 +72,30 @@ export function StatusSegments({
         : [...MOVIE_STATUS_ORDER, status]
       : STATUS_ORDER;
 
+  const activeIndex = order.indexOf(status);
+
+  // Última opción elegida AQUÍ por el usuario: su punto late una vez. No late
+  // al montar ni cuando el estado llega de fuera (refresco, otra isla).
+  const [beat, setBeat] = useState<MediaStatus | null>(null);
+
   return (
     <div
       role="group"
       aria-label={tSegments("groupLabel")}
-      className="flex gap-1 rounded-[10px] bg-surface-muted p-1"
+      data-count={order.length}
+      data-active-index={activeIndex}
+      className="relative flex gap-1 rounded-[10px] bg-surface-muted p-1"
+      style={{ "--n": order.length, "--at": activeIndex } as CSSProperties}
     >
+      {/* El fondo de la activa es UN elemento que se desliza, no una clase por
+          botón: así el cambio se ve como movimiento. Sin animación (movimiento
+          reducido) queda colocado igual que el fondo de antes. */}
+      <span
+        aria-hidden="true"
+        data-testid="status-thumb"
+        data-disabled={disabled ? "" : undefined}
+        className={`${styles.thumb} rounded-[7px] bg-surface shadow-card ${disabled ? "opacity-60" : ""}`}
+      />
       {order.map((option) => {
         const isActive = option === status;
         const verbKey = VERB_KEY[option];
@@ -84,17 +112,18 @@ export function StatusSegments({
             onClick={() => {
               // Reafirmar el estado activo no debería reabrir/cerrar pases:
               // solo avisamos al padre cuando cambia de verdad.
-              if (!isActive) onChange(option);
+              if (isActive) return;
+              setBeat(option);
+              onChange(option);
             }}
-            className={`flex min-w-0 flex-1 flex-col items-center gap-1 rounded-[7px] px-0.5 py-2 text-center text-[11px] leading-tight font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
-              isActive
-                ? "bg-surface text-foreground shadow-card"
-                : "text-muted-foreground hover:text-foreground"
+            className={`${styles.option} flex min-w-0 flex-1 flex-col items-center gap-1 rounded-[7px] px-0.5 py-2 text-center text-[11px] leading-tight font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+              isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             <span
               aria-hidden="true"
-              className={`h-2 w-2 rounded-full ${STATUS_DOT_CLASSES[option]}`}
+              data-beat={isActive && beat === option ? "" : undefined}
+              className={`${styles.dot} h-2 w-2 rounded-full ${STATUS_DOT_CLASSES[option]} ${STATUS_TEXT_CLASSES[option]}`}
             />
             {label}
           </button>
