@@ -2201,6 +2201,12 @@
         "series": "Vista"
       }
     },
+    "readingStrip": {
+      "page": "pág. {page}",
+      "range": "pág. {from} → {to}",
+      "rangePages": "{count, plural, one {# página} other {# páginas}}",
+      "notesPill": "{count, plural, one {# nota} other {# notas}}"
+    },
     "log": {
       "progress": {
         "start": "pág. 0",
