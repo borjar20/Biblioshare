@@ -14,7 +14,10 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 export async function getSessions(
   supabase: SupabaseServerClient,
   passId: string | null,
-  itemType: ItemType
+  itemType: ItemType,
+  // La ficha de libro pide más (READING_STRIP_SESSION_CAP): la tira dibuja la
+  // lectura entera. Series siguen con 20.
+  { limit = 20 }: { limit?: number } = {},
 ): Promise<ProgressSession[]> {
   if (!passId) return [];
 
@@ -26,7 +29,7 @@ export async function getSessions(
     .eq("pass_id", passId)
     .order("session_date", { ascending: false })
     .order("created_at", { ascending: false })
-    .limit(20);
+    .limit(limit);
 
   if (error) throw error;
 

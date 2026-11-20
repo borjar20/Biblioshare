@@ -273,11 +273,7 @@ function ManagedLog({
                 itemType={itemType}
                 itemId={itemId}
                 sessions={sessions}
-                editionLabel={
-                  openPassEdition
-                    ? formatEdition(openPassEdition, itemType)
-                    : null
-                }
+                currentYear={new Date().getFullYear()}
               />
             </div>
           )}
