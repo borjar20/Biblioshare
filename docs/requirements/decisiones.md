@@ -8370,8 +8370,9 @@ El menú ⋯ de la ficha también está en escritorio: es el único sitio para q
 - **La tarjeta del pase responde:** la pastilla de estado se desliza y el punto late, la barra de
   progreso se llena, los puntos de nota crecen bajo el cursor y saltan al fijarla, y el botón
   principal se hunde. El histograma de Comunidad crece al pintarse.
-- Solo CSS, dentro de `prefers-reduced-motion: no-preference`. Sin textos nuevos, sin esquema, sin
-  caché. No se añade celebración al terminar: ya la da el ritual de cierre.
+- Sin librerías de animación: los gestos los pinta CSS, dentro de `prefers-reduced-motion:
+  no-preference`. Sin textos nuevos, sin esquema, sin caché. No se añade celebración al terminar:
+  ya la da el ritual de cierre.
 - Los gestos de `RatingDots` (`lively`) y de `RatingHistogram` (`animate`) van tras una prop que
   solo enciende la ficha. El salto de la nota no depende de `disabled` (la tarjeta se deshabilita
   mientras guarda) y no se dispara si la escritura se rechaza: `onChange` puede devolver `false`.

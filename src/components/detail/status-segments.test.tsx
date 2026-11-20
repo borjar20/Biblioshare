@@ -10,13 +10,24 @@ import { StatusSegments } from "./status-segments";
 
 afterEach(cleanup);
 
-function Harness({ itemType, initial, onChange }: { itemType: ItemType; initial: MediaStatus; onChange?: (s: MediaStatus) => void }) {
+function Harness({
+  itemType,
+  initial,
+  onChange,
+  disabled,
+}: {
+  itemType: ItemType;
+  initial: MediaStatus;
+  onChange?: (s: MediaStatus) => void;
+  disabled?: boolean;
+}) {
   const [status, setStatus] = useState(initial);
   return (
     <NextIntlClientProvider locale="es" messages={messages}>
       <StatusSegments
         status={status}
         itemType={itemType}
+        disabled={disabled}
         onChange={(next) => {
           onChange?.(next);
           setStatus(next);
@@ -53,6 +64,15 @@ describe("pastilla deslizante", () => {
   });
 });
 
+describe("estado deshabilitado", () => {
+  it("la pastilla se atenúa con el control deshabilitado", () => {
+    const { rerender } = render(<Harness itemType="book" initial="planned" />);
+    expect(screen.getByTestId("status-thumb").hasAttribute("data-disabled")).toBe(false);
+    rerender(<Harness itemType="book" initial="planned" disabled />);
+    expect(screen.getByTestId("status-thumb").hasAttribute("data-disabled")).toBe(true);
+  });
+});
+
 describe("latido del punto", () => {
   it("no late al montar", () => {
     render(<Harness itemType="book" initial="in_progress" />);
@@ -67,6 +87,17 @@ describe("latido del punto", () => {
     expect(group().dataset.activeIndex).toBe("2");
     expect(beating()).toBe(1);
     expect(target.querySelector("[data-beat]")).not.toBeNull();
+  });
+  it("un cambio de estado que llega de fuera no late", () => {
+    const ui = (status: MediaStatus) => (
+      <NextIntlClientProvider locale="es" messages={messages}>
+        <StatusSegments status={status} itemType="book" onChange={() => {}} />
+      </NextIntlClientProvider>
+    );
+    const { rerender } = render(ui("planned"));
+    rerender(ui("completed"));
+    expect(beating()).toBe(0);
+    expect(group().dataset.activeIndex).toBe("2");
   });
   it("pulsar la opción ya activa ni avisa ni late", () => {
     const onChange = vi.fn();

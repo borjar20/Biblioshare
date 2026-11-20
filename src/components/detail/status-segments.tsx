@@ -93,7 +93,8 @@ export function StatusSegments({
       <span
         aria-hidden="true"
         data-testid="status-thumb"
-        className={`${styles.thumb} rounded-[7px] bg-surface shadow-card`}
+        data-disabled={disabled ? "" : undefined}
+        className={`${styles.thumb} rounded-[7px] bg-surface shadow-card ${disabled ? "opacity-60" : ""}`}
       />
       {order.map((option) => {
         const isActive = option === status;

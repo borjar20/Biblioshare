@@ -150,7 +150,9 @@ export function RatingDots({
       className={`inline-flex items-center gap-1${
         interactive ? " touch-pan-y select-none" : ""
       }`}
-      onMouseLeave={interactive ? () => setPreview(null) : undefined}
+      // Con `onChange`, no con `interactive`: si el cursor sale mientras la
+      // tarjeta guarda (`disabled`), el levantado se limpia igualmente.
+      onMouseLeave={onChange ? () => setPreview(null) : undefined}
       {...touchHandlers}
     >
       {Array.from({ length: 5 }).map((_, i) => {

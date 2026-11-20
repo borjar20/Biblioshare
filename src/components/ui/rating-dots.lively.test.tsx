@@ -38,6 +38,16 @@ describe("RatingDots con lively", () => {
     rerender(<RatingDots value={null} onChange={() => {}} lively />);
     expect(dots().map((d) => d.getAttribute("data-pop"))).toEqual(["a", "a", "a", "a", null]);
   });
+  it("el levantado no se queda al salir el cursor mientras guarda", () => {
+    const { container, rerender } = render(<RatingDots value={null} onChange={() => {}} lively />);
+    fireEvent.mouseEnter(screen.getByLabelText("5/10"));
+    const row = screen.getByLabelText("5/10").parentElement!.parentElement!;
+    fireEvent.click(screen.getByLabelText("8/10"));
+    rerender(<RatingDots value={null} onChange={() => {}} lively disabled />);
+    fireEvent.mouseLeave(row);
+    rerender(<RatingDots value={null} onChange={() => {}} lively />);
+    expect(container.querySelectorAll("span[data-lift]")).toHaveLength(0);
+  });
   it("no salta si la nota se rechaza", () => {
     render(<RatingDots value={null} onChange={() => false} lively />);
     fireEvent.click(screen.getByLabelText("8/10"));

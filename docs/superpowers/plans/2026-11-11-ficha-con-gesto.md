@@ -72,6 +72,8 @@ worktree, quita el junction (`cmd /c rmdir node_modules`), o `git worktree remov
 
 ### Task 1: La nota toma el tinte de la obra
 
+> **Corregido después (eccac613):** la parte de las reglas que restauraban colores en `dialog` se retiró; las hojas del pase se montan fuera de `WorkScope`. No la vuelvas a aplicar.
+
 **Files:**
 - Modify: `src/components/detail/work-scope.module.css`
 - Test: `src/components/detail/work-scope-contrast.test.ts`
