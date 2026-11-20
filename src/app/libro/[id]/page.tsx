@@ -23,7 +23,9 @@ const DETAIL_NS = [
   "catalogEdit", "collection", "detail", "editions",
   "item", "library", "margin", "notes", "passes", "ritual", "social", "joint",
 ] as const;
-import { LogPanel, type ManagedEntry } from "@/components/detail/log-panel";
+import type { ManagedEntry } from "@/components/detail/log-panel";
+import { ReadingLine } from "@/components/detail/reading-line";
+import { READING_STRIP_SESSION_CAP } from "@/lib/passes/reading-strip";
 import { HeroMenu } from "@/components/detail/hero-menu";
 import {
   CatalogEditor,
@@ -75,9 +77,7 @@ import type { ProgressSession } from "@/lib/sessions/types";
 import { getPasses } from "@/lib/passes/get-passes";
 import type { Pass } from "@/lib/passes/types";
 import type { MediaStatus } from "@/lib/library/types";
-import { NotesSection } from "@/components/notes/notes-section";
 import { getNotesForItem } from "@/lib/notes/get-notes";
-import { MarginSection } from "@/components/margin/margin-section";
 import { getItemMarginNotes } from "@/lib/margin/queries";
 
 import { UNTITLED_FALLBACK } from "@/lib/catalog/untitled";
@@ -496,7 +496,7 @@ async function BookTabs({
     // de más reciente a más antiguo, así que passes[0] es el que toca.
     const currentPassId =
       passes.find((p) => p.finishedOn === null)?.id ?? passes[0]?.id ?? null;
-    sessions = await getSessions(supabase, currentPassId, "book");
+    sessions = await getSessions(supabase, currentPassId, "book", { limit: READING_STRIP_SESSION_CAP });
   }
 
   // Asignar saga a mano es contribución curada → colaborador+ (§7.35). El rol
@@ -665,24 +665,21 @@ async function BookTabs({
         />
       }
       log={
-        <div className="flex flex-col gap-4">
-          <LogPanel
-            itemType="book"
+        <Suspense fallback={null}>
+          <ReadingLine
             itemId={book.id}
             entry={entry}
             passes={passes}
             sessions={sessions}
             editions={editions}
-            currentYear={new Date().getFullYear()}
+            workTotalUnits={book.total_pages}
             canContribute={canContribute}
+            notesPromise={userId ? notesPromise : null}
+            marginPromise={userId ? marginPromise : null}
+            marginPages={marginPages}
+            currentYear={new Date().getFullYear()}
           />
-          {userId && notesPromise && <NotesSection itemType="book" notesPromise={notesPromise} />}
-          {userId && marginPromise && (
-            <Suspense fallback={null}>
-              <MarginSection itemType="book" itemId={book.id} pages={marginPages} marginPromise={marginPromise} />
-            </Suspense>
-          )}
-        </div>
+        </Suspense>
       }
     />
   );
