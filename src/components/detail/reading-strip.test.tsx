@@ -8,7 +8,7 @@ import type { ProgressSession } from "@/lib/sessions/types";
 import { buildReadingStrip, type StripNote } from "@/lib/passes/reading-strip";
 
 vi.mock("@/lib/sessions/actions", () => ({ deleteSession: vi.fn() }));
-vi.mock("@/components/notes/note-form", () => ({ NoteForm: () => <p>compositor</p> }));
+vi.mock("@/components/notes/note-form", () => ({ NoteForm: () => <textarea aria-label="nota" /> }));
 vi.mock("next/link", () => ({ default: ({ href, children }: { href: string; children: ReactNode }) => <a href={href}>{children}</a> }));
 import { ReadingStripCard } from "./reading-strip";
 
@@ -59,6 +59,11 @@ describe("ReadingStripCard", () => {
     fireEvent.keyDown(tramo, { key: "Escape" });
     expect(screen.queryByTestId("reading-strip-detail")).toBeNull();
   });
+  it("Escape dentro del compositor no cierra el tramo", () => {
+    renderStrip(four);
+    fireEvent.keyDown(screen.getByRole("textbox", { name: "nota" }), { key: "Escape" });
+    expect(screen.getByTestId("reading-strip-detail")).toBeTruthy();
+  });
   it("la pastilla de una fila abre su tramo", () => {
     renderStrip(four, [note("note:9", 120)]);
     fireEvent.click(screen.getByRole("button", { name: "1 nota" }));
@@ -80,7 +85,7 @@ describe("ReadingStripCard", () => {
   it("sin sesiones: el vacío único con el compositor", () => {
     renderStrip([]);
     expect(screen.getByText(/Todavía no has registrado ninguna sesión/)).toBeTruthy();
-    expect(screen.getByText("compositor")).toBeTruthy();
+    expect(screen.getByRole("textbox", { name: "nota" })).toBeTruthy();
     expect(screen.queryByRole("group", { name: "Sesiones a lo largo del libro" })).not.toBeNull();
   });
 });

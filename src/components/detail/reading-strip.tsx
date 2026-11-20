@@ -78,6 +78,9 @@ export function ReadingStripCard({
     if (id) setSelected((prev) => (prev === id ? null : id));
   }
   function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+    // Escape dentro de un campo de texto (el compositor de notas) no cierra el
+    // tramo: desmontaría el formulario y se perdería el borrador.
+    if (e.defaultPrevented || (e.target as HTMLElement).closest("input, textarea, select, [contenteditable='true']")) return;
     if (e.key === "Escape" && selected) {
       e.stopPropagation();
       setSelected(null);
