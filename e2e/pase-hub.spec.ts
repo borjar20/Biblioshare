@@ -124,6 +124,11 @@ async function openSearchResult(
   return match[1];
 }
 
+// La página actual en la tira de «Mi registro» (spec 2026-11-11-ficha-linea-de-lectura).
+function currentPage(page: Page) {
+  return page.getByTestId("reading-current-page");
+}
+
 function statusGroup(page: Page) {
   return page.getByRole("group", { name: "Tu estado" });
 }
@@ -462,8 +467,8 @@ test.describe
     // recién creado tiene posición vacía) pero SIN página registrada todavía.
     await expect(diaryEntry(page, "book", 1)).toBeVisible({ timeout: 15_000 });
     await expect(diaryEntry(page, "book", 2)).toBeVisible();
-    await expect(page.getByText("Progreso", { exact: true })).toBeVisible();
-    await expect(page.getByText(/^Voy por la página/)).toHaveCount(0);
+    await expect(page.getByTestId("reading-strip")).toBeVisible();
+    await expect(currentPage(page)).toHaveText("pág. 0");
   });
 
   test("Regla 6 — Borrar el pase activo reactiva el anterior en vez de esfumar la obra", async ({
@@ -573,7 +578,7 @@ test.describe("abandonar y retomar (ambas ramas)", () => {
 
       await page.goto(`/libro/${bookId}?tab=log`);
       await page.waitForLoadState("networkidle").catch(() => {});
-      await expect(page.getByText("Voy por la página 20")).toBeVisible({
+      await expect(currentPage(page).filter({ hasText: /^pág\. 20$/ })).toBeVisible({
         timeout: 15_000,
       });
 
@@ -608,9 +613,9 @@ test.describe("abandonar y retomar (ambas ramas)", () => {
       // producción que una navegación completa (que siempre trae la verdad
       // servida de nuevo).
       await reloadUntilVisible(page, `/libro/${bookId}?tab=log`, (p) =>
-        p.getByText("Voy por la página 20"),
+        currentPage(p).filter({ hasText: /^pág\. 20$/ }),
       );
-      await expect(page.getByText("Voy por la página 20")).toBeVisible({
+      await expect(currentPage(page).filter({ hasText: /^pág\. 20$/ })).toBeVisible({
         timeout: 15_000,
       });
 
@@ -641,7 +646,7 @@ test.describe("abandonar y retomar (ambas ramas)", () => {
       await reloadUntilVisible(page, `/libro/${bookId}?tab=log`, (p) =>
         diaryEntry(p, "book", 2),
       );
-      await expect(page.getByText(/^Voy por la página/)).toHaveCount(0);
+      await expect(currentPage(page)).toHaveText("pág. 0");
       await expect(diaryEntry(page, "book", 1)).toBeVisible();
       await expect(diaryEntry(page, "book", 2)).toBeVisible();
       await expect(diaryEntry(page, "book", 3)).toHaveCount(0);
@@ -949,7 +954,7 @@ test.describe("nuevo pase", () => {
 
       await page.goto(`/libro/${bookId}?tab=log`);
       await page.waitForLoadState("networkidle").catch(() => {});
-      await expect(page.getByText("Voy por la página 20")).toBeVisible({
+      await expect(currentPage(page).filter({ hasText: /^pág\. 20$/ })).toBeVisible({
         timeout: 15_000,
       });
 
@@ -977,7 +982,7 @@ test.describe("nuevo pase", () => {
       await expect(diaryEntry(page, "book", 1)).toBeVisible();
       await expect(diaryEntry(page, "book", 2)).toBeVisible();
       await expect(diaryEntry(page, "book", 3)).toHaveCount(0);
-      await expect(page.getByText(/^Voy por la página/)).toHaveCount(0);
+      await expect(currentPage(page)).toHaveText("pág. 0");
       await expect(statusBadge(page, "Leyendo")).toBeVisible({
         timeout: 15_000,
       });

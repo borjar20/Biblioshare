@@ -154,6 +154,11 @@ desde el avatar global. Las funciones de la app tienen navegación propia;
 | **Nota** / **Cita** | Anotación, Apunte | Las dos piezas que guarda el cuaderno: la cita es literal del texto, la nota es tuya. | tabla `notes`, campo `kind` |
 | **Pase** | Lectura, Entrada de diario, `diary_entry` | Una pasada completa por una obra (1.ª lectura, 2.º visionado). **Es donde vive el estado vivo del usuario.** | tabla `passes` |
 | **Sesión** | Registro, Avance | Un rato concreto dentro de un pase, con su página o minuto. | tabla `progress_sessions` |
+| **Tira de lectura** | Gráfico, Barra de progreso | La tira de «Mi registro» en la ficha de un libro: un tramo por sesión, del ancho de lo leído, con las notas como marcas. | ficha de libro, `ReadingStripCard` (`data-testid="reading-strip"`) |
+| **Tramo** | Segmento, Barra | Cada sesión dibujada en la tira de lectura. Tocarlo abre su detalle; por defecto, el de la última sesión. | `ReadingStripCard` |
+| **Más adelante** | Futuro, Spoilers | Grupo de notas sueltas cuya página queda por delante de lo leído hasta ahora. | «Mi registro» de un libro |
+| **Después de la última sesión** | Sin sesión, Nuevas | Grupo de notas sueltas escritas tras la última sesión registrada. | «Mi registro» de un libro |
+| **Otras notas** | Varios, Sin clasificar | Grupo de notas sueltas que no encajan en un tramo ni en los otros dos grupos. | «Mi registro» de un libro |
 | **Quiero leerlo** / **Lo estoy leyendo** / **Ya lo leí** (película y serie: «Quiero verla», «La estoy viendo», «Ya la vi») | Seguir (una obra), Añadir | Las intenciones con las que se añade una obra a la biblioteca desde su ficha: la dejan Pendiente, en curso o terminada. La película no tiene «La estoy viendo». «Seguir» queda para personas, sagas y eventos de club, no para obras. | tarjeta del pase en la ficha (`PassCard`, `item.intent.*`) |
 | **Estado** | Progreso | Dónde estás con una obra: Pendiente / Leyendo / Leído / Abandonado (y su equivalente en película y serie). No es lo mismo que el porcentaje. | `passes.status` |
 | **Obra** | Título, Ítem, Ficha | La cosa del catálogo: un libro, una película o una serie. En copy dirigido al usuario suele ser mejor decir el tipo concreto. | `items` |

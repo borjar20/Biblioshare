@@ -281,7 +281,8 @@
         "src/app/serie/[id]"
       ],
       "gotchas": [
-        "No pongas loading.tsx: estas rutas llaman a notFound()."
+        "No pongas loading.tsx: estas rutas llaman a notFound().",
+        "En libros, «Mi registro» lo compone ReadingLine (servidor) con buildReadingStrip; series y películas siguen con LogPanel. getSessions lleva limit 500 solo en libros."
       ]
     },
     {

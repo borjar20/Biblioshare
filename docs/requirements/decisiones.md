@@ -8377,3 +8377,16 @@ El menú ⋯ de la ficha también está en escritorio: es el único sitio para q
   solo enciende la ficha. El salto de la nota no depende de `disabled` (la tarjeta se deshabilita
   mientras guarda) y no se dispara si la escritura se rechaza: `onChange` puede devolver `false`.
 - Spec: `docs/superpowers/specs/2026-11-11-ficha-con-gesto-design.md`.
+
+## 2026-11-20 — «Mi registro» como tira de lectura
+
+- En libros, las sesiones se pintan como una **tira del libro**: un tramo por sesión, del ancho de
+  lo leído, con las notas como marcas. Su altura no depende de cuántas sesiones haya. Debajo, las
+  tres últimas; el resto, en un historial por meses plegado.
+- **Una nota está en un solo sitio visible:** el detalle del tramo seleccionado (por defecto, la
+  última sesión) o un grupo suelto («Más adelante», «Después de la última sesión», «Otras notas»).
+- **Fechas absolutas** en todas las listas de sesiones («9 nov»; con año si no es el actual).
+- **Fuera el panel «Progreso»** en los tres tipos: su nota y su página ya estaban en la tarjeta
+  del pase. La edición pasa a un chip en la cabecera de «Mi registro».
+- La ficha de libro carga hasta 500 sesiones por pase (antes 20) para dibujar la lectura entera.
+- Spec: `docs/superpowers/specs/2026-11-11-ficha-linea-de-lectura-design.md`.

@@ -43,8 +43,8 @@
   llena, puntos de nota que crecen y saltan, botón que se hunde); el histograma de Comunidad crece al
   pintarse. Sin librerías de animación; respeta el movimiento reducido.
   [Spec](superpowers/specs/2026-11-11-ficha-con-gesto-design.md), decisiones del 2026-11-12.
-- [ ] «Mi registro» como línea de lectura en libros, con limpieza de duplicados en los tres tipos.
-  [Spec](superpowers/specs/2026-11-11-ficha-linea-de-lectura-design.md).
+- [x] «Mi registro» como línea de lectura en libros, con limpieza de duplicados en los tres tipos.
+  [Spec](superpowers/specs/2026-11-11-ficha-linea-de-lectura-design.md), decisiones del 2026-11-20.
 
 ## Moderación administrativa — #1183
 
