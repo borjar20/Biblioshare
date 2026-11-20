@@ -2205,21 +2205,14 @@
       "page": "pág. {page}",
       "range": "pág. {from} → {to}",
       "rangePages": "{count, plural, one {# página} other {# páginas}}",
-      "notesPill": "{count, plural, one {# nota} other {# notas}}"
+      "notesPill": "{count, plural, one {# nota} other {# notas}}",
+      "chooseEdition": "Elegir edición",
+      "chooseVersion": "Elegir versión"
     },
     "log": {
       "progress": {
-        "start": "pág. 0",
-        "current": "pág. {page}",
-        "currentRest": "· {percent}% · este pase",
-        "total": "pág. {total}",
         "closeHint": "Al registrar una sesión que llegue a la pág. {total}, el pase pasa solo a Completado."
-      },
-      "progressTitle": "Progreso",
-      "page": "Voy por la página {page} de {total}",
-      "pageOnly": "Voy por la página {page}",
-      "edition": "Tu edición",
-      "noEdition": "Sin asignar"
+      }
     },
     "meta": {
       "author": "Autor",

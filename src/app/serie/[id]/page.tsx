@@ -663,6 +663,7 @@ async function SeriesTabs({
             // Las series no tienen ediciones (getEditions ni siquiera
             // consulta la BD para este tipo): no hace falta cargarlas.
             editions={[]}
+            currentYear={new Date().getFullYear()}
             canContribute={canContribute}
           />
           {userId && notesPromise && <NotesSection itemType="series" notesPromise={notesPromise} />}

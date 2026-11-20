@@ -572,6 +572,7 @@ async function MovieTabs({
             passes={passes}
             sessions={[]}
             editions={editions}
+            currentYear={new Date().getFullYear()}
             canContribute={canContribute}
           />
           {userId && notesPromise && <NotesSection itemType="movie" notesPromise={notesPromise} />}

@@ -57,7 +57,7 @@ function renderLog({ status = "in_progress" as MediaStatus } = {}) {
         <LogPanel
           itemType="book" itemId="b1"
           entry={{ entryId: "p1", status, position: {} }}
-          passes={[pass(status)]} sessions={[]} editions={[]}
+          passes={[pass(status)]} sessions={[]} editions={[]} currentYear={2026}
         />
       </ItemStatusProvider>
     </NextIntlClientProvider>,
@@ -92,10 +92,16 @@ describe("LogPanel, solo historial", () => {
     render(
       <NextIntlClientProvider locale="es" messages={messages}>
         <ItemStatusProvider initialStatus="planned">
-          <LogPanel itemType="book" itemId="b1" entry={null} passes={[]} sessions={[]} editions={[]} />
+          <LogPanel itemType="book" itemId="b1" entry={null} passes={[]} sessions={[]} editions={[]} currentYear={2026} />
         </ItemStatusProvider>
       </NextIntlClientProvider>,
     );
     expect(screen.getByText("Añadiendo…")).not.toBeNull();
+  });
+
+  it("ya no pinta el panel «Progreso» ni la página", () => {
+    renderLog();
+    expect(screen.queryByText("Progreso")).toBeNull();
+    expect(screen.queryByText(/Voy por la página/)).toBeNull();
   });
 });
