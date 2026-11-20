@@ -252,3 +252,30 @@ edición (las series no tienen ediciones: sin chip). Sus fechas de sesión tambi
 - Estadísticas de ritmo o previsión de fin más allá de «páginas por sesión».
 - Los fallos vistos de paso, que van en issues propias: la etiqueta de edición duplicada (#1624) y
   una obra en «Pendiente» que conserva página y barra de progreso (#1625).
+
+## Ajustes al planificar (2026-11-20)
+
+Al leer el código para el plan (`docs/superpowers/plans/2026-11-20-ficha-linea-de-lectura.md`)
+cambian estos puntos. Donde contradigan a lo de arriba, mandan estos:
+
+- **Una nota se ve en un solo sitio.** Las filas de sesión (últimas y meses) llevan solo la
+  pastilla «N notas»; el texto está en el detalle del tramo seleccionado. Por defecto se abre la
+  última sesión, así que sus notas se ven al entrar. Los grupos sueltos van abiertos, no plegados.
+- **«Sin página» pasa a «Otras notas»:** recoge también las notas con página que no caen en ningún
+  tramo (página 0, o un hueco por una sesión que retrocedió).
+- **Sesiones: solo borrar.** La app no tiene edición de sesiones; el detalle y las filas ofrecen
+  borrar (con la confirmación de hoy si la sesión tiene publicación). «Añadir nota en este tramo»
+  es el compositor de notas anclado a la página final del tramo, dentro del detalle.
+- **Lecturas anteriores:** se queda el diario de pases (`PassDiary`) tal cual, con edición,
+  borrado y visionados conjuntos. El cierre de una lectura activa cerrada se ve en su tarjeta del
+  diario, no en la cabecera de la tira. No hay componente `past-readings`.
+- **Cabecera compartida:** `PassLogHead` (no `reading-line-head`) sirve a los tres tipos.
+- **Notas en el margen:** se conserva una fila con el título «Notas en el margen» y «Dejar una
+  nota en el margen»; las notas en sí van en la tira.
+- **Sesiones cargadas:** `getSessions` acepta `{ limit }`; la ficha de libro pide 500
+  (`READING_STRIP_SESSION_CAP`). Si llegan exactamente 500, la tira no supone que la primera
+  empieza en 0.
+- **`buildReadingStrip`** recibe las notas ya convertidas (`noteToStrip`, `marginToStrip`) y no
+  los objetos de nota; `loose` es `{ ahead, afterLast, other }`. Las tarjetas las pinta el servidor
+  y llegan a la tira por clave.
+- **Compositor sin caja:** `NoteForm` gana la prop `bare`.
