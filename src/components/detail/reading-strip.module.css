@@ -1,0 +1,55 @@
+/* La tira de «Mi registro» (spec 2026-11-11-ficha-linea-de-lectura): un tramo
+   por sesión. Los tramos encogen para caber (mínimo 3px) y el resto es pista. */
+.track {
+  display: flex;
+  gap: 2px;
+  height: 34px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface-muted);
+}
+.segment {
+  flex: 0 1 auto;
+  min-width: 3px;
+  height: 100%;
+  background: var(--accent);
+  opacity: calc(0.38 + var(--recency) * 0.62);
+}
+.segment:hover,
+.segment:focus-visible,
+.segment[aria-pressed="true"] {
+  opacity: 1;
+}
+.segment[aria-pressed="true"] {
+  box-shadow: inset 0 -4px 0 var(--foreground);
+}
+.monthStart {
+  margin-left: 4px;
+}
+.rest {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.mark,
+.markMargin {
+  position: absolute;
+  top: 0;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  border-radius: 2px 2px 50% 50%;
+}
+.mark {
+  background: var(--accent-ink);
+}
+.markMargin {
+  border: 2px solid var(--accent-ink);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .segment {
+    transition: opacity 150ms ease, transform 150ms ease;
+  }
+  .segment:hover {
+    transform: scaleY(1.08);
+  }
+}

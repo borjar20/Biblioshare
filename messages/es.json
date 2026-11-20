@@ -2207,7 +2207,22 @@
       "rangePages": "{count, plural, one {# página} other {# páginas}}",
       "notesPill": "{count, plural, one {# nota} other {# notas}}",
       "chooseEdition": "Elegir edición",
-      "chooseVersion": "Elegir versión"
+      "chooseVersion": "Elegir versión",
+      "pageOf": "de {total} · {percent} %",
+      "summary": "{sessions, plural, one {# sesión} other {# sesiones}} · {time} · {perSession} págs. por sesión",
+      "stripLabel": "Sesiones a lo largo del libro",
+      "segmentLabel": "{date}: páginas {from} a {to}",
+      "legendNote": "Nota o cita",
+      "legendMargin": "Nota en el margen",
+      "detailTitle": "Sesión {n} · {date}",
+      "recent": "Últimas sesiones",
+      "seeAll": "Ver las {count} sesiones, por mes",
+      "hideAll": "Ocultar el historial",
+      "monthSummary": "{sessions, plural, one {# sesión} other {# sesiones}} · {pages, plural, one {# página} other {# páginas}} · {time}{notes, plural, =0 {} one { · # nota} other { · # notas}}",
+      "empty": "Todavía no has registrado ninguna sesión. Registra la primera y aquí verás tu lectura dibujada.",
+      "ahead": "Más adelante",
+      "afterLast": "Después de la última sesión",
+      "other": "Otras notas"
     },
     "log": {
       "progress": {
