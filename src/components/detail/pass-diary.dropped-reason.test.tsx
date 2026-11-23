@@ -86,6 +86,25 @@ async function renderDiary(overrides: Partial<Pass> = {}) {
   return card;
 }
 
+it("mantiene la fecha, la nota y la reseña de cada visionado en su entrada", async () => {
+  const passes: Pass[] = [
+    { ...base, id: "repeat", status: "completed", finishedOn: "2026-10-02", rating: 8, review: "Al volver a verla" },
+    { ...base, id: "first", status: "completed", finishedOn: "2025-04-01", rating: 6, review: "El primer visionado" },
+  ];
+  await act(async () => {
+    render(
+      <NextIntlClientProvider locale="es" timeZone="UTC" messages={messages}>
+        <PassDiary itemType="movie" itemId="movie-1" passes={passes} editions={[]} />
+      </NextIntlClientProvider>,
+    );
+  });
+  const [repeat, first] = screen.getAllByTestId("diary-entry");
+  expect(within(repeat).getByRole("heading", { name: /2.º visionado.*2026/ })).toBeTruthy();
+  expect(within(repeat).getByText("Al volver a verla")).toBeTruthy();
+  expect(within(first).getByRole("heading", { name: /1.º visionado.*2025/ })).toBeTruthy();
+  expect(within(first).getByText("El primer visionado")).toBeTruthy();
+});
+
 describe("PassDiary — motivo de abandono en modo lectura (#655)", () => {
   it.each(DROPPED_REASONS)("dropped con %s muestra su chip traducido", async (reason) => {
     const card = await renderDiary({ droppedReason: reason });

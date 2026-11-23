@@ -26,6 +26,7 @@ vi.mock("@/lib/passes/actions", () => ({ ratePass: vi.fn(), setPassEdition: vi.f
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
 vi.mock("next/link", () => ({ default: ({ href, children }: { href: string; children: ReactNode }) => <a href={href}>{children}</a> }));
 vi.mock("@/components/session-list", () => ({ SessionList: () => null }));
+vi.mock("@/components/margin/margin-note-sheet", () => ({ MarginNoteSheet: () => null }));
 vi.mock("@/components/notes/note-form", () => ({ NoteForm: () => null }));
 vi.mock("@/components/detail/pass-diary", () => ({ PassDiary: () => null }));
 vi.mock("@/components/detail/edition-picker", () => ({ EditionPicker: () => null }));

@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { SessionList } from "@/components/session-list";
+import { MarginComposerButton } from "@/components/margin/margin-composer-button";
 import { NoteForm } from "@/components/notes/note-form";
 import { AddToCollectionSheet } from "@/components/library/add-to-collection-sheet";
 import { PassDiary } from "@/components/detail/pass-diary";
@@ -32,6 +33,7 @@ export function LogPanel({
   editions,
   currentYear,
   canContribute = false,
+  showMarginAction = false,
 }: {
   itemType: ItemType;
   itemId: string;
@@ -42,6 +44,7 @@ export function LogPanel({
   /** Año en curso, del servidor: decide si las fechas llevan año. */
   currentYear: number;
   canContribute?: boolean;
+  showMarginAction?: boolean;
 }) {
   if (!entry) return <AddingPlaceholder />;
   const activePass = passes.find((p) => p.isActive) ?? null;
@@ -66,8 +69,11 @@ export function LogPanel({
         />
       )}
       <PassDiary itemType={itemType} itemId={itemId} passes={passes} editions={editions} />
-      <NoteForm bare itemType={itemType} itemId={itemId} anchor={{ kind: "none" }} />
-      <AddToCollectionButton itemType={itemType} itemId={itemId} />
+      <div className="flex flex-wrap items-center gap-2">
+        <NoteForm compact bare itemType={itemType} itemId={itemId} anchor={{ kind: "none" }} />
+        <AddToCollectionButton itemType={itemType} itemId={itemId} />
+        {showMarginAction && <MarginComposerButton itemType={itemType} itemId={itemId} pages={null} />}
+      </div>
     </div>
   );
 }
@@ -91,10 +97,10 @@ export function AddToCollectionButton({ itemType, itemId }: { itemType: ItemType
         <button
           type="button"
           onClick={open}
-          className="flex items-center justify-center gap-2 self-start rounded-[10px] border border-border px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-surface-muted"
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border px-3 text-sm text-foreground transition-colors hover:bg-surface-muted"
         >
           <span aria-hidden>▤</span>
-          {t("addToCollection")}
+          {t("collectionAction")}
         </button>
       )}
     />

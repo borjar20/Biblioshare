@@ -34,12 +34,12 @@ describe("NotesSection", () => {
     expect(screen.getAllByRole("article").map((item) => item.textContent)).toEqual(["early", "late"]);
   });
 
-  it("muestra el estado vacío con una promesa de notas vacía", async () => {
+  it("omite el cuaderno con una promesa de notas vacía", async () => {
     render(await NotesSection({
       itemType: "book", notesPromise: Promise.resolve([]),
     }));
 
-    expect(screen.getByText("sectionEmpty")).toBeTruthy();
+    expect(screen.queryByText("sectionTitle")).toBeNull();
   });
 
   it("propaga el fallo de la consulta entregada por la ficha", async () => {

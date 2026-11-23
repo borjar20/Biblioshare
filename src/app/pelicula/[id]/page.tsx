@@ -568,6 +568,7 @@ async function MovieTabs({
       log={
         <div className="flex flex-col gap-4">
           <LogPanel
+            showMarginAction={Boolean(userId && marginPromise)}
             itemType="movie"
             itemId={movie.id}
             entry={entry}
@@ -580,7 +581,7 @@ async function MovieTabs({
           {userId && notesPromise && <NotesSection itemType="movie" notesPromise={notesPromise} />}
           {userId && marginPromise && (
             <Suspense fallback={null}>
-              <MarginSection itemType="movie" itemId={movie.id} pages={null} marginPromise={marginPromise} />
+              <MarginSection marginPromise={marginPromise} />
             </Suspense>
           )}
         </div>

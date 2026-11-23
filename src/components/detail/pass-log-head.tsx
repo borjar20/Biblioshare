@@ -10,9 +10,7 @@ import { useItemStatus } from "./item-status-context";
 import { usePassActions } from "./pass-actions-provider";
 import { EditionChip } from "./edition-chip";
 
-// Cabecera de «Mi registro» en los tres tipos: «Pase activo», el ordinal, la
-// edición (libros y películas) y «Nuevo pase». Antes vivía dentro de
-// ManagedLog (log-panel.tsx).
+// El diario comparte cabecera entre medios. Cada entrada identifica su propio pase.
 export function PassLogHead({
   itemType,
   itemId,
@@ -39,14 +37,9 @@ export function PassLogHead({
 
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-      <div className="min-w-0">
-        <span className="block font-mono text-[9.5px] tracking-wider text-muted-foreground uppercase">
-          {tPasses("activeLabel")}
-        </span>
-        <span className="font-serif text-base leading-tight font-semibold">
-          {tPasses(`nth.${itemType}`, { n: passes.length })}
-        </span>
-      </div>
+      <h2 className="min-w-0 font-serif text-xl leading-tight font-semibold">
+        {tPasses(`journalTitle.${itemType}`, { count: passes.length })}
+      </h2>
       {/* Una película sin ediciones y sin permiso para aportar no tiene nada que
           elegir: el selector solo ofrecería «No lo sé». */}
       {openPass && itemType !== "series" && !(itemType === "movie" && editions.length === 0 && !canContribute) && (

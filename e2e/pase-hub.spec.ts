@@ -729,6 +729,17 @@ test.describe("película de un gesto", () => {
       await closeSheetSave(page).click();
       await expect(closeHeading).toHaveCount(0);
 
+      const desktop = page.viewportSize()!;
+      await page.setViewportSize({ width: 360, height: 800 });
+      const journal = page.locator("#detail-log");
+      await expect(journal.getByRole("heading", { name: "Tu visionado" })).toBeVisible();
+      for (const name of ["Nota o cita", "Colección", "Nota al margen"]) {
+        await expect(journal.getByRole("button", { name, exact: true })).toBeVisible();
+      }
+      await expect(journal.getByRole("heading", { name: "Tu cuaderno" })).toHaveCount(0);
+      expect(await journal.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+      await page.setViewportSize(desktop);
+
       await page.getByRole("button", { name: "Nuevo pase" }).click();
       await expect(closeHeading).toBeVisible({ timeout: 15_000 });
       await closeSheetSave(page).click();

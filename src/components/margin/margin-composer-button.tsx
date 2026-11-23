@@ -26,7 +26,8 @@ export function MarginComposerButton({
         onClick={() => setOpen(true)}
         className="inline-flex min-h-11 items-center rounded-full border border-border px-3 text-sm hover:bg-surface-muted"
       >
-        {t("leaveFromDetail")}
+        <span aria-hidden className="mr-1.5">◇</span>
+        {t("shortAction")}
       </button>
       <MarginNoteSheet open={open} onClose={onClose} itemType={itemType} itemId={itemId} pages={pages} />
     </>

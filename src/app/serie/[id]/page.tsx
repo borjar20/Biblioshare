@@ -601,6 +601,7 @@ async function SeriesTabs({
       log={
         <div className="flex flex-col gap-4">
           <LogPanel
+            showMarginAction={Boolean(userId && marginPromise)}
             itemType="series"
             itemId={series.id}
             entry={entry}
@@ -615,7 +616,7 @@ async function SeriesTabs({
           {userId && notesPromise && <NotesSection itemType="series" notesPromise={notesPromise} />}
           {userId && marginPromise && (
             <Suspense fallback={null}>
-              <MarginSection itemType="series" itemId={series.id} pages={null} marginPromise={marginPromise} />
+              <MarginSection marginPromise={marginPromise} />
             </Suspense>
           )}
         </div>

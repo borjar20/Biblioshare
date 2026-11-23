@@ -808,6 +808,11 @@
     "empty": "Todavía no has registrado ningún pase.",
     "open": "En curso",
     "unknownDate": "Fecha desconocida",
+    "journalTitle": {
+      "movie": "{count, plural, one {Tu visionado} other {Tus visionados}}",
+      "series": "{count, plural, one {Tu visionado} other {Tus visionados}}",
+      "book": "{count, plural, one {Tu lectura} other {Tus lecturas}}"
+    },
     "activeLabel": "Pase activo",
     "nth": {
       "book": "{n}.ª lectura",
@@ -2012,6 +2017,7 @@
     "addingToLibrary": "Añadiendo…",
     "unfollow": "Quitar de mi biblioteca",
     "unfollowConfirm": "Quitarla de tu biblioteca borra TODOS sus pases, con sus notas, reseñas y publicaciones. No se puede deshacer.",
+    "collectionAction": "Colección",
     "addToCollection": "Añadir a colección",
     "status": "Estado",
     "manage": "Gestionar",
@@ -3600,6 +3606,7 @@
     "bodyCounter": "{used} / {max}",
     "favorite": "Marcar como favorita",
     "composerTitle": "Anota este momento",
+    "shortToggle": "Nota o cita",
     "composerToggle": "Añadir una nota o cita",
     "anchorLabel": "Anclada a",
     "anchorEdit": "Editar",
@@ -4185,6 +4192,7 @@
     "deleteConfirm": "{count, plural, =0 {¿Borrar esta nota?} one {¿Borrar esta nota? Se perderá la conversación con una persona.} other {¿Borrar esta nota? Se perderán # conversaciones.}}",
     "leave": "Dejar en el margen",
     "leaveEpisode": "Dejar nota en este episodio",
+    "shortAction": "Nota al margen",
     "leaveFromDetail": "Dejar una nota en el margen",
     "sheetTitle": "Una nota en el margen",
     "close": "Cerrar",

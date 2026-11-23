@@ -21,6 +21,7 @@ export async function NotesSection({
 }) {
   const t = await getTranslations("notes");
   const notes = await notesPromise;
+  if (!notes.length) return null;
   const sorted = [...notes].sort((a, b) => compareNotes(itemType, a, b));
 
   return (
@@ -28,15 +29,11 @@ export async function NotesSection({
       <h3 data-section-title className="label-section">
         {t("sectionTitle")}
       </h3>
-      {sorted.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("sectionEmpty")}</p>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {sorted.map((note) => (
-            <NoteCard key={note.id} note={note} />
-          ))}
-        </div>
-      )}
+      <div className="flex flex-col gap-3">
+        {sorted.map((note) => (
+          <NoteCard key={note.id} note={note} />
+        ))}
+      </div>
     </section>
   );
 }

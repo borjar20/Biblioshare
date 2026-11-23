@@ -8412,3 +8412,5 @@ La distribución de notas de Comunidad se muestra en la ficha desde la primera v
 Las valoraciones siguen en el resumen lateral. Las reseñas y sus conversaciones ocupan el ancho del cuerpo de la ficha, con tres reseñas y cinco conversaciones iniciales por reseña.
 
 La tarjeta del pase mantiene los estados a la vista y reserva el color de acento para la acción principal. La nota comparte fila con esa acción cuando cabe y pasa debajo en las tarjetas estrechas.
+
+El registro personal agrupa cada pase en una entrada con fecha, nota y reseña. Las acciones de anotación y colección siguen disponibles con el cuaderno vacío. En libros la captura de una cita conserva la página del tramo actual.

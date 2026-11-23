@@ -32,6 +32,7 @@ export function NoteComposer({
   anchor,
   anchorHint,
   defaultOpen = false,
+  compact = false,
   onHasBodyChange,
   maxBody = 5000,
   onSave,
@@ -43,6 +44,7 @@ export function NoteComposer({
   anchorHint?: string;
   /** Plegado por defecto en la hoja (la hoja ya mide 848px de scroll). */
   defaultOpen?: boolean;
+  compact?: boolean;
   /** Avisa al padre de si hay texto, para que el footer cambie de rótulo. */
   onHasBodyChange?: (hasBody: boolean) => void;
   /** Tope de caracteres del textarea. Por defecto el de `notes.body` (5000);
@@ -98,7 +100,7 @@ export function NoteComposer({
         onClick={() => setOpen(true)}
         className="inline-flex items-center gap-2 self-start rounded-full border border-border px-4 py-2 text-[12.5px] font-medium text-muted-foreground transition-colors hover:bg-surface-muted"
       >
-        ✎ {t("composerToggle")}
+        <span aria-hidden>✎</span> {t(compact ? "shortToggle" : "composerToggle")}
       </button>
     );
   }

@@ -58,7 +58,6 @@ export async function ReadingLine({
   if (!entry) return <AddingPlaceholder />;
 
   const t = await getTranslations("detail.readingStrip");
-  const tMargin = await getTranslations("margin");
   const [notes, margin] = await Promise.all([
     notesPromise ?? Promise.resolve([] as Notes),
     marginPromise ?? Promise.resolve({ found: [], mine: [] } as Margin),
@@ -139,18 +138,13 @@ export async function ReadingLine({
           </section>
         ),
       )}
-      <section className="flex flex-col gap-3" aria-labelledby="margin-title">
-        <div className="flex items-center justify-between gap-2">
-          <h3 id="margin-title" data-section-title className="label-section">
-            {tMargin("sectionTitle")}
-          </h3>
-          <MarginComposerButton itemType="book" itemId={itemId} pages={marginPages} />
-        </div>
-        <MarginRetroSeen key={retroUnseen.join(",")} ids={retroUnseen} />
-        <MarginReveal key={reveal.map((n) => n.encounter!.id).join(",")} notes={reveal} />
-      </section>
+      <MarginRetroSeen key={retroUnseen.join(",")} ids={retroUnseen} />
+      <MarginReveal key={reveal.map((n) => n.encounter!.id).join(",")} notes={reveal} />
       <PassDiary itemType="book" itemId={itemId} passes={passes} editions={editions} />
-      <AddToCollectionButton itemType="book" itemId={itemId} />
+      <div className="flex flex-wrap items-center gap-2">
+        <AddToCollectionButton itemType="book" itemId={itemId} />
+        <MarginComposerButton itemType="book" itemId={itemId} pages={marginPages} />
+      </div>
     </div>
   );
 }
