@@ -79,6 +79,10 @@ describe("ReadingStripCard", () => {
     expect(within(detail).getByText("texto note:2")).toBeTruthy();
     expect(within(detail).queryByRole("textbox", { name: "nota" })).toBeNull();
   });
+  it("el porcentaje no dice 100 % mientras falte alguna página", () => {
+    renderPlaced([s("a", "2026-07-01", 668)], 669, 668);
+    expect(screen.getByText(/99 %/)).toBeTruthy();
+  });
   it("tocar un tramo lo abre; tocarlo otra vez, o Escape, lo cierra", () => {
     renderStrip(four, [note("note:2", 60)]);
     const tramo = screen.getByRole("button", { name: /20 jul: páginas 40 a 90/ });

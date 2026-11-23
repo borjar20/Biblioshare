@@ -47,7 +47,9 @@ export function PassLogHead({
           {tPasses(`nth.${itemType}`, { n: passes.length })}
         </span>
       </div>
-      {openPass && itemType !== "series" && (
+      {/* Una película sin ediciones y sin permiso para aportar no tiene nada que
+          elegir: el selector solo ofrecería «No lo sé». */}
+      {openPass && itemType !== "series" && !(itemType === "movie" && editions.length === 0 && !canContribute) && (
         <EditionChip
           key={openPass.id}
           itemType={itemType}

@@ -62,9 +62,8 @@ export function SessionList({
     <div className="flex flex-col">
       <div className="mb-[11px] flex items-baseline justify-between gap-2 lg:mb-[15px]">
         {/* El `.h5` del frame: mono, versalitas y apagado — no un título en
-            negrita. En PC la edición va en la MISMA línea ("Sesiones · Plaza
-            & Janés (tapa dura)"), como hace el frame 10; en móvil no cabe y
-            baja a su propia línea, como hace el frame 3. */}
+            negrita. La edición ya no va aquí: es el chip de la cabecera de
+            «Mi registro» (PassLogHead). */}
         <h3 data-section-title className="label-section">
           {t("title")}
         </h3>

@@ -99,7 +99,7 @@ export function ReadingStripCard({
   const marks = [...segments.flatMap((s) => s.notes), ...strip.loose.ahead, ...strip.loose.afterLast, ...strip.loose.other].filter(
     (n): n is typeof n & { page: number } => n.page !== null && n.page <= scale,
   );
-  const percent = strip.totalPages ? Math.min(100, Math.round((strip.currentPage / strip.totalPages) * 100)) : null;
+  const percent = strip.totalPages ? Math.max(0, Math.min(100, Math.floor((strip.currentPage / strip.totalPages) * 100))) : null;
   const monthsChrono = [...strip.months].reverse();
 
   return (
