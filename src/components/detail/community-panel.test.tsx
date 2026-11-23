@@ -76,7 +76,7 @@ describe("CommunityPanel en la ficha compartida", () => {
     expect(screen.queryByText("El desenlace")).toBeNull();
     const summary = screen.getByText("moreReviews 1");
     fireEvent.click(summary);
-    fireEvent.click(screen.getAllByRole("button", { name: "progress.showSpoiler" }).at(-1)!);
+    fireEvent.click(screen.getAllByRole("button", { name: "showSpoiler" }).at(-1)!);
     expect(screen.getByText("El desenlace").closest("article")?.textContent).toContain("pase-hilo");
   });
 });

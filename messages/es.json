@@ -540,6 +540,7 @@
     "companions": "Acompañantes"
   },
   "common": {
+    "showSpoiler": "Mostrar spoiler",
     "appName": "Biblioshare",
     "loading": "Cargando...",
     "zoomImage": "Ampliar imagen",
@@ -1246,7 +1247,6 @@
     },
     "progress": {
       "reachedPage": "Llegó a la pág. {page}",
-      "showSpoiler": "Mostrar spoiler",
       "showOlder": "ver {count, plural, one {# sesión anterior} other {# sesiones anteriores}}",
       "showLess": "ver menos"
     },
