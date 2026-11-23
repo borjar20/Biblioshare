@@ -28,6 +28,15 @@ function renderStrip(sessions: ProgressSession[], notes: StripNote[] = []) {
     </NextIntlClientProvider>,
   );
 }
+function renderPlaced(sessions: ProgressSession[], totalPages: number, currentPage: number | null, notes: StripNote[] = []) {
+  const strip = buildReadingStrip({ sessions, notes, totalPages, currentPage, closed: false, complete: true });
+  const noteNodes = Object.fromEntries(notes.map((n) => [n.key, <p key={n.key}>{`texto ${n.key}`}</p>]));
+  render(
+    <NextIntlClientProvider locale="es" messages={messages}>
+      <ReadingStripCard strip={strip} itemId="b1" sessionsPassId="p1" currentYear={2026} noteNodes={noteNodes} showCloseHint={false} />
+    </NextIntlClientProvider>,
+  );
+}
 const four = [s("a", "2026-07-08", 40), s("b", "2026-07-20", 90), s("c", "2026-08-02", 150), s("d", "2026-08-10", 200)];
 
 describe("ReadingStripCard", () => {
@@ -54,6 +63,13 @@ describe("ReadingStripCard", () => {
     const detail = screen.getByTestId("reading-strip-detail");
     expect(within(detail).getByText(/Sesión 2 · 20 jul/)).toBeTruthy();
     expect(within(detail).getByText("texto note:5")).toBeTruthy();
+  });
+  it("cada tramo se dibuja en sus páginas y el más reciente queda encima en una relectura", () => {
+    renderPlaced([s("a", "2026-07-01", 120), s("b", "2026-07-02", 668), s("c", "2026-07-03", 120), s("d", "2026-07-04", 240)], 669, 240);
+    const reread = screen.getByRole("button", { name: /páginas 120 a 240/ });
+    const first = screen.getByRole("button", { name: /páginas 120 a 668/ });
+    expect(parseFloat(reread.style.left)).toBeCloseTo((120 / 669) * 100, 5);
+    expect(Number(reread.style.zIndex)).toBeGreaterThan(Number(first.style.zIndex));
   });
   it("tocar un tramo lo abre; tocarlo otra vez, o Escape, lo cierra", () => {
     renderStrip(four, [note("note:2", 60)]);

@@ -155,7 +155,7 @@ export function ReadingStripCard({
             }}
             onClick={onTrackClick}
           >
-            {visible.map((s, i) => {
+            {visible.map((s) => {
               const date = sessionDateLabel(s.date, currentYear);
               const label = [t("segmentLabel", { date, from: s.from, to: s.to }), s.minutes != null ? durationLabel(s.minutes) : null]
                 .filter(Boolean)
@@ -168,12 +168,18 @@ export function ReadingStripCard({
                   aria-pressed={s.sessionId === selected}
                   aria-label={label}
                   title={label}
-                  className={`${styles.segment} ${i > 0 && visible[i - 1].monthKey !== s.monthKey ? styles.monthStart : ""}`}
-                  style={{ width: `${(s.pages / scale) * 100}%`, "--recency": s.recency } as CSSProperties}
+                  className={styles.segment}
+                  style={
+                    {
+                      left: `${(s.from / scale) * 100}%`,
+                      width: `${(s.pages / scale) * 100}%`,
+                      zIndex: s.index,
+                      "--recency": s.recency,
+                    } as CSSProperties
+                  }
                 />
               );
             })}
-            <span aria-hidden className={styles.rest} />
           </div>
           <div className="mt-1 flex justify-between font-mono text-[10px] text-muted-foreground">
             <span>{t("page", { page: 0 })}</span>
