@@ -124,6 +124,19 @@ test.describe("móvil 375", () => {
     expect(editions!.y).toBeGreaterThan(ficha!.y);
   });
 
+  test("el cartel termina antes de la cabecera en móvil", async ({ page }) => {
+    await page.goto(SERIES);
+    const title = page.getByRole("heading", { level: 1 });
+    const poster = page.locator("[data-poster]");
+    await expect(title).toBeVisible();
+    for (const height of [640, 915]) {
+      await page.setViewportSize({ width: 375, height });
+      const art = await poster.boundingBox();
+      const header = await title.locator("..").boundingBox();
+      expect(art!.y + art!.height).toBeLessThanOrEqual(header!.y + 1);
+    }
+  });
+
   test("Episodios comunitarios en móvil: consulta la información y vuelve a la misma celda", async ({ page }) => {
     await page.goto(`${SERIES}?tab=episodes`);
     const episodes = page.locator("#detail-episodes");

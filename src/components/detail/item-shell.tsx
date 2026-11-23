@@ -9,7 +9,7 @@ import { PosterArtView } from "./poster-art-view";
 import { WorkScope } from "./work-scope";
 
 // La ficha como cartel propio de cada obra (spec 2026-11-09): un árbol para móvil
-// y PC. Hasta `lg` el cartel abre la página y la cabecera monta sobre su degradado;
+// y PC. Hasta `lg` el cartel abre la página y la cabecera empieza donde termina su degradado;
 // desde `lg` el cartel es una columna fija a la izquierda.
 //
 // Las pestañas siguen llegando como slot y se pintan UNA vez, así que el

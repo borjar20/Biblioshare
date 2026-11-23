@@ -16,7 +16,7 @@ const TYPE_ICON = {
 
 // La cabecera del cartel (spec 2026-11-09): tipo, título, autor, nota y la
 // tarjeta «tu pase», en UNA sola instancia. La imagen y la barra de móvil viven
-// en ItemShell. Hasta `xl` se monta sobre el degradado del cartel; desde `xl` va
+// en ItemShell. Hasta `lg` sigue al cartel en el flujo; desde `lg` va
 // en la columna derecha.
 export function ItemHero({
   itemType,
