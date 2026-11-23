@@ -8416,3 +8416,5 @@ La tarjeta del pase mantiene los estados a la vista y reserva el color de acento
 El registro personal agrupa cada pase en una entrada con fecha, nota y reseña. Las acciones de anotación y colección siguen disponibles con el cuaderno vacío. En libros la captura de una cita conserva la página del tramo actual.
 
 La ficha reúne el estado, la nota y la acción principal en el pase personal. En móvil va antes de la información y los episodios. En escritorio encabeza la columna derecha. El estado se cambia desde un selector nativo y la acción de repetir un pase completado aparece una sola vez en el bloque.
+
+La rejilla móvil de episodios agrupa cada temporada en un bloque y recorre sus episodios de izquierda a derecha. La media usa las notas disponibles de la fuente elegida. En escritorio se mantiene la tabla comparativa.

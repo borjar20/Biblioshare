@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextIntlClientProvider } from "next-intl";
 import messages from "../../../messages/es.json";
 import type { EpisodeRow } from "@/lib/series/get-episode-data";
 import { ItemStatusProvider } from "./item-status-context";
 import { useSeriesEpisodes } from "./series-episode-context";
+import { EpisodeGrid } from "./episode-grid";
 import { EpisodePanel } from "./episode-panel";
 
 // Las server actions no deben tocar Supabase: se sustituyen por espías para
@@ -74,6 +75,34 @@ function renderPanel(episodes: EpisodeRow[], initiallyExpanded = true) {
     </NextIntlClientProvider>,
   );
 }
+
+it("agrupa todas las temporadas y calcula su media solo con las notas de la fuente elegida", () => {
+  const first = ep(1, 1, { watched: true, rating: 6 });
+  first.avgRating = 9;
+  first.ratingCount = 2;
+  const seasons = [
+    { season: 1, episodes: [first, ...Array.from({ length: 24 }, (_, i) => ep(1, i + 2))] },
+    ...Array.from({ length: 6 }, (_, i) => ({ season: i + 2, episodes: [ep(i + 2, 1)] })),
+  ];
+  const onSelect = vi.fn();
+  const grid = (source: "community" | "mine") => (
+    <NextIntlClientProvider locale="es" messages={messages}>
+      <EpisodeGrid seasons={seasons} source={source} selectedKey={null} onSelect={onSelect} />
+    </NextIntlClientProvider>
+  );
+  const { rerender } = render(grid("community"));
+  const season = within(screen.getByRole("region", { name: "Temporada 1" }));
+  expect(season.getByText("media 9.0")).toBeTruthy();
+  const buttons = season.getAllByRole("button");
+  expect(buttons).toHaveLength(25);
+  expect(buttons[24].textContent).toContain("E25");
+  expect(buttons[24].textContent).toContain("—");
+  fireEvent.click(buttons[24]);
+  expect(onSelect).toHaveBeenCalledWith(seasons[0].episodes[24]);
+  expect(screen.getByRole("region", { name: "Temporada 7" })).toBeTruthy();
+  rerender(grid("mine"));
+  expect(season.getByText("media 6.0")).toBeTruthy();
+});
 
 describe("EpisodePanel · fase 3", () => {
   it("desmarcar un episodio con nota pide confirmación, y si se cancela no llama al servidor (#1194)", () => {
