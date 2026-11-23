@@ -28,6 +28,78 @@ function CommunityDetail({ episode }: { episode: EpisodeRow }) {
   );
 }
 
+const EPISODES_PER_GROUP = 50;
+
+function SeasonEpisodes({ episodes }: { episodes: EpisodeRow[] }) {
+  const t = useTranslations("episode");
+  const [query, setQuery] = useState("");
+  const [group, setGroup] = useState(0);
+  const [choice, setChoice] = useState("");
+  const term = query.trim().toLocaleLowerCase();
+  const matches = episodes.filter(ep => {
+    if (!term) return true;
+    if (/^e?\d+$/.test(term)) return ep.episode === Number(term.replace(/^e/, ""));
+    return ep.title?.toLocaleLowerCase().includes(term);
+  });
+  const start = group * EPISODES_PER_GROUP;
+  const visible = matches.slice(start, start + EPISODES_PER_GROUP);
+  const selected = visible.find(ep => String(ep.episode) === choice);
+  const field = "block min-h-11 w-full min-w-0 rounded-md border border-border bg-background px-3 text-sm";
+
+  return (
+    <div className="mt-3 space-y-3">
+      {episodes.length > EPISODES_PER_GROUP && (
+        <input type="search" value={query} aria-label={t("findEpisode")} placeholder={t("findEpisode")}
+          className={field} onChange={event => {
+            setQuery(event.target.value);
+            setGroup(0);
+            setChoice("");
+          }} />
+      )}
+      {matches.length > EPISODES_PER_GROUP && (
+        <label className="block text-sm">{t("episodeRange")}
+          <select className={field} value={group} onChange={event => {
+            setGroup(Number(event.target.value));
+            setChoice("");
+          }}>
+            {Array.from({ length: Math.ceil(matches.length / EPISODES_PER_GROUP) }, (_, i) => {
+              const first = matches[i * EPISODES_PER_GROUP];
+              const last = matches[Math.min((i + 1) * EPISODES_PER_GROUP, matches.length) - 1];
+              return <option key={i} value={i}>E{first.episode} – E{last.episode}</option>;
+            })}
+          </select>
+        </label>
+      )}
+      {visible.length ? (
+        <select aria-label={t("chooseEpisode")} className={field} value={choice}
+          onChange={event => setChoice(event.target.value)}>
+          <option value="">{t("chooseEpisode")}</option>
+          {visible.map(ep => <option key={ep.episode} value={ep.episode}>
+            {t("episodeShort", { n: ep.episode })} · {ep.title ?? t("untitled")}
+          </option>)}
+        </select>
+      ) : <p role="status" className="text-sm text-muted-foreground">{t("noMatchingEpisodes")}</p>}
+      {selected && <article className="border-t border-border pt-4"><CommunityDetail episode={selected} /></article>}
+    </div>
+  );
+}
+
+function EpisodeGuide({ seasons }: { seasons: SeasonGroup[] }) {
+  const t = useTranslations("episode");
+  const [choice, setChoice] = useState("");
+  const selected = seasons.find(group => String(group.season) === choice);
+  return (
+    <div className="max-w-prose">
+      <select aria-label={t("chooseSeason")} value={choice} onChange={event => setChoice(event.target.value)}
+        className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm">
+        <option value="">{t("chooseSeason")}</option>
+        {seasons.map(({ season }) => <option key={season} value={season}>{t("season", { n: season })}</option>)}
+      </select>
+      {selected && <SeasonEpisodes key={selected.season} episodes={selected.episodes} />}
+    </div>
+  );
+}
+
 export function EpisodeGrid({ seasons }: { seasons: SeasonGroup[] }) {
   const t = useTranslations("episode");
   const tLegend = useTranslations("detail.grid.legend");
@@ -69,29 +141,7 @@ export function EpisodeGrid({ seasons }: { seasons: SeasonGroup[] }) {
         </button>
       </div>
       {showInfo ? (
-        <div className="space-y-8">
-          {seasons.map(({ season, episodes }) => (
-            <section key={season} aria-label={t("season", { n: season })}>
-              <h3 className="border-b border-border pb-2 font-serif text-lg font-semibold">{t("season", { n: season })}</h3>
-              <ol className="divide-y divide-border">
-                {episodes.map((ep) => (
-                  <li key={ep.episode} className="grid grid-cols-[auto_1fr] items-baseline gap-x-3 py-3">
-                    <span className="font-mono text-xs text-muted-foreground">{t("episodeShort", { n: ep.episode })}</span>
-                    <div className="min-w-0">
-                      <h4 className="font-semibold">{ep.title ?? t("untitled")}</h4>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {ep.avgRating !== null && <strong>{ep.avgRating.toFixed(1)}/10 · </strong>}
-                        {t("communityCount", { count: ep.ratingCount })}
-                        {!ep.aired && ` · ${t("upcoming")}`}
-                      </p>
-                      {ep.synopsis && <p className="mt-2 max-w-prose text-sm leading-relaxed">{ep.synopsis}</p>}
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            </section>
-          ))}
-        </div>
+        <EpisodeGuide seasons={seasons} />
       ) : (
         <>
         <div className="mb-4 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
