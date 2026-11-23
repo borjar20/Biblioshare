@@ -259,13 +259,17 @@ Al leer el código para el plan (`docs/superpowers/plans/2026-11-20-ficha-linea-
 cambian estos puntos. Donde contradigan a lo de arriba, mandan estos:
 
 - **Una nota se ve en un solo sitio.** Las filas de sesión (últimas y meses) llevan solo la
-  pastilla «N notas»; el texto está en el detalle del tramo seleccionado. Por defecto se abre la
-  última sesión, así que sus notas se ven al entrar. Los grupos sueltos van abiertos, no plegados.
+  pastilla «N notas»; el texto está en el detalle del tramo seleccionado. Por defecto se abre el
+  tramo más reciente que contiene la página actual (si no hay, el último que avanzó), así que sus
+  notas se ven al entrar. Los grupos sueltos van abiertos, no plegados.
 - **«Sin página» pasa a «Otras notas»:** recoge también las notas con página que no caen en ningún
   tramo (página 0, o un hueco por una sesión que retrocedió).
-- **Sesiones: solo borrar.** La app no tiene edición de sesiones; el detalle y las filas ofrecen
-  borrar (con la confirmación de hoy si la sesión tiene publicación). «Añadir nota en este tramo»
-  es el compositor de notas anclado a la página final del tramo, dentro del detalle.
+- **Sesiones: solo borrar.** La app no tiene edición de sesiones; las filas ofrecen
+  borrar (con la confirmación de hoy si la sesión tiene publicación); el detalle no. El
+  compositor de notas está solo en el tramo de la página actual y se ancla en ella.
+- **Tramos en sus páginas.** Cada tramo se dibuja en sus páginas del libro (posición y ancho por
+  página, el más reciente encima en las relecturas), no en fila por orden de tiempo: no hay hueco
+  entre meses.
 - **Lecturas anteriores:** se queda el diario de pases (`PassDiary`) tal cual, con edición,
   borrado y visionados conjuntos. El cierre de una lectura activa cerrada se ve en su tarjeta del
   diario, no en la cabecera de la tira. No hay componente `past-readings`.

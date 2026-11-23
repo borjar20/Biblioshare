@@ -463,7 +463,7 @@ test.describe
       page.getByRole("heading", { name: "¿Retomar donde lo dejaste?" }),
     ).toHaveCount(0);
 
-    // Diario con los dos pases; el nuevo panel de Progreso existe (el pase
+    // Diario con los dos pases; la tira de lectura existe (el pase
     // recién creado tiene posición vacía) pero SIN página registrada todavía.
     await expect(diaryEntry(page, "book", 1)).toBeVisible({ timeout: 15_000 });
     await expect(diaryEntry(page, "book", 2)).toBeVisible();

@@ -8390,3 +8390,14 @@ El menú ⋯ de la ficha también está en escritorio: es el único sitio para q
   del pase. La edición pasa a un chip en la cabecera de «Mi registro».
 - La ficha de libro carga hasta 500 sesiones por pase (antes 20) para dibujar la lectura entera.
 - Spec: `docs/superpowers/specs/2026-11-11-ficha-linea-de-lectura-design.md`.
+
+## 2026-11-23 — Línea de lectura: reglas tras los e2e
+
+- La nota va a la sesión más reciente cuyo tramo contiene su página: con relecturas o
+  correcciones, la nota de hoy caía en un tramo antiguo y no se veía.
+- Por defecto se abre el tramo más reciente que contiene la página actual (si no hay, el último
+  que avanzó).
+- Cada tramo se dibuja en sus páginas (left y ancho por página, el más reciente encima), ya no en
+  fila por orden de tiempo: no hay hueco entre meses, que se distinguen por la opacidad.
+- El compositor de notas solo está en el tramo de la página actual y se ancla en ella.
+- Las sesiones se borran desde las filas, no desde el detalle.

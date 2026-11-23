@@ -155,7 +155,7 @@ desde el avatar global. Las funciones de la app tienen navegación propia;
 | **Pase** | Lectura, Entrada de diario, `diary_entry` | Una pasada completa por una obra (1.ª lectura, 2.º visionado). **Es donde vive el estado vivo del usuario.** | tabla `passes` |
 | **Sesión** | Registro, Avance | Un rato concreto dentro de un pase, con su página o minuto. | tabla `progress_sessions` |
 | **Tira de lectura** | Gráfico, Barra de progreso | La tira de «Mi registro» en la ficha de un libro: un tramo por sesión, del ancho de lo leído, con las notas como marcas. | ficha de libro, `ReadingStripCard` (`data-testid="reading-strip"`) |
-| **Tramo** | Segmento, Barra | Cada sesión dibujada en la tira de lectura. Tocarlo abre su detalle; por defecto, el de la última sesión. | `ReadingStripCard` |
+| **Tramo** | Segmento, Barra | Cada sesión dibujada en la tira de lectura. Tocarlo abre su detalle; por defecto, el del tramo más reciente que contiene la página actual (si no hay, el último que avanzó). | `ReadingStripCard` |
 | **Más adelante** | Futuro, Spoilers | Grupo de notas sueltas cuya página queda por delante de lo leído hasta ahora. | «Mi registro» de un libro |
 | **Después de la última sesión** | Sin sesión, Nuevas | Grupo de notas sueltas escritas tras la última sesión registrada. | «Mi registro» de un libro |
 | **Otras notas** | Varios, Sin clasificar | Grupo de notas sueltas que no encajan en un tramo ni en los otros dos grupos. | «Mi registro» de un libro |

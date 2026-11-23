@@ -44,7 +44,7 @@ describe("buildReadingStrip — tramos", () => {
 
 describe("buildReadingStrip — notas", () => {
   const sessions = [s("a", "2026-08-01", 40), s("b", "2026-08-05", 90)];
-  it("una nota es de la primera sesión cuyo tramo la contiene (desde < pág. ≤ hasta)", () => {
+  it("una nota es de la sesión cuyo tramo la contiene (desde < pág. ≤ hasta)", () => {
     const strip = buildReadingStrip({ ...base, sessions, notes: [n("x", 40), n("y", 41), n("z", 90)] });
     expect(strip.segments[0].notes.map((x) => x.key)).toEqual(["x"]);
     expect(strip.segments[1].notes.map((x) => x.key)).toEqual(["y", "z"]);
