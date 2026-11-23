@@ -7,7 +7,7 @@ import { DETAIL_CONTAINER } from "./detail-container";
 import { detailTabOrder, clampDetailTab, type DetailTabId } from "./tab-visibility";
 
 export function ItemDetailTabs({
-  tablistLabel, labels, info, episodes, community, log, stickyAction, inlineLog = false,
+  tablistLabel, labels, info, episodes, community, reviews, log, stickyAction, inlineLog = false,
   logLinkLabel, logPreview,
 }: {
   tablistLabel: string;
@@ -15,6 +15,7 @@ export function ItemDetailTabs({
   info: ReactNode;
   episodes?: ReactNode;
   community: ReactNode;
+  reviews?: ReactNode;
   log: ReactNode;
   stickyAction?: ReactNode;
   inlineLog?: boolean;
@@ -126,6 +127,7 @@ export function ItemDetailTabs({
               {hasInlineLog && <section id="detail-log" aria-label={labels.log} className={sectionOffset}>{log}</section>}
               <section id="detail-community" aria-label={labels.community} className={sectionOffset}>{community}</section>
             </div>
+            {reviews && <div className="min-w-0 empty:hidden xl:col-span-2">{reviews}</div>}
           </div>
         )}
       </div>

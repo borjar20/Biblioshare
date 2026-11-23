@@ -8,8 +8,30 @@ import { CommunitySummary } from "@/components/detail/community-summary";
 import { ReviewRow } from "@/components/detail/review-row";
 import { ReviewInteractions } from "@/components/social/review-interactions";
 
+import { ReviewList } from "./review-list";
+
+export async function CommunityPanel({ itemType, community, reviewCount }: {
+  itemType: ItemType;
+  community: Community;
+  reviewCount: number;
+}) {
+  const t = await getTranslations("detail");
+  return (
+    <section className="min-w-0 rounded-xl border border-border bg-surface p-4">
+      <h2 className="mb-3 label-section">{t("tabCommunity")}</h2>
+      {community.avgRating !== null && <CommunitySummary itemType={itemType} avgRating={community.avgRating}
+        distribution={community.distribution} ratingsLabel={t("ratings", { count: community.ratingCount })} />}
+      {reviewCount > 0 ? (
+        <a href="#detail-reviews" className="mt-3 inline-block text-sm font-semibold underline underline-offset-4">
+          {t("readReviews", { count: reviewCount })}
+        </a>
+      ) : <p className="mt-2 text-sm text-muted-foreground">{t(community.avgRating === null ? "communityEmpty" : "noReviews")}</p>}
+    </section>
+  );
+}
+
 // Las reseñas de pase y de episodio comparten orden cronológico (#713).
-export async function CommunityPanel({
+export async function CommunityReviews({
   itemType,
   community,
   episodeReviews,
@@ -75,6 +97,7 @@ export async function CommunityPanel({
     // enganchar: la reseña se muestra sin barra de interacción.
     interactions: review.interactionTargetId ? (
       <ReviewInteractions
+        threadPageSize={5}
         interactionTargetId={review.interactionTargetId}
         reactionCount={review.reactionCount}
         viewerReacted={review.viewerReacted}
@@ -107,6 +130,7 @@ export async function CommunityPanel({
     ),
     interactions: (
       <ReviewInteractions
+        threadPageSize={5}
         interactionTargetId={review.interactionTargetId}
         reactionCount={review.reactionCount}
         viewerReacted={review.viewerReacted}
@@ -144,39 +168,11 @@ export async function CommunityPanel({
     );
   }
 
+  if (!rows.length) return null;
   return (
-    <section className="min-w-0 rounded-xl border border-border bg-surface p-4">
-      <h2 className="mb-3 label-section">{t("tabCommunity")}</h2>
-      {community.avgRating === null && rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{t("communityEmpty")}</p>
-      ) : (
-        <>
-          {community.avgRating !== null && (
-            <CommunitySummary
-              itemType={itemType}
-              avgRating={community.avgRating}
-              distribution={community.distribution}
-              ratingsLabel={t("ratings", { count: community.ratingCount })}
-            />
-          )}
-          {rows.length > 0 ? (
-            <div className={community.avgRating !== null ? "mt-4 border-t border-border pt-4" : undefined}>
-              <h3 className="mb-3 text-sm font-semibold">{t("reviews")} · {rows.length}</h3>
-              <div>{renderReview(rows[0])}</div>
-              {rows.length > 1 && (
-                <details>
-                  <summary className="cursor-pointer rounded-sm py-2 text-sm font-medium text-foreground">
-                    {t("moreReviews", { count: rows.length - 1 })}
-                  </summary>
-                  <div>{rows.slice(1).map(renderReview)}</div>
-                </details>
-              )}
-            </div>
-          ) : (
-            <p className="mt-3 text-sm text-muted-foreground">{t("noReviews")}</p>
-          )}
-        </>
-      )}
+    <section id="detail-reviews" aria-labelledby="work-reviews-title" className="scroll-mt-[calc(var(--topbar-h)+60px)] border-t border-border pt-6">
+      <h2 id="work-reviews-title" className="mb-5 label-section">{t("reviews")} · {rows.length}</h2>
+      <ReviewList>{rows.map(renderReview)}</ReviewList>
     </section>
   );
 }

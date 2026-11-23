@@ -35,7 +35,7 @@ import {
   MetadataSidebar,
   type MetaRow,
 } from "@/components/detail/metadata-sidebar";
-import { CommunityPanel } from "@/components/detail/community-panel";
+import { CommunityPanel, CommunityReviews } from "@/components/detail/community-panel";
 import { SagaStrip } from "@/components/detail/saga-strip";
 import { EditionsSection } from "@/components/detail/edition-details";
 import { EditionsLoading } from "@/components/detail/editions-loading";
@@ -557,14 +557,13 @@ async function MovieTabs({
           />
         </CatalogEditor>
       }
-      community={
-        <div className="flex flex-col gap-10">
-          <CommunityPanel
+      community={<CommunityPanel itemType="movie" community={community} reviewCount={community.reviews.length} />}
+      reviews={
+          <CommunityReviews
             itemType="movie"
             community={community}
             viewerLoggedIn={Boolean(userId)}
           />
-        </div>
       }
       log={
         <div className="flex flex-col gap-4">

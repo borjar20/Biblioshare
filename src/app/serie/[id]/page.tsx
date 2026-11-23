@@ -37,7 +37,7 @@ import {
   MetadataSidebar,
   type MetaRow,
 } from "@/components/detail/metadata-sidebar";
-import { CommunityPanel } from "@/components/detail/community-panel";
+import { CommunityPanel, CommunityReviews } from "@/components/detail/community-panel";
 import { EpisodePanel } from "@/components/detail/episode-panel";
 import { SagaStrip } from "@/components/detail/saga-strip";
 import { ItemStatusProvider } from "@/components/detail/item-status-context";
@@ -588,16 +588,15 @@ async function SeriesTabs({
         )
       ) : undefined}
       logLinkLabel={tDetail("viewHistory")}
-      community={
-        <div className="flex flex-col gap-10">
-          <CommunityPanel
+      community={<CommunityPanel itemType="series" community={community} reviewCount={community.reviews.length + episodeReviews.length} />}
+      reviews={
+          <CommunityReviews
             itemType="series"
             community={community}
             episodeReviews={episodeReviews}
             episodeKnownUsernames={episodeKnownUsernames}
             viewerLoggedIn={Boolean(userId)}
           />
-        </div>
       }
       log={
         <div className="flex flex-col gap-4">

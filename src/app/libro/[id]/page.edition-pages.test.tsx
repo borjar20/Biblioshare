@@ -47,7 +47,7 @@ vi.mock("@/components/detail/item-detail-tabs", () => ({ ItemDetailTabs: () => n
 vi.mock("@/components/detail/info-panel", () => ({ InfoPanel: () => null }));
 vi.mock("@/components/detail/info-layout", () => ({ InfoLayout: () => null }));
 vi.mock("@/components/detail/metadata-sidebar", () => ({ MetadataSidebar: () => null }));
-vi.mock("@/components/detail/community-panel", () => ({ CommunityPanel: () => null }));
+vi.mock("@/components/detail/community-panel", () => ({ CommunityPanel: () => null, CommunityReviews: () => null }));
 vi.mock("@/components/detail/saga-strip", () => ({ SagaStrip: () => null }));
 vi.mock("@/components/detail/edition-details", () => ({ EditionsSection: () => null }));
 vi.mock("@/components/detail/editions-loading", () => ({ EditionsLoading: () => null }));

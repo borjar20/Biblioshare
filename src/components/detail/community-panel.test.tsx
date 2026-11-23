@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Community } from "@/lib/community/get-community";
 import type { EpisodeReview } from "@/lib/series/get-episode-reviews";
-import { CommunityPanel } from "./community-panel";
+import { CommunityPanel, CommunityReviews } from "./community-panel";
 
 const { translate } = vi.hoisted(() => ({
   translate: (key: string, args?: { count: number }) => args ? `${key} ${args.count}` : key,
@@ -25,7 +25,8 @@ const empty: Community = {
 };
 
 async function renderPanel(community: Community, episodeReviews?: EpisodeReview[]) {
-  return render(await CommunityPanel({ itemType: "series", viewerLoggedIn: true, community, episodeReviews }));
+  return render(<>{await CommunityPanel({ itemType: "series", community, reviewCount: community.reviews.length + (episodeReviews?.length ?? 0) })}
+    {await CommunityReviews({itemType: "series", viewerLoggedIn: true, community, episodeReviews})}</>);
 }
 
 afterEach(cleanup);
@@ -64,7 +65,7 @@ describe("CommunityPanel en la ficha compartida", () => {
       comments: [], reactions: {},
     };
     await renderPanel({
-      ...empty, reviews: [{ ...common, editionLabel: null, finishedOn: "2026-11-20" }],
+      ...empty, reviews: [3, 2, 1].map(day => ({ ...common, id: String(day), text: day === 1 ? common.text : String(day), editionLabel: null, finishedOn: "2026-11-0"+day })),
     }, [{
       ...common, id: "episode", interactionTargetId: "episodio-hilo", watchedOn: "2026-11-21",
       isSpoiler: false, text: "El estreno", season: 1, episode: 1, episodeTitle: null,
@@ -74,11 +75,8 @@ describe("CommunityPanel en la ficha compartida", () => {
     expect(screen.getByText("episodio-hilo").closest("article")?.textContent).toContain("S1E1");
     expect(screen.queryByText("El desenlace")).toBeNull();
     const summary = screen.getByText("moreReviews 1");
-    const disclosure = summary.closest("details")!;
-    expect(disclosure.open).toBe(false);
     fireEvent.click(summary);
-    expect(disclosure.open).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "progress.showSpoiler" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "progress.showSpoiler" }).at(-1)!);
     expect(screen.getByText("El desenlace").closest("article")?.textContent).toContain("pase-hilo");
   });
 });

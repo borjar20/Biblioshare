@@ -40,7 +40,7 @@ import {
   MetadataSidebar,
   type MetaRow,
 } from "@/components/detail/metadata-sidebar";
-import { CommunityPanel } from "@/components/detail/community-panel";
+import { CommunityPanel, CommunityReviews } from "@/components/detail/community-panel";
 import { SagaStrip } from "@/components/detail/saga-strip";
 import { EditionsSection } from "@/components/detail/edition-details";
 import { ItemStatusProvider } from "@/components/detail/item-status-context";
@@ -661,8 +661,9 @@ async function BookTabs({
           />
         </CatalogEditor>
       }
-      community={
-        <CommunityPanel
+      community={<CommunityPanel itemType="book" community={community} reviewCount={community.reviews.length} />}
+      reviews={
+        <CommunityReviews
           itemType="book"
           community={community}
           viewerLoggedIn={Boolean(userId)}

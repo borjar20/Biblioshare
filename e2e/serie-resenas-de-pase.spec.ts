@@ -95,10 +95,11 @@ test.describe("Reseñas de pase en la ficha de serie (#713)", () => {
       await page.goto(`/serie/${serieId}?tab=community`);
 
       const community = page.locator("#detail-community");
-      const review = community.getByText(texto, { exact: true });
-      await expect(review).toBeAttached({ timeout: 15_000 });
-      if (!(await review.isVisible())) {
-        await community.getByText(/reseñas? más/i).click();
+      await community.getByRole("link", {name: /Leer.*reseña/}).click();
+      const discussion = page.locator("#detail-reviews");
+      const review = discussion.getByText(texto, { exact: true });
+      while (!(await review.count()) && await discussion.getByRole("button", { name: /reseñas? más/i }).count()) {
+        await discussion.getByRole("button", { name: /reseñas? más/i }).click();
       }
       await expect(review).toBeVisible();
     } finally {
