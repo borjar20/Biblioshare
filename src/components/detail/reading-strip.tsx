@@ -42,16 +42,16 @@ export function ReadingStripCard({
   // tramos, la última sesión. Si cambia (sesión nueva tras revalidar), se vuelve
   // a él (ajuste en render).
   const page = strip.currentPage;
-  const lastId =
+  const defaultId =
     segments.findLast((s) => s.advanced && s.from < page && page <= s.to)?.sessionId ??
     segments.findLast((s) => s.advanced)?.sessionId ??
     segments.at(-1)?.sessionId ??
     null;
-  const [selected, setSelected] = useState<string | null>(lastId);
-  const [prevLastId, setPrevLastId] = useState(lastId);
-  if (lastId !== prevLastId) {
-    setPrevLastId(lastId);
-    setSelected(lastId);
+  const [selected, setSelected] = useState<string | null>(defaultId);
+  const [prevDefaultId, setPrevDefaultId] = useState(defaultId);
+  if (defaultId !== prevDefaultId) {
+    setPrevDefaultId(defaultId);
+    setSelected(defaultId);
   }
   const current = segments.find((s) => s.sessionId === selected) ?? null;
 
@@ -223,7 +223,11 @@ export function ReadingStripCard({
             {current.notes.map((n) => (
               <div key={n.key}>{noteNodes[n.key]}</div>
             ))}
-            <NoteForm key={current.sessionId} bare itemType="book" itemId={itemId} anchor={{ kind: "page", page: current.to }} />
+            {/* El compositor solo está donde estás: una nota nueva se ancla a la
+                página actual y cae en este tramo; en uno antiguo «desaparecería». */}
+            {current.sessionId === defaultId && (
+              <NoteForm key={defaultId} bare itemType="book" itemId={itemId} anchor={{ kind: "page", page: strip.currentPage }} />
+            )}
           </div>
         )}
 

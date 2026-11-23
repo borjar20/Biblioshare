@@ -71,6 +71,14 @@ describe("ReadingStripCard", () => {
     expect(parseFloat(reread.style.left)).toBeCloseTo((120 / 669) * 100, 5);
     expect(Number(reread.style.zIndex)).toBeGreaterThan(Number(first.style.zIndex));
   });
+  it("el compositor solo está en el tramo de la página actual; un tramo antiguo enseña sus notas sin compositor", () => {
+    renderStrip(four, [note("note:2", 60)]);
+    expect(within(screen.getByTestId("reading-strip-detail")).getByRole("textbox", { name: "nota" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /20 jul: páginas 40 a 90/ }));
+    const detail = screen.getByTestId("reading-strip-detail");
+    expect(within(detail).getByText("texto note:2")).toBeTruthy();
+    expect(within(detail).queryByRole("textbox", { name: "nota" })).toBeNull();
+  });
   it("tocar un tramo lo abre; tocarlo otra vez, o Escape, lo cierra", () => {
     renderStrip(four, [note("note:2", 60)]);
     const tramo = screen.getByRole("button", { name: /20 jul: páginas 40 a 90/ });
