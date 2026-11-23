@@ -800,6 +800,7 @@ test("el registro personal permite puntuar solo los episodios vistos pendientes"
     await page.setViewportSize({ width: 390, height: 844 });
     await login(page);
     await page.goto(`/serie/${series.id}`);
+    await page.waitForLoadState("networkidle");
     const publicGrid = page.locator("#detail-episodes");
     await expect(publicGrid.getByRole("heading", { name: "Valoraciones por episodio" })).toBeVisible();
     await expect(publicGrid.getByRole("button", { name: "8/10" })).toHaveCount(0);
