@@ -1,16 +1,9 @@
-import { RatingDots } from "@/components/ui/rating-dots";
+import { useTranslations } from "next-intl";
 import { formatDots } from "@/lib/rating/dots";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
-import { RatingHistogram } from "./rating-histogram";
 import type { ItemType } from "@/lib/catalog/types";
+import { CommunityRatingHistogram } from "./community-rating-histogram";
 
-// El resumen de notas de la comunidad: la media grande, los dots, los votos y
-// el histograma vertical por MEDIA estrella (0,5→5, estilo Letterboxd).
-//
-// Una sola pieza para los dos anchos, porque solo cambia la DIRECCIÓN:
-//   móvil (`.comm-top` del frame 2)  → en fila: media | histograma al lado.
-//   PC    (`.rate-card` del frame 9) → en columna y centrada, el histograma
-//                                      debajo, pegada al scroll.
 export function CommunitySummary({
   itemType,
   avgRating,
@@ -18,40 +11,29 @@ export function CommunitySummary({
   ratingsLabel,
 }: {
   itemType: ItemType;
-  /** Media 1–10 (la escala de guardado), NO la de 5 que se enseña. */
+  /** Media en escala de guardado 1–10. */
   avgRating: number;
-  /** Recuento por media estrella, ascendente: [0,5★, 1★, …, 5★] (10 cubos). */
   distribution: number[];
   ratingsLabel: string;
 }) {
-  const accent = MEDIA_ACCENT[itemType];
-
+  const t = useTranslations("detail");
+  const ratingCount = distribution.reduce((total, count) => total + count, 0);
   return (
-    <div className="flex items-center gap-5 rounded-[12px] border border-border bg-surface p-4 xl:flex-col xl:gap-0 xl:p-6 xl:text-center">
-      <div className="shrink-0 text-center">
-        {/* `formatDots`, NO `avgRating.toFixed(1)`: la media se guarda 1–10 y
-            se ENSEÑA sobre 5. Con toFixed, esta pestaña decía "8,4" mientras
-            el hero de la misma ficha decía "4,2" — dos números para la misma
-            nota. Y de paso el punto pasa a ser coma (es-ES). */}
-        <div
-          className={`font-serif text-[42px] leading-none font-semibold xl:text-[58px] ${accent.text}`}
-        >
-          {formatDots(avgRating)}
-        </div>
-        <div className="mt-1 flex justify-center xl:mt-2.5">
-          <RatingDots value={avgRating} size="sm" className="xl:hidden" itemType={itemType} />
-          <RatingDots value={avgRating} size="md" className="hidden xl:flex" itemType={itemType} />
-        </div>
-        <div className="mt-[5px] font-mono text-[10px] text-muted-foreground xl:text-[11px]">
-          {ratingsLabel}
-        </div>
-      </div>
-
-      {/* El histograma: al lado en móvil (flex-1), debajo y a lo ancho en PC.
-          Mismo componente que el raíl OBRA de `/post/[id]` (RatingHistogram). */}
-      <div className="flex-1 xl:mt-5 xl:w-full xl:flex-none">
-        <RatingHistogram itemType={itemType} distribution={distribution} animate />
-      </div>
+    <div>
+      <p className="flex flex-wrap items-baseline gap-x-2">
+        <strong className={`font-serif text-2xl leading-none ${MEDIA_ACCENT[itemType].text}`}>
+          {formatDots(avgRating)}<span className="text-sm">/5</span>
+        </strong>
+        <span className="text-xs text-muted-foreground">{ratingsLabel}</span>
+      </p>
+      {ratingCount > 1 && (
+        <details className="mt-2">
+          <summary className="cursor-pointer rounded-sm py-2 text-xs font-medium text-foreground">
+            {t("ratingDistribution")}
+          </summary>
+          <CommunityRatingHistogram itemType={itemType} distribution={distribution} />
+        </details>
+      )}
     </div>
   );
 }

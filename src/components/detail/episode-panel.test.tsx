@@ -5,6 +5,7 @@ import { NextIntlClientProvider } from "next-intl";
 import messages from "../../../messages/es.json";
 import type { EpisodeRow } from "@/lib/series/get-episode-data";
 import { ItemStatusProvider } from "./item-status-context";
+import { useSeriesEpisodes } from "./series-episode-context";
 import { EpisodePanel } from "./episode-panel";
 
 // Las server actions no deben tocar Supabase: se sustituyen por espías para
@@ -49,7 +50,12 @@ function ep(season: number, episode: number, own: Partial<EpisodeRow["own"]> = {
 
 // Los textos salen de `messages/es.json` DE VERDAD: una clave que falte rompe
 // el test en vez de pintar la clave cruda.
-function renderPanel(episodes: EpisodeRow[]) {
+function EpisodeControls() {
+  const episodes = useSeriesEpisodes()!;
+  return <>{episodes.primary}{episodes.feedback}{episodes.browser}</>;
+}
+
+function renderPanel(episodes: EpisodeRow[], initiallyExpanded = true) {
   return render(
     <NextIntlClientProvider locale="es" messages={messages}>
       <ItemStatusProvider initialStatus="in_progress">
@@ -60,7 +66,10 @@ function renderPanel(episodes: EpisodeRow[]) {
           pass={{ id: "p1", rating: null }}
           seasons={[{ season: 1, episodes }]}
           isLoggedIn
-        />
+          initiallyExpanded={initiallyExpanded}
+        >
+          <EpisodeControls />
+        </EpisodePanel>
       </ItemStatusProvider>
     </NextIntlClientProvider>,
   );
@@ -104,6 +113,27 @@ describe("EpisodePanel · fase 3", () => {
     );
   });
 
+  it("marca y deshace el siguiente sin abrir las temporadas", async () => {
+    renderPanel([ep(1, 1), ep(1, 2)], false);
+    const disclosure = screen.getByText(messages.episode.browseEpisodes).closest("details")!;
+    expect(disclosure.open).toBe(false);
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: /Visto: T1E1/ })));
+    expect(screen.getByRole("button", { name: /Visto: T1E2/ })).toBeTruthy();
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: messages.episode.undoWatch })));
+    expect(actions.setEpisodeWatched).toHaveBeenLastCalledWith("s1", 1, 1, false, LOCAL_DAY);
+    expect(screen.getByRole("button", { name: /Visto: T1E1/ })).toBeTruthy();
+    expect(disclosure.open).toBe(false);
+  });
+
+  it("restaura el cursor y avisa cuando la escritura del episodio falla", async () => {
+    actions.setEpisodeWatched.mockRejectedValueOnce(new Error("write failed"));
+    renderPanel([ep(1, 1), ep(1, 2)], false);
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: /Visto: T1E1/ })));
+    expect(screen.getByRole("alert").textContent).toBe(messages.episode.watchError);
+    expect(screen.getByRole("button", { name: /Visto: T1E1/ })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: messages.episode.undoWatch })).toBeNull();
+  });
+
   it("la cabecera marca el siguiente y ofrece puntuarlo en línea", () => {
     renderPanel([ep(1, 1, { watched: true }), ep(1, 2)]);
 
@@ -115,38 +145,22 @@ describe("EpisodePanel · fase 3", () => {
 });
 
 function stubDesktop(matches: boolean) {
-  vi.stubGlobal(
-    "matchMedia",
-    vi.fn((query: string) => ({
-      matches,
-      media: query,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    })),
-  );
+  stubResizableDesktop(matches);
 }
 
-// Variante que guarda los listeners de "change" para poder simular un cruce
-// de breakpoint en caliente (resize real): cambia `matches` y dispara los
-// listeners registrados, como haría el navegador.
 function stubResizableDesktop(initialMatches: boolean) {
-  let matches = initialMatches;
-  const listeners = new Set<() => void>();
-  vi.stubGlobal(
-    "matchMedia",
-    vi.fn((query: string) => ({
-      get matches() {
-        return matches;
-      },
-      media: query,
-      addEventListener: (_: string, listener: () => void) => listeners.add(listener),
-      removeEventListener: (_: string, listener: () => void) => listeners.delete(listener),
-    })),
-  );
+  let width = initialMatches ? 800 : 390;
+  const callbacks = new Set<() => void>();
+  vi.stubGlobal("ResizeObserver", class {
+    constructor(private callback: ResizeObserverCallback) {}
+    notify = () => this.callback([{ contentRect: { width } } as ResizeObserverEntry], this as unknown as ResizeObserver);
+    observe() { callbacks.add(this.notify); this.notify(); }
+    disconnect() { callbacks.delete(this.notify); }
+  });
   return {
-    resize(next: boolean) {
-      matches = next;
-      listeners.forEach((l) => l());
+    resize(wide: boolean) {
+      width = wide ? 800 : 390;
+      callbacks.forEach((callback) => callback());
     },
   };
 }

@@ -11,6 +11,7 @@ import { SessionRow } from "./session-row";
 // sesiones: las tres últimas ya están a la vista.
 export function SessionMonths({
   months,
+  selected,
   total,
   scale,
   currentYear,
@@ -18,6 +19,7 @@ export function SessionMonths({
   onShowNotes,
 }: {
   months: StripMonth[];
+  selected: string | null;
   total: number;
   scale: number;
   currentYear: number;
@@ -49,7 +51,7 @@ export function SessionMonths({
             </summary>
             <ul className="flex flex-col border-t border-border px-3.5">
               {[...m.segments].reverse().map((s) => (
-                <SessionRow key={s.sessionId} segment={s} scale={scale} currentYear={currentYear} itemId={itemId} onShowNotes={onShowNotes} />
+                <SessionRow key={s.sessionId} segment={s} active={s.sessionId === selected} scale={scale} currentYear={currentYear} itemId={itemId} onShowNotes={onShowNotes} />
               ))}
             </ul>
           </details>

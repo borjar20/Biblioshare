@@ -452,11 +452,14 @@ async function MovieTabs({
 
   return (
     <ItemDetailTabs
+      inlineLog={passes.length <= 1}
+      logLinkLabel={passes.length <= 1 ? tDetail("viewScreening") : tDetail("viewHistory")}
       tablistLabel={tDetail("tabsLabel")}
       labels={{
         info: tDetail("tabInfo"),
         community: tDetail("tabCommunity"),
         log: tDetail("tabLog"),
+        back: tDetail("backToWork"),
       }}
       stickyAction={
         <StickyPassCta itemType="movie" />
@@ -528,7 +531,7 @@ async function MovieTabs({
                     usedEditionIdsPromise={usedEditionIdsPromise}
                     editionsFallback={<EditionsLoading />}
                     selectedEditionId={
-                      passes.find((p) => !p.finishedOn)?.editionId ?? null
+                      passes.find((p) => p.isActive)?.editionId ?? null
                     }
                     canContribute={canContribute}
                   />

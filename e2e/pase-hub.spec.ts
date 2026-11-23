@@ -180,12 +180,10 @@ async function followItem(page: Page, itemType: "book" | "movie" | "series") {
   const badge = page.locator('[data-testid="status-badge"]:visible').first();
   await expect(badge).toBeVisible({ timeout: 15_000 });
   await expect(badge).toHaveAttribute("aria-busy", "false", { timeout: 20_000 });
-  // La intención no cambia de pestaña, pero estos tests llegan con `?tab=log`
-  // en la URL (deep link previo, que sin pase cae a Información): cuando la
-  // pestaña aparece, ItemDetailTabs atiende esa ?tab= pendiente y puede entrar
-  // sola. Se pulsa la pestaña de todos modos para no depender de esa carrera.
-  // Que una intención sin ?tab= se queda en Información lo cubre
-  // ficha-acciones.spec.ts.
+  if (itemType === "movie") {
+    await expect(page.locator("#detail-log")).toBeVisible();
+    return;
+  }
   const log = page.getByRole("tab", { name: "Mi registro" });
   await expect(log).toBeVisible({ timeout: 15_000 });
   await log.click();
@@ -265,15 +263,12 @@ async function deletePasses(
   );
 }
 
-// La pestaña Episodios ya no apila todas las temporadas: enseña una, elegida en
-// el raíl (PC, donde corre la suite) o en el índice (móvil). Para llegar al
-// último episodio de la serie hay que entrar antes en la última temporada.
-// Devuelve la fila del último episodio de esa temporada.
+// El ancho disponible decide si la temporada se elige en el raíl o en el índice.
 async function openLastSeason(page: Page) {
-  const rail = page.getByRole("button", { name: /^Temporada \d+$/ });
-  const count = await rail.count();
-  if (count > 0) await rail.nth(count - 1).click();
-  return page
+  const episodes = page.locator("#detail-episodes");
+  const seasons = episodes.getByRole("button", { name: /^(?:Ver )?Temporada \d+$/i });
+  if (await seasons.count()) await seasons.last().click();
+  return episodes
     .locator("li")
     .filter({ has: page.getByRole("button", { name: "Visto" }) })
     .last();
@@ -348,22 +343,11 @@ test.describe
       "The Old Man and the Sea",
     );
 
-    // Deep link a ?tab=log de un ítem AÚN no seguido: la pestaña "Mi registro"
-    // no existe todavía, así que la ficha cae en "Información".
+    // Sin pase, el enlace antiguo al registro muestra la ficha pública.
     await page.goto(`/libro/${bookId}?tab=log`);
-    await page.waitForLoadState("networkidle").catch(() => {});
-    // Las pestañas son `role="tab"` desde #891 (antes, <button> pelados). Primero
-    // se exige que las pestañas estén pintadas: sin eso, el `toHaveCount(0)` de
-    // abajo pasaba con cualquier selector que no casara con nada (#1190).
-    await expect(
-      page.getByRole("tab", { name: "Información" }),
-    ).toBeVisible({ timeout: 15_000 });
-    await expect(
-      page.getByRole("tab", { name: "Mi registro" }),
-    ).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Quiero leerlo", exact: true })).toBeVisible();
+    await expect(page.getByRole("tablist")).toHaveCount(0);
 
-    // «Quiero leerlo» está en la tarjeta del hero. Al pulsarlo, la obra pasa a
-    // Pendiente y aparece la pestaña "Mi registro" (followItem entra en ella).
     await followItem(page, "book");
     await expect(statusBadge(page, "Pendiente")).toBeVisible({
       timeout: 15_000,
@@ -756,6 +740,7 @@ test.describe("película de un gesto", () => {
           { headers: adminHeaders() },
         )
       ).json()) as { status: string; is_active: boolean }[];
+      await expect(page.getByRole("tab", { name: "Mi registro" })).toBeVisible();
       expect(passes).toHaveLength(2);
       expect(passes.every((p) => p.status === "completed")).toBe(true);
       expect(passes.filter((p) => p.is_active)).toHaveLength(1);
@@ -833,12 +818,31 @@ test.describe("serie con revisionado", () => {
         timeout: 15_000,
       });
 
+      const desktop = page.viewportSize()!;
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.goto(`/serie/${seriesId}`);
+      const first = page.getByRole("button", { name: /^Visto: T1E1\b/ });
+      await expect(first).toBeInViewport({ ratio: 1 });
+      const episodeDisclosure = page.locator("#detail-episodes details").filter({
+        has: page.locator("summary", { hasText: "Temporadas y episodios" }),
+      });
+      await expect(episodeDisclosure).toHaveJSProperty("open", false);
+      await first.click();
+      await expect(page.getByRole("button", { name: /^Visto: T1E2\b/ })).toBeVisible();
+      await page.getByRole("button", { name: "Deshacer", exact: true }).click();
+      await expect(first).toBeVisible();
+      await page.setViewportSize(desktop);
+
       // Pestaña Episodios, vista de lista (checkbox interactivo por episodio;
       // la rejilla es solo de lectura). Marcar solo el ÚLTIMO episodio basta
       // para el auto-cierre: rollSeriesProgress compara contra el más
       // avanzado marcado EN ESTE PASE, no exige haber marcado los anteriores.
       await page.goto(`/serie/${seriesId}?tab=episodes`);
       await page.waitForLoadState("networkidle").catch(() => {});
+      const episodes = page.locator("#detail-episodes");
+      await expect(episodes).toBeInViewport();
+      const synopsis = (await page.getByRole("heading", { name: "Sinopsis" }).boundingBox())!;
+      expect((await episodes.boundingBox())!.y).toBeLessThan(synopsis.y);
       await page.getByRole("button", { name: "Lista", exact: true }).click();
 
       const lastEpisode = await openLastSeason(page);

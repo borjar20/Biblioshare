@@ -17,10 +17,9 @@ import { DETAIL_CONTAINER } from "./detail-container";
 export function ItemTabsSkeleton() {
   return (
     <div className={`${DETAIL_CONTAINER} py-8`}>
-      <div className="flex gap-6 border-b border-border pb-3">
+      <div className="hidden gap-6 lg:flex border-b border-border pb-3">
         <SkeletonLine className="w-14" />
         <SkeletonLine className="w-20" />
-        <SkeletonLine className="w-16" />
       </div>
       <div className="mt-8 flex flex-col gap-3">
         <SkeletonLine className="w-full" />

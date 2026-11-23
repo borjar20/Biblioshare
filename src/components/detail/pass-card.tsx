@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { RatingDots } from "@/components/ui/rating-dots";
 import { useItemStatus } from "./item-status-context";
 import { usePassActions } from "./pass-actions-provider";
+import { useSeriesEpisodes } from "./series-episode-context";
 import { StatusSegments } from "./status-segments";
 import styles from "./pass-card.module.css";
 
@@ -32,13 +33,16 @@ export type PassCardProps = {
 // 2026-11-10-ficha-acciones): sin pase ofrece las intenciones («Quiero leerlo»,
 // «Lo estoy leyendo», «Ya lo leí»); con pase, el estado se cambia aquí mismo, la
 // acción principal depende del estado y la nota se pone sin ir a Mi registro.
-// Todo lo que escribe pasa por usePassActions: la tarjeta no sabe de server
-// actions, de login ni de hojas.
+// El proveedor del pase resuelve estado y nota. Para series, la capa de
+// episodios comparte la acción primaria y el progreso con el explorador.
 //
 // El botón principal es SIEMPRE el naranja del rol (`bg-accent`, F3-006), no el
 // color del tipo de medio: el color de tipo es del CONTENIDO, el del CTA es de
 // la acción.
-export function PassCard({ itemType, progress, rating, upToDate = false }: PassCardProps) {
+export function PassCard({ itemType, progress: initialProgress, rating, upToDate: initialUpToDate = false }: PassCardProps) {
+  const episodes = useSeriesEpisodes();
+  const progress = episodes?.progress ?? initialProgress;
+  const upToDate = episodes?.upToDate ?? initialUpToDate;
   const t = useTranslations("item");
   const tRail = useTranslations("detail.rail");
   const tEpisode = useTranslations("episode");
@@ -133,9 +137,16 @@ export function PassCard({ itemType, progress, rating, upToDate = false }: PassC
   }
 
   const action = primaryAction(itemType, status);
+  const episodeControls = action === "episode" ? episodes : null;
 
   return (
     <div className={shell}>
+      {episodeControls && (
+        <>
+          {episodeControls.primary}
+          {episodeControls.feedback}
+        </>
+      )}
       {/* data-testid: los e2e esperan a que aria-busy vuelva a false (#106). */}
       <div data-testid="status-badge" aria-busy={busy}>
         <StatusSegments
@@ -177,17 +188,17 @@ export function PassCard({ itemType, progress, rating, upToDate = false }: PassC
         </div>
       )}
 
-      {/* Un <button>, no un enlace: a dónde se va (sesión, episodios) lo
-          decide el proveedor, que antes cierra lo que hubiera abierto. */}
-      <Button
-        ref={primaryRef}
-        type="button"
-        disabled={busy}
-        onClick={runPrimary}
-        className={`w-full py-3 font-semibold ${PRIMARY_SHAPE} ${styles.primary}`}
-      >
-        {t(`action.${action}.${itemType}`)}
-      </Button>
+      {!episodeControls && (
+        <Button
+          ref={primaryRef}
+          type="button"
+          disabled={busy}
+          onClick={runPrimary}
+          className={`w-full py-3 font-semibold ${PRIMARY_SHAPE} ${styles.primary}`}
+        >
+          {t(`action.${action}.${itemType}`)}
+        </Button>
+      )}
 
       {status !== "planned" && (
         <div

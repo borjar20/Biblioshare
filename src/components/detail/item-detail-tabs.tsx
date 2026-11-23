@@ -1,213 +1,133 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useItemStatus } from "./item-status-context";
 import { DETAIL_CONTAINER } from "./detail-container";
-import {
-  detailTabOrder,
-  clampDetailTab,
-  type DetailTabId,
-} from "./tab-visibility";
+import { detailTabOrder, clampDetailTab, type DetailTabId } from "./tab-visibility";
 
-// Client tab switcher for the item detail page. Slots are server-rendered on
-// the page and handed in as props, so data fetching stays on the server.
-// `episodes` es opcional: solo las series lo pasan (§7.x). El tab inicial se
-// lee de `?tab=` (usado por los deep links de notificaciones, EPIC-05 Bloque B)
-// y por defecto sigue siendo "info" si no hay query param, igual que antes.
 export function ItemDetailTabs({
-  tablistLabel,
-  labels,
-  info,
-  episodes,
-  community,
-  log,
-  stickyAction,
+  tablistLabel, labels, info, episodes, community, log, stickyAction, inlineLog = false,
+  logLinkLabel, logPreview,
 }: {
-  /** Nombre accesible del grupo de pestañas («Secciones de la ficha»). */
   tablistLabel: string;
-  labels: Partial<Record<DetailTabId, string>>;
+  labels: Partial<Record<DetailTabId | "episodes" | "community" | "back", string>>;
   info: ReactNode;
   episodes?: ReactNode;
   community: ReactNode;
   log: ReactNode;
-  /**
-   * CTA compacto (StickyPassCta) que aparece a la derecha cuando la barra se
-   * pega. Solo ≥ lg. `DETAIL_ASIDE_STICKY` (detail-container.ts) asume una
-   * barra de pestañas de 49px para calcular el `top` de los laterales — lo
-   * que se meta aquí no puede hacer la barra más alta.
-   */
   stickyAction?: ReactNode;
+  inlineLog?: boolean;
+  logLinkLabel?: string;
+  logPreview?: ReactNode;
 }) {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const urlTab = searchParams.get("tab");
+  const requested = searchParams.get("tab");
+  const followed = useItemStatus().status !== null;
+  const order = detailTabOrder(followed, inlineLog);
+  const tab = clampDetailTab(requested, order);
+  const hasTabs = order.length > 1;
+  const hasInlineLog = inlineLog && followed;
+  const panelRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const [stuck, setStuck] = useState(false);
+  const section = requested === "community" || (requested === "episodes" && episodes)
+    || (requested === "log" && hasInlineLog) ? requested : null;
+  useEffect(() => {
+    if (section) document.getElementById(`detail-${section}`)?.scrollIntoView({ block: "start" });
+  }, [section]);
 
-  // Fuente única del "seguido o no": el mismo contexto que pinta el badge del
-  // hero. followed=false esconde la pestaña "log" (Mi registro).
-  const { status } = useItemStatus();
-  const followed = status !== null;
-  const order = detailTabOrder(Boolean(episodes), followed);
-
-  const [tab, setTab] = useState<DetailTabId>(() =>
-    clampDetailTab(urlTab, order),
-  );
-
-  // Re-sincroniza la pestaña activa cuando cambia la ?tab= de FUERA (deep link,
-  // o un `router.push` a la misma ficha) O cuando la obra entra o sale de la
-  // biblioteca. Añadirla desde la tarjeta ya NO navega a ?tab=log (spec
-  // 2026-11-10-ficha-acciones): se queda en la pestaña en la que estaba. La
-  // clave combinada sigue haciendo falta para que una ?tab=log que llegue antes
-  // que el estado se resuelva bien cuando la pestaña aparezca, y para volver a
-  // "info" si se quita la obra estando en "log". Ajuste durante el render, no
-  // useEffect.
-  const syncKey = `${urlTab ?? ""}|${followed}`;
-  const [prevSyncKey, setPrevSyncKey] = useState(syncKey);
-  if (syncKey !== prevSyncKey) {
-    setPrevSyncKey(syncKey);
-    // Los cambios propios (selectTab) ya escribieron el mismo tab en el estado
-    // antes de tocar la URL, así que aquí `next === tab` y el guard lo hace
-    // no-op: la rama solo actúa cuando la URL o el seguido cambian DE FUERA.
-    const next = clampDetailTab(urlTab, order);
-    if (next !== tab) setTab(next);
-  }
-
-  const slots: Record<DetailTabId, ReactNode> = {
-    info,
-    episodes,
-    community,
-    log,
-  };
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !stickyAction || !hasTabs) return;
+    const topbar = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--topbar-h")) || 59;
+    const observer = new IntersectionObserver(([entry]) => {
+      setStuck(!entry.isIntersecting && entry.boundingClientRect.top < topbar);
+    }, { rootMargin: `-${topbar}px 0px 0px 0px` });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [stickyAction, hasTabs]);
 
   function selectTab(id: DetailTabId) {
-    setTab(id);
     const params = new URLSearchParams(searchParams.toString());
     if (id === "info") params.delete("tab");
     else params.set("tab", id);
     const query = params.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname, {
-      scroll: false,
-    });
+    // Both panels are already supplied by the server. Only the local URL state changes.
+    window.history.replaceState(null, "", query ? `${pathname}?${query}` : pathname);
   }
 
-  // Las pestañas eran cuatro <button> pelados: sin `role`, sin `aria-selected`,
-  // y con el subrayado de la activa marcado `aria-hidden`. Para un lector de
-  // pantalla no había pestañas ni una activa — solo cuatro botones sueltos.
-  // El patrón completo incluye el teclado: con `role="tab"` se ANUNCIAN flechas,
-  // así que sin implementarlas se prometería una navegación que no existe. De
-  // ahí el tabIndex móvil (solo la activa entra en el orden de tabulación) y el
-  // manejador de ←/→/Inicio/Fin.
-  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
-
-  // ¿Está la barra pegada bajo la topbar? Un centinela de 1px justo ENCIMA de
-  // ella: cuando sale por arriba (por encima de --topbar-h), la barra ya va
-  // pegada. IntersectionObserver y no un listener de scroll: no corre en cada
-  // frame. Solo se monta si hay CTA que enseñar.
-  const sentinelRef = useRef<HTMLDivElement>(null);
-  const [stuck, setStuck] = useState(false);
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el || !stickyAction) return;
-    const topbar =
-      parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--topbar-h")) || 59;
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        setStuck(!entry.isIntersecting && (entry.boundingClientRect?.top ?? 0) < topbar);
-      },
-      { rootMargin: `-${topbar}px 0px 0px 0px` },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [stickyAction]);
-
-  function onTabKey(e: React.KeyboardEvent, index: number) {
-    const delta =
-      e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
-    let next: number | null = null;
-    if (delta !== 0) next = (index + delta + order.length) % order.length;
-    else if (e.key === "Home") next = 0;
-    else if (e.key === "End") next = order.length - 1;
-    if (next === null) return;
-    e.preventDefault();
-    const id = order[next];
+  function fromContext(id: DetailTabId) {
     selectTab(id);
-    tabRefs.current[id]?.focus();
+    panelRef.current?.focus({ preventScroll: true });
+    panelRef.current?.scrollIntoView({ block: "start" });
   }
 
+  function onTabKey(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+    let next: DetailTabId;
+    switch (event.key) {
+      case "Home": next = order[0]; break;
+      case "End": next = order[order.length - 1]; break;
+      case "ArrowLeft":
+      case "ArrowRight": next = order[1 - index]; break;
+      default: return;
+    }
+    event.preventDefault();
+    selectTab(next);
+    document.getElementById(`item-tab-${next}`)?.focus();
+  }
+
+  const sectionOffset = "scroll-mt-[calc(var(--topbar-h)+60px)]";
   return (
     <div className="flex flex-col">
       <div ref={sentinelRef} aria-hidden className="h-px" />
-      {/* Sans (NO el mono de las subtabs — aquí la maqueta escribe Geist),
-          subrayado del acento y pegada bajo la topbar, en las dos vistas.
-          Cambia la piel: en PC el texto es más pequeño (14) y más ligero, y
-          las inactivas bajan a `faint` — un peldaño más claro que `muted`:
-          en el ancho hay menos ruido y la activa se distingue sola.
-          Sin scroll horizontal: caben (comprobado con 4 pestañas a 390).
-          .desk-tabs de "Web - Ficha de titulo (PC).html". */}
-      <div className="sticky top-[var(--topbar-h)] z-10 border-b border-border bg-background/90 backdrop-blur-md lg:bg-background/80 lg:backdrop-blur-[10px]">
-        <div className={`${DETAIL_CONTAINER} flex items-center gap-4`}>
-          <div
-            role="tablist"
-            aria-label={tablistLabel}
-            className="flex min-w-0 flex-1 gap-5 lg:gap-7"
-          >
-            {order.map((id, index) => {
-              const isActive = tab === id;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  role="tab"
-                  id={`item-tab-${id}`}
-                  aria-selected={isActive}
-                  aria-controls={`item-tabpanel-${id}`}
-                  tabIndex={isActive ? 0 : -1}
-                  ref={(el) => {
-                    tabRefs.current[id] = el;
-                  }}
-                  onKeyDown={(e) => onTabKey(e, index)}
-                  onClick={() => selectTab(id)}
-                  className={`relative pt-3 pb-[11px] text-[13.5px] font-semibold whitespace-nowrap transition-colors lg:py-3.5 lg:text-sm ${
-                    isActive
-                      ? "text-foreground lg:font-semibold"
-                      : "text-muted-foreground hover:text-foreground lg:font-medium lg:hover:text-foreground"
-                  }`}
-                >
+      {hasTabs && (
+        <div className="sticky top-[var(--topbar-h)] z-10 hidden border-b border-border bg-background/90 backdrop-blur-md lg:block">
+          <div className={`${DETAIL_CONTAINER} flex items-center gap-4`}>
+            <div role="tablist" aria-label={tablistLabel} className="flex flex-1 gap-7">
+              {order.map((id, i) => (
+                <button key={id} type="button" role="tab" id={`item-tab-${id}`}
+                  aria-selected={id === tab} aria-controls={`item-tabpanel-${id}`}
+                  tabIndex={id === tab ? 0 : -1} onClick={() => selectTab(id)}
+                  onKeyDown={event => onTabKey(event, i)}
+                  className={`relative py-3.5 text-sm ${id === tab ? "font-semibold" : "text-muted-foreground"}`}>
                   {labels[id]}
-                  {isActive && (
-                    <span
-                      aria-hidden
-                      className="absolute inset-x-0 -bottom-px h-0.5 rounded-sm bg-accent"
-                    />
-                  )}
+                  {id === tab && <span aria-hidden className="absolute inset-x-0 bottom-0 h-0.5 bg-accent" />}
                 </button>
-              );
-            })}
-          </div>
-          {stickyAction && (
-            <div
-              data-testid="tabs-sticky-action"
-              className={stuck ? "hidden shrink-0 items-center lg:flex" : "hidden"}
-            >
-              {stickyAction}
+              ))}
             </div>
-          )}
+            {stickyAction && <div data-testid="tabs-sticky-action" className={stuck ? "hidden lg:flex" : "hidden"}>{stickyAction}</div>}
+          </div>
         </div>
-      </div>
-
-      {/* Un solo panel montado (el resto son slots que no se pintan), así que
-          `id`/`aria-labelledby` van en el contenedor y cambian con la pestaña.
-          `tabIndex={0}`: el panel no siempre empieza con algo enfocable, y sin
-          esto el Tab desde la pestaña activa se saltaría el contenido entero. */}
-      <div
-        role="tabpanel"
-        id={`item-tabpanel-${tab}`}
-        aria-labelledby={`item-tab-${tab}`}
-        tabIndex={0}
-        className={`${DETAIL_CONTAINER} py-6 lg:pt-[34px] lg:pb-[42px]`}
-      >
-        {slots[tab]}
+      )}
+      <div ref={panelRef} id={`item-tabpanel-${tab}`} role={hasTabs ? "tabpanel" : "region"}
+        aria-label={labels[tab]} tabIndex={0} className={`${DETAIL_CONTAINER} ${sectionOffset} py-6 lg:pb-10`}>
+        {tab === "log" ? (
+          <>
+            <button type="button" data-testid="detail-back" className="mb-5 text-sm underline lg:hidden"
+              onClick={() => fromContext("info")}>{labels.back ?? labels.info}</button>
+            {log}
+          </>
+        ) : (
+          <div className="flex flex-col gap-7 xl:grid xl:grid-cols-[minmax(0,1fr)_minmax(210px,32%)] xl:grid-rows-[auto_1fr] xl:items-start">
+            {hasInlineLog && <a href="#detail-log" className="order-first text-sm font-semibold underline underline-offset-4 xl:hidden">{logLinkLabel ?? labels.log}</a>}
+            {hasTabs && <div className="order-first flex flex-col items-start gap-2 xl:col-start-2 xl:row-start-1">
+              <h2 className="label-section hidden xl:block">{labels.log}</h2>
+              {logPreview}
+              <button type="button" data-testid="detail-open-log" className="text-sm font-semibold text-accent-ink underline underline-offset-4"
+                onClick={() => fromContext("log")}>{logLinkLabel ?? labels.log}</button>
+            </div>}
+            <div className="flex min-w-0 flex-col gap-8 xl:col-start-1 xl:row-start-1 xl:row-span-2">
+              <div className={followed && episodes ? "order-2" : ""}>{info}</div>
+              {episodes && <section id="detail-episodes" aria-label={labels.episodes} className={sectionOffset}>{episodes}</section>}
+            </div>
+            <div className="min-w-0 space-y-8 xl:col-start-2">
+              {hasInlineLog && <section id="detail-log" aria-label={labels.log} className={sectionOffset}>{log}</section>}
+              <section id="detail-community" aria-label={labels.community} className={sectionOffset}>{community}</section>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

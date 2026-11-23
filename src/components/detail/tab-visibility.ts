@@ -1,27 +1,9 @@
-// Lógica pura de qué pestañas enseña la ficha, extraída de ItemDetailTabs para
-// poder testearla sin montar el componente. La pestaña "log" (Mi registro) solo
-// existe cuando el ítem está seguido (tiene pase activo); "episodes" solo en
-// series. El orden es el del mockup.
-export type DetailTabId = "info" | "episodes" | "community" | "log";
+export type DetailTabId = "info" | "log";
 
-export function detailTabOrder(
-  hasEpisodes: boolean,
-  followed: boolean,
-): DetailTabId[] {
-  const base: DetailTabId[] = hasEpisodes
-    ? ["info", "episodes", "community"]
-    : ["info", "community"];
-  return followed ? [...base, "log"] : base;
+export function detailTabOrder(followed: boolean, inlineLog: boolean): DetailTabId[] {
+  return followed && !inlineLog ? ["info", "log"] : ["info"];
 }
 
-// La pestaña pedida por ?tab= (deep link: notificaciones, o el `?tab=episodes`
-// de «Marcar episodio») se acota a las disponibles: pedir "log" sin la obra en
-// la biblioteca cae a "info", igual que un valor desconocido o ausente.
-export function clampDetailTab(
-  requested: string | null,
-  order: DetailTabId[],
-): DetailTabId {
-  return requested && (order as string[]).includes(requested)
-    ? (requested as DetailTabId)
-    : "info";
+export function clampDetailTab(requested: string | null, order: DetailTabId[]): DetailTabId {
+  return requested === "log" && order.includes("log") ? "log" : "info";
 }

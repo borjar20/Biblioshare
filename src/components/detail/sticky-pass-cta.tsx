@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import type { ItemType } from "@/lib/catalog/types";
 import { primaryAction } from "@/lib/passes/pass-actions";
 import { useItemStatus } from "./item-status-context";
+import { useSeriesEpisodes } from "./series-episode-context";
 import { usePassActions } from "./pass-actions-provider";
 
 // La versión compacta del botón principal de PassCard, para la barra de
@@ -14,7 +15,9 @@ export function StickyPassCta({ itemType }: { itemType: ItemType }) {
   const t = useTranslations("item");
   const { status, isSaving } = useItemStatus();
   const { isPending, runPrimary } = usePassActions();
+  const episodes = useSeriesEpisodes();
   if (!status) return null;
+  if (episodes && primaryAction(itemType, status) === "episode") return episodes.sticky;
   return (
     <button
       type="button"

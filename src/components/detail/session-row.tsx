@@ -24,12 +24,14 @@ export function useSegmentText() {
 // está en un solo sitio visible): la pastilla abre su tramo en la tira.
 export function SessionRow({
   segment,
+  active = false,
   scale,
   currentYear,
   itemId,
   onShowNotes,
 }: {
   segment: StripSegment;
+  active?: boolean;
   scale: number;
   currentYear: number;
   itemId: string;
@@ -42,12 +44,13 @@ export function SessionRow({
   const notes = segment.notes.length;
 
   return (
-    <li className="grid grid-cols-[52px_minmax(0,1fr)_auto] items-center gap-3 border-t border-border py-2.5 text-[13px] first:border-t-0">
+    <li data-active={active || undefined} className="data-[active]:bg-accent/10 grid grid-cols-[52px_minmax(0,1fr)_auto] items-center gap-3 border-t border-border py-2.5 text-[13px] first:border-t-0">
       <time dateTime={segment.date} className="font-mono text-[11px] text-muted-foreground tabular-nums">
         {sessionDateLabel(segment.date, currentYear)}
       </time>
       <div className="min-w-0">
-        <span className="text-foreground">{text(segment)}</span>
+        <button type="button" aria-pressed={active} onClick={() => onShowNotes(segment.sessionId)}
+          className="text-left text-foreground underline-offset-2 hover:underline">{text(segment)}</button>
         {notes > 0 && (
           <button
             type="button"

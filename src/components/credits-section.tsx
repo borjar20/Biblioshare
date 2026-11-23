@@ -21,28 +21,28 @@ function PersonAvatar({ person }: { person: Credit }) {
   return (
     <Link
       href={personHref(person.id)}
-      className="group flex w-16 shrink-0 flex-col items-center text-center lg:w-auto"
+      className="group flex min-w-0 flex-col items-center text-center"
     >
-      <div className="relative h-14 w-14 overflow-hidden rounded-full border border-border bg-gradient-to-br from-surface-3 to-surface-muted lg:h-[74px] lg:w-[74px]">
+      <div className="relative h-14 w-14 overflow-hidden rounded-full border border-border bg-gradient-to-br from-surface-3 to-surface-muted">
         {person.photoUrl ? (
           <Image
             src={person.photoUrl}
             alt={person.name}
             fill
-            sizes="74px"
+            sizes="56px"
             className="object-cover transition-transform duration-200 group-hover:scale-105"
           />
         ) : (
-          <div className="grid h-full place-items-center font-serif text-lg font-semibold text-muted-foreground lg:text-2xl">
+          <div className="grid h-full place-items-center font-serif text-lg font-semibold text-muted-foreground">
             {initials(person.name)}
           </div>
         )}
       </div>
-      <span className="mt-1.5 line-clamp-2 text-[10.5px] leading-[1.2] font-semibold text-foreground lg:mt-[9px] lg:text-[13px] lg:leading-[1.25]">
+      <span className="mt-1.5 line-clamp-2 text-xs leading-[1.2] font-semibold text-foreground">
         {person.name}
       </span>
       {person.character && (
-        <span className="line-clamp-1 text-[9.5px] text-muted-foreground lg:text-[11px]">
+        <span className="line-clamp-2 text-[11px] text-muted-foreground">
           {person.character}
         </span>
       )}
@@ -50,9 +50,6 @@ function PersonAvatar({ person }: { person: Credit }) {
   );
 }
 
-// "Reparto y equipo" (frames 5 y 12): equipo como líneas rol → persona,
-// reparto como avatares — tira con scroll en móvil (`.credits`); en PC va en
-// la columna principal de Info (ficha cinemática): 6 por fila en lg, 8 en xl.
 export async function CreditsSection({ credits }: { credits: ItemCredits }) {
   const t = await getTranslations("item");
   if (credits.cast.length === 0 && credits.crew.length === 0) return null;
@@ -83,7 +80,7 @@ export async function CreditsSection({ credits }: { credits: ItemCredits }) {
       )}
 
       {credits.cast.length > 0 && (
-        <div className="flex gap-3.5 overflow-x-auto pb-1 lg:grid lg:grid-cols-6 lg:gap-[18px] lg:overflow-visible lg:pb-0 xl:grid-cols-8">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(4.5rem,1fr))] gap-x-3 gap-y-4">
           {credits.cast.map((person) => (
             <PersonAvatar key={person.id} person={person} />
           ))}

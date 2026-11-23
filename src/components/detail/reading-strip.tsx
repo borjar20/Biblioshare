@@ -69,11 +69,11 @@ export function ReadingStripCard({
   // 3px. Con ratón o teclado, el tramo pulsado.
   function nearestTo(x: number): string | null {
     let best: string | null = null;
-    let bestDistance = Number.POSITIVE_INFINITY;
+    let bestDistance = 8; // Tolerancia en píxeles si el dedo cae en un hueco.
     for (const b of trackRef.current?.querySelectorAll<HTMLButtonElement>("[data-segment]") ?? []) {
       const r = b.getBoundingClientRect();
-      const d = Math.abs(x - (r.left + r.width / 2));
-      if (d < bestDistance) {
+      const d = Math.max(r.left - x, x - r.right, 0);
+      if (d <= bestDistance) {
         bestDistance = d;
         best = b.dataset.segment ?? null;
       }
@@ -82,7 +82,7 @@ export function ReadingStripCard({
   }
   function onTrackClick(e: MouseEvent<HTMLDivElement>) {
     const hit = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-segment]")?.dataset.segment ?? null;
-    const id = pointerType.current !== "mouse" && e.detail > 0 ? (nearestTo(e.clientX) ?? hit) : hit;
+    const id = hit ?? (pointerType.current !== "mouse" && e.detail > 0 ? nearestTo(e.clientX) : null);
     if (id) setSelected((prev) => (prev === id ? null : id));
   }
   function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
@@ -141,6 +141,8 @@ export function ReadingStripCard({
 
         <div className="relative pt-3.5">
           <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-3">
+            {page > 0 && <span className="absolute bottom-0 -translate-x-1/2 border-x-4 border-t-[6px] border-x-transparent border-t-foreground"
+              style={{ left: `${Math.min(100, page / scale * 100)}%` }} />}
             {marks.map((n) => (
               <span key={n.key} className={n.kind === "margin" ? styles.markMargin : styles.mark} style={{ left: `${(n.page / scale) * 100}%` }} />
             ))}
@@ -247,7 +249,7 @@ export function ReadingStripCard({
               .slice(-3)
               .reverse()
               .map((s) => (
-                <SessionRow key={s.sessionId} segment={s} scale={scale} currentYear={currentYear} itemId={itemId} onShowNotes={showNotes} />
+                <SessionRow key={s.sessionId} segment={s} active={s.sessionId === selected} scale={scale} currentYear={currentYear} itemId={itemId} onShowNotes={showNotes} />
               ))}
           </ul>
         </div>
@@ -256,6 +258,7 @@ export function ReadingStripCard({
       {segments.length > 3 && (
         <SessionMonths
           months={strip.months}
+          selected={selected}
           total={segments.length}
           scale={scale}
           currentYear={currentYear}

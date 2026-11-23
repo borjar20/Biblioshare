@@ -34,7 +34,7 @@ export function EditionsSection({
    *  editionsPromise en la página, así que llega por el mismo streaming y no
    *  retrasa la tira. Es `[]` para quien no puede contribuir. */
   usedEditionIdsPromise: Promise<string[]>;
-  /** La edición del pase abierto del que mira, si tiene. */
+  /** La edición del pase activo del que mira, si tiene. */
   selectedEditionId: string | null;
   canContribute: boolean;
   /** Fallback de la tira mientras el promise no resuelve. */

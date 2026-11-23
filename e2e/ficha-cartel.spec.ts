@@ -169,10 +169,10 @@ for (const c of coloured) {
   });
 }
 
-test("?tab= sigue abriendo la pestaña", async ({ page }) => {
+test("el enlace antiguo a Comunidad desplaza hasta su sección", async ({ page }) => {
   const id = await needId("película con TMDB", "movies", MOVIE_TMDB);
   await page.goto(`/pelicula/${id}?tab=community`);
-  await expect(page.locator("#item-tabpanel-community")).toBeVisible();
+  await expect(page.locator("#detail-community")).toBeInViewport();
 });
 
 test("en escritorio la columna de cartel se queda fija al hacer scroll", async ({ page }) => {
@@ -181,7 +181,7 @@ test("en escritorio la columna de cartel se queda fija al hacer scroll", async (
   await page.goto(`/pelicula/${id}`);
   const poster = page.locator('[data-poster="bleed"]');
   await expect(poster).toBeVisible();
-  await expect(page.getByRole("tablist")).toBeVisible();
+  await expect(page.locator("#item-tabpanel-info")).toBeVisible();
   const before = await poster.boundingBox();
   // Sobre la columna de contenido: el cartel fijo no debe ser quien reciba la rueda.
   await page.mouse.move(900, 500);
@@ -200,7 +200,7 @@ for (const width of [1024, 1100] as const) {
     await page.goto(`/pelicula/${id}`);
     const poster = page.locator('[data-poster="bleed"]');
     await expect(poster).toBeVisible();
-    await expect(page.getByRole("tablist")).toBeVisible();
+    await expect(page.locator("#item-tabpanel-info")).toBeVisible();
 
     const before = (await poster.boundingBox())!;
     const topbar = before.y;
@@ -210,7 +210,7 @@ for (const width of [1024, 1100] as const) {
     const image = (await poster.locator("img").boundingBox())!;
     expect(image.height).toBeGreaterThanOrEqual(before.height - 2);
 
-    const panel = (await page.getByRole("tabpanel").boundingBox())!;
+    const panel = (await page.locator("#item-tabpanel-info").boundingBox())!;
     expect(panel.x).toBeGreaterThanOrEqual(before.x + before.width - 1);
 
     const overflow = () =>
@@ -252,9 +252,9 @@ for (const c of cases) {
     await page.emulateMedia({ colorScheme: scheme });
     await page.goto(`${c.path}${id}`);
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    // Las pestañas llegan por streaming: se espera a que haya tabpanel con sus títulos.
-    await expect(page.getByRole("tablist")).toBeVisible();
-    await expect(page.locator('[role="tabpanel"] h2').first()).toBeVisible();
+    // El cuerpo de la ficha llega por streaming.
+    await expect(page.locator("#item-tabpanel-info")).toBeVisible();
+    await expect(page.locator('#item-tabpanel-info h2').first()).toBeVisible();
     await page.evaluate(async () => { await document.fonts.ready; });
 
     const results = await page.getByTestId("work-scope").evaluate((scope, desktop) => {
@@ -302,8 +302,8 @@ for (const c of cases) {
       return [
         ...(desktop ? [...pick("h1", 3), ...pick("h1 + p", 4.5)] : []),
         ...pick('[role="tab"]', 4.5),
-        ...pick('[role="tabpanel"] h2', 3),
-        ...pick('[role="tabpanel"] p', 4.5),
+        ...pick('#item-tabpanel-info h2', 3),
+        ...pick('#item-tabpanel-info p', 4.5),
       ];
     }, desktop);
 

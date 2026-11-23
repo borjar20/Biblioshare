@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { after } from "next/server";
 import { getTranslations } from "next-intl/server";
@@ -7,7 +7,7 @@ import { PassCard } from "@/components/detail/pass-card";
 import { PendingJointInvites } from "@/components/social/pending-joint-invites";
 import { getPendingJointInvites } from "@/lib/social/joint-viewings";
 import { StickyPassCta } from "@/components/detail/sticky-pass-cta";
-import { passPercent } from "@/lib/library/progress";
+import { EpisodeBrowser } from "@/components/detail/series-episode-context";
 import {
   createClient,
   createTokenClient,
@@ -54,8 +54,6 @@ import {
 import { ensureSeriesEpisodes } from "@/lib/library/ensure-series-episodes";
 import { getEpisodeData } from "@/lib/series/get-episode-data";
 import { getEpisodeReviews } from "@/lib/series/get-episode-reviews";
-import { todayISO } from "@/lib/series/aired";
-import { isUpToDate } from "@/lib/series/follow-state";
 import { ensureItemEnriched } from "@/lib/people/enrich-item";
 import { expireItemCredits } from "@/lib/reactivity/revalidate";
 import { getItemCredits } from "@/lib/people/get-item-credits";
@@ -112,7 +110,7 @@ type SeriesRow = NonNullable<Awaited<ReturnType<typeof fetchSeries>>["data"]>;
 
 type SeriesDetailProps = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ cerrar?: string }>;
+  searchParams: Promise<{ cerrar?: string; tab?: string }>;
 };
 
 // Página síncrona: `params`/`searchParams` bajan a SeriesDetail, por DEBAJO del
@@ -129,7 +127,7 @@ export default function SeriesDetailPage(props: SeriesDetailProps) {
 
 async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
   const { id } = await params;
-  const { cerrar } = await searchParams;
+  const { cerrar, tab } = await searchParams;
   const tDetail = await getTranslations("detail");
   const supabase = await createClient();
 
@@ -200,55 +198,29 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
     );
   }
 
-  // Lo mínimo para pintar el hero: nota media y estado del pase activo. El
-  // resto (sincronización de episodios con TMDB, plataformas, reparto, saga,
-  // pases) llega por streaming en las pestañas — Fase B del plan de navegación.
-  // El pase activo entero: el rail de PC enseña también la nota (y el
-  // progreso donde lo hay). Misma consulta, mismo viaje.
-  // Los dos recuentos del rail ("16 / 20 vistos", frame 11) van en el MISMO
-  // Promise.all: cuestan cero tiempo en serie. El de vistos filtra por el pase
-  // activo sin conocer su id, con el join embebido (passes!inner) — verificado
-  // contra dev que devuelve lo mismo que la consulta en dos pasos.
-  // El rol también (menú ⋯ del hero, P2): todo paralelo, coste cero en serie.
-  const [ratingSummary, activePass, watchedEpisodes, catalogEpisodes, shellRole] =
-    await Promise.all([
-      getRatingSummary("series", series.id),
-      user
-        ? supabase
-            .from("passes")
-            .select("id, status, rating, position")
-            .eq("user_id", user.id)
-            .eq("item_type", "series")
-            .eq("item_id", series.id)
-            .eq("is_active", true)
-            .maybeSingle()
-            .then(({ data }) => data)
-        : Promise.resolve(null),
-      user
-        ? supabase
-            .from("episode_watches")
-            .select("pass_id, passes!inner(is_active)", {
-              count: "exact",
-              head: true,
-            })
-            .eq("user_id", user.id)
-            .eq("series_id", series.id)
-            .eq("passes.is_active", true)
-            .then(({ count }) => count ?? 0)
-        : Promise.resolve(0),
-      user
-        ? supabase
-            .from("series_episodes")
-            .select("*", { count: "exact", head: true })
-            .eq("series_id", series.id)
-            // Solo lo emitido (#1193): los anunciados no se pueden ver. Aproxima
-            // la regla de src/lib/series/aired.ts (sin fecha = emitido); la
-            // pestaña Episodios aplica la exacta.
-            .or(`air_date.is.null,air_date.lte.${todayISO()}`)
-            .then(({ count }) => count ?? 0)
-        : Promise.resolve(0),
-      user ? getCurrentUserRole() : Promise.resolve(null),
-    ]);
+  const catalogReady = ensureSeriesEpisodes(supabase, {
+    id: series.id,
+    tmdbId: series.tmdb_id,
+    tmdbStatus: series.tmdb_status,
+    nextEpisodeAirDate: series.next_episode_air_date,
+    episodesSyncedAt: series.episodes_synced_at,
+  });
+
+  const [ratingSummary, activePass, shellRole] = await Promise.all([
+    getRatingSummary("series", series.id),
+    user
+      ? supabase
+          .from("passes")
+          .select("id, status, rating, position")
+          .eq("user_id", user.id)
+          .eq("item_type", "series")
+          .eq("item_id", series.id)
+          .eq("is_active", true)
+          .maybeSingle()
+          .then(({ data }) => data)
+      : Promise.resolve(null),
+    user ? getCurrentUserRole() : Promise.resolve(null),
+  ]);
   const activeStatus = (activePass?.status as MediaStatus | undefined) ?? null;
   const canEditCatalog = hasMinRole(shellRole, "collaborator");
 
@@ -262,44 +234,6 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
 
   const genres = series.genres ?? [];
 
-  // Tarjeta «tu pase» (ver pass-card.tsx). El total sale del catálogo (lo
-  // mismo que cuenta la pestaña Episodios); en la primera visita el catálogo
-  // aún no está sincronizado y el fallback es la columna de TMDB.
-  // Con el catálogo vivo ya sincronizado, `total_episodes` son los EMITIDOS con
-  // la regla exacta (airedFlags: los «sin fecha» de una temporada anunciada
-  // fuera); `catalogEpisodes` es la aproximación SQL (sin fecha = emitido), que
-  // solo manda mientras la serie no se ha sincronizado.
-  const totalEpisodes =
-    (series.episodes_synced_at && series.total_episodes) ||
-    catalogEpisodes ||
-    series.total_episodes ||
-    0;
-
-  // «Al día» (estado DERIVADO, src/lib/series/follow-state.ts): todo lo emitido
-  // visto y la serie sigue en emisión. La tarjeta lo marca junto al progreso;
-  // el estado guardado sigue siendo «Viendo». Sin consultas nuevas: son los
-  // mismos recuentos de la barra.
-  const upToDate = isUpToDate({
-    status: activeStatus,
-    watched: watchedEpisodes,
-    aired: totalEpisodes,
-    tmdbStatus: series.tmdb_status,
-  });
-
-  const railProgress =
-    activePass && totalEpisodes > 0
-      ? {
-          percent: passPercent(watchedEpisodes, totalEpisodes),
-          left: tDetail("rail.episodes", {
-            watched: watchedEpisodes,
-            total: totalEpisodes,
-          }),
-          right: `${passPercent(watchedEpisodes, totalEpisodes)}%`,
-        }
-      : null;
-
-  const jointInvites = await jointInvitesPromise;
-  const workHue = await workHuePromise;
 
   // `?cerrar` (auto-cierre al terminar una sesión, §Tarea 7): validado aquí
   // contra el pase ACTIVO (`activePass` es la fila `is_active = true` de la
@@ -308,6 +242,57 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
   const initialClosingPassId =
     cerrar && cerrar === activePass?.id ? cerrar : null;
 
+  // El catálogo vacío puede requerir TMDB. En descubrimiento el hero sale ya;
+  // con pase, la acción primaria sí espera al cursor real del usuario.
+  const episodesPromise = catalogReady.then(() =>
+    getEpisodeData(supabase, series.id, user?.id ?? null, activePass?.id ?? null));
+  const [jointInvites, workHue] = await Promise.all([jointInvitesPromise, workHuePromise]);
+  const shell = (
+    <ItemShell
+      itemType="series"
+      mediaLabel={tDetail("mediaLabel.series")}
+      title={series.title ?? tDetail("untitled")}
+      byline={byline}
+      genres={genres}
+      coverUrl={series.cover_url}
+      workHue={workHue}
+      avgRating={ratingSummary.avgRating}
+      ratingsLabel={tDetail("ratings", { count: ratingSummary.ratingCount })}
+      backLabel={tDetail("back")}
+      menuSlot={
+        <HeroMenu
+          itemType="series"
+          itemId={series.id}
+          canEditCatalog={canEditCatalog}
+        />
+      }
+      passCard={
+        <div className="flex flex-col gap-3">
+          <PendingJointInvites invites={jointInvites} variant="item" />
+          <PassCard
+            itemType="series"
+            progress={null}
+            rating={activePass?.rating ?? null}
+          />
+        </div>
+      }
+      tabs={
+        <Suspense fallback={<ItemTabsSkeleton />}>
+          <SeriesTabs
+            series={series}
+            userId={user?.id ?? null}
+            notesPromise={notesPromise}
+            marginPromise={marginPromise}
+            episodesPromise={episodesPromise}
+            activeRow={activePass}
+            canContribute={canEditCatalog}
+            initiallyExpanded={tab === "episodes"}
+            ratingSummary={ratingSummary}
+          />
+        </Suspense>
+      }
+    />
+  );
   return (
     <ItemStatusProvider initialStatus={activeStatus}>
       <PassActionsProvider
@@ -319,7 +304,6 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
           activePass?.status === "planned" ||
           activePass?.status === "in_progress"
         }
-        // «Marcar episodio» lleva a la pestaña Episodios, como el botón de hoy.
         sessionHref={activePass ? `/serie/${series.id}?tab=episodes` : null}
         droppedAtLabel={
           activePass
@@ -328,66 +312,66 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
         }
         initialClosingPassId={initialClosingPassId}
       >
-      <ItemShell
-        itemType="series"
-        mediaLabel={tDetail("mediaLabel.series")}
-        title={series.title ?? tDetail("untitled")}
-        byline={byline}
-        genres={genres}
-        coverUrl={series.cover_url}
-        workHue={workHue}
-        avgRating={ratingSummary.avgRating}
-        ratingsLabel={tDetail("ratings", { count: ratingSummary.ratingCount })}
-        backLabel={tDetail("back")}
-        menuSlot={
-          <HeroMenu
-            itemType="series"
-            itemId={series.id}
-            canEditCatalog={canEditCatalog}
-          />
-        }
-        passCard={
-          <div className="flex flex-col gap-3">
-            <PendingJointInvites invites={jointInvites} variant="item" />
-            <PassCard
-              itemType="series"
-              progress={railProgress}
-              rating={activePass?.rating ?? null}
-              upToDate={upToDate}
-            />
-          </div>
-        }
-        tabs={
-          <Suspense fallback={<ItemTabsSkeleton />}>
-            <SeriesTabs
-              series={series}
-              userId={user?.id ?? null}
-              notesPromise={notesPromise}
-              marginPromise={marginPromise}
-              ratingSummary={ratingSummary}
-            />
-          </Suspense>
-        }
-      />
+        {activePass ? (
+          <SeriesEpisodeWorkspace
+            key={activePass.id}
+            episodes={episodesPromise}
+            series={series}
+            pass={activePass}
+            initiallyExpanded={tab === "episodes"}
+            isLoggedIn
+          >
+            {shell}
+          </SeriesEpisodeWorkspace>
+        ) : shell}
       </PassActionsProvider>
     </ItemStatusProvider>
   );
 }
 
-// Las pestañas: sincronización de episodios (TMDB), plataformas, reparto,
-// saga, pases y la rejilla de episodios — todo detrás del <Suspense> del hero.
+type EpisodesPromise = ReturnType<typeof getEpisodeData>;
+
+async function SeriesEpisodeWorkspace({ episodes, series, pass, initiallyExpanded, isLoggedIn, children }: {
+  episodes: EpisodesPromise;
+  series: SeriesRow;
+  pass: { id: string; rating: number | null } | null;
+  initiallyExpanded: boolean;
+  isLoggedIn: boolean;
+  children: ReactNode;
+}) {
+  const data = await episodes;
+  return (
+    <EpisodePanel
+      seriesId={series.id}
+      initiallyExpanded={initiallyExpanded}
+      airing={series.tmdb_status !== null && !data.ended}
+      nextAirDate={series.next_episode_air_date}
+      pass={pass}
+      seasons={data.seasons.map((season) => ({ season, episodes: data.bySeasons.get(season) ?? [] }))}
+      isLoggedIn={isLoggedIn}
+    >
+      {children}
+    </EpisodePanel>
+  );
+}
+
 async function SeriesTabs({
   series,
   userId,
   notesPromise,
   marginPromise,
   ratingSummary,
+  episodesPromise, activeRow, canContribute, initiallyExpanded,
 }: {
   series: SeriesRow;
   userId: string | null;
   notesPromise: ReturnType<typeof getNotesForItem> | null;
   marginPromise: ReturnType<typeof getItemMarginNotes> | null;
   ratingSummary: RatingSummary;
+  episodesPromise: EpisodesPromise;
+  activeRow: { id: string; status: string; position: unknown } | null;
+  canContribute: boolean;
+  initiallyExpanded: boolean;
 }) {
   const supabase = await createClient();
   const t = await getTranslations("item");
@@ -399,7 +383,7 @@ async function SeriesTabs({
   // que lo que manda no es cuántas hay sino cuántas van EN FILA. Las dos
   // sincronizaciones no se necesitan entre sí (una escribe personas, la otra
   // episodios), y solo getItemCredits espera de verdad a ensureItemEnriched.
-  const [enriched, , watchProviders, sagas, activeRow, role, reviewsResult] =
+  const [enriched, watchProviders, sagas, episodeData, reviewsResult, episodeReviewsResult] =
     await Promise.all([
       ensureItemEnriched(supabase, "series", {
         id: series.id,
@@ -412,31 +396,13 @@ async function SeriesTabs({
         hydratedAt: series.hydrated_at,
         viewerLoggedIn: Boolean(userId),
       }),
-      ensureSeriesEpisodes(supabase, {
-        id: series.id,
-        tmdbId: series.tmdb_id,
-        tmdbStatus: series.tmdb_status,
-        nextEpisodeAirDate: series.next_episode_air_date,
-        episodesSyncedAt: series.episodes_synced_at,
-      }),
       series.tmdb_id ? getWatchProviders("tv", series.tmdb_id) : null,
       getItemSagas("series", series.id),
-      // "En mi biblioteca" = existe pase ACTIVO de la obra (§Tarea 9, hub).
-      userId
-        ? supabase
-            .from("passes")
-            .select("id, status, rating, position")
-            .eq("user_id", userId)
-            .eq("item_type", "series")
-            .eq("item_id", series.id)
-            .eq("is_active", true)
-            .maybeSingle()
-            .then(({ data }) => data)
-        : null,
-        userId ? getCurrentUserRole() : null,
+      episodesPromise,
       // Reseñas de la comunidad: ~4 roundtrips que solo pinta CommunityPanel;
       // van aquí, detrás del <Suspense> de las pestañas, no en el hero (#439).
       getReviews(supabase, "series", series.id),
+      getEpisodeReviews(supabase, series.id),
     ]);
 
   // Community que espera CommunityPanel = el agregado (ya resuelto en el hero)
@@ -478,12 +444,7 @@ async function SeriesTabs({
     }
   }
 
-  // Pase ACTIVO de la obra: la pestaña Episodios lo usa más abajo. (El
-  // `?cerrar` ya no se valida aquí sino en SeriesDetail, para
-  // PassActionsProvider.)
-  const activePassId = passes.find((p) => p.isActive)?.id ?? null;
-
-  const canContribute = userId ? hasMinRole(role, "collaborator") : false;
+  const hasEpisodes = episodeData.seasons.length > 0;
 
   const metaRows: MetaRow[] = [];
   if (series.creator)
@@ -502,22 +463,8 @@ async function SeriesTabs({
     });
 
   const genres = series.genres ?? [];
-  // El pase activo ya se calculó arriba (`activePassId`): la pestaña
-  // Episodios lo usa para separar la capa cursor
-  // (este pase) de "visto alguna vez" (Tarea 8, hub).
-  const [episodeData, episodeReviewsResult] = await Promise.all([
-    getEpisodeData(supabase, series.id, userId, activePassId),
-    getEpisodeReviews(supabase, series.id),
-  ]);
-  const { reviews: episodeReviews, knownUsernames: episodeKnownUsernames } = episodeReviewsResult;
-
-  // La rejilla y la lista comparten datos; la lista necesita un array
-  // serializable (el Map de EpisodeData no cruza el límite RSC).
-  const seasonGroups = episodeData.seasons.map((season) => ({
-    season,
-    episodes: episodeData.bySeasons.get(season) ?? [],
-  }));
-  const hasEpisodes = episodeData.seasons.length > 0;
+  const { reviews: episodeReviews, knownUsernames: episodeKnownUsernames } =
+    episodeReviewsResult;
 
   // La principal es la marcada is_primary (created_at como desempate si
   // ninguna lo es); getItemSagas ya la deja primera. Solo de ella se pinta
@@ -544,6 +491,7 @@ async function SeriesTabs({
         ...(hasEpisodes && { episodes: tDetail("tabEpisodes") }),
         community: tDetail("tabCommunity"),
         log: tDetail("tabLog"),
+        back: tDetail("backToWork"),
       }}
       stickyAction={
         <StickyPassCta itemType="series" />
@@ -629,18 +577,17 @@ async function SeriesTabs({
           />
         </CatalogEditor>
       }
-      episodes={
-        hasEpisodes ? (
-          <EpisodePanel
-            seriesId={series.id}
-            airing={series.tmdb_status !== null && !episodeData.ended}
-            nextAirDate={series.next_episode_air_date}
-            pass={activeRow ? { id: activeRow.id, rating: activeRow.rating } : null}
-            seasons={seasonGroups}
-            isLoggedIn={Boolean(userId)}
-          />
-        ) : undefined
-      }
+      episodes={hasEpisodes ? (
+        activeRow ? <EpisodeBrowser /> : (
+          <SeriesEpisodeWorkspace
+            episodes={episodesPromise} series={series} pass={null}
+            initiallyExpanded={initiallyExpanded} isLoggedIn={Boolean(userId)}
+          >
+            <EpisodeBrowser />
+          </SeriesEpisodeWorkspace>
+        )
+      ) : undefined}
+      logLinkLabel={tDetail("viewHistory")}
       community={
         <div className="flex flex-col gap-10">
           <CommunityPanel

@@ -25,10 +25,10 @@ const PC_PREVIEW = 5;
 
 // Horizontal edition/version rail for the detail "Info" tab (same family as
 // SagaStrip): cada tarjeta muestra la etiqueta, el nombre y el resumen de
-// formatEdition; la del pase abierto (selectedEditionId, Tarea 12) lleva ✓ y
+// formatEdition; la del pase activo (selectedEditionId, Tarea 12) lleva ✓ y
 // el acento de tipo de medio. El alta inline solo se pinta a colaborador+.
 //
-// selectedEditionId (✓ + "La tuya") es la edición del PASE — solo cambia
+// selectedEditionId (✓ + etiqueta personal) es la edición del PASE ACTIVO — solo cambia
 // desde el Registro. Las tarjetas NO son pulsables: cada una ya enseña sus
 // datos (etiqueta, editorial, año, páginas, ISBN), que es justo lo que hace
 // la maqueta (.edn). Hubo un panel que cambiaba a los datos de la edición
@@ -45,7 +45,7 @@ export function EditionStrip({
   itemType: ItemType;
   itemId: string;
   editions: Edition[];
-  /** La edición del pase abierto del que mira, si tiene. */
+  /** La edición del pase activo del que mira, si tiene. */
   selectedEditionId: string | null;
   /** Ediciones con pases registrados: no se ofrece borrarlas. */
   usedEditionIds: string[];
@@ -181,7 +181,7 @@ export function EditionStrip({
                 </span>
               )}
               {/* El menú no compite con el ✓ por la esquina: la edición marcada
-                  como «La tuya» es la del pase abierto de quien mira, así que
+                  como propia es la del pase activo de quien mira, así que
                   siempre está en uso y nunca ofrece borrado.
 
                   Antes esto era una × de borrado SIEMPRE VISIBLE en cada
@@ -219,7 +219,7 @@ export function EditionStrip({
                 </span>
                 {isSelected && (
                   <span className={`font-mono text-[9px] ${accent.text}`}>
-                    {t("yours")}
+                    {t("yours", { itemType })}
                   </span>
                 )}
               </div>

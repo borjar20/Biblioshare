@@ -90,7 +90,7 @@ export function EpisodeGrid({
     <div className="flex flex-col gap-4">
       {/* `.ctwin` de C3: paginador de la ventana de temporadas. */}
       {paged && (
-        <div className="order-1 flex items-center gap-2.5 lg:hidden">
+        <div className="order-1 flex items-center gap-2.5 @min-[760px]/episodes:hidden">
           <button
             type="button"
             onClick={() => setStart((s) => Math.max(0, s - WINDOW))}
@@ -125,7 +125,7 @@ export function EpisodeGrid({
 
       {/* Leyenda. En C3 va ANTES de la rejilla (los colores son el contenido, no
           una nota al pie); en la tabla de PC se queda debajo, como estaba. */}
-      <div className="order-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 lg:order-4">
+      <div className="order-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 @min-[760px]/episodes:order-4">
         {RATING_TIERS.map((tier) => (
           <span key={tier.key} className="inline-flex items-center gap-1.5">
             <span
@@ -161,7 +161,7 @@ export function EpisodeGrid({
 
       {/* C3 — móvil: temporadas en columnas, episodios en filas. */}
       <div
-        className="order-3 grid gap-[5px] lg:hidden"
+        className="order-3 grid gap-[5px] @min-[760px]/episodes:hidden"
         style={{
           gridTemplateColumns: `26px repeat(${windowSeasons.length}, minmax(0,1fr))`,
         }}
@@ -210,7 +210,7 @@ export function EpisodeGrid({
       </div>
 
       {/* PC — la tabla de siempre: temporadas en filas, episodios en columnas. */}
-      <div className="order-3 hidden overflow-x-auto lg:block">
+      <div className="order-3 hidden overflow-x-auto @min-[760px]/episodes:block">
         <table className="border-separate border-spacing-1">
           <tbody>
             {seasons.map((s) => {

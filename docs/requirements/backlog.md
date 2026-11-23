@@ -43,6 +43,7 @@
   llena, puntos de nota que crecen y saltan, botón que se hunde); el histograma de Comunidad crece al
   pintarse. Sin librerías de animación; respeta el movimiento reducido.
   [Spec](superpowers/specs/2026-11-11-ficha-con-gesto-design.md), decisiones del 2026-11-12.
+- [x] Ficha unificada para libros, películas y series con acceso contextual al historial y episodios integrados.
 - [x] «Mi registro» como línea de lectura en libros, con limpieza de duplicados en los tres tipos.
   [Spec](superpowers/specs/2026-11-11-ficha-linea-de-lectura-design.md), decisiones del 2026-11-20.
 

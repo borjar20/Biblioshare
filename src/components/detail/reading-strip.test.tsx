@@ -95,6 +95,18 @@ describe("ReadingStripCard", () => {
     fireEvent.keyDown(tramo, { key: "Escape" });
     expect(screen.queryByTestId("reading-strip-detail")).toBeNull();
   });
+  it("un toque en el extremo de una sesión larga respeta el tramo visible", () => {
+    renderStrip([s("larga", "2026-07-08", 100), s("corta", "2026-07-09", 110)]);
+    const track = screen.getByRole("group", { name: "Sesiones a lo largo del libro" });
+    const [long, short] = within(track).getAllByRole("button");
+    vi.spyOn(long, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 100, 34));
+    vi.spyOn(short, "getBoundingClientRect").mockReturnValue(new DOMRect(100, 0, 10, 34));
+    fireEvent.pointerDown(long, { pointerType: "touch" });
+    fireEvent.click(long, { clientX: 95, detail: 1 });
+    expect(long.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(track, { clientX: 250, detail: 1 });
+    expect(long.getAttribute("aria-pressed")).toBe("true");
+  });
   it("Escape dentro del compositor no cierra el tramo", () => {
     renderStrip(four);
     fireEvent.keyDown(screen.getByRole("textbox", { name: "nota" }), { key: "Escape" });

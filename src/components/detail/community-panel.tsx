@@ -7,23 +7,8 @@ import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { CommunitySummary } from "@/components/detail/community-summary";
 import { ReviewRow } from "@/components/detail/review-row";
 import { ReviewInteractions } from "@/components/social/review-interactions";
-import { DETAIL_ASIDE_STICKY } from "./detail-container";
 
-// "Comunidad" tab body: agregados reales de passes (estados) y pass_reviews
-// (reseñas), calculados en src/lib/community/get-community.ts.
-//
-// Para series hay DOS fuentes de reseña —la del pase (al cerrar la serie) y las
-// de episodio (§7.x)— y aquí se pintan LAS DOS, mezcladas por fecha. Antes la
-// rama se elegía por `episodeReviews !== undefined`, y como la ficha de serie
-// pasaba siempre el array (aunque viniera vacío), la rama de reseñas de pase
-// era código muerto: lo que un usuario escribía al cerrar el pase de una serie
-// se guardaba y no aparecía nunca (#713). El discriminante era la presencia del
-// prop, que es justo lo que un `?? []` de más rompe sin que nadie se entere.
-//
-// Frames 2 (móvil) y 9 (PC). En PC son dos columnas — las reseñas a toda la
-// izquierda y el resumen pegado a la derecha —, con el mismo `.desk-cols` que
-// el Registro (`1fr 340px`, hueco 44). En móvil el resumen va ARRIBA y las
-// reseñas debajo: mismo DOM, reordenado con `order`.
+// Las reseñas de pase y de episodio comparten orden cronológico (#713).
 export async function CommunityPanel({
   itemType,
   community,
@@ -138,62 +123,60 @@ export async function CommunityPanel({
   const rows = [...passRows, ...episodeRows].sort((a, b) =>
     (b.dateIso ?? "").localeCompare(a.dateIso ?? ""),
   );
-  const reviewCount = rows.length;
+  function renderReview(review: PanelReview) {
+    return (
+      <ReviewRow
+        key={review.key}
+        initials={review.initials}
+        author={review.author}
+        username={review.username}
+        avatarUrl={review.avatarUrl}
+        dateLabel={shortDate(review.dateIso)}
+        rating={review.rating}
+        itemType={itemType}
+        text={review.text}
+        isSpoiler={review.isSpoiler}
+        knownUsernames={review.knownUsernames}
+        chip={review.chip}
+      >
+        {review.interactions}
+      </ReviewRow>
+    );
+  }
 
   return (
-    <div className="flex flex-col xl:grid xl:grid-cols-[minmax(0,1fr)_280px] xl:items-start xl:gap-x-8">
-      {/* Reseñas. En el DOM van PRIMERO para caer en la columna izquierda en
-          PC; en móvil `order-2` las manda debajo del resumen, que es el orden
-          del frame 2. */}
-      <section className="order-2 flex flex-col xl:order-none">
-        {/* `.h5` con el recuento dentro ("Reseñas · 312") como el frame: la
-            cifra sale del mismo dato que el rótulo, no es un badge aparte. */}
-        <h2 className="mb-[11px] label-section lg:mb-[15px]">
-          {t("reviews")}
-          {reviewCount > 0 && ` · ${reviewCount}`}
-        </h2>
-
-        {reviewCount === 0 ? (
-          <p className="text-sm text-muted-foreground">{t("noReviews")}</p>
-        ) : (
-          <div className="flex flex-col">
-            {rows.map((review) => (
-              <ReviewRow
-                key={review.key}
-                initials={review.initials}
-                author={review.author}
-                username={review.username}
-                avatarUrl={review.avatarUrl}
-                dateLabel={shortDate(review.dateIso)}
-                rating={review.rating}
-                itemType={itemType}
-                text={review.text}
-                isSpoiler={review.isSpoiler}
-                knownUsernames={review.knownUsernames}
-                chip={review.chip}
-              >
-                {review.interactions}
-              </ReviewRow>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Resumen de notas. En PC es la tarjeta pegada de la derecha
-          (`.rate-card` del frame 9): se queda quieta mientras suben las
-          reseñas, pegada BAJO la barra de pestañas (DETAIL_ASIDE_STICKY). */}
-      <aside className={`order-1 mb-[22px] xl:order-none xl:mb-0 ${DETAIL_ASIDE_STICKY}`}>
-        {community.avgRating === null ? (
-          <p className="text-sm text-muted-foreground">{t("noRatings")}</p>
-        ) : (
-          <CommunitySummary
-            itemType={itemType}
-            avgRating={community.avgRating}
-            distribution={community.distribution}
-            ratingsLabel={t("ratings", { count: community.ratingCount })}
-          />
-        )}
-      </aside>
-    </div>
+    <section className="min-w-0 rounded-xl border border-border bg-surface p-4">
+      <h2 className="mb-3 label-section">{t("tabCommunity")}</h2>
+      {community.avgRating === null && rows.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{t("communityEmpty")}</p>
+      ) : (
+        <>
+          {community.avgRating !== null && (
+            <CommunitySummary
+              itemType={itemType}
+              avgRating={community.avgRating}
+              distribution={community.distribution}
+              ratingsLabel={t("ratings", { count: community.ratingCount })}
+            />
+          )}
+          {rows.length > 0 ? (
+            <div className={community.avgRating !== null ? "mt-4 border-t border-border pt-4" : undefined}>
+              <h3 className="mb-3 text-sm font-semibold">{t("reviews")} · {rows.length}</h3>
+              <div>{renderReview(rows[0])}</div>
+              {rows.length > 1 && (
+                <details>
+                  <summary className="cursor-pointer rounded-sm py-2 text-sm font-medium text-foreground">
+                    {t("moreReviews", { count: rows.length - 1 })}
+                  </summary>
+                  <div>{rows.slice(1).map(renderReview)}</div>
+                </details>
+              )}
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-muted-foreground">{t("noReviews")}</p>
+          )}
+        </>
+      )}
+    </section>
   );
 }

@@ -8401,3 +8401,8 @@ El menú ⋯ de la ficha también está en escritorio: es el único sitio para q
   fila por orden de tiempo: no hay hueco entre meses, que se distinguen por la opacidad.
 - El compositor de notas solo está en el tramo de la página actual y se ancla en ella.
 - Las sesiones se borran desde las filas, no desde el detalle.
+
+
+### 2026-11-23 · Ficha de obra unificada (#1627)
+
+La ficha integra información, comunidad y episodios. En escritorio el historial extenso tiene un segundo destino y en móvil se abre desde el resumen personal. Una película con un único pase muestra su diario en la ficha. Los enlaces previos a episodios, comunidad y registro conservan su destino. El registro del libro mantiene la tira, las tres sesiones recientes y el archivo mensual plegado.
