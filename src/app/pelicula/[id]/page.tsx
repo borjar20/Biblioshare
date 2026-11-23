@@ -22,6 +22,7 @@ const DETAIL_NS = [
   "catalogEdit", "collection", "detail", "editions",
   "item", "library", "margin", "notes", "passes", "ritual", "social", "joint",
 ] as const;
+import { PassDiary } from "@/components/detail/pass-diary";
 import { LogPanel, type ManagedEntry } from "@/components/detail/log-panel";
 import { HeroMenu } from "@/components/detail/hero-menu";
 import { WatchProviders } from "@/components/watch-providers";
@@ -254,6 +255,18 @@ async function MovieDetail({ params, searchParams }: MovieDetailProps) {
   const initialClosingPassId =
     cerrar && cerrar === activePass?.id ? cerrar : null;
 
+  const passCard = (
+    <div className="flex flex-col gap-3">
+      <PendingJointInvites invites={jointInvites} variant="item" />
+      {/* La película NO lleva barra de progreso: se ve de una sentada. */}
+      <PassCard
+        itemType="movie"
+        progress={null}
+        rating={activePass?.rating ?? null}
+      />
+    </div>
+  );
+
   return (
     <ItemStatusProvider initialStatus={activeStatus}>
       <PassActionsProvider
@@ -293,20 +306,10 @@ async function MovieDetail({ params, searchParams }: MovieDetailProps) {
             canEditCatalog={canEditCatalog}
           />
         }
-        passCard={
-          <div className="flex flex-col gap-3">
-            <PendingJointInvites invites={jointInvites} variant="item" />
-            {/* La película NO lleva barra de progreso: se ve de una sentada. */}
-            <PassCard
-              itemType="movie"
-              progress={null}
-              rating={activePass?.rating ?? null}
-            />
-          </div>
-        }
         tabs={
-          <Suspense fallback={<ItemTabsSkeleton />}>
+          <Suspense fallback={<ItemTabsSkeleton passCard={passCard} />}>
             <MovieTabs
+              passCard={passCard}
               movie={movie}
               userId={user?.id ?? null}
               notesPromise={notesPromise}
@@ -324,12 +327,14 @@ async function MovieDetail({ params, searchParams }: MovieDetailProps) {
 // Las pestañas: backfill de personas, plataformas de TMDB (API externa),
 // créditos, saga, ediciones y pases — todo detrás del <Suspense> del hero.
 async function MovieTabs({
+  passCard,
   movie,
   userId,
   notesPromise,
   marginPromise,
   ratingSummary,
 }: {
+  passCard: React.ReactNode;
   movie: MovieRow;
   userId: string | null;
   notesPromise: ReturnType<typeof getNotesForItem> | null;
@@ -452,6 +457,8 @@ async function MovieTabs({
 
   return (
     <ItemDetailTabs
+      passCard={passCard}
+      logPreview={passes.length > 1 && <PassDiary activeOnly itemType="movie" itemId={movie.id} passes={passes} editions={editions} />}
       inlineLog={passes.length <= 1}
       logLinkLabel={passes.length <= 1 ? tDetail("viewScreening") : tDetail("viewHistory")}
       tablistLabel={tDetail("tabsLabel")}

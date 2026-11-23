@@ -34,7 +34,8 @@ vi.mock("@/lib/library/add-existing-item", () => ({ addExistingItemToLibrary: vi
 // The real public route and its private async detail function calculate the
 // rail. Only the shell and unrelated tabs/leaves are replaced; PassCard,
 // getEditions, pagesForPass and passPercent stay real.
-vi.mock("@/components/detail/item-shell", () => ({ ItemShell: ({ passCard }: { passCard: ReactNode }) => <section aria-label="Pase del libro">{passCard}</section> }));
+vi.mock("@/components/detail/item-shell", () => ({ ItemShell: ({ tabs }: { tabs: ReactElement<{ children: ReactElement<{ passCard: ReactNode }> }> }) =>
+  <section aria-label="Pase del libro">{tabs.props.children.props.passCard}</section> }));
 vi.mock("@/components/route-messages", () => ({ RouteMessages: ({ children }: { children: ReactNode }) => children }));
 vi.mock("@/components/detail/item-shell-skeleton", () => ({ ItemShellSkeleton: () => null }));
 vi.mock("@/components/detail/item-tabs-skeleton", () => ({ ItemTabsSkeleton: () => null }));

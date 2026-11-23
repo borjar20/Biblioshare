@@ -31,7 +31,6 @@ export function ItemShellSkeleton({ itemType }: { itemType: ItemType }) {
           <SkeletonLine className="w-28" />
           <SkeletonLine className="mt-3 h-[62px] w-3/4 xl:h-[85px]" />
           <SkeletonLine className="mt-2 w-1/2" />
-          <div className="mt-4 h-[120px] max-w-[420px] animate-pulse rounded-[14px] border border-border bg-surface-muted" />
         </div>
         <ItemTabsSkeleton />
       </div>

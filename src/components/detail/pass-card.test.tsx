@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useLayoutEffect } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextIntlClientProvider } from "next-intl";
@@ -70,8 +70,8 @@ describe("PassCard", () => {
 
   it("con pase: el estado se cambia en la tarjeta", () => {
     renderCard({ itemType: "book" }, "in_progress");
-    const group = screen.getByRole("group", { name: "Tu estado" });
-    fireEvent.click(within(group).getByRole("button", { name: /Leído/ }));
+    const group = screen.getByRole("combobox", { name: "Tu estado" });
+    fireEvent.change(group, { target: { value: "completed" } });
     expect(actions.changeStatus).toHaveBeenCalledWith("completed");
   });
 
@@ -217,10 +217,9 @@ describe("PassCard", () => {
       </NextIntlClientProvider>,
     );
     fireEvent.click(screen.getByTestId("saving-switch"));
-    const group = screen.getByRole("group", { name: "Tu estado" });
-    within(group).getAllByRole("button").forEach((b) => expect(b).toHaveProperty("disabled", true));
+    const group = screen.getByRole("combobox", { name: "Tu estado" });
+    expect(group).toHaveProperty("disabled", true);
     expect(screen.getByRole("button", { name: "Registrar sesión" })).toHaveProperty("disabled", true);
-    fireEvent.click(within(group).getByRole("button", { name: /Leído/ }));
     expect(actions.changeStatus).not.toHaveBeenCalled();
   });
 
@@ -243,8 +242,8 @@ describe("PassCard", () => {
       "in_progress",
     );
     expect(screen.getByText("Al día")).not.toBeNull();
-    const group = screen.getByRole("group", { name: "Tu estado" });
-    expect(within(group).getByRole("button", { name: /Viendo/ }).getAttribute("aria-pressed")).toBe("true");
+    const group = screen.getByRole("combobox", { name: "Tu estado" });
+    expect(group).toHaveProperty("value", "in_progress");
   });
 
   it("serie no al día (o ya no en curso): sin marca", () => {

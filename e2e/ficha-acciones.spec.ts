@@ -187,7 +187,7 @@ test.describe("con sesión", () => {
       expect(page.url()).not.toContain("tab=log");
       // Pendiente: el estado marcado en la tarjeta y sin puntos de nota.
       await expect(
-        page.getByRole("group", { name: "Tu estado" }).getByRole("button", { name: "Pendiente", pressed: true }),
+        page.getByRole("combobox", { name: "Tu estado" }).filter({ has: page.locator("option:checked").filter({ hasText: "Pendiente" }) }),
       ).toBeVisible();
       await expect(page.getByTestId("pass-card-rating")).toHaveCount(0);
 
@@ -219,6 +219,8 @@ test.describe("con sesión", () => {
       await settled(page);
       const pass = await activePass("book", bookId, userId);
       if (!pass) throw new Error("Falta el pase creado para el historial");
+      await expect(page.getByRole("button", { name: "Registrar sesión", exact: true })).toBeVisible();
+      await expect(page.getByRole("combobox", { name: "Tu estado" })).toHaveValue("in_progress");
 
       const inserted = await fetch(`${SUPABASE_URL}/rest/v1/progress_sessions`, {
         method: "POST",
@@ -267,7 +269,7 @@ test.describe("con sesión", () => {
 
       await expect.poll(async () => (await activePass("book", bookId, userId))?.status ?? null).toBe("in_progress");
       await expect(
-        page.getByRole("group", { name: "Tu estado" }).getByRole("button", { name: "Leyendo", pressed: true }),
+        page.getByRole("combobox", { name: "Tu estado" }).filter({ has: page.locator("option:checked").filter({ hasText: "Leyendo" }) }),
       ).toBeVisible();
       // En curso, la acción principal es registrar una sesión.
       await expect(page.getByRole("button", { name: "Registrar sesión", exact: true })).toBeVisible();
@@ -318,7 +320,7 @@ test.describe("con sesión", () => {
       await settled(page);
       await expect.poll(async () => (await activePass("book", bookId, userId))?.status ?? null).toBe("in_progress");
 
-      await page.getByRole("group", { name: "Tu estado" }).getByRole("button", { name: "Leído" }).click();
+      await page.getByRole("combobox", { name: "Tu estado" }).selectOption({ label: "Leído" });
       await expect(page.getByRole("heading", { name: CLOSE_HEADING })).toBeVisible({ timeout: 20_000 });
       await expect(fichaTab(page)).toHaveAttribute("aria-selected", "true");
       await page.getByRole("button", { name: "Ahora no" }).click();
@@ -471,7 +473,7 @@ test.describe("con sesión", () => {
     }
   });
 
-  test("Mi registro no tiene selector de estado ni «Quitar de mi biblioteca»", async ({ page }) => {
+  test("Mi registro reúne los controles del pase y el historial", async ({ page }) => {
     const userId = await devtestId();
     const [book] = await rest<{ id: string }[]>(`books?${FINAL_EMPIRE_FILTER}&select=id`);
     if (!book) throw new Error("no se encontró el libro fixture en catálogo");
@@ -484,10 +486,10 @@ test.describe("con sesión", () => {
     await expect(panel).toBeVisible();
     // El historial sí está: así la ausencia de abajo no pasa con un panel vacío.
     await expect(panel.getByTestId("diary-entry").first()).toBeVisible();
-    await expect(panel.getByRole("group", { name: "Tu estado" })).toHaveCount(0);
+    await expect(panel.getByRole("combobox", { name: "Tu estado" })).toHaveCount(1);
     await expect(panel.getByText("Quitar de mi biblioteca")).toHaveCount(0);
     // El estado se cambia en la tarjeta, una sola vez en la página.
-    await expect(page.getByRole("group", { name: "Tu estado" })).toHaveCount(1);
+    await expect(page.getByRole("combobox", { name: "Tu estado" })).toHaveCount(1);
   });
 
   // Mi registro perdió su enlace rojo: en escritorio la barra del cartel no se

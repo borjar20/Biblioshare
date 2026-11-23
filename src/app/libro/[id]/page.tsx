@@ -323,6 +323,17 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
   const initialClosingPassId =
     cerrar && cerrar === activePass?.id ? cerrar : null;
 
+  const passCard = (
+    <div className="flex flex-col gap-3">
+      <PendingJointInvites invites={jointInvites} variant="item" />
+      <PassCard
+        itemType="book"
+        progress={railProgress}
+        rating={activePass?.rating ?? null}
+      />
+    </div>
+  );
+
   return (
     <ItemStatusProvider initialStatus={activeStatus}>
       <PassActionsProvider
@@ -363,19 +374,10 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
             canEditCatalog={canEditCatalog}
           />
         }
-        passCard={
-          <div className="flex flex-col gap-3">
-            <PendingJointInvites invites={jointInvites} variant="item" />
-            <PassCard
-              itemType="book"
-              progress={railProgress}
-              rating={activePass?.rating ?? null}
-            />
-          </div>
-        }
         tabs={
-          <Suspense fallback={<ItemTabsSkeleton />}>
+          <Suspense fallback={<ItemTabsSkeleton passCard={passCard} />}>
             <BookTabs
+              passCard={passCard}
               book={book}
               userId={user?.id ?? null}
               notesPromise={notesPromise}
@@ -396,6 +398,7 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
 // Las pestañas: aquí vive todo lo pesado (backfill de personas, créditos, saga,
 // ediciones, pases, sesiones y colas), detrás del <Suspense> del hero.
 async function BookTabs({
+  passCard,
   book,
   userId,
   notesPromise,
@@ -403,6 +406,7 @@ async function BookTabs({
   marginPages,
   ratingSummary,
 }: {
+  passCard: React.ReactNode;
   book: BookRow;
   userId: string | null;
   notesPromise: ReturnType<typeof getNotesForItem> | null;
@@ -568,6 +572,7 @@ async function BookTabs({
 
   return (
     <ItemDetailTabs
+      passCard={passCard}
       logLinkLabel={sessions.length > 0 && sessions.length < READING_STRIP_SESSION_CAP
         ? tDetail("viewSessions", { count: sessions.length }) : tDetail("viewHistory")}
       logPreview={notesPromise && <Suspense fallback={null}><LastBookNote notes={notesPromise} /></Suspense>}

@@ -36,10 +36,7 @@ export function PassLogHead({
   const openPass = passes.find((p) => p.status === "planned" || p.status === "in_progress") ?? null;
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-      <h2 className="min-w-0 font-serif text-xl leading-tight font-semibold">
-        {tPasses(`journalTitle.${itemType}`, { count: passes.length })}
-      </h2>
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 empty:hidden">
       {/* Una película sin ediciones y sin permiso para aportar no tiene nada que
           elegir: el selector solo ofrecería «No lo sé». */}
       {openPass && itemType !== "series" && !(itemType === "movie" && editions.length === 0 && !canContribute) && (
@@ -54,7 +51,7 @@ export function PassLogHead({
         />
       )}
       {/* «Nuevo pase» no se pinta sobre un pendiente: no hay nada que cerrar. */}
-      {status !== "planned" && (
+      {status !== "planned" && status !== "completed" && (
         <button
           type="button"
           disabled={isPending}

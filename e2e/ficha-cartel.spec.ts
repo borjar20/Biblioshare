@@ -358,7 +358,7 @@ test("la hoja de cierre dentro de una pestaña no adopta la letra del cartel", a
 
     await login(page);
     await page.goto(`/pelicula/${pass.item_id}?tab=log`);
-    await page.getByRole("group", { name: "Tu estado" }).getByRole("button", { name: "Vista" }).click();
+    await page.getByRole("combobox", { name: "Tu estado" }).selectOption({ label: "Vista" });
 
     const title = page.getByRole("dialog").getByRole("heading", { name: "¿Qué te ha parecido?" });
     await expect(title).toBeVisible({ timeout: 20_000 });

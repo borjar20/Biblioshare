@@ -8414,3 +8414,5 @@ Las valoraciones siguen en el resumen lateral. Las reseñas y sus conversaciones
 La tarjeta del pase mantiene los estados a la vista y reserva el color de acento para la acción principal. La nota comparte fila con esa acción cuando cabe y pasa debajo en las tarjetas estrechas.
 
 El registro personal agrupa cada pase en una entrada con fecha, nota y reseña. Las acciones de anotación y colección siguen disponibles con el cuaderno vacío. En libros la captura de una cita conserva la página del tramo actual.
+
+La ficha reúne el estado, la nota y la acción principal en el pase personal. En móvil va antes de la información y los episodios. En escritorio encabeza la columna derecha. El estado se cambia desde un selector nativo y la acción de repetir un pase completado aparece una sola vez en el bloque.

@@ -8,7 +8,7 @@ import { detailTabOrder, clampDetailTab, type DetailTabId } from "./tab-visibili
 
 export function ItemDetailTabs({
   tablistLabel, labels, info, episodes, community, reviews, log, stickyAction, inlineLog = false,
-  logLinkLabel, logPreview,
+  logLinkLabel, logPreview, passCard,
 }: {
   tablistLabel: string;
   labels: Partial<Record<DetailTabId | "episodes" | "community" | "back", string>>;
@@ -21,6 +21,7 @@ export function ItemDetailTabs({
   inlineLog?: boolean;
   logLinkLabel?: string;
   logPreview?: ReactNode;
+  passCard?: ReactNode;
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -48,7 +49,7 @@ export function ItemDetailTabs({
     }, { rootMargin: `-${topbar}px 0px 0px 0px` });
     observer.observe(el);
     return () => observer.disconnect();
-  }, [stickyAction, hasTabs]);
+  }, [stickyAction, hasTabs, tab]);
 
   function selectTab(id: DetailTabId) {
     const params = new URLSearchParams(searchParams.toString());
@@ -82,7 +83,6 @@ export function ItemDetailTabs({
   const sectionOffset = "scroll-mt-[calc(var(--topbar-h)+60px)]";
   return (
     <div className="flex flex-col">
-      <div ref={sentinelRef} aria-hidden className="h-px" />
       {hasTabs && (
         <div className="sticky top-[var(--topbar-h)] z-10 hidden border-b border-border bg-background/90 backdrop-blur-md lg:block">
           <div className={`${DETAIL_CONTAINER} flex items-center gap-4`}>
@@ -108,23 +108,28 @@ export function ItemDetailTabs({
           <>
             <button type="button" data-testid="detail-back" className="mb-5 text-sm underline lg:hidden"
               onClick={() => fromContext("info")}>{labels.back ?? labels.info}</button>
+            <div className="mb-5 max-w-xl">{passCard}</div>
+            <div ref={sentinelRef} aria-hidden />
             {log}
           </>
         ) : (
-          <div className="flex flex-col gap-7 xl:grid xl:grid-cols-[minmax(0,1fr)_minmax(210px,32%)] xl:grid-rows-[auto_1fr] xl:items-start">
-            {hasInlineLog && <a href="#detail-log" className="order-first text-sm font-semibold underline underline-offset-4 xl:hidden">{logLinkLabel ?? labels.log}</a>}
-            {hasTabs && <div className="order-first flex flex-col items-start gap-2 xl:col-start-2 xl:row-start-1">
-              <h2 className="label-section hidden xl:block">{labels.log}</h2>
-              {logPreview}
-              <button type="button" data-testid="detail-open-log" className="text-sm font-semibold text-accent-ink underline underline-offset-4"
-                onClick={() => fromContext("log")}>{logLinkLabel ?? labels.log}</button>
-            </div>}
+          <div className="flex flex-col gap-7 xl:grid xl:grid-cols-[minmax(0,1fr)_minmax(250px,36%)] xl:grid-rows-[auto_1fr] xl:items-start">
+            <section id={hasInlineLog ? "detail-log" : undefined}
+              className={`order-first min-w-0 space-y-3 xl:col-start-2 xl:row-start-1 ${sectionOffset}`}>
+              {passCard}
+              <div ref={sentinelRef} aria-hidden />
+              {hasInlineLog && log}
+              {hasTabs && <>
+                {logPreview}
+                <button type="button" data-testid="detail-open-log" className="text-sm font-semibold text-accent-ink underline underline-offset-4"
+                  onClick={() => fromContext("log")}>{logLinkLabel ?? labels.log}</button>
+              </>}
+            </section>
             <div className="flex min-w-0 flex-col gap-8 xl:col-start-1 xl:row-start-1 xl:row-span-2">
               <div className={followed && episodes ? "order-2" : ""}>{info}</div>
               {episodes && <section id="detail-episodes" aria-label={labels.episodes} className={sectionOffset}>{episodes}</section>}
             </div>
             <div className="min-w-0 space-y-8 xl:col-start-2">
-              {hasInlineLog && <section id="detail-log" aria-label={labels.log} className={sectionOffset}>{log}</section>}
               <section id="detail-community" aria-label={labels.community} className={sectionOffset}>{community}</section>
             </div>
             {reviews && <div className="min-w-0 empty:hidden xl:col-span-2">{reviews}</div>}

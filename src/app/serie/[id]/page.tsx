@@ -24,6 +24,7 @@ const DETAIL_NS = [
   "catalogEdit", "collection", "detail", "editions", "episode",
   "item", "library", "margin", "notes", "passes", "ritual", "social", "joint",
 ] as const;
+import { PassDiary } from "@/components/detail/pass-diary";
 import { LogPanel, type ManagedEntry } from "@/components/detail/log-panel";
 import { HeroMenu } from "@/components/detail/hero-menu";
 import { WatchProviders } from "@/components/watch-providers";
@@ -247,6 +248,17 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
   const episodesPromise = catalogReady.then(() =>
     getEpisodeData(supabase, series.id, user?.id ?? null, activePass?.id ?? null));
   const [jointInvites, workHue] = await Promise.all([jointInvitesPromise, workHuePromise]);
+  const passCard = (
+    <div className="flex flex-col gap-3">
+      <PendingJointInvites invites={jointInvites} variant="item" />
+      <PassCard
+        itemType="series"
+        progress={null}
+        rating={activePass?.rating ?? null}
+      />
+    </div>
+  );
+
   const shell = (
     <ItemShell
       itemType="series"
@@ -266,19 +278,10 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
           canEditCatalog={canEditCatalog}
         />
       }
-      passCard={
-        <div className="flex flex-col gap-3">
-          <PendingJointInvites invites={jointInvites} variant="item" />
-          <PassCard
-            itemType="series"
-            progress={null}
-            rating={activePass?.rating ?? null}
-          />
-        </div>
-      }
       tabs={
-        <Suspense fallback={<ItemTabsSkeleton />}>
+        <Suspense fallback={<ItemTabsSkeleton passCard={passCard} />}>
           <SeriesTabs
+            passCard={passCard}
             series={series}
             userId={user?.id ?? null}
             notesPromise={notesPromise}
@@ -356,6 +359,7 @@ async function SeriesEpisodeWorkspace({ episodes, series, pass, initiallyExpande
 }
 
 async function SeriesTabs({
+  passCard,
   series,
   userId,
   notesPromise,
@@ -363,6 +367,7 @@ async function SeriesTabs({
   ratingSummary,
   episodesPromise, activeRow, canContribute, initiallyExpanded,
 }: {
+  passCard: React.ReactNode;
   series: SeriesRow;
   userId: string | null;
   notesPromise: ReturnType<typeof getNotesForItem> | null;
@@ -485,6 +490,7 @@ async function SeriesTabs({
 
   return (
     <ItemDetailTabs
+      passCard={passCard}
       tablistLabel={tDetail("tabsLabel")}
       labels={{
         info: tDetail("tabInfo"),
@@ -587,6 +593,7 @@ async function SeriesTabs({
           </SeriesEpisodeWorkspace>
         )
       ) : undefined}
+      logPreview={entry?.status === "completed" && <PassDiary activeOnly itemType="series" itemId={series.id} passes={passes} editions={[]} />}
       logLinkLabel={tDetail("viewHistory")}
       community={<CommunityPanel itemType="series" community={community} reviewCount={community.reviews.length + episodeReviews.length} />}
       reviews={

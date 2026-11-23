@@ -9,12 +9,11 @@ import { RatingDots } from "@/components/ui/rating-dots";
 import { useItemStatus } from "./item-status-context";
 import { usePassActions } from "./pass-actions-provider";
 import { useSeriesEpisodes } from "./series-episode-context";
-import { StatusSegments } from "./status-segments";
+import { PassStatusSelect } from "./pass-status-select";
 import styles from "./pass-card.module.css";
 
 // La misma forma para el botón principal con y sin pase (y para las
 // intenciones secundarias): la tarjeta cambia de contenido, no de lenguaje.
-// Es el radio del control de estado (StatusSegments, rounded-[10px]).
 const PRIMARY_SHAPE = "rounded-[10px]";
 
 export type PassCardProps = {
@@ -25,11 +24,11 @@ export type PassCardProps = {
   rating: number | null;
   /** Solo series: «Al día» (isUpToDate, src/lib/series/follow-state.ts), que
    *  calcula la ficha con los datos del pase. Es un estado DERIVADO, no una
-   *  pastilla más: se marca junto al progreso y StatusSegments sigue en «Viendo». */
+   *  pastilla más: se marca junto al progreso y PassStatusSelect sigue en «Viendo». */
   upToDate?: boolean;
 };
 
-// «Tu pase» en la cabecera de la ficha, y el MANDO de la obra (spec
+// Controles del pase personal de la obra (spec
 // 2026-11-10-ficha-acciones): sin pase ofrece las intenciones («Quiero leerlo»,
 // «Lo estoy leyendo», «Ya lo leí»); con pase, el estado se cambia aquí mismo, la
 // acción principal depende del estado y la nota se pone sin ir a Mi registro.
@@ -44,6 +43,7 @@ export function PassCard({ itemType, progress: initialProgress, rating, upToDate
   const progress = episodes?.progress ?? initialProgress;
   const upToDate = episodes?.upToDate ?? initialUpToDate;
   const t = useTranslations("item");
+  const tPasses = useTranslations("passes");
   const tRail = useTranslations("detail.rail");
   const tEpisode = useTranslations("episode");
   const { status, isSaving } = useItemStatus();
@@ -89,9 +89,6 @@ export function PassCard({ itemType, progress: initialProgress, rating, upToDate
     primaryRef.current?.focus();
   }, [status, busy]);
 
-  const shell =
-    "flex flex-col gap-2 rounded-xl border border-border bg-surface/90 p-2.5";
-
   const errorLine = error && (
     <p role="alert" className="px-1 text-[13px] text-status-dropped">
       {t(error)}
@@ -106,7 +103,7 @@ export function PassCard({ itemType, progress: initialProgress, rating, upToDate
   if (!status) {
     const [first, ...rest] = intentsFor(itemType);
     return (
-      <div className={shell}>
+      <div className="flex flex-wrap items-center gap-2">
         <Button
           type="button"
           disabled={busy}
@@ -116,7 +113,7 @@ export function PassCard({ itemType, progress: initialProgress, rating, upToDate
           {t(`intent.${first}.${itemType}`)}
         </Button>
         {rest.length > 0 && (
-          <div className={`grid gap-2 ${rest.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+          <div className="contents">
             {rest.map((intent) => (
               <Button
                 key={intent}
@@ -124,7 +121,7 @@ export function PassCard({ itemType, progress: initialProgress, rating, upToDate
                 variant="secondary"
                 disabled={busy}
                 onClick={() => chooseIntent(intent)}
-                className={`w-full px-3 text-[13px] font-semibold ${PRIMARY_SHAPE} ${styles.secondary}`}
+                className={`min-h-11 px-3 text-[13px] font-semibold ${PRIMARY_SHAPE} ${styles.secondary}`}
               >
                 {t(`intent.${intent}.${itemType}`)}
               </Button>
@@ -140,23 +137,19 @@ export function PassCard({ itemType, progress: initialProgress, rating, upToDate
   const episodeControls = action === "episode" ? episodes : null;
 
   return (
-    <div className={shell}>
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-serif text-xl font-semibold">{tPasses(`journalTitle.${itemType}`, { count: 1 })}</h2>
+        <div data-testid="status-badge" aria-busy={busy}>
+          <PassStatusSelect status={status} itemType={itemType} onChange={changeStatus} disabled={busy} />
+        </div>
+      </div>
       {episodeControls && (
         <>
           {episodeControls.primary}
           {episodeControls.feedback}
         </>
       )}
-      {/* data-testid: los e2e esperan a que aria-busy vuelva a false (#106). */}
-      <div data-testid="status-badge" aria-busy={busy}>
-        <StatusSegments
-          status={status}
-          itemType={itemType}
-          onChange={changeStatus}
-          disabled={busy}
-        />
-      </div>
-
       {progress && (
         <div className="px-0.5">
           <div

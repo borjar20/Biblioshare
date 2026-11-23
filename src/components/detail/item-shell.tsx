@@ -26,7 +26,6 @@ export function ItemShell({
   ratingsLabel,
   backLabel,
   menuSlot,
-  passCard,
   tabs,
 }: {
   itemType: ItemType;
@@ -45,8 +44,6 @@ export function ItemShell({
    *  cada instancia tiene su propio <dialog> cerrado y no lleva ids, así que no
    *  chocan—. Es el ÚNICO sitio para quitar la obra de la biblioteca. */
   menuSlot?: ReactNode;
-  /** <PassCard/>, una sola instancia. */
-  passCard: ReactNode;
   tabs: ReactNode;
 }) {
   return (
@@ -76,7 +73,6 @@ export function ItemShell({
             genres={genres}
             avgRating={avgRating}
             ratingsLabel={ratingsLabel}
-            passCard={passCard}
             desktopMenu={menuSlot}
           />
           {tabs}

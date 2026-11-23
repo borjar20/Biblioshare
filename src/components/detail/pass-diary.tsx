@@ -52,18 +52,20 @@ export function PassDiary({
   itemId,
   passes,
   editions,
+  activeOnly = false,
 }: {
   itemType: ItemType;
   itemId: string;
   passes: Pass[];
   editions: Edition[];
+  activeOnly?: boolean;
 }) {
   const t = useTranslations("passes");
 
   // Con quién está compartido cada pase terminado (#1220), en UNA llamada por
   // diario. Se recarga al cerrar la hoja de un pase, por si invitó o se salió.
   const completedKey = passes
-    .filter((p) => p.status === "completed")
+    .filter((p) => p.status === "completed" && (!activeOnly || p.isActive))
     .map((p) => p.id)
     .join(",");
   const [jointByPass, setJointByPass] = useState<Record<string, PassJointViewing>>({});
@@ -89,6 +91,7 @@ export function PassDiary({
       ) : (
         <ul className="flex flex-col gap-2.5">
           {passes.map((pass, i) => {
+            if (activeOnly && !pass.isActive) return null;
             // Los pases vienen del más reciente al más antiguo: el n-ésimo
             // pase cronológico es al revés del índice del array.
             const n = passes.length - i;
@@ -219,7 +222,7 @@ function PassCard({
       // y 3,89:1 en oscuro (medido), por debajo del 4,5:1 de WCAG 1.4.3.
       // Rebajar el relleno da la misma jerarquía y SUBE el contraste.
       className={`flex flex-col rounded-[10px] border border-border p-[13px] text-xs ${
-        isOld ? "bg-surface-muted/50" : "bg-surface-muted"
+        pass.isActive ? "border-x-0 border-b-0 rounded-none px-0" : isOld ? "bg-surface-muted/50" : "bg-surface-muted"
       }`}
     >
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
@@ -227,7 +230,7 @@ function PassCard({
           {t(`nth.${itemType}`, { n })} <span className="font-normal text-muted-foreground">· {dateLabel}</span>
         </h3>
         <div className="flex items-center gap-1.5">
-          <RatingDots value={pass.rating} size="sm" itemType={itemType} />
+          {!pass.isActive && <RatingDots value={pass.rating} size="sm" itemType={itemType} />}
           {deltaLabel && (
             <span
               className={`font-mono text-[10px] ${

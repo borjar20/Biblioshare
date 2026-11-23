@@ -26,7 +26,6 @@ export function ItemHero({
   genres,
   avgRating,
   ratingsLabel,
-  passCard,
   desktopMenu,
 }: {
   itemType: ItemType;
@@ -37,7 +36,6 @@ export function ItemHero({
   /** Nota media 1–10 de la comunidad, o null si nadie ha puntuado. */
   avgRating: number | null;
   ratingsLabel: string;
-  passCard: ReactNode;
   /** El ⋯ de la ficha desde `lg` (en móvil va en la barra del cartel). */
   desktopMenu?: ReactNode;
 }) {
@@ -96,7 +94,6 @@ export function ItemHero({
         </div>
       )}
 
-      <div className="mt-4 max-w-[420px]">{passCard}</div>
     </div>
   );
 }

@@ -73,14 +73,14 @@ describe("LogPanel, solo historial", () => {
   });
 
   it("«Nuevo pase» delega en el proveedor", () => {
-    renderLog({ status: "completed" });
+    renderLog({ status: "in_progress" });
     fireEvent.click(screen.getByRole("button", { name: /Nuevo pase/i }));
     expect(actions.newPass).toHaveBeenCalledTimes(1);
   });
 
   it("«Nuevo pase» se deshabilita mientras el proveedor escribe", () => {
     actions.isPending = true;
-    renderLog({ status: "completed" });
+    renderLog({ status: "in_progress" });
     expect(screen.getByRole("button", { name: /Nuevo pase/i })).toHaveProperty("disabled", true);
   });
 
