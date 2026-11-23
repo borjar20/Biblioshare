@@ -3,6 +3,8 @@ import type { ItemType } from "@/lib/catalog/types";
 import { parsePosition } from "@/lib/library/position";
 import type { ProgressSession } from "./types";
 
+const POSTS_CHUNK = 100;
+
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
 // Las sesiones son del PASE, no de la entrada: una entrada puede acumular
@@ -42,12 +44,14 @@ export async function getSessions(
   // ve sus propios posts, así que esto nunca filtra los de otro. Se salta si
   // no hay sesiones que mirar.
   const postedSessionIds = new Set<string>();
-  if (sessionIds.length > 0) {
+  // Por bloques: la tira pide hasta 500 sesiones y un `.in()` con tantos ids
+  // revienta el límite de longitud de la URL del GET.
+  for (let i = 0; i < sessionIds.length; i += POSTS_CHUNK) {
     const { data: posts, error: postsError } = await supabase
       .from("posts")
       .select("source_id")
       .eq("source_kind", "progress_session")
-      .in("source_id", sessionIds);
+      .in("source_id", sessionIds.slice(i, i + POSTS_CHUNK));
 
     if (postsError) throw postsError;
 
