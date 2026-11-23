@@ -47,6 +47,14 @@ describe("ReadingStripCard", () => {
     expect(within(detail).getByText("texto note:1")).toBeTruthy();
     expect(screen.queryByText("texto note:2")).toBeNull();
   });
+  it("si la última sesión volvió atrás, abre el tramo más reciente que contiene la página actual", () => {
+    // 0→40, 40→90, 90→150 y una corrección a 60: la página actual (60) es del
+    // segundo tramo, y ahí caen la nota y el compositor.
+    renderStrip([...four.slice(0, 3), s("d", "2026-08-10", 60)], [note("note:5", 60)]);
+    const detail = screen.getByTestId("reading-strip-detail");
+    expect(within(detail).getByText(/Sesión 2 · 20 jul/)).toBeTruthy();
+    expect(within(detail).getByText("texto note:5")).toBeTruthy();
+  });
   it("tocar un tramo lo abre; tocarlo otra vez, o Escape, lo cierra", () => {
     renderStrip(four, [note("note:2", 60)]);
     const tramo = screen.getByRole("button", { name: /20 jul: páginas 40 a 90/ });

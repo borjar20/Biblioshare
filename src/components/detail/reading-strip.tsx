@@ -35,10 +35,18 @@ export function ReadingStripCard({
   const tProgress = useTranslations("detail.log.progress");
   const segmentText = useSegmentText();
   const { segments, scale } = strip;
-  const lastId = segments.at(-1)?.sessionId ?? null;
-
-  // Abre por defecto la última sesión: «donde estás». Si llega otra última
-  // (sesión nueva tras revalidar), se vuelve a ella (ajuste en render).
+  // Abre por defecto «donde estás»: el tramo más reciente que contiene la
+  // página actual (el mismo que se queda una nota escrita ahí, ver
+  // buildReadingStrip). Si la última sesión volvió atrás no tiene tramo propio,
+  // y abrirla escondería sus notas. Sin ninguno, la última que avanzó; sin
+  // tramos, la última sesión. Si cambia (sesión nueva tras revalidar), se vuelve
+  // a él (ajuste en render).
+  const page = strip.currentPage;
+  const lastId =
+    segments.findLast((s) => s.advanced && s.from < page && page <= s.to)?.sessionId ??
+    segments.findLast((s) => s.advanced)?.sessionId ??
+    segments.at(-1)?.sessionId ??
+    null;
   const [selected, setSelected] = useState<string | null>(lastId);
   const [prevLastId, setPrevLastId] = useState(lastId);
   if (lastId !== prevLastId) {
