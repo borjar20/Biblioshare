@@ -17,7 +17,6 @@ export function CommunitySummary({
   ratingsLabel: string;
 }) {
   const t = useTranslations("detail");
-  const ratingCount = distribution.reduce((total, count) => total + count, 0);
   return (
     <div>
       <p className="flex flex-wrap items-baseline gap-x-2">
@@ -26,14 +25,10 @@ export function CommunitySummary({
         </strong>
         <span className="text-xs text-muted-foreground">{ratingsLabel}</span>
       </p>
-      {ratingCount > 1 && (
-        <details className="mt-2">
-          <summary className="cursor-pointer rounded-sm py-2 text-xs font-medium text-foreground">
-            {t("ratingDistribution")}
-          </summary>
-          <CommunityRatingHistogram itemType={itemType} distribution={distribution} />
-        </details>
-      )}
+      <div className="mt-3">
+        <p className="mb-2 text-xs font-medium text-foreground">{t("ratingDistribution")}</p>
+        <CommunityRatingHistogram itemType={itemType} distribution={distribution} />
+      </div>
     </div>
   );
 }

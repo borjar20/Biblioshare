@@ -37,25 +37,23 @@ describe("CommunityPanel en la ficha compartida", () => {
     expect(container.querySelector("details, article")).toBeNull();
   });
 
-  it("muestra una única nota sobre cinco sin ofrecer distribución", async () => {
+  it("muestra la distribución desde la primera valoración", async () => {
     const { container } = await renderPanel({
       ...empty, avgRating: 7, ratingCount: 1, distribution: [0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
     });
     expect(container.textContent).toContain("3,5/5");
     expect(screen.getByText("ratings 1")).toBeTruthy();
+    expect(screen.getByRole("group", { name: "ratingDistribution" })).toBeTruthy();
     expect(container.querySelector("details")).toBeNull();
   });
 
-  it("con varias notas la distribución conserva sus diez cubos y se puede desplegar", async () => {
+  it("muestra los diez intervalos sin desplegar ningún control", async () => {
     await renderPanel({
       ...empty, avgRating: 7.5, ratingCount: 2, distribution: [0, 0, 0, 0, 0, 0, 1, 1, 0, 0],
     });
-    const summary = screen.getByText("ratingDistribution");
-    const disclosure = summary.closest("details")!;
-    expect(disclosure.open).toBe(false);
-    fireEvent.click(summary);
-    expect(disclosure.open).toBe(true);
-    expect(disclosure.querySelectorAll("button")).toHaveLength(10);
+    const chart = screen.getByRole("group", { name: "ratingDistribution" });
+    expect(chart.closest("details")).toBeNull();
+    expect(chart.querySelectorAll("button")).toHaveLength(10);
   });
 
   it("destaca la reseña más reciente entre pase y episodio y conserva spoilers e interacciones al desplegar", async () => {
