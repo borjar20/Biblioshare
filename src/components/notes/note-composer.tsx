@@ -98,7 +98,7 @@ export function NoteComposer({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-2 self-start rounded-full border border-border px-4 py-2 text-[12.5px] font-medium text-muted-foreground transition-colors hover:bg-surface-muted"
+        className={compact ? "diary-action" : "inline-flex items-center gap-2 self-start rounded-full border border-border px-4 py-2 text-[12.5px] font-medium text-muted-foreground transition-colors hover:bg-surface-muted"}
       >
         <span aria-hidden>✎</span> {t(compact ? "shortToggle" : "composerToggle")}
       </button>

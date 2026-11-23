@@ -97,7 +97,7 @@ export function AddToCollectionButton({ itemType, itemId }: { itemType: ItemType
         <button
           type="button"
           onClick={open}
-          className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border px-3 text-sm text-foreground transition-colors hover:bg-surface-muted"
+          className="diary-action"
         >
           <span aria-hidden>▤</span>
           {t("collectionAction")}

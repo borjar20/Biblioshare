@@ -471,6 +471,10 @@ body {
   color: var(--muted-foreground);
 }
 
+@utility diary-action {
+  @apply inline-flex min-h-11 w-32 max-w-full items-center justify-center gap-1.5 rounded-full border border-border px-2 text-center text-[13px] leading-tight font-medium text-foreground transition-colors hover:bg-surface-muted;
+}
+
 /* Área de pulsación mínima de 44px SIN tocar el dibujo (F4-015 de la auditoría
    2026-08). El hallazgo no era un control suelto: medido a 360px, el 60-80% de
    los elementos interactivos de cada vista bajaba de 40px en su lado corto, y

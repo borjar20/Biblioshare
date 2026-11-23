@@ -722,11 +722,21 @@ test.describe("película de un gesto", () => {
       await page.setViewportSize({ width: 360, height: 800 });
       const journal = page.locator("#detail-log");
       await expect(journal.getByRole("heading", { name: "Tu visionado" })).toBeVisible();
-      for (const name of ["Nota o cita", "Colección", "Nota al margen"]) {
-        await expect(journal.getByRole("button", { name, exact: true })).toBeVisible();
+      for (const width of [360, 1440]) {
+        await page.setViewportSize({ width, height: 800 });
+        const sizes = [];
+        for (const name of ["Nota o cita", "Colección", "Nota al margen"]) {
+          const button = journal.getByRole("button", { name, exact: true });
+          await expect(button).toBeVisible();
+          const box = await button.boundingBox();
+          sizes.push([box!.width, box!.height]);
+        }
+        expect(sizes[0][1]).toBeGreaterThanOrEqual(44);
+        expect(sizes[1]).toEqual(sizes[0]);
+        expect(sizes[2]).toEqual(sizes[0]);
+        expect(await journal.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
       }
       await expect(journal.getByRole("heading", { name: "Tu cuaderno" })).toHaveCount(0);
-      expect(await journal.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
       await page.setViewportSize(desktop);
 
       await journal.getByRole("button", { name: "Registrar otro visionado" }).click();
