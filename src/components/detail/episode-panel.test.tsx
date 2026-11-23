@@ -344,18 +344,22 @@ it("permite buscar en toda una temporada larga y solo muestra la ficha elegida",
   const episodes = Array.from({ length: 121 }, (_, i) => ep(1, i + 1));
   episodes[120].title = "El regreso";
   render(<NextIntlClientProvider locale="es" messages={messages}><EpisodeGrid seasons={[{ season: 1, episodes }]} /></NextIntlClientProvider>);
+  const buttons = () => within(screen.getByLabelText("Elige un episodio")).getAllByRole("button");
+  expect(buttons()).toHaveLength(50);
+  fireEvent.click(screen.getByRole("button", { name: "E101–E121" }));
+  expect(buttons()).toHaveLength(21);
+  fireEvent.click(buttons()[20]);
+  expect(within(screen.getByRole("article")).getByText("El regreso")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Volver a los episodios" }));
+  expect(buttons()).toHaveLength(21);
   fireEvent.click(screen.getByRole("button", { name: "Información por episodio" }));
   expect(screen.queryByLabelText("Elige un episodio")).toBeNull();
-  fireEvent.change(screen.getByLabelText("Elige una temporada"), { target: { value: "1" } });
-  const picker = screen.getByLabelText("Elige un episodio");
-  expect(within(picker).getAllByRole("option")).toHaveLength(51);
-  fireEvent.change(screen.getByLabelText("Tramo de episodios"), { target: { value: "2" } });
-  expect(within(picker).getAllByRole("option")).toHaveLength(22);
+  fireEvent.click(screen.getByRole("button", { name: "Temporada 1" }));
   const search = screen.getByRole("searchbox");
   for (const query of ["E121", "regreso"]) {
     fireEvent.change(search, { target: { value: query } });
-    expect(within(picker).getAllByRole("option")).toHaveLength(2);
-    fireEvent.change(picker, { target: { value: "121" } });
+    expect(buttons()).toHaveLength(1);
+    fireEvent.click(buttons()[0]);
     expect(within(screen.getByRole("article")).getByText("El regreso")).toBeTruthy();
   }
   fireEvent.change(search, { target: { value: "999" } });

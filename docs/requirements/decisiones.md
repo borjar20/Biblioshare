@@ -8424,3 +8424,5 @@ La ficha de serie muestra las valoraciones comunitarias por episodio directament
 En «Valoraciones por episodio», el control «Información por episodio» alterna la rejilla con una guía de capítulos agrupados por temporada. Cada fila muestra el título, la valoración comunitaria y la sinopsis disponible. La guía está disponible también en series de una temporada.
 
 La guía pública de episodios requiere elegir temporada y capítulo antes de mostrar su ficha. Las temporadas de más de 50 capítulos se consultan por tramos de 50 y permiten buscar por número o título en la temporada completa.
+
+La guía usa tarjetas de temporada y botones de episodio. La rejilla muestra una temporada a la vez en series con más de 10 temporadas, más de 100 capítulos o numeración de episodio superior a 50. Comparte con la guía la búsqueda y los tramos de 50.

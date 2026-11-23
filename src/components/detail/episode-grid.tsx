@@ -30,8 +30,10 @@ function CommunityDetail({ episode }: { episode: EpisodeRow }) {
 
 const EPISODES_PER_GROUP = 50;
 
-function SeasonEpisodes({ episodes }: { episodes: EpisodeRow[] }) {
+function SeasonEpisodes({ episodes, ratings }: { episodes: EpisodeRow[]; ratings: boolean }) {
   const t = useTranslations("episode");
+  const opener = useRef<HTMLButtonElement>(null);
+  const detail = useRef<HTMLElement>(null);
   const [query, setQuery] = useState("");
   const [group, setGroup] = useState(0);
   const [choice, setChoice] = useState("");
@@ -57,45 +59,67 @@ function SeasonEpisodes({ episodes }: { episodes: EpisodeRow[] }) {
           }} />
       )}
       {matches.length > EPISODES_PER_GROUP && (
-        <label className="block text-sm">{t("episodeRange")}
-          <select className={field} value={group} onChange={event => {
-            setGroup(Number(event.target.value));
+        <div role="group" aria-label={t("episodeRange")} className="flex gap-2 overflow-x-auto pb-2">
+          {Array.from({ length: Math.ceil(matches.length / EPISODES_PER_GROUP) }, (_, i) => {
+            const first = matches[i * EPISODES_PER_GROUP];
+            const last = matches[Math.min((i + 1) * EPISODES_PER_GROUP, matches.length) - 1];
+            return <button key={i} type="button" aria-pressed={group === i}
+              className="min-h-11 shrink-0 border-b-2 border-transparent px-2 font-mono text-xs aria-pressed:border-type-series aria-pressed:font-bold"
+              onClick={() => { setGroup(i); setChoice(""); }}>E{first.episode}–E{last.episode}</button>;
+          })}
+        </div>
+      )}
+      {selected && (
+        <article ref={detail} tabIndex={-1} className="rounded-lg border-l-4 border-type-series bg-surface-muted p-4">
+          <CommunityDetail episode={selected} />
+          <button type="button" onClick={() => {
             setChoice("");
-          }}>
-            {Array.from({ length: Math.ceil(matches.length / EPISODES_PER_GROUP) }, (_, i) => {
-              const first = matches[i * EPISODES_PER_GROUP];
-              const last = matches[Math.min((i + 1) * EPISODES_PER_GROUP, matches.length) - 1];
-              return <option key={i} value={i}>E{first.episode} – E{last.episode}</option>;
-            })}
-          </select>
-        </label>
+            requestAnimationFrame(() => opener.current?.focus());
+          }} className="mt-2 min-h-11 text-sm underline">{t("backToEpisodes")}</button>
+        </article>
       )}
       {visible.length ? (
-        <select aria-label={t("chooseEpisode")} className={field} value={choice}
-          onChange={event => setChoice(event.target.value)}>
-          <option value="">{t("chooseEpisode")}</option>
-          {visible.map(ep => <option key={ep.episode} value={ep.episode}>
-            {t("episodeShort", { n: ep.episode })} · {ep.title ?? t("untitled")}
-          </option>)}
-        </select>
+        <div role="group" aria-label={t("chooseEpisode")} hidden={!!selected}
+          className={selected ? "hidden" : ratings ? "grid grid-cols-5 gap-1.5 @min-[650px]/episodes:grid-cols-10" : "grid gap-1.5 @min-[480px]/episodes:grid-cols-2"}>
+          {visible.map(ep => {
+            const code = t("episodeShort", { n: ep.episode });
+            const color = ratingColor(ep.avgRating);
+            return <button key={ep.episode} type="button" aria-label={code + " · " + (ep.title ?? t("untitled")) + (ratings ? " · " + (ep.avgRating?.toFixed(1) ?? t("noScore")) : "")}
+              style={ratings && color ? { backgroundColor: color, color: "var(--tier-foreground)" } : undefined}
+              className={ratings ? `flex min-h-12 flex-col justify-between rounded-md border border-border px-1.5 py-1 ${ep.aired ? "bg-surface-muted" : "border-dashed"}` : "flex min-h-12 items-center gap-3 rounded-md border border-border px-3 text-left hover:bg-surface-muted focus-visible:bg-surface-muted"}
+              onClick={event => {
+                opener.current = event.currentTarget;
+                setChoice(String(ep.episode));
+                requestAnimationFrame(() => detail.current?.focus());
+              }}>
+              <span className="self-start font-mono text-xs my-auto">{code}</span>
+              {ratings ? <strong className="self-end tabular-nums">{ep.avgRating?.toFixed(1) ?? "—"}</strong>
+                : <span className="text-sm font-semibold">{ep.title ?? t("untitled")}</span>}
+            </button>;
+          })}
+        </div>
       ) : <p role="status" className="text-sm text-muted-foreground">{t("noMatchingEpisodes")}</p>}
-      {selected && <article className="border-t border-border pt-4"><CommunityDetail episode={selected} /></article>}
     </div>
   );
 }
 
-function EpisodeGuide({ seasons }: { seasons: SeasonGroup[] }) {
+function EpisodeGuide({ seasons, ratings = false }: { seasons: SeasonGroup[]; ratings?: boolean }) {
   const t = useTranslations("episode");
-  const [choice, setChoice] = useState("");
-  const selected = seasons.find(group => String(group.season) === choice);
+  const [choice, setChoice] = useState<number | undefined>(ratings ? seasons[0]?.season : undefined);
+  const selected = seasons.find(group => group.season === choice);
   return (
-    <div className="max-w-prose">
-      <select aria-label={t("chooseSeason")} value={choice} onChange={event => setChoice(event.target.value)}
-        className="min-h-11 w-full rounded-md border border-border bg-background px-3 text-sm">
-        <option value="">{t("chooseSeason")}</option>
-        {seasons.map(({ season }) => <option key={season} value={season}>{t("season", { n: season })}</option>)}
-      </select>
-      {selected && <SeasonEpisodes key={selected.season} episodes={selected.episodes} />}
+    <div className="min-w-0">
+      <div role="group" aria-label={t("chooseSeason")} className="flex gap-2 overflow-x-auto pb-2">
+        {seasons.map(({ season, episodes }) => (
+          <button key={season} type="button" aria-label={t("season", { n: season })} aria-pressed={season === choice}
+            onClick={() => setChoice(season)}
+            className="shrink-0 rounded-lg border border-border px-3 py-2 text-left hover:bg-surface-muted aria-pressed:border-type-series aria-pressed:bg-surface-muted">
+            <span className="block font-serif font-bold">{t("season", { n: season })}</span>
+            <span className="font-mono text-xs text-muted-foreground">{t("episodeCount", { count: episodes.length })}</span>
+          </button>
+        ))}
+      </div>
+      {selected && <SeasonEpisodes key={selected.season} episodes={selected.episodes} ratings={ratings} />}
     </div>
   );
 }
@@ -108,7 +132,9 @@ export function EpisodeGrid({ seasons }: { seasons: SeasonGroup[] }) {
   const sheet = useRef<HTMLDialogElement>(null);
   const side = useRef<HTMLElement>(null);
   const maxEpisodes = seasons.reduce((max, group) => group.episodes.reduce((n, ep) => Math.max(n, ep.episode), max), 0);
-  const columns = Array.from({ length: maxEpisodes }, (_, i) => i + 1);
+  const compact = maxEpisodes > EPISODES_PER_GROUP || seasons.length > 10 ||
+    seasons.reduce((total, group) => total + group.episodes.length, 0) > 100;
+  const columns = Array.from({ length: compact ? 0 : maxEpisodes }, (_, i) => i + 1);
 
   function cell(ep: EpisodeRow, desktop: boolean) {
     const color = ratingColor(ep.avgRating);
@@ -149,6 +175,7 @@ export function EpisodeGrid({ seasons }: { seasons: SeasonGroup[] }) {
           <span>— {t("noScore")}</span>
           <span className="inline-flex items-center gap-1.5"><i className="size-2.5 rounded-sm border border-dashed border-border" />{t("upcoming")}</span>
         </div>
+        {compact ? <EpisodeGuide key="ratings" seasons={seasons} ratings /> : <>
         <div className="space-y-5 @min-[760px]/episodes:hidden">
           {seasons.map(({ season, episodes }) => {
             const avg = seasonAverage(episodes);
@@ -183,6 +210,7 @@ export function EpisodeGrid({ seasons }: { seasons: SeasonGroup[] }) {
           {selected && <CommunityDetail episode={selected} />}
           <button type="button" className="mt-4 min-h-11 font-semibold underline" onClick={() => sheet.current?.close()}>{t("closeDetail")}</button>
         </dialog>
+        </>}
         </>
       )}
     </section>

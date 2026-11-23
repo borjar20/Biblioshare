@@ -131,10 +131,10 @@ test.describe("móvil 375", () => {
     const info = episodes.getByRole("button", { name: "Información por episodio" });
     await info.click();
     await expect(episodes.getByRole("article")).toHaveCount(0);
-    await episodes.getByLabel("Elige una temporada").selectOption("7");
-    await episodes.getByLabel("Elige un episodio").selectOption("1");
+    await episodes.getByRole("button", { name: "Temporada 7", exact: true }).click();
+    await episodes.getByRole("button", { name: /^E1 ·/ }).click();
     await expect(episodes.getByRole("article")).toContainText("T7 · E1");
-    await episodes.getByLabel("Elige una temporada").selectOption("2");
+    await episodes.getByRole("button", { name: "Temporada 2", exact: true }).click();
     await expect(episodes.getByRole("article")).toHaveCount(0);
     await info.click();
     const cell = episodes.getByRole("button", { name: /^T7E1 ·/ });
