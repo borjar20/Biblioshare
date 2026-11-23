@@ -1,261 +1,128 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { EpisodeRow } from "@/lib/series/get-episode-data";
-import {
-  RATING_TIERS,
-  ratingColor,
-  averageRating,
-} from "@/lib/series/rating-scale";
+import { averageRating, ratingColor, RATING_TIERS } from "@/lib/series/rating-scale";
 
 export type SeasonGroup = { season: number; episodes: EpisodeRow[] };
 export type GridSource = "mine" | "community";
 
-// Valor y metadatos de una celda según la fuente seleccionada.
-function cellData(ep: EpisodeRow, source: GridSource) {
-  if (source === "mine") {
-    return {
-      rating: ep.own.rating,
-      present: ep.own.watched,
-      hasNote: Boolean(ep.own.review),
-    };
-  }
-  return { rating: ep.avgRating, present: ep.ratingCount > 0, hasNote: false };
+function seasonAverage(episodes: EpisodeRow[]) {
+  return averageRating(episodes.map((ep) => ep.avgRating).filter((value) => value !== null));
 }
 
-function seasonAverage(episodes: EpisodeRow[], source: GridSource) {
-  return averageRating(episodes.map((ep) => cellData(ep, source).rating).filter((r) => r !== null));
+function CommunityDetail({ episode }: { episode: EpisodeRow }) {
+  const t = useTranslations("episode");
+  return (
+    <>
+      <p className="font-mono text-xs text-muted-foreground">{t("codeLong", { s: episode.season, e: episode.episode })}</p>
+      <h3 className="mt-1 font-serif text-xl font-semibold">{episode.title ?? t("untitled")}</h3>
+      <p className="mt-2 text-sm">
+        {episode.avgRating !== null && <strong>{episode.avgRating.toFixed(1)}/10 · </strong>}
+        {t("communityCount", { count: episode.ratingCount })}
+        {!episode.aired && ` · ${t("upcoming")}`}
+      </p>
+      {episode.synopsis && <p className="mt-3 text-sm leading-relaxed">{episode.synopsis}</p>}
+    </>
+  );
 }
 
-export function EpisodeGrid({
-  seasons,
-  source,
-  selectedKey,
-  onSelect,
-}: {
-  seasons: SeasonGroup[];
-  source: GridSource;
-  selectedKey: string | null;
-  onSelect: (ep: EpisodeRow) => void;
-}) {
+export function EpisodeGrid({ seasons }: { seasons: SeasonGroup[] }) {
   const t = useTranslations("episode");
   const tLegend = useTranslations("detail.grid.legend");
-  const [hover, setHover] = useState<EpisodeRow | null>(null);
-
-  const maxEpisodes = seasons.reduce(
-    (max, s) => Math.max(max, ...s.episodes.map((e) => e.episode)),
-    0,
-  );
+  const [selected, setSelected] = useState<EpisodeRow | null>(null);
+  const root = useRef<HTMLElement>(null);
+  const index = useRef<HTMLDialogElement>(null);
+  const sheet = useRef<HTMLDialogElement>(null);
+  const side = useRef<HTMLElement>(null);
+  const maxEpisodes = seasons.reduce((max, group) => group.episodes.reduce((n, ep) => Math.max(n, ep.episode), max), 0);
   const columns = Array.from({ length: maxEpisodes }, (_, i) => i + 1);
+  const seasonAnchor = (season: number, desktop: boolean) => `episodes-${desktop ? "table" : "season"}-${season}`;
 
-  const detail = hover ?? null;
+  function cell(ep: EpisodeRow, desktop: boolean) {
+    const color = ratingColor(ep.avgRating);
+    const active = ep.season === selected?.season && ep.episode === selected.episode;
+    const code = t("code", { s: ep.season, e: ep.episode });
+    return (
+      <button key={ep.episode} type="button"
+        aria-label={[code, ep.title, ep.avgRating?.toFixed(1), t("communityCount", { count: ep.ratingCount }), !ep.aired && t("upcoming")].filter(Boolean).join(" · ")}
+        aria-pressed={active} aria-haspopup={desktop ? undefined : "dialog"}
+        onClick={() => {
+          setSelected(ep);
+          if (desktop) side.current?.focus({ preventScroll: true });
+          else sheet.current?.showModal();
+        }}
+        style={color ? { backgroundColor: color, color: "var(--tier-foreground)" } : undefined}
+        className={`flex w-full min-w-0 flex-col justify-between rounded-md border px-1.5 py-1 leading-none tabular-nums ${desktop ? "min-h-9 items-center justify-center" : "min-h-11"} ${color ? "border-transparent" : ep.aired ? "border-border bg-surface-muted" : "border-dashed border-border"} ${active ? "outline-2 outline-offset-1 outline-type-series" : ""}`}>
+        {!desktop && <span className="self-start font-mono text-[10px]">{t("episodeShort", { n: ep.episode })}</span>}
+        <span className={desktop ? "font-mono text-xs" : "self-end text-lg leading-none font-semibold"}>{ep.avgRating?.toFixed(1) ?? "—"}</span>
+      </button>
+    );
+  }
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Leyenda. En C3 va ANTES de la rejilla (los colores son el contenido, no
-          una nota al pie); en la tabla de PC se queda debajo, como estaba. */}
-      <div className="order-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 @min-[760px]/episodes:order-4">
-        {RATING_TIERS.map((tier) => (
-          <span key={tier.key} className="inline-flex items-center gap-1.5">
-            <span
-              className="h-2.5 w-2.5 rounded-sm"
-              style={{ backgroundColor: tier.color }}
-            />
-            <span className="font-mono text-[10px] text-muted-foreground">
-              {tLegend(tier.key)}
-            </span>
-          </span>
-        ))}
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-sm border border-border bg-surface-muted" />
-          <span className="font-mono text-[10px] text-muted-foreground">
-            {t("legendUnseen")}
-          </span>
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-sm border border-dashed border-border" />
-          <span className="font-mono text-[10px] text-muted-foreground">
-            {t("legendUpcoming")}
-          </span>
-        </span>
-        {source === "mine" && (
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-foreground/70" />
-            <span className="font-mono text-[10px] text-muted-foreground">
-              {t("hasNote")}
-            </span>
-          </span>
-        )}
+    <section ref={root} className="@container/episodes min-w-0">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-serif text-xl font-semibold">{t("communityEpisodes")}</h2>
+        {seasons.length >= 4 && <button type="button" className="min-h-11 text-sm font-semibold underline underline-offset-4" onClick={() => index.current?.showModal()}>{t("jumpSeason")}</button>}
       </div>
-
-      <div className="order-3 space-y-5 @min-[760px]/episodes:hidden">
+      <div className="mb-4 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+        {RATING_TIERS.map((tier) => <span key={tier.key} className="inline-flex items-center gap-1.5"><i className="size-2.5 rounded-sm" style={{ backgroundColor: tier.color }} />{tLegend(tier.key)}</span>)}
+        <span>— {t("noScore")}</span>
+        <span className="inline-flex items-center gap-1.5"><i className="size-2.5 rounded-sm border border-dashed border-border" />{t("upcoming")}</span>
+      </div>
+      <div className="space-y-5 @min-[760px]/episodes:hidden">
         {seasons.map(({ season, episodes }) => {
-          const avg = seasonAverage(episodes, source);
-          const aired = episodes.filter((ep) => ep.aired);
-          return (
-            <section key={season} aria-label={t("season", { n: season })}>
-              <div className="mb-1.5 flex flex-wrap items-baseline gap-x-2">
-                <h3 className="text-sm font-semibold">{t("season", { n: season })}</h3>
-                {avg !== null && (
-                  <span className="text-xs text-muted-foreground">{t("avgShort", { value: avg.toFixed(1) })}</span>
-                )}
-                {source === "mine" && aired.length > 0 && (
-                  <span className="ml-auto text-xs text-muted-foreground">
-                    {t("watchedCount", { watched: aired.filter((ep) => ep.own.watched).length, total: aired.length })}
-                  </span>
-                )}
-              </div>
-              <div className="grid grid-cols-4 gap-1 @min-[300px]/episodes:grid-cols-5">
-                {episodes.map((ep) => {
-                  const { rating, present, hasNote } = cellData(ep, source);
-                  const color = ratingColor(rating);
-                  const selected = selectedKey === `${season}:${ep.episode}`;
-                  const stateLabel = !ep.aired ? t("legendUpcoming") : source === "mine"
-                    ? t(present ? "watched" : "legendUnseen") : t("communityCount", { count: ep.ratingCount });
-                  return (
-                    <button key={ep.episode} type="button" onClick={() => onSelect(ep)}
-                      aria-label={[t("code", { s: season, e: ep.episode }), ep.title, rating?.toFixed(1), stateLabel, hasNote && t("hasNote")].filter(Boolean).join(" · ")}
-                      style={color ? { backgroundColor: color, color: "var(--tier-foreground)" } : undefined}
-                      className={`relative flex min-h-11 min-w-0 flex-col justify-between rounded-md border px-1.5 py-1 leading-none tabular-nums ${
-                        color ? "border-transparent" : !ep.aired ? "border-dashed border-border" : "border-border bg-surface-muted"
-                      } ${selected ? "outline-2 outline-offset-1 outline-type-series" : ""}`}>
-                      <span className="self-start font-mono text-[10px]">{t("episodeShort", { n: ep.episode })}</span>
-                      <span className="self-end text-lg leading-none font-semibold">
-                        {rating !== null ? rating.toFixed(1) : source === "mine" && present ? "✓" : "—"}
-                      </span>
-                      {hasNote && <span aria-hidden className="absolute top-1.5 right-1.5 size-1 rounded-full bg-current" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
-          );
+          const avg = seasonAverage(episodes);
+          return <section key={season} id={seasonAnchor(season, false)} tabIndex={-1} aria-label={t("season", { n: season })} className="scroll-mt-28">
+            <h3 className="mb-1.5 text-sm font-semibold">{t("season", { n: season })} {avg !== null && <span className="text-xs font-normal text-muted-foreground">{t("avgShort", { value: avg.toFixed(1) })}</span>}</h3>
+            <div className="grid grid-cols-4 gap-1 @min-[300px]/episodes:grid-cols-5">{episodes.map((ep) => cell(ep, false))}</div>
+          </section>;
         })}
       </div>
-
-      {/* PC — la tabla de siempre: temporadas en filas, episodios en columnas. */}
-      <div className="order-3 hidden overflow-x-auto @min-[760px]/episodes:block">
-        <table className="border-separate border-spacing-1">
-          <tbody>
-            {seasons.map((s) => {
-              const avg = seasonAverage(s.episodes, source);
-              const byEpisode = new Map(s.episodes.map((e) => [e.episode, e]));
-              return (
-                <tr key={s.season}>
-                  <th className="pr-2 text-left align-middle">
-                    <span className="block font-mono text-xs font-semibold text-foreground">
-                      {t("seasonShort", { n: s.season })}
-                    </span>
-                    {avg !== null && (
-                      <span className="block font-mono text-[10px] text-muted-foreground">
-                        {t("avgShort", { value: avg.toFixed(1) })}
-                      </span>
-                    )}
-                  </th>
-                  {columns.map((epNum) => {
-                    const ep = byEpisode.get(epNum);
-                    if (!ep)
-                      return <td key={epNum} className="min-w-[2.5rem]" />;
-                    const { rating, present, hasNote } = cellData(ep, source);
-                    const color = ratingColor(rating);
-                    return (
-                      <td key={epNum} className="min-w-[2.5rem]">
-                        <button
-                          type="button"
-                          onMouseEnter={() => setHover(ep)}
-                          onFocus={() => setHover(ep)}
-                          onClick={() => {
-                            setHover(ep);
-                            onSelect(ep);
-                          }}
-                          style={
-                            color
-                              ? {
-                                  backgroundColor: color,
-                                  color: "var(--tier-foreground)",
-                                }
-                              : undefined
-                          }
-                          className={`relative flex h-9 w-full items-center justify-center rounded-md font-mono text-xs font-semibold transition-transform hover:scale-105 ${
-                            color
-                              ? ""
-                              : present
-                                ? "bg-surface-muted text-muted-foreground"
-                                : ep.aired
-                                  ? "bg-surface-muted/40 text-muted-foreground/50"
-                                  : "border border-dashed border-border text-muted-foreground/40"
-                          }`}
-                          title={`${t("code", { s: ep.season, e: ep.episode })}${ep.title ? ` · ${ep.title}` : ""}`}
-                        >
-                          {rating !== null ? rating.toFixed(1) : epNum}
-                          {hasNote && (
-                            // bg-current: hereda el color de texto de la celda,
-                            // que ya contrasta con su fondo tenga tramo o no.
-                            <span className="absolute bottom-1 h-1 w-1 rounded-full bg-current opacity-80" />
-                          )}
-                        </button>
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <div className="hidden items-start gap-4 @min-[760px]/episodes:grid @min-[760px]/episodes:grid-cols-[minmax(0,1fr)_minmax(210px,30%)]">
+        <div className="overflow-x-auto">
+          <table className="border-separate border-spacing-1">
+            <thead><tr><td />{columns.map((n) => <th key={n} scope="col" className="font-mono text-[10px]">{t("episodeShort", { n })}</th>)}</tr></thead>
+            <tbody>{seasons.map(({ season, episodes }) => {
+              const avg = seasonAverage(episodes);
+              const byEpisode = new Map(episodes.map((ep) => [ep.episode, ep]));
+              return <tr key={season} id={seasonAnchor(season, true)} tabIndex={-1} className="scroll-mt-28">
+                <th scope="row" className="sticky left-0 bg-background pr-2 text-left text-xs">{t("seasonShort", { n: season })}{avg !== null && <span className="block whitespace-nowrap text-[10px] font-normal">{t("avgShort", { value: avg.toFixed(1) })}</span>}</th>
+                {columns.map((n) => {
+                  const ep = byEpisode.get(n);
+                  return <td key={n} className="min-w-10">{ep && cell(ep, true)}</td>;
+                })}
+              </tr>;
+            })}</tbody>
+          </table>
+        </div>
+        <aside ref={side} role="region" tabIndex={-1} aria-label={t("detailRegion")} className="sticky top-28 border-l border-border pl-4">
+          {selected ? <CommunityDetail episode={selected} /> : <p className="text-sm text-muted-foreground">{t("hoverHint")}</p>}
+        </aside>
       </div>
-
-      {/* Panel de detalle (hover en PC, toque en móvil) */}
-      <div className="order-5 hidden @min-[760px]/episodes:block min-h-[3.75rem] rounded-card border border-border bg-surface px-4 py-3 shadow-card">
-        {detail ? (
-          <HoverDetail episode={detail} source={source} />
-        ) : (
-          <p className="text-sm text-muted-foreground">{t("hoverHint")}</p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function HoverDetail({
-  episode,
-  source,
-}: {
-  episode: EpisodeRow;
-  source: GridSource;
-}) {
-  const t = useTranslations("episode");
-  const rating = source === "mine" ? episode.own.rating : episode.avgRating;
-
-  return (
-    <div className="flex flex-col gap-0.5">
-      <div className="flex items-baseline gap-2">
-        <span className="font-mono text-xs text-muted-foreground">
-          {t("code", { s: episode.season, e: episode.episode })}
-        </span>
-        <span className="text-sm font-medium text-foreground">
-          {episode.title ?? t("untitled")}
-        </span>
-        {rating !== null && (
-          <span className="ml-auto font-mono text-sm font-semibold text-foreground">
-            {rating.toFixed(1)}
-            {source === "community" && (
-              <span className="ml-1 text-[10px] font-normal text-muted-foreground">
-                {t("communityCount", { count: episode.ratingCount })}
-              </span>
-            )}
-          </span>
-        )}
-      </div>
-      {source === "mine" && episode.own.review ? (
-        <p className="line-clamp-2 text-xs text-muted-foreground">
-          {episode.own.review}
-        </p>
-      ) : episode.synopsis ? (
-        <p className="line-clamp-2 text-xs text-muted-foreground">
-          {episode.synopsis}
-        </p>
-      ) : null}
-    </div>
+      <dialog ref={sheet} aria-label={t("detailRegion")} className="fixed inset-0 m-auto max-h-[85dvh] w-[min(90vw,28rem)] overflow-auto rounded-xl bg-surface p-5 text-foreground backdrop:bg-black/50">
+        {selected && <CommunityDetail episode={selected} />}
+        <button type="button" className="mt-4 min-h-11 font-semibold underline" onClick={() => sheet.current?.close()}>{t("closeDetail")}</button>
+      </dialog>
+      <dialog ref={index} aria-label={t("jumpSeason")} className="fixed inset-0 m-auto max-h-[80dvh] w-[min(90vw,25rem)] overflow-auto rounded-xl bg-surface p-4 text-foreground backdrop:bg-black/50">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="font-semibold">{t("jumpSeason")}</h3>
+          <button type="button" className="min-h-11 px-2 text-sm underline" onClick={() => index.current?.close()}>{t("closeDetail")}</button>
+        </div>
+        <nav className="grid grid-cols-2 gap-2">{seasons.map(({season}) => {
+          const href = seasonAnchor(season, false);
+          return <a key={season} href={`#${href}`} className="rounded-md border border-border p-2.5 text-sm" onClick={(event) => {
+            event.preventDefault();
+            index.current?.close();
+            const desktop = (root.current?.clientWidth ?? 0) >= 760;
+            const target = document.getElementById(seasonAnchor(season, desktop));
+            target?.focus({ preventScroll: true });
+            target?.scrollIntoView({block: "start"});
+          }}>{t("season", { n: season })}</a>;
+        })}</nav>
+      </dialog>
+    </section>
   );
 }

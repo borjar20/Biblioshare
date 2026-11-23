@@ -54,32 +54,18 @@ test.describe("PC 1600", () => {
     expect(social.x).toBeGreaterThanOrEqual(info.x + info.width);
   });
 
-  test("Episodios en tres columnas: el detalle del episodio en la columna de la derecha", async ({ page }) => {
-    // A 1000px no hay cartel lateral y el panel supera el umbral de 760px.
-    await page.setViewportSize({ width: 1000, height: 900 });
+  test("Episodios comunitarios en escritorio: detalle al lado de la tabla", async ({ page }) => {
+    await page.setViewportSize({ width: 1600, height: 900 });
     await page.goto(`${SERIES}?tab=episodes`);
-    // En PC la columna es una region ARIA con nombre propio (revisión final
-    // PR 4): más robusto que el testid a secas y prueba que el a11y label
-    // está en su sitio.
-    const column = page.getByRole("region", { name: "Detalle del episodio" });
-    await expect(column).toBeVisible();
-    await expect(column).toContainText("Elige un episodio");
+    const episodes = page.locator("#detail-episodes");
+    const cell = episodes.getByRole("table").getByRole("button").first();
+    await cell.click();
+    const detail = episodes.getByRole("region", { name: "Detalle del episodio" });
+    await expect(detail.getByRole("heading")).toBeVisible();
+    await expect(cell).toHaveAttribute("aria-pressed", "true");
+    await expect(detail).toBeFocused();
+    expect((await detail.boundingBox())!.x).toBeGreaterThan((await cell.boundingBox())!.x);
 
-    // Primer episodio de la lista: en PC las filas llevan aria-pressed +
-    // aria-controls (no aria-expanded, que ahora es exclusivo del inline de
-    // móvil) — se escoge por ese atributo para no atrapar ningún otro botón
-    // aria-expanded de la página (p. ej. un menú global).
-    const firstEpisode = page.locator('button[aria-controls="episode-detail-column"]').first();
-    await firstEpisode.click();
-    await expect(column.locator("h3")).toBeVisible();
-    await expect(firstEpisode).toHaveAttribute("aria-pressed", "true");
-    // Tras elegir un episodio, el foco salta al título de la columna (a11y
-    // de teclado: revisión final PR 4).
-    await expect(column.locator("h3")).toBeFocused();
-
-    const list = await firstEpisode.boundingBox();
-    const detail = await column.boundingBox();
-    expect(detail!.x).toBeGreaterThan(list!.x + list!.width - 1);
   });
 });
 
@@ -101,16 +87,12 @@ test.describe("tableta 1100, con la columna de cartel", () => {
     await noOverflow(page);
   });
 
-  test("Episodios: sin columnas laterales, el detalle se abre bajo su fila", async ({ page }) => {
+  test("Episodios comunitarios en tableta: abre la ficha breve", async ({ page }) => {
     await page.goto(`${SERIES}?tab=episodes`);
-    await expect(page.getByTestId("episode-detail-column")).toBeHidden();
-    await page.getByRole("button", { name: "Ver Temporada 1" }).click();
-    const firstEpisode = page.locator("#detail-episodes li button[aria-expanded]").first();
-    await firstEpisode.click();
-    await expect(firstEpisode).toHaveAttribute("aria-expanded", "true");
-    const row = firstEpisode.locator("xpath=ancestor::li[1]");
-    await expect(row.getByTestId("episode-inline-detail")).toBeVisible();
+    await page.locator("#detail-episodes").getByRole("button", { name: /^T1E1 ·/ }).click();
+    await expect(page.getByRole("dialog", { name: "Detalle del episodio" })).toBeVisible();
     await noOverflow(page);
+
   });
 });
 
@@ -142,33 +124,22 @@ test.describe("móvil 375", () => {
     expect(editions!.y).toBeGreaterThan(ficha!.y);
   });
 
-  test("Episodios en móvil: el detalle se abre bajo su fila, sin columna", async ({ page }) => {
+  test("Episodios comunitarios en móvil: salta a la temporada y vuelve a la misma celda", async ({ page }) => {
     await page.goto(`${SERIES}?tab=episodes`);
     const episodes = page.locator("#detail-episodes");
-    await expect(episodes).toBeInViewport();
-    await expect(page.getByRole("tablist")).toHaveCount(0);
-    await expect(page.getByTestId("detail-open-log")).toBeHidden();
-    const synopsis = (await page.getByRole("heading", { name: "Sinopsis" }).boundingBox())!;
-    expect((await episodes.boundingBox())!.y).toBeGreaterThan(synopsis.y);
-    await expect(page.getByTestId("episode-detail-column")).toBeHidden();
+    await expect(episodes.locator("details")).toHaveCount(0);
+    await episodes.getByRole("button", { name: "Ir a temporada" }).click();
+    await page.getByRole("dialog").getByRole("link", {name: "Temporada 7", exact: true}).click();
+    const cell = episodes.getByRole("button", { name: /^T7E1 ·/ });
+    await expect(cell).toBeInViewport();
+    const position = await page.evaluate(() => window.scrollY);
+    await cell.click();
+    const modal = page.getByRole("dialog", {name: "Detalle del episodio"});
+    await expect(modal.getByRole("heading")).toBeVisible();
+    await expect(modal.getByRole("textbox")).toHaveCount(0);
+    await modal.getByRole("button", {name: "Cerrar"}).click();
+    await expect(cell).toBeFocused();
+    expect(Math.abs(await page.evaluate(() => window.scrollY) - position)).toBeLessThan(3);
 
-    // Entra a la temporada 1 desde el índice de temporadas (nivel E3 → E2).
-    await page.getByRole("button", { name: "Ver Temporada 1" }).click();
-
-    // Primer episodio de la temporada: en móvil las filas conservan
-    // aria-expanded (el desplegable de siempre, ahora exclusivo de este
-    // breakpoint — revisión final PR 4). Acotado a la lista (li button) para
-    // no colar un aria-expanded de otra parte de la página (p.ej. un menú).
-    const firstEpisode = page.locator("#detail-episodes li button[aria-expanded]").first();
-    await firstEpisode.click();
-    await expect(firstEpisode).toHaveAttribute("aria-expanded", "true");
-
-    // El detalle aparece DENTRO de la fila (su <li>), no en la columna que
-    // sigue oculta a este ancho. Se comprueba con el testid estable del
-    // envoltorio del desplegable, no con una clase de utilidad de Tailwind
-    // (frágil: cambia con cualquier retoque de estilo).
-    const row = firstEpisode.locator("xpath=ancestor::li[1]");
-    await expect(row.getByTestId("episode-inline-detail")).toBeVisible();
-    await expect(page.getByTestId("episode-detail-column")).toBeHidden();
   });
 });

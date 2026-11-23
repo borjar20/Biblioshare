@@ -7,7 +7,7 @@ import { PassCard } from "@/components/detail/pass-card";
 import { PendingJointInvites } from "@/components/social/pending-joint-invites";
 import { getPendingJointInvites } from "@/lib/social/joint-viewings";
 import { StickyPassCta } from "@/components/detail/sticky-pass-cta";
-import { EpisodeBrowser } from "@/components/detail/series-episode-context";
+import { EpisodeBrowser, EpisodeJournal } from "@/components/detail/series-episode-context";
 import {
   createClient,
   createTokenClient,
@@ -128,7 +128,7 @@ export default function SeriesDetailPage(props: SeriesDetailProps) {
 
 async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
   const { id } = await params;
-  const { cerrar, tab } = await searchParams;
+  const { cerrar } = await searchParams;
   const tDetail = await getTranslations("detail");
   const supabase = await createClient();
 
@@ -289,7 +289,6 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
             episodesPromise={episodesPromise}
             activeRow={activePass}
             canContribute={canEditCatalog}
-            initiallyExpanded={tab === "episodes"}
             ratingSummary={ratingSummary}
           />
         </Suspense>
@@ -307,7 +306,7 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
           activePass?.status === "planned" ||
           activePass?.status === "in_progress"
         }
-        sessionHref={activePass ? `/serie/${series.id}?tab=episodes` : null}
+        sessionHref={activePass ? `/serie/${series.id}?tab=log` : null}
         droppedAtLabel={
           activePass
             ? formatPosition("series", parsePosition("series", activePass.position))
@@ -321,7 +320,6 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
             episodes={episodesPromise}
             series={series}
             pass={activePass}
-            initiallyExpanded={tab === "episodes"}
             isLoggedIn
           >
             {shell}
@@ -334,11 +332,10 @@ async function SeriesDetail({ params, searchParams }: SeriesDetailProps) {
 
 type EpisodesPromise = ReturnType<typeof getEpisodeData>;
 
-async function SeriesEpisodeWorkspace({ episodes, series, pass, initiallyExpanded, isLoggedIn, children }: {
+async function SeriesEpisodeWorkspace({ episodes, series, pass, isLoggedIn, children }: {
   episodes: EpisodesPromise;
   series: SeriesRow;
   pass: { id: string; rating: number | null } | null;
-  initiallyExpanded: boolean;
   isLoggedIn: boolean;
   children: ReactNode;
 }) {
@@ -346,7 +343,6 @@ async function SeriesEpisodeWorkspace({ episodes, series, pass, initiallyExpande
   return (
     <EpisodePanel
       seriesId={series.id}
-      initiallyExpanded={initiallyExpanded}
       airing={series.tmdb_status !== null && !data.ended}
       nextAirDate={series.next_episode_air_date}
       pass={pass}
@@ -365,7 +361,7 @@ async function SeriesTabs({
   notesPromise,
   marginPromise,
   ratingSummary,
-  episodesPromise, activeRow, canContribute, initiallyExpanded,
+  episodesPromise, activeRow, canContribute,
 }: {
   passCard: React.ReactNode;
   series: SeriesRow;
@@ -376,7 +372,6 @@ async function SeriesTabs({
   episodesPromise: EpisodesPromise;
   activeRow: { id: string; status: string; position: unknown } | null;
   canContribute: boolean;
-  initiallyExpanded: boolean;
 }) {
   const supabase = await createClient();
   const t = await getTranslations("item");
@@ -587,14 +582,14 @@ async function SeriesTabs({
         activeRow ? <EpisodeBrowser /> : (
           <SeriesEpisodeWorkspace
             episodes={episodesPromise} series={series} pass={null}
-            initiallyExpanded={initiallyExpanded} isLoggedIn={Boolean(userId)}
+            isLoggedIn={Boolean(userId)}
           >
             <EpisodeBrowser />
           </SeriesEpisodeWorkspace>
         )
       ) : undefined}
       logPreview={entry?.status === "completed" && <PassDiary activeOnly itemType="series" itemId={series.id} passes={passes} editions={[]} />}
-      logLinkLabel={tDetail("viewHistory")}
+      logLinkLabel={tDetail("viewJournal")}
       community={<CommunityPanel itemType="series" community={community} reviewCount={community.reviews.length + episodeReviews.length} />}
       reviews={
           <CommunityReviews
@@ -607,6 +602,7 @@ async function SeriesTabs({
       }
       log={
         <div className="flex flex-col gap-4">
+          <EpisodeJournal />
           <LogPanel
             showMarginAction={Boolean(userId && marginPromise)}
             itemType="series"

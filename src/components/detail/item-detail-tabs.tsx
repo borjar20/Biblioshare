@@ -126,10 +126,11 @@ export function ItemDetailTabs({
               </>}
             </section>
             <div className="flex min-w-0 flex-col gap-8 xl:col-start-1 xl:row-start-1 xl:row-span-2">
-              <div className={followed && episodes ? "order-2" : ""}>{info}</div>
-              {episodes && <section id="detail-episodes" aria-label={labels.episodes} className={sectionOffset}>{episodes}</section>}
+              {info}
             </div>
-            <div className="min-w-0 space-y-8 xl:col-start-2">
+            {episodes && <section id="detail-episodes" aria-label={labels.episodes}
+              className={`min-w-0 xl:col-span-2 xl:row-start-3 ${sectionOffset}`}>{episodes}</section>}
+            <div className="min-w-0 space-y-8 xl:col-start-2 xl:row-start-2">
               <section id="detail-community" aria-label={labels.community} className={sectionOffset}>{community}</section>
             </div>
             {reviews && <div className="min-w-0 empty:hidden xl:col-span-2">{reviews}</div>}

@@ -147,9 +147,9 @@ export function PassCard({ itemType, progress: initialProgress, rating, upToDate
       {episodeControls && (
         <>
           {episodeControls.primary}
-          {episodeControls.feedback}
         </>
       )}
+      {episodes?.feedback}
       {progress && (
         <div className="px-0.5">
           <div

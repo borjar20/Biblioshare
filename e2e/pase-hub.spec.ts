@@ -1,4 +1,5 @@
 import { test, expect, type Page, type Locator } from "@playwright/test";
+import { marginSeries, startSeriesPass, clearMarginFixtures } from "./support/margin-fixtures";
 import { submitLogin } from "./support/visible-form";
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
@@ -251,7 +252,7 @@ async function deletePasses(
 
 // El ancho disponible decide si la temporada se elige en el raíl o en el índice.
 async function openLastSeason(page: Page) {
-  const episodes = page.locator("#detail-episodes");
+  const episodes = page.locator("#item-tabpanel-log");
   const seasons = episodes.getByRole("button", { name: /^(?:Ver )?Temporada \d+$/i });
   if (await seasons.count()) await seasons.last().click();
   return episodes
@@ -791,6 +792,41 @@ test.describe("película de un gesto", () => {
 // que un revisionado nuevo separa su propio cursor de la capa "visto alguna
 // vez" (§Tarea 8).
 // ─────────────────────────────────────────────────────────────────────────
+test("el registro personal permite puntuar solo los episodios vistos pendientes", async ({ page }) => {
+  test.setTimeout(90_000);
+  const series = await marginSeries();
+  try {
+    await startSeriesPass(await devtestId(), series.id);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await login(page);
+    await page.goto(`/serie/${series.id}`);
+    const publicGrid = page.locator("#detail-episodes");
+    await expect(publicGrid.getByRole("heading", { name: "Valoraciones por episodio" })).toBeVisible();
+    await expect(publicGrid.getByRole("button", { name: "8/10" })).toHaveCount(0);
+    await page.getByRole("button", { name: /^Visto: T1E1/ }).click();
+    await expect(page.getByRole("group", { name: /T1E1/ }).getByRole("button", { name: "8/10" })).toBeVisible();
+    await page.getByRole("button", {name: "Ver mi registro"}).click();
+    const log = page.locator("#item-tabpanel-log");
+    await log.getByLabel("Sin puntuar").check();
+    const row = log.getByRole("listitem").filter({ has: page.getByRole("button", { name: "Visto", exact: true }) });
+    await expect(row).toHaveCount(1);
+    await row.getByRole("button", {name: /Episodio 1/}).click();
+    await row.getByRole("textbox").fill("Una buena apertura");
+    await row.getByRole("textbox").blur();
+    await row.getByRole("button", {name: "8/10", exact: true}).click();
+    await expect(log.getByText("No tienes episodios vistos pendientes de puntuar.")).toBeVisible();
+    await expect(log.getByRole("region", { name: "Mis episodios" })).toHaveAttribute("aria-busy", "false");
+    await page.reload();
+    await log.getByLabel("Sin puntuar").check();
+    await expect(log.getByText("No tienes episodios vistos pendientes de puntuar.")).toBeVisible();
+    await log.getByLabel("Sin puntuar").uncheck();
+    await log.getByRole("button", {name: /QA.*Episodio 1/}).click();
+    await expect(log.getByRole("textbox")).toHaveValue("Una buena apertura");
+  } finally {
+    await clearMarginFixtures([], [series.id]);
+  }
+});
+
 test.describe("serie con revisionado", () => {
   test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
 
@@ -833,10 +869,7 @@ test.describe("serie con revisionado", () => {
       await page.goto(`/serie/${seriesId}`);
       const first = page.getByRole("button", { name: /^Visto: T1E1\b/ });
       await expect(first).toBeInViewport({ ratio: 1 });
-      const episodeDisclosure = page.locator("#detail-episodes details").filter({
-        has: page.locator("summary", { hasText: "Temporadas y episodios" }),
-      });
-      await expect(episodeDisclosure).toHaveJSProperty("open", false);
+      await expect(page.locator("#detail-episodes details")).toHaveCount(0);
       await first.click();
       await expect(page.getByRole("button", { name: /^Visto: T1E2\b/ })).toBeVisible();
       await page.getByRole("button", { name: "Deshacer", exact: true }).click();
@@ -849,12 +882,7 @@ test.describe("serie con revisionado", () => {
       // avanzado marcado EN ESTE PASE, no exige haber marcado los anteriores.
       await page.goto(`/serie/${seriesId}?tab=episodes`);
       await page.waitForLoadState("networkidle").catch(() => {});
-      const episodes = page.locator("#detail-episodes");
-      await expect(episodes).toBeInViewport();
-      const synopsis = (await page.getByRole("heading", { name: "Sinopsis" }).boundingBox())!;
-      expect((await episodes.boundingBox())!.y).toBeLessThan(synopsis.y);
-      await page.getByRole("button", { name: "Lista", exact: true }).click();
-
+      await page.getByTestId("detail-open-log").click();
       const lastEpisode = await openLastSeason(page);
       await lastEpisode.getByRole("button", { name: "Visto" }).click();
 
@@ -892,7 +920,7 @@ test.describe("serie con revisionado", () => {
       // atenuada "visto alguna vez" (pass_reviews.seenBefore).
       await page.goto(`/serie/${seriesId}?tab=episodes`);
       await page.waitForLoadState("networkidle").catch(() => {});
-      await page.getByRole("button", { name: "Lista", exact: true }).click();
+      await page.getByTestId("detail-open-log").click();
       const lastEpisodeAgain = await openLastSeason(page);
       await expect(
         lastEpisodeAgain.getByText("Visto en otro pase"),

@@ -4,6 +4,7 @@ import { createContext, useContext, type ReactNode } from "react";
 
 export const SeriesEpisodeContext = createContext<{
   browser: ReactNode;
+  journal: ReactNode;
   primary: ReactNode;
   sticky: ReactNode;
   feedback: ReactNode;
@@ -17,4 +18,8 @@ export function useSeriesEpisodes() {
 
 export function EpisodeBrowser() {
   return useSeriesEpisodes()?.browser ?? null;
+}
+
+export function EpisodeJournal() {
+  return useSeriesEpisodes()?.journal ?? null;
 }

@@ -53,10 +53,10 @@ function ep(season: number, episode: number, own: Partial<EpisodeRow["own"]> = {
 // el test en vez de pintar la clave cruda.
 function EpisodeControls() {
   const episodes = useSeriesEpisodes()!;
-  return <>{episodes.primary}{episodes.feedback}{episodes.browser}</>;
+  return <>{episodes.primary}{episodes.feedback}{episodes.journal}</>;
 }
 
-function renderPanel(episodes: EpisodeRow[], initiallyExpanded = true) {
+function renderPanel(episodes: EpisodeRow[]) {
   return render(
     <NextIntlClientProvider locale="es" messages={messages}>
       <ItemStatusProvider initialStatus="in_progress">
@@ -67,7 +67,6 @@ function renderPanel(episodes: EpisodeRow[], initiallyExpanded = true) {
           pass={{ id: "p1", rating: null }}
           seasons={[{ season: 1, episodes }]}
           isLoggedIn
-          initiallyExpanded={initiallyExpanded}
         >
           <EpisodeControls />
         </EpisodePanel>
@@ -84,24 +83,15 @@ it("agrupa todas las temporadas y calcula su media solo con las notas de la fuen
     { season: 1, episodes: [first, ...Array.from({ length: 24 }, (_, i) => ep(1, i + 2))] },
     ...Array.from({ length: 6 }, (_, i) => ({ season: i + 2, episodes: [ep(i + 2, 1)] })),
   ];
-  const onSelect = vi.fn();
-  const grid = (source: "community" | "mine") => (
-    <NextIntlClientProvider locale="es" messages={messages}>
-      <EpisodeGrid seasons={seasons} source={source} selectedKey={null} onSelect={onSelect} />
-    </NextIntlClientProvider>
-  );
-  const { rerender } = render(grid("community"));
+  render(<NextIntlClientProvider locale="es" messages={messages}><EpisodeGrid seasons={seasons} /></NextIntlClientProvider>);
   const season = within(screen.getByRole("region", { name: "Temporada 1" }));
   expect(season.getByText("media 9.0")).toBeTruthy();
   const buttons = season.getAllByRole("button");
   expect(buttons).toHaveLength(25);
   expect(buttons[24].textContent).toContain("E25");
   expect(buttons[24].textContent).toContain("—");
-  fireEvent.click(buttons[24]);
-  expect(onSelect).toHaveBeenCalledWith(seasons[0].episodes[24]);
+  expect(season.queryByText("media 6.0")).toBeNull();
   expect(screen.getByRole("region", { name: "Temporada 7" })).toBeTruthy();
-  rerender(grid("mine"));
-  expect(season.getByText("media 6.0")).toBeTruthy();
 });
 
 describe("EpisodePanel · fase 3", () => {
@@ -143,20 +133,17 @@ describe("EpisodePanel · fase 3", () => {
   });
 
   it("marca y deshace el siguiente sin abrir las temporadas", async () => {
-    renderPanel([ep(1, 1), ep(1, 2)], false);
-    const disclosure = screen.getByText(messages.episode.browseEpisodes).closest("details")!;
-    expect(disclosure.open).toBe(false);
+    renderPanel([ep(1, 1), ep(1, 2)]);
     await act(async () => fireEvent.click(screen.getByRole("button", { name: /Visto: T1E1/ })));
     expect(screen.getByRole("button", { name: /Visto: T1E2/ })).toBeTruthy();
     await act(async () => fireEvent.click(screen.getByRole("button", { name: messages.episode.undoWatch })));
     expect(actions.setEpisodeWatched).toHaveBeenLastCalledWith("s1", 1, 1, false, LOCAL_DAY);
     expect(screen.getByRole("button", { name: /Visto: T1E1/ })).toBeTruthy();
-    expect(disclosure.open).toBe(false);
   });
 
   it("restaura el cursor y avisa cuando la escritura del episodio falla", async () => {
     actions.setEpisodeWatched.mockRejectedValueOnce(new Error("write failed"));
-    renderPanel([ep(1, 1), ep(1, 2)], false);
+    renderPanel([ep(1, 1), ep(1, 2)]);
     await act(async () => fireEvent.click(screen.getByRole("button", { name: /Visto: T1E1/ })));
     expect(screen.getByRole("alert").textContent).toBe(messages.episode.watchError);
     expect(screen.getByRole("button", { name: /Visto: T1E1/ })).toBeTruthy();
@@ -232,27 +219,12 @@ describe("EpisodePanel · PC·1 en tres columnas", () => {
     expect(document.activeElement).toBe(heading);
   });
 
-  it("elegir un episodio en PC sigue moviendo el foco al título tras cambiar a rejilla y volver a lista", () => {
-    // Revisión final PR 4: EpisodeDetailColumn vive en la rama `list` del
-    // `view === "grid" ? … : …`, así que lista → grid → lista la remonta.
-    // Si el focusKey no se consume tras aplicar el foco, ese remontaje lo
-    // vuelve a disparar sin que el usuario haya elegido nada.
-    stubDesktop(true);
-    renderPanel([ep(1, 1), ep(1, 2)]);
-    fireEvent.click(screen.getByRole("button", { name: /Episodio 1x2/ }));
-    const heading = screen.getByTestId("episode-detail-column").querySelector("h3");
-    expect(document.activeElement).toBe(heading);
-
-    // Se retira el foco a propósito, como haría el usuario al seguir
-    // navegando por el teclado o el ratón.
-    (document.activeElement as HTMLElement | null)?.blur();
-    expect(document.activeElement).not.toBe(heading);
-
-    fireEvent.click(screen.getByRole("button", { name: "Rejilla" }));
-    fireEvent.click(screen.getByRole("button", { name: "Lista" }));
-
-    const headingAfter = screen.getByTestId("episode-detail-column").querySelector("h3");
-    expect(document.activeElement).not.toBe(headingAfter);
+  it("Sin puntuar reúne solo los episodios vistos del pase sin nota", () => {
+    renderPanel([ep(1, 1, { watched: true }), ep(1, 2, { watched: true, rating: 8 }), ep(1, 3)]);
+    fireEvent.click(screen.getByRole("checkbox", { name: "Sin puntuar" }));
+    expect(screen.getByRole("button", { name: /Episodio 1x1/ })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Episodio 1x2/ })).toBeNull();
+    expect(screen.queryByText("Episodio 1x3", { exact: true })).toBeNull();
   });
 
   it("cruzar de PC a móvil con un borrador escrito conserva el mismo cuadro, ahora inline", () => {

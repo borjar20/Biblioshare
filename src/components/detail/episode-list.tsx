@@ -36,7 +36,7 @@ export type EpisodeListProps = {
   onSelect: (ep: EpisodeRow) => void;
   onToggleWatched: (ep: EpisodeRow) => void;
   onRate: (ep: EpisodeRow, rating: number) => void;
-  onBack: () => void;
+  onBack?: () => void;
   draft: string;
   onDraftChange: (value: string) => void;
   onReviewFocusChange: (focused: boolean) => void;
@@ -80,14 +80,14 @@ export function EpisodeList(props: EpisodeListProps) {
           temporada. En PC no hay nivel 2 — el raíl de la izquierda ya dice
           dónde estás — así que esto no se pinta. */}
       <div className="@min-[760px]/episodes:hidden">
-        <button
+        {onBack && <button
           type="button"
           onClick={onBack}
           className="mb-3.5 inline-flex items-center gap-[7px] font-mono text-[11px] font-medium text-accent"
         >
           <ChevronLeftIcon className="h-3.5 w-3.5" />
           {t("allSeasons")}
-        </button>
+        </button>}
 
         <h2 className="font-serif text-[20px] font-semibold text-foreground">
           {t("season", { n: group.season })}
