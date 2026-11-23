@@ -3,7 +3,7 @@ import type { ItemType } from "@/lib/catalog/types";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { pickPosterArt } from "@/lib/catalog/poster-art";
 import { BackButton } from "./back-button";
-import { POSTER_AREA, POSTER_BAR, POSTER_GRADIENT, POSTER_LAYOUT } from "./detail-container";
+import { POSTER_AREA, POSTER_ART_LAYER, POSTER_BAR, POSTER_GRADIENT, POSTER_LAYOUT } from "./detail-container";
 import { ItemHero } from "./item-hero";
 import { PosterArtView } from "./poster-art-view";
 import { WorkScope } from "./work-scope";
@@ -61,7 +61,9 @@ export function ItemShell({
             </span>
             {menuSlot ?? <span aria-hidden className="h-[34px] w-[34px] shrink-0" />}
           </div>
-          <PosterArtView art={pickPosterArt({ coverUrl })} title={title} />
+          <div className={POSTER_ART_LAYER}>
+            <PosterArtView art={pickPosterArt({ coverUrl })} title={title} />
+          </div>
           <div aria-hidden className={POSTER_GRADIENT} />
         </div>
         <div className="relative min-w-0">

@@ -1,3 +1,4 @@
+import sharp from "sharp";
 import { expect, test } from "@playwright/test";
 
 // Ficha cinemática (spec 2026-09-23). Lo que protege:
@@ -124,16 +125,29 @@ test.describe("móvil 375", () => {
     expect(editions!.y).toBeGreaterThan(ficha!.y);
   });
 
-  test("el cartel termina antes de la cabecera en móvil", async ({ page }) => {
+  test("el cartel se funde con el fondo antes del título en móvil", async ({ page }) => {
     await page.goto(SERIES);
     const title = page.getByRole("heading", { level: 1 });
-    const poster = page.locator("[data-poster]");
     await expect(title).toBeVisible();
-    for (const height of [640, 915]) {
+    // Una portada blanca delata incluso un pequeño resto de imagen sobre el tema oscuro.
+    await page.addStyleTag({ content: '[data-poster]::after { content: ""; position: absolute; inset: 0; background: white; }' });
+    for (const [height, colorScheme] of [[640, "light"], [915, "dark"]] as const) {
       await page.setViewportSize({ width: 375, height });
-      const art = await poster.boundingBox();
-      const header = await title.locator("..").boundingBox();
-      expect(art!.y + art!.height).toBeLessThanOrEqual(header!.y + 1);
+      await page.emulateMedia({ colorScheme });
+      const art = (await page.locator("[data-poster]").boundingBox())!;
+      const header = (await title.locator("..").boundingBox())!;
+      const edge = Math.round(art.y + art.height);
+      expect(edge).toBeGreaterThan(header.y);
+      const { data, info } = await sharp(await page.screenshot()).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+      const pixel = (y: number) => {
+        const offset = (Math.round(y) * info.width + Math.round(header.x + 4)) * info.channels;
+        return Array.from(data.subarray(offset, offset + 3));
+      };
+      const background = pixel(header.y + 2);
+      expect(pixel(art.y + art.height * 0.25)).toEqual([255, 255, 255]);
+      for (const y of [header.y - 3, edge - 1, edge, edge + 1]) {
+        expect(pixel(y)).toEqual(background);
+      }
     }
   });
 
