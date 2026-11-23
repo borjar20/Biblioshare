@@ -1,403 +1,218 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { EpisodeRow } from "@/lib/series/get-episode-data";
-import { ChevronLeftIcon, ChevronRightIcon } from "@/components/ui/icons";
-import {
-  RATING_TIERS,
-  ratingColor,
-  averageRating,
-} from "@/lib/series/rating-scale";
+import { averageRating, ratingColor, RATING_TIERS } from "@/lib/series/rating-scale";
 
 export type SeasonGroup = { season: number; episodes: EpisodeRow[] };
 export type GridSource = "mine" | "community";
 
-// Cuántas temporadas caben en la ventana del móvil (frame C3). Con más, la
-// rejilla se pagina en horizontal en vez de encoger las celdas.
-const WINDOW = 6;
-
-// Valor y metadatos de una celda según la fuente seleccionada.
-function cellData(ep: EpisodeRow, source: GridSource) {
-  if (source === "mine") {
-    return {
-      rating: ep.own.rating,
-      present: ep.own.watched,
-      hasNote: Boolean(ep.own.review),
-    };
-  }
-  return { rating: ep.avgRating, present: ep.ratingCount > 0, hasNote: false };
+function seasonAverage(episodes: EpisodeRow[]) {
+  return averageRating(episodes.map((ep) => ep.avgRating).filter((value) => value !== null));
 }
 
-// Rejilla temporada × episodio (§7.36). Dos dibujos, uno por breakpoint, y por
-// una razón: el eje largo cambia de sitio. En móvil (frame C3) la rejilla va
-// TRANSPUESTA —temporadas en columnas, episodios en filas— para que lo que
-// crece sin límite (los episodios) crezca hacia abajo, que es por donde el
-// móvil tiene sitio; y solo se enseña una ventana de 6 temporadas, paginada.
-// En PC se queda la tabla de siempre (temporadas en filas): el ancho da para
-// las 12 sin encoger nada.
-export function EpisodeGrid({
-  seasons,
-  source,
-  selectedKey,
-  onSelect,
-}: {
-  seasons: SeasonGroup[];
-  source: GridSource;
-  selectedKey: string | null;
-  onSelect: (ep: EpisodeRow) => void;
-}) {
-  const t = useTranslations("episode");
-  const tLegend = useTranslations("detail.grid.legend");
-  const [hover, setHover] = useState<EpisodeRow | null>(null);
-
-  const maxEpisodes = seasons.reduce(
-    (max, s) => Math.max(max, ...s.episodes.map((e) => e.episode)),
-    0,
-  );
-  const columns = Array.from({ length: maxEpisodes }, (_, i) => i + 1);
-
-  // La ventana arranca donde está el cursor: la primera temporada con algo sin
-  // ver (o la última, si están todas vistas), no siempre en la T1.
-  const cursorIndex = useMemo(() => {
-    const i = seasons.findIndex((s) =>
-      s.episodes.some((e) => e.aired && !e.own.watched),
-    );
-    return i === -1 ? seasons.length - 1 : i;
-  }, [seasons]);
-  const maxStart = Math.max(0, seasons.length - WINDOW);
-  const [start, setStart] = useState(() =>
-    Math.min(Math.max(0, cursorIndex - WINDOW + 1), Math.max(0, seasons.length - WINDOW)),
-  );
-  const windowSeasons = seasons.slice(start, start + WINDOW);
-  const paged = seasons.length > WINDOW;
-  // Las filas se cuentan DENTRO de la ventana: si ninguna de las 6 temporadas
-  // visibles llega a 13 episodios, no se pintan filas vacías por una T11 que
-  // ni se ve.
-  const windowRows = Array.from(
-    {
-      length: windowSeasons.reduce(
-        (max, s) => Math.max(max, ...s.episodes.map((e) => e.episode)),
-        0,
-      ),
-    },
-    (_, i) => i + 1,
-  );
-
-  const detail = hover ?? null;
-
-  return (
-    <div className="flex flex-col gap-4">
-      {/* `.ctwin` de C3: paginador de la ventana de temporadas. */}
-      {paged && (
-        <div className="order-1 flex items-center gap-2.5 lg:hidden">
-          <button
-            type="button"
-            onClick={() => setStart((s) => Math.max(0, s - WINDOW))}
-            disabled={start === 0}
-            aria-label={t("prevSeasons")}
-            className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] border border-border bg-surface text-muted-foreground disabled:opacity-40"
-          >
-            <ChevronLeftIcon className="h-4 w-4" />
-          </button>
-          <p className="flex-1 text-center">
-            <span className="block font-serif text-[15px] leading-[1.1] font-semibold text-foreground">
-              {t("seasonWindow", {
-                from: windowSeasons[0]?.season ?? 0,
-                to: windowSeasons[windowSeasons.length - 1]?.season ?? 0,
-              })}
-            </span>
-            <span className="mt-[3px] block font-mono text-[8.5px] tracking-[0.05em] text-muted-foreground uppercase">
-              {t("seasonWindowHint", { size: WINDOW, total: seasons.length })}
-            </span>
-          </p>
-          <button
-            type="button"
-            onClick={() => setStart((s) => Math.min(maxStart, s + WINDOW))}
-            disabled={start >= maxStart}
-            aria-label={t("nextSeasons")}
-            className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] border border-border bg-surface text-muted-foreground disabled:opacity-40"
-          >
-            <ChevronRightIcon className="h-4 w-4" />
-          </button>
-        </div>
-      )}
-
-      {/* Leyenda. En C3 va ANTES de la rejilla (los colores son el contenido, no
-          una nota al pie); en la tabla de PC se queda debajo, como estaba. */}
-      <div className="order-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 lg:order-4">
-        {RATING_TIERS.map((tier) => (
-          <span key={tier.key} className="inline-flex items-center gap-1.5">
-            <span
-              className="h-2.5 w-2.5 rounded-sm"
-              style={{ backgroundColor: tier.color }}
-            />
-            <span className="font-mono text-[10px] text-muted-foreground">
-              {tLegend(tier.key)}
-            </span>
-          </span>
-        ))}
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-sm border border-border bg-surface-muted" />
-          <span className="font-mono text-[10px] text-muted-foreground">
-            {t("legendUnseen")}
-          </span>
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-sm border border-dashed border-border" />
-          <span className="font-mono text-[10px] text-muted-foreground">
-            {t("legendUpcoming")}
-          </span>
-        </span>
-        {source === "mine" && (
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-foreground/70" />
-            <span className="font-mono text-[10px] text-muted-foreground">
-              {t("hasNote")}
-            </span>
-          </span>
-        )}
-      </div>
-
-      {/* C3 — móvil: temporadas en columnas, episodios en filas. */}
-      <div
-        className="order-3 grid gap-[5px] lg:hidden"
-        style={{
-          gridTemplateColumns: `26px repeat(${windowSeasons.length}, minmax(0,1fr))`,
-        }}
-      >
-        <div />
-        {windowSeasons.map((s) => {
-          // Solo lo emitido cuenta (#1193): una temporada anunciada no es «0/10».
-          const aired = s.episodes.filter((e) => e.aired);
-          const watched = aired.filter((e) => e.own.watched).length;
-          const done = aired.length > 0 && watched === aired.length;
-          return (
-            <div
-              key={s.season}
-              className="flex flex-col items-center gap-0.5 pb-[3px]"
-            >
-              <span
-                className={`font-mono text-[10px] font-semibold ${
-                  s.season === seasons[cursorIndex]?.season
-                    ? "text-type-series"
-                    : "text-foreground"
-                }`}
-              >
-                {t("seasonTile", { n: s.season })}
-              </span>
-              <span className="font-mono text-[8px] text-muted-foreground">
-                {done ? "✓" : aired.length === 0 ? "—" : `${watched}/${aired.length}`}
-              </span>
-            </div>
-          );
-        })}
-
-        {windowRows.map((epNum) => (
-          <FragmentRow
-            key={epNum}
-            epNum={epNum}
-            windowSeasons={windowSeasons}
-            source={source}
-            selectedKey={selectedKey}
-            onPick={(ep) => {
-              setHover(ep);
-              onSelect(ep);
-            }}
-            label={t("episodeShort", { n: epNum })}
-          />
-        ))}
-      </div>
-
-      {/* PC — la tabla de siempre: temporadas en filas, episodios en columnas. */}
-      <div className="order-3 hidden overflow-x-auto lg:block">
-        <table className="border-separate border-spacing-1">
-          <tbody>
-            {seasons.map((s) => {
-              const ratings = s.episodes
-                .map((e) => cellData(e, source).rating)
-                .filter((r): r is number => r !== null);
-              const avg = averageRating(ratings);
-              const byEpisode = new Map(s.episodes.map((e) => [e.episode, e]));
-              return (
-                <tr key={s.season}>
-                  <th className="pr-2 text-left align-middle">
-                    <span className="block font-mono text-xs font-semibold text-foreground">
-                      {t("seasonShort", { n: s.season })}
-                    </span>
-                    {avg !== null && (
-                      <span className="block font-mono text-[10px] text-muted-foreground">
-                        {t("avgShort", { value: avg.toFixed(1) })}
-                      </span>
-                    )}
-                  </th>
-                  {columns.map((epNum) => {
-                    const ep = byEpisode.get(epNum);
-                    if (!ep)
-                      return <td key={epNum} className="min-w-[2.5rem]" />;
-                    const { rating, present, hasNote } = cellData(ep, source);
-                    const color = ratingColor(rating);
-                    return (
-                      <td key={epNum} className="min-w-[2.5rem]">
-                        <button
-                          type="button"
-                          onMouseEnter={() => setHover(ep)}
-                          onFocus={() => setHover(ep)}
-                          onClick={() => {
-                            setHover(ep);
-                            onSelect(ep);
-                          }}
-                          style={
-                            color
-                              ? {
-                                  backgroundColor: color,
-                                  color: "var(--tier-foreground)",
-                                }
-                              : undefined
-                          }
-                          className={`relative flex h-9 w-full items-center justify-center rounded-md font-mono text-xs font-semibold transition-transform hover:scale-105 ${
-                            color
-                              ? ""
-                              : present
-                                ? "bg-surface-muted text-muted-foreground"
-                                : ep.aired
-                                  ? "bg-surface-muted/40 text-muted-foreground/50"
-                                  : "border border-dashed border-border text-muted-foreground/40"
-                          }`}
-                          title={`${t("code", { s: ep.season, e: ep.episode })}${ep.title ? ` · ${ep.title}` : ""}`}
-                        >
-                          {rating !== null ? rating.toFixed(1) : epNum}
-                          {hasNote && (
-                            // bg-current: hereda el color de texto de la celda,
-                            // que ya contrasta con su fondo tenga tramo o no.
-                            <span className="absolute bottom-1 h-1 w-1 rounded-full bg-current opacity-80" />
-                          )}
-                        </button>
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Panel de detalle (hover en PC, toque en móvil) */}
-      <div className="order-5 min-h-[3.75rem] rounded-card border border-border bg-surface px-4 py-3 shadow-card">
-        {detail ? (
-          <HoverDetail episode={detail} source={source} />
-        ) : (
-          <p className="text-sm text-muted-foreground">{t("hoverHint")}</p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// Una fila de C3: el rótulo `.cteph` del episodio y su celda en cada temporada
-// de la ventana. Sin envoltorio propio — las celdas son hijas directas de la
-// rejilla, así que van sueltas en un fragmento.
-function FragmentRow({
-  epNum,
-  windowSeasons,
-  source,
-  selectedKey,
-  onPick,
-  label,
-}: {
-  epNum: number;
-  windowSeasons: SeasonGroup[];
-  source: GridSource;
-  selectedKey: string | null;
-  onPick: (ep: EpisodeRow) => void;
-  label: string;
-}) {
+function CommunityDetail({ episode }: { episode: EpisodeRow }) {
   const t = useTranslations("episode");
   return (
     <>
-      <span className="text-right font-mono text-[8.5px] text-muted-foreground">
-        {label}
-      </span>
-      {windowSeasons.map((s) => {
-        const ep = s.episodes.find((e) => e.episode === epNum);
-        if (!ep) return <span key={s.season} aria-hidden />;
-        const { rating, present, hasNote } = cellData(ep, source);
-        const color = ratingColor(rating);
-        const selected = selectedKey === `${ep.season}:${ep.episode}`;
-        return (
-          <button
-            key={s.season}
-            type="button"
-            onClick={() => onPick(ep)}
-            style={color ? { backgroundColor: color } : undefined}
-            title={`${t("code", { s: ep.season, e: ep.episode })}${ep.title ? ` · ${ep.title}` : ""}`}
-            className={`relative aspect-square rounded-[6px] border ${
-              color
-                ? "border-transparent"
-                : present
-                  ? "border-border bg-surface-muted"
-                  : ep.aired
-                    ? "border-border bg-surface-muted/40"
-                    : "border-dashed border-border bg-transparent"
-            } ${selected ? "z-10 outline-2 outline-offset-1 outline-type-series" : ""}`}
-          >
-            {hasNote && (
-              <span
-                className="absolute top-[3px] right-[3px] h-1 w-1 rounded-full"
-                style={{
-                  backgroundColor: color
-                    ? "var(--tier-foreground)"
-                    : "var(--muted-foreground)",
-                }}
-              />
-            )}
-          </button>
-        );
-      })}
+      <p className="font-mono text-xs text-muted-foreground">{t("codeLong", { s: episode.season, e: episode.episode })}</p>
+      <h3 className="mt-1 font-serif text-xl font-semibold">{episode.title ?? t("untitled")}</h3>
+      <p className="mt-2 text-sm">
+        {episode.avgRating !== null && <strong>{episode.avgRating.toFixed(1)}/10 · </strong>}
+        {t("communityCount", { count: episode.ratingCount })}
+        {!episode.aired && ` · ${t("upcoming")}`}
+      </p>
+      {episode.synopsis && <p className="mt-3 text-sm leading-relaxed">{episode.synopsis}</p>}
     </>
   );
 }
 
-function HoverDetail({
-  episode,
-  source,
-}: {
-  episode: EpisodeRow;
-  source: GridSource;
-}) {
+const EPISODES_PER_GROUP = 50;
+
+function SeasonEpisodes({ episodes, ratings }: { episodes: EpisodeRow[]; ratings: boolean }) {
   const t = useTranslations("episode");
-  const rating = source === "mine" ? episode.own.rating : episode.avgRating;
+  const opener = useRef<HTMLButtonElement>(null);
+  const detail = useRef<HTMLElement>(null);
+  const [query, setQuery] = useState("");
+  const [group, setGroup] = useState(0);
+  const [choice, setChoice] = useState("");
+  const term = query.trim().toLocaleLowerCase();
+  const matches = episodes.filter(ep => {
+    if (!term) return true;
+    if (/^e?\d+$/.test(term)) return ep.episode === Number(term.replace(/^e/, ""));
+    return ep.title?.toLocaleLowerCase().includes(term);
+  });
+  const start = group * EPISODES_PER_GROUP;
+  const visible = matches.slice(start, start + EPISODES_PER_GROUP);
+  const selected = visible.find(ep => String(ep.episode) === choice);
+  const field = "block min-h-11 w-full min-w-0 rounded-md border border-border bg-background px-3 text-sm";
 
   return (
-    <div className="flex flex-col gap-0.5">
-      <div className="flex items-baseline gap-2">
-        <span className="font-mono text-xs text-muted-foreground">
-          {t("code", { s: episode.season, e: episode.episode })}
-        </span>
-        <span className="text-sm font-medium text-foreground">
-          {episode.title ?? t("untitled")}
-        </span>
-        {rating !== null && (
-          <span className="ml-auto font-mono text-sm font-semibold text-foreground">
-            {rating.toFixed(1)}
-            {source === "community" && (
-              <span className="ml-1 text-[10px] font-normal text-muted-foreground">
-                {t("communityCount", { count: episode.ratingCount })}
-              </span>
-            )}
-          </span>
-        )}
-      </div>
-      {source === "mine" && episode.own.review ? (
-        <p className="line-clamp-2 text-xs text-muted-foreground">
-          {episode.own.review}
-        </p>
-      ) : episode.synopsis ? (
-        <p className="line-clamp-2 text-xs text-muted-foreground">
-          {episode.synopsis}
-        </p>
-      ) : null}
+    <div className="mt-3 space-y-3">
+      {episodes.length > EPISODES_PER_GROUP && (
+        <input type="search" value={query} aria-label={t("findEpisode")} placeholder={t("findEpisode")}
+          className={field} onChange={event => {
+            setQuery(event.target.value);
+            setGroup(0);
+            setChoice("");
+          }} />
+      )}
+      {matches.length > EPISODES_PER_GROUP && (
+        <div role="group" aria-label={t("episodeRange")} className="flex gap-2 overflow-x-auto pb-2">
+          {Array.from({ length: Math.ceil(matches.length / EPISODES_PER_GROUP) }, (_, i) => {
+            const first = matches[i * EPISODES_PER_GROUP];
+            const last = matches[Math.min((i + 1) * EPISODES_PER_GROUP, matches.length) - 1];
+            return <button key={i} type="button" aria-pressed={group === i}
+              className="min-h-11 shrink-0 border-b-2 border-transparent px-2 font-mono text-xs aria-pressed:border-type-series aria-pressed:font-bold"
+              onClick={() => { setGroup(i); setChoice(""); }}>E{first.episode}–E{last.episode}</button>;
+          })}
+        </div>
+      )}
+      {selected && (
+        <article ref={detail} tabIndex={-1} className="rounded-lg border-l-4 border-type-series bg-surface-muted p-4">
+          <CommunityDetail episode={selected} />
+          <button type="button" onClick={() => {
+            setChoice("");
+            requestAnimationFrame(() => opener.current?.focus());
+          }} className="mt-2 min-h-11 text-sm underline">{t("backToEpisodes")}</button>
+        </article>
+      )}
+      {visible.length ? (
+        <div role="group" aria-label={t("chooseEpisode")} hidden={!!selected}
+          className={selected ? "hidden" : ratings ? "grid grid-cols-5 gap-1.5 @min-[650px]/episodes:grid-cols-10" : "grid gap-1.5 @min-[480px]/episodes:grid-cols-2"}>
+          {visible.map(ep => {
+            const code = t("episodeShort", { n: ep.episode });
+            const color = ratingColor(ep.avgRating);
+            return <button key={ep.episode} type="button" aria-label={code + " · " + (ep.title ?? t("untitled")) + (ratings ? " · " + (ep.avgRating?.toFixed(1) ?? t("noScore")) : "")}
+              style={ratings && color ? { backgroundColor: color, color: "var(--tier-foreground)" } : undefined}
+              className={ratings ? `flex min-h-12 flex-col justify-between rounded-md border border-border px-1.5 py-1 ${ep.aired ? "bg-surface-muted" : "border-dashed"}` : "flex min-h-12 items-center gap-3 rounded-md border border-border px-3 text-left hover:bg-surface-muted focus-visible:bg-surface-muted"}
+              onClick={event => {
+                opener.current = event.currentTarget;
+                setChoice(String(ep.episode));
+                requestAnimationFrame(() => detail.current?.focus());
+              }}>
+              <span className="self-start font-mono text-xs my-auto">{code}</span>
+              {ratings ? <strong className="self-end tabular-nums">{ep.avgRating?.toFixed(1) ?? "—"}</strong>
+                : <span className="text-sm font-semibold">{ep.title ?? t("untitled")}</span>}
+            </button>;
+          })}
+        </div>
+      ) : <p role="status" className="text-sm text-muted-foreground">{t("noMatchingEpisodes")}</p>}
     </div>
+  );
+}
+
+function EpisodeGuide({ seasons, ratings = false }: { seasons: SeasonGroup[]; ratings?: boolean }) {
+  const t = useTranslations("episode");
+  const [choice, setChoice] = useState<number | undefined>(ratings ? seasons[0]?.season : undefined);
+  const selected = seasons.find(group => group.season === choice);
+  return (
+    <div className="min-w-0">
+      <div role="group" aria-label={t("chooseSeason")} className="flex gap-2 overflow-x-auto pb-2">
+        {seasons.map(({ season, episodes }) => (
+          <button key={season} type="button" aria-label={t("season", { n: season })} aria-pressed={season === choice}
+            onClick={() => setChoice(season)}
+            className="shrink-0 rounded-lg border border-border px-3 py-2 text-left hover:bg-surface-muted aria-pressed:border-type-series aria-pressed:bg-surface-muted">
+            <span className="block font-serif font-bold">{t("season", { n: season })}</span>
+            <span className="font-mono text-xs text-muted-foreground">{t("episodeCount", { count: episodes.length })}</span>
+          </button>
+        ))}
+      </div>
+      {selected && <SeasonEpisodes key={selected.season} episodes={selected.episodes} ratings={ratings} />}
+    </div>
+  );
+}
+
+export function EpisodeGrid({ seasons }: { seasons: SeasonGroup[] }) {
+  const t = useTranslations("episode");
+  const tLegend = useTranslations("detail.grid.legend");
+  const [selected, setSelected] = useState<EpisodeRow | null>(null);
+  const [showInfo, setShowInfo] = useState(false);
+  const sheet = useRef<HTMLDialogElement>(null);
+  const side = useRef<HTMLElement>(null);
+  const maxEpisodes = seasons.reduce((max, group) => group.episodes.reduce((n, ep) => Math.max(n, ep.episode), max), 0);
+  const compact = maxEpisodes > EPISODES_PER_GROUP || seasons.length > 10 ||
+    seasons.reduce((total, group) => total + group.episodes.length, 0) > 100;
+  const columns = Array.from({ length: compact ? 0 : maxEpisodes }, (_, i) => i + 1);
+
+  function cell(ep: EpisodeRow, desktop: boolean) {
+    const color = ratingColor(ep.avgRating);
+    const active = ep.season === selected?.season && ep.episode === selected.episode;
+    const code = t("code", { s: ep.season, e: ep.episode });
+    return (
+      <button key={ep.episode} type="button"
+        aria-label={[code, ep.title, ep.avgRating?.toFixed(1), t("communityCount", { count: ep.ratingCount }), !ep.aired && t("upcoming")].filter(Boolean).join(" · ")}
+        aria-pressed={active} aria-haspopup={desktop ? undefined : "dialog"}
+        onClick={() => {
+          setSelected(ep);
+          if (desktop) side.current?.focus({ preventScroll: true });
+          else sheet.current?.showModal();
+        }}
+        style={color ? { backgroundColor: color, color: "var(--tier-foreground)" } : undefined}
+        className={`flex w-full min-w-0 flex-col justify-between rounded-md border px-1.5 py-1 leading-none tabular-nums ${desktop ? "min-h-9 items-center justify-center" : "min-h-11"} ${color ? "border-transparent" : ep.aired ? "border-border bg-surface-muted" : "border-dashed border-border"} ${active ? "outline-2 outline-offset-1 outline-type-series" : ""}`}>
+        {!desktop && <span className="self-start font-mono text-[10px]">{t("episodeShort", { n: ep.episode })}</span>}
+        <span className={desktop ? "font-mono text-xs" : "self-end text-lg leading-none font-semibold"}>{ep.avgRating?.toFixed(1) ?? "—"}</span>
+      </button>
+    );
+  }
+
+  return (
+    <section className="@container/episodes min-w-0">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-serif text-xl font-semibold">{t("communityEpisodes")}</h2>
+        <button type="button" aria-pressed={showInfo} onClick={() => setShowInfo(!showInfo)}
+          className="min-h-11 rounded-md px-2 text-sm font-semibold underline underline-offset-4 aria-pressed:bg-surface-muted">
+          {t("episodeInfo")}
+        </button>
+      </div>
+      {showInfo ? (
+        <EpisodeGuide seasons={seasons} />
+      ) : (
+        <>
+        <div className="mb-4 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+          {RATING_TIERS.map((tier) => <span key={tier.key} className="inline-flex items-center gap-1.5"><i className="size-2.5 rounded-sm" style={{ backgroundColor: tier.color }} />{tLegend(tier.key)}</span>)}
+          <span>— {t("noScore")}</span>
+          <span className="inline-flex items-center gap-1.5"><i className="size-2.5 rounded-sm border border-dashed border-border" />{t("upcoming")}</span>
+        </div>
+        {compact ? <EpisodeGuide key="ratings" seasons={seasons} ratings /> : <>
+        <div className="space-y-5 @min-[760px]/episodes:hidden">
+          {seasons.map(({ season, episodes }) => {
+            const avg = seasonAverage(episodes);
+            return <section key={season} aria-label={t("season", { n: season })} className="scroll-mt-28">
+              <h3 className="mb-1.5 text-sm font-semibold">{t("season", { n: season })} {avg !== null && <span className="text-xs font-normal text-muted-foreground">{t("avgShort", { value: avg.toFixed(1) })}</span>}</h3>
+              <div className="grid grid-cols-4 gap-1 @min-[300px]/episodes:grid-cols-5">{episodes.map((ep) => cell(ep, false))}</div>
+            </section>;
+          })}
+        </div>
+        <div className="hidden items-start gap-4 @min-[760px]/episodes:grid @min-[760px]/episodes:grid-cols-[minmax(0,1fr)_minmax(210px,30%)]">
+          <div className="overflow-x-auto">
+            <table className="border-separate border-spacing-1">
+              <thead><tr><td />{columns.map((n) => <th key={n} scope="col" className="font-mono text-[10px]">{t("episodeShort", { n })}</th>)}</tr></thead>
+              <tbody>{seasons.map(({ season, episodes }) => {
+                const avg = seasonAverage(episodes);
+                const byEpisode = new Map(episodes.map((ep) => [ep.episode, ep]));
+                return <tr key={season} className="scroll-mt-28">
+                  <th scope="row" className="sticky left-0 bg-background pr-2 text-left text-xs">{t("seasonShort", { n: season })}{avg !== null && <span className="block whitespace-nowrap text-[10px] font-normal">{t("avgShort", { value: avg.toFixed(1) })}</span>}</th>
+                  {columns.map((n) => {
+                    const ep = byEpisode.get(n);
+                    return <td key={n} className="min-w-10">{ep && cell(ep, true)}</td>;
+                  })}
+                </tr>;
+              })}</tbody>
+            </table>
+          </div>
+          <aside ref={side} role="region" tabIndex={-1} aria-label={t("detailRegion")} className="sticky top-28 border-l border-border pl-4">
+            {selected ? <CommunityDetail episode={selected} /> : <p className="text-sm text-muted-foreground">{t("hoverHint")}</p>}
+          </aside>
+        </div>
+        <dialog ref={sheet} aria-label={t("detailRegion")} className="fixed inset-0 m-auto max-h-[85dvh] w-[min(90vw,28rem)] overflow-auto rounded-xl bg-surface p-5 text-foreground backdrop:bg-black/50">
+          {selected && <CommunityDetail episode={selected} />}
+          <button type="button" className="mt-4 min-h-11 font-semibold underline" onClick={() => sheet.current?.close()}>{t("closeDetail")}</button>
+        </dialog>
+        </>}
+        </>
+      )}
+    </section>
   );
 }

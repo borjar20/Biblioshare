@@ -19,16 +19,21 @@ function tokens(text: string) {
   return out;
 }
 
-function srgbLuminance(L: number, C: number, H: number) {
+function linearRgb(L: number, C: number, H: number): [number, number, number] {
   const a = C * Math.cos((H * Math.PI) / 180), b = C * Math.sin((H * Math.PI) / 180);
   const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
   const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
   const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
   const clamp = (v: number) => Math.min(1, Math.max(0, v));
-  const r = clamp(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s);
-  const g = clamp(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s);
-  const bl = clamp(-0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s);
-  return 0.2126 * r + 0.7152 * g + 0.0722 * bl;
+  return [
+    clamp(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s),
+    clamp(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s),
+    clamp(-0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s),
+  ];
+}
+const luminance = ([r, g, b]: [number, number, number]) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
+function srgbLuminance(L: number, C: number, H: number) {
+  return luminance(linearRgb(L, C, H));
 }
 function ratio(a: [number, number], b: [number, number], h: number) {
   const x = srgbLuminance(a[0], a[1], h), y = srgbLuminance(b[0], b[1], h);
@@ -75,6 +80,57 @@ describe.each([
   it("texto sobre el acento: AA en los 360 tonos", () => {
     for (let h = 0; h < 360; h++) {
       expect(ratio(t["--accent-foreground"], t["--accent"], h), `acento en ${h}`).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});
+
+// ── Color de tipo dentro de la ficha (spec 2026-11-11-ficha-con-gesto) ──────
+function aliases(text: string) {
+  const out: Record<string, string> = {};
+  for (const m of text.matchAll(/(--type-[\w-]+):\s*var\((--[\w-]+)\)/g)) out[m[1]] = m[2];
+  return out;
+}
+// El tinte `bg-type-*/10` es el color al 10 % de alfa: el navegador lo compone
+// sobre el fondo en sRGB con gamma, no en lineal.
+const encode = (v: number) => (v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055);
+const decode = (v: number) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+function ratioOverTint(text: [number, number], tint: [number, number], bg: [number, number], h: number) {
+  const top = linearRgb(tint[0], tint[1], h).map(encode);
+  const under = linearRgb(bg[0], bg[1], h).map(encode);
+  const mixed = top.map((v, i) => decode(v * 0.1 + under[i] * 0.9)) as [number, number, number];
+  const x = srgbLuminance(text[0], text[1], h), y = luminance(mixed);
+  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+}
+
+const EXPECTED_ALIASES = {
+  "--type-book": "--accent", "--type-movie": "--accent", "--type-series": "--accent",
+  "--type-book-ink": "--accent-ink", "--type-movie-ink": "--accent-ink", "--type-series-ink": "--accent-ink",
+};
+
+describe.each([
+  ["claro", ".scope {"],
+  ["oscuro", ":global(.dark) .scope {"],
+  ["sistema oscuro", ":global(:root:not(.light):not(.dark)) .scope {"],
+] as const)("color de tipo en la ficha, tema %s", (_name, scopeSelector) => {
+  const t = tokens(block(scopeSelector));
+
+  it("el color de tipo es el acento de la obra", () => {
+    expect(aliases(block(scopeSelector))).toEqual(EXPECTED_ALIASES);
+  });
+  it("no hay regla que cambie el color de tipo dentro de un <dialog>", () => {
+    expect(css).not.toMatch(/dialog\)\s*\{[^}]*--type-/);
+  });
+  it("como gráfico: 3:1 sobre fondo y tarjeta en los 360 tonos", () => {
+    for (let h = 0; h < 360; h++) for (const bg of ["--background", "--surface"]) {
+      expect(ratio(t["--accent"], t[bg], h), `--accent sobre ${bg} en ${h}`).toBeGreaterThanOrEqual(3);
+    }
+  });
+  it("como texto sobre su tinte al 10 %: AA en los 360 tonos", () => {
+    for (let h = 0; h < 360; h++) for (const bg of ["--background", "--surface"]) {
+      expect(
+        ratioOverTint(t["--accent-ink"], t["--accent"], t[bg], h),
+        `--accent-ink sobre tinte en ${bg}, tono ${h}`,
+      ).toBeGreaterThanOrEqual(4.5);
     }
   });
 });

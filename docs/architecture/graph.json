@@ -274,14 +274,15 @@
       "label": "/libro|/pelicula|/serie/[id]",
       "layer": "route",
       "kind": "route",
-      "summary": "Ficha de obra con pestañas Info · Comunidad · Registro · Episodios. Aquí nace la hidratación cache-as-you-go y el curador de after().",
+      "summary": "Ficha de obra con información, comunidad y episodios integrados. Registro contextual o en línea para películas con un único pase. Aquí nace la hidratación cache-as-you-go y el curador de after().",
       "files": [
         "src/app/libro/[id]",
         "src/app/pelicula/[id]",
         "src/app/serie/[id]"
       ],
       "gotchas": [
-        "No pongas loading.tsx: estas rutas llaman a notFound()."
+        "No pongas loading.tsx: estas rutas llaman a notFound().",
+        "En libros, «Mi registro» lo compone ReadingLine (servidor) con buildReadingStrip; series y películas siguen con LogPanel. getSessions lleva limit 500 solo en libros."
       ]
     },
     {
@@ -4407,7 +4408,7 @@
         },
         {
           "node": "m-social",
-          "action": "La reseña pública alimenta el feed y la pestaña Comunidad de la ficha",
+          "action": "La reseña pública alimenta el feed y la sección Comunidad de la ficha",
           "file": "src/lib/social/recent-reviews.ts"
         },
         {

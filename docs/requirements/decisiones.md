@@ -8355,3 +8355,74 @@ El menú ⋯ de la ficha también está en escritorio: es el único sitio para q
   hallazgo siguen sin anuncio.
 - Se publica en la misma PR que la ficha cartel (#1617), no en una aparte como decía la spec.
 - Spec: `docs/superpowers/specs/2026-11-10-ficha-acciones-design.md`.
+
+## 2026-11-12 — Ficha con gesto
+
+- **Dentro de la ficha de obra, el color de tipo es el de la obra.** `WorkScope` redefine
+  `--type-*` como el acento de la obra (y `--type-*-ink` como su acento de texto), así que la nota,
+  el histograma y el chip de tipo dejan de chocar con el tinte (naranja sobre rojo, turquesa sobre
+  verde). Matiza la decisión que tiñó la nota con el tipo: fuera de la ficha (feed, biblioteca,
+  perfil, `/post/[id]`) sigue con el color del tipo.
+- Las hojas de cierre, nuevo pase y retomar las monta `PassActionsProvider` fuera de `WorkScope` y
+  conservan el color de tipo global. Los `<dialog>` de dentro (menú ⋯, añadir a colección, nota en
+  el margen) siguen el tinte como el resto de la ficha. No hay regla que restaure colores en
+  `dialog`: un primer intento la añadió y se retiró.
+- **La tarjeta del pase responde:** la pastilla de estado se desliza y el punto late, la barra de
+  progreso se llena, los puntos de nota crecen bajo el cursor y saltan al fijarla, y el botón
+  principal se hunde. El histograma de Comunidad crece al pintarse.
+- Sin librerías de animación: los gestos los pinta CSS, dentro de `prefers-reduced-motion:
+  no-preference`. Sin textos nuevos, sin esquema, sin caché. No se añade celebración al terminar:
+  ya la da el ritual de cierre.
+- Los gestos de `RatingDots` (`lively`) y de `RatingHistogram` (`animate`) van tras una prop que
+  solo enciende la ficha. El salto de la nota no depende de `disabled` (la tarjeta se deshabilita
+  mientras guarda) y no se dispara si la escritura se rechaza: `onChange` puede devolver `false`.
+- Spec: `docs/superpowers/specs/2026-11-11-ficha-con-gesto-design.md`.
+
+## 2026-11-20 — «Mi registro» como tira de lectura
+
+- En libros, las sesiones se pintan como una **tira del libro**: un tramo por sesión, del ancho de
+  lo leído, con las notas como marcas. Su altura no depende de cuántas sesiones haya. Debajo, las
+  tres últimas; el resto, en un historial por meses plegado.
+- **Una nota está en un solo sitio visible:** el detalle del tramo seleccionado (por defecto, la
+  última sesión) o un grupo suelto («Más adelante», «Después de la última sesión», «Otras notas»).
+- **Fechas absolutas** en todas las listas de sesiones («9 nov»; con año si no es el actual).
+- **Fuera el panel «Progreso»** en los tres tipos: su nota y su página ya estaban en la tarjeta
+  del pase. La edición pasa a un chip en la cabecera de «Mi registro».
+- La ficha de libro carga hasta 500 sesiones por pase (antes 20) para dibujar la lectura entera.
+- Spec: `docs/superpowers/specs/2026-11-11-ficha-linea-de-lectura-design.md`.
+
+## 2026-11-23 — Línea de lectura: reglas tras los e2e
+
+- La nota va a la sesión más reciente cuyo tramo contiene su página: con relecturas o
+  correcciones, la nota de hoy caía en un tramo antiguo y no se veía.
+- Por defecto se abre el tramo más reciente que contiene la página actual (si no hay, el último
+  que avanzó).
+- Cada tramo se dibuja en sus páginas (left y ancho por página, el más reciente encima), ya no en
+  fila por orden de tiempo: no hay hueco entre meses, que se distinguen por la opacidad.
+- El compositor de notas solo está en el tramo de la página actual y se ancla en ella.
+- Las sesiones se borran desde las filas, no desde el detalle.
+
+
+### 2026-11-23 · Ficha de obra unificada (#1627)
+
+La ficha integra información, comunidad y episodios. En escritorio el historial extenso tiene un segundo destino y en móvil se abre desde el resumen personal. Una película con un único pase muestra su diario en la ficha. Los enlaces previos a episodios, comunidad y registro conservan su destino. El registro del libro mantiene la tira, las tres sesiones recientes y el archivo mensual plegado.
+
+La distribución de notas de Comunidad se muestra en la ficha desde la primera valoración, con el recuento de cada intervalo accesible por toque y teclado.
+
+Las valoraciones siguen en el resumen lateral. Las reseñas y sus conversaciones ocupan el ancho del cuerpo de la ficha, con tres reseñas y cinco conversaciones iniciales por reseña.
+
+La tarjeta del pase mantiene los estados a la vista y reserva el color de acento para la acción principal. La nota comparte fila con esa acción cuando cabe y pasa debajo en las tarjetas estrechas.
+
+El registro personal agrupa cada pase en una entrada con fecha, nota y reseña. Las acciones de anotación y colección siguen disponibles con el cuaderno vacío. En libros la captura de una cita conserva la página del tramo actual.
+
+La ficha reúne el estado, la nota y la acción principal en el pase personal. En móvil va antes de la información y los episodios. En escritorio encabeza la columna derecha. El estado se cambia desde un selector nativo y la acción de repetir un pase completado aparece una sola vez en el bloque.
+
+La rejilla móvil de episodios agrupa cada temporada en un bloque y recorre sus episodios de izquierda a derecha. La media usa las notas disponibles de la fuente elegida. En escritorio se mantiene la tabla comparativa.
+
+La ficha de serie muestra las valoraciones comunitarias por episodio directamente. Desde cuatro temporadas ofrece un índice; el detalle público conserva la rejilla y la posición. «Mi registro» reúne los episodios del pase, su puntuación y reseña, con un filtro de vistos sin puntuar que recorre todas las temporadas. Marcar el siguiente episodio mantiene la puntuación inmediata.
+
+En «Valoraciones por episodio», el control «Información por episodio» alterna la rejilla con una guía de capítulos agrupados por temporada. Cada fila muestra el título, la valoración comunitaria y la sinopsis disponible. La guía está disponible también en series de una temporada.
+
+La guía pública de episodios requiere elegir temporada y capítulo antes de mostrar su ficha. Las temporadas de más de 50 capítulos se consultan por tramos de 50 y permiten buscar por número o título en la temporada completa.
+
+La guía usa tarjetas de temporada y botones de episodio. La rejilla muestra una temporada a la vez en series con más de 10 temporadas, más de 100 capítulos o numeración de episodio superior a 50. Comparte con la guía la búsqueda y los tramos de 50.

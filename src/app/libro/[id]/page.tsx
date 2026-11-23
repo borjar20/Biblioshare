@@ -23,7 +23,9 @@ const DETAIL_NS = [
   "catalogEdit", "collection", "detail", "editions",
   "item", "library", "margin", "notes", "passes", "ritual", "social", "joint",
 ] as const;
-import { LogPanel, type ManagedEntry } from "@/components/detail/log-panel";
+import type { ManagedEntry } from "@/components/detail/log-panel";
+import { ReadingLine } from "@/components/detail/reading-line";
+import { READING_STRIP_SESSION_CAP } from "@/lib/passes/reading-strip";
 import { HeroMenu } from "@/components/detail/hero-menu";
 import {
   CatalogEditor,
@@ -38,7 +40,7 @@ import {
   MetadataSidebar,
   type MetaRow,
 } from "@/components/detail/metadata-sidebar";
-import { CommunityPanel } from "@/components/detail/community-panel";
+import { CommunityPanel, CommunityReviews } from "@/components/detail/community-panel";
 import { SagaStrip } from "@/components/detail/saga-strip";
 import { EditionsSection } from "@/components/detail/edition-details";
 import { ItemStatusProvider } from "@/components/detail/item-status-context";
@@ -75,9 +77,7 @@ import type { ProgressSession } from "@/lib/sessions/types";
 import { getPasses } from "@/lib/passes/get-passes";
 import type { Pass } from "@/lib/passes/types";
 import type { MediaStatus } from "@/lib/library/types";
-import { NotesSection } from "@/components/notes/notes-section";
 import { getNotesForItem } from "@/lib/notes/get-notes";
-import { MarginSection } from "@/components/margin/margin-section";
 import { getItemMarginNotes } from "@/lib/margin/queries";
 
 import { UNTITLED_FALLBACK } from "@/lib/catalog/untitled";
@@ -323,6 +323,17 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
   const initialClosingPassId =
     cerrar && cerrar === activePass?.id ? cerrar : null;
 
+  const passCard = (
+    <div className="flex flex-col gap-3">
+      <PendingJointInvites invites={jointInvites} variant="item" />
+      <PassCard
+        itemType="book"
+        progress={railProgress}
+        rating={activePass?.rating ?? null}
+      />
+    </div>
+  );
+
   return (
     <ItemStatusProvider initialStatus={activeStatus}>
       <PassActionsProvider
@@ -363,19 +374,10 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
             canEditCatalog={canEditCatalog}
           />
         }
-        passCard={
-          <div className="flex flex-col gap-3">
-            <PendingJointInvites invites={jointInvites} variant="item" />
-            <PassCard
-              itemType="book"
-              progress={railProgress}
-              rating={activePass?.rating ?? null}
-            />
-          </div>
-        }
         tabs={
-          <Suspense fallback={<ItemTabsSkeleton />}>
+          <Suspense fallback={<ItemTabsSkeleton passCard={passCard} />}>
             <BookTabs
+              passCard={passCard}
               book={book}
               userId={user?.id ?? null}
               notesPromise={notesPromise}
@@ -396,6 +398,7 @@ async function BookDetail({ params, searchParams }: BookDetailProps) {
 // Las pestañas: aquí vive todo lo pesado (backfill de personas, créditos, saga,
 // ediciones, pases, sesiones y colas), detrás del <Suspense> del hero.
 async function BookTabs({
+  passCard,
   book,
   userId,
   notesPromise,
@@ -403,6 +406,7 @@ async function BookTabs({
   marginPages,
   ratingSummary,
 }: {
+  passCard: React.ReactNode;
   book: BookRow;
   userId: string | null;
   notesPromise: ReturnType<typeof getNotesForItem> | null;
@@ -496,7 +500,7 @@ async function BookTabs({
     // de más reciente a más antiguo, así que passes[0] es el que toca.
     const currentPassId =
       passes.find((p) => p.finishedOn === null)?.id ?? passes[0]?.id ?? null;
-    sessions = await getSessions(supabase, currentPassId, "book");
+    sessions = await getSessions(supabase, currentPassId, "book", { limit: READING_STRIP_SESSION_CAP });
   }
 
   // Asignar saga a mano es contribución curada → colaborador+ (§7.35). El rol
@@ -568,11 +572,16 @@ async function BookTabs({
 
   return (
     <ItemDetailTabs
+      passCard={passCard}
+      logLinkLabel={sessions.length > 0 && sessions.length < READING_STRIP_SESSION_CAP
+        ? tDetail("viewSessions", { count: sessions.length }) : tDetail("viewHistory")}
+      logPreview={notesPromise && <Suspense fallback={null}><LastBookNote notes={notesPromise} /></Suspense>}
       tablistLabel={tDetail("tabsLabel")}
       labels={{
         info: tDetail("tabInfo"),
         community: tDetail("tabCommunity"),
         log: tDetail("tabLog"),
+        back: tDetail("backToWork"),
       }}
       stickyAction={
         <StickyPassCta itemType="book" />
@@ -599,7 +608,7 @@ async function BookTabs({
           <InfoLayout
             main={
               <>
-                <div className="order-2 xl:order-none">
+                <div className="order-1 xl:order-none">
                   <InfoPanel
                     aboutLabel={tDetail("about")}
                     synopsis={book.synopsis}
@@ -608,7 +617,7 @@ async function BookTabs({
                   />
                 </div>
                 {sagas.length > 0 && (
-                  <section className="order-1 flex flex-col gap-3.5 xl:order-none">
+                  <section className="order-2 flex flex-col gap-3.5 xl:order-none">
                     <span data-section-title className="font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
                       {tDetail("sagasCount", { count: sagas.length })}
                     </span>
@@ -638,7 +647,7 @@ async function BookTabs({
                     usedEditionIdsPromise={usedEditionIdsPromise}
                     editionsFallback={<EditionsLoading />}
                     selectedEditionId={
-                      passes.find((p) => !p.finishedOn)?.editionId ?? null
+                      passes.find((p) => p.isActive)?.editionId ?? null
                     }
                     canContribute={canContribute}
                   />
@@ -657,33 +666,39 @@ async function BookTabs({
           />
         </CatalogEditor>
       }
-      community={
-        <CommunityPanel
+      community={<CommunityPanel itemType="book" community={community} reviewCount={community.reviews.length} />}
+      reviews={
+        <CommunityReviews
           itemType="book"
           community={community}
           viewerLoggedIn={Boolean(userId)}
         />
       }
       log={
-        <div className="flex flex-col gap-4">
-          <LogPanel
-            itemType="book"
+        <Suspense fallback={null}>
+          <ReadingLine
             itemId={book.id}
-            workTotalUnits={book.total_pages}
             entry={entry}
             passes={passes}
             sessions={sessions}
             editions={editions}
+            workTotalUnits={book.total_pages}
             canContribute={canContribute}
+            notesPromise={userId ? notesPromise : null}
+            marginPromise={userId ? marginPromise : null}
+            marginPages={marginPages}
+            currentYear={new Date().getFullYear()}
           />
-          {userId && notesPromise && <NotesSection itemType="book" notesPromise={notesPromise} />}
-          {userId && marginPromise && (
-            <Suspense fallback={null}>
-              <MarginSection itemType="book" itemId={book.id} pages={marginPages} marginPromise={marginPromise} />
-            </Suspense>
-          )}
-        </div>
+        </Suspense>
       }
     />
   );
+}
+
+async function LastBookNote({ notes }: { notes: ReturnType<typeof getNotesForItem> }) {
+  const latest = (await notes).reduce<Awaited<typeof notes>[number] | undefined>(
+    (last, note) => !last || note.createdAt > last.createdAt ? note : last, undefined,
+  );
+  if (!latest || latest.isSpoiler) return null;
+  return <p className="hidden text-sm text-muted-foreground xl:line-clamp-3">{latest.body}</p>;
 }

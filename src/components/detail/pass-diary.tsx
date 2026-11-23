@@ -52,18 +52,20 @@ export function PassDiary({
   itemId,
   passes,
   editions,
+  activeOnly = false,
 }: {
   itemType: ItemType;
   itemId: string;
   passes: Pass[];
   editions: Edition[];
+  activeOnly?: boolean;
 }) {
   const t = useTranslations("passes");
 
   // Con quién está compartido cada pase terminado (#1220), en UNA llamada por
   // diario. Se recarga al cerrar la hoja de un pase, por si invitó o se salió.
   const completedKey = passes
-    .filter((p) => p.status === "completed")
+    .filter((p) => p.status === "completed" && (!activeOnly || p.isActive))
     .map((p) => p.id)
     .join(",");
   const [jointByPass, setJointByPass] = useState<Record<string, PassJointViewing>>({});
@@ -84,21 +86,12 @@ export function PassDiary({
 
   return (
     <div className="flex flex-col">
-      {/* `.h5` del frame: mono, versalitas, apagado (igual que Sesiones).
-          `h2` y no `h3`: el único encabezado por encima es el `h1` del título
-          de la obra, así que un `h3` saltaba un nivel — el índice de
-          encabezados es la forma en que un lector de pantalla se mueve por la
-          página (WCAG 1.3.1). Mismo nivel que `community-panel` e `info-panel`,
-          que son sus hermanos dentro de otra pestaña. */}
-      <h2 className="mb-[11px] label-section lg:mb-[15px]">
-        {t("diaryTitle")}
-      </h2>
-
       {passes.length === 0 ? (
         <p className="text-xs text-muted-foreground">{t("empty")}</p>
       ) : (
         <ul className="flex flex-col gap-2.5">
           {passes.map((pass, i) => {
+            if (activeOnly && !pass.isActive) return null;
             // Los pases vienen del más reciente al más antiguo: el n-ésimo
             // pase cronológico es al revés del índice del array.
             const n = passes.length - i;
@@ -223,38 +216,33 @@ function PassCard({
   // handoff), radio 10 y 13 de padding.
   return (
     <div
-      // El ordinal ("2.ª lectura") lo dice TAMBIÉN la cabecera del pase
-      // activo (§2.13): sin un asidero propio, un getByText por ese texto
-      // casaría con los dos y el e2e reventaría por modo estricto.
       data-testid="diary-entry"
       // Los pases viejos se atenúan atenuando el PAPEL, no la tinta:
       // `opacity-80` sobre la tarjeta entera bajaba su texto a 3,23:1 en claro
       // y 3,89:1 en oscuro (medido), por debajo del 4,5:1 de WCAG 1.4.3.
       // Rebajar el relleno da la misma jerarquía y SUBE el contraste.
       className={`flex flex-col rounded-[10px] border border-border p-[13px] text-xs ${
-        isOld ? "bg-surface-muted/50" : "bg-surface-muted"
+        pass.isActive ? "border-x-0 border-b-0 rounded-none px-0" : isOld ? "bg-surface-muted/50" : "bg-surface-muted"
       }`}
     >
-      <div className="mb-1.5 flex items-center gap-2">
-        <RatingDots value={pass.rating} size="sm" itemType={itemType} />
-        {deltaLabel && (
-          <span
-            className={`ml-auto font-mono text-[10px] ${
-              deltaUp ? "text-status-completed-ink" : "text-status-dropped-ink"
-            }`}
-          >
-            {deltaLabel}
-          </span>
-        )}
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <h3 className="text-sm font-semibold">
+          {t(`nth.${itemType}`, { n })} <span className="font-normal text-muted-foreground">· {dateLabel}</span>
+        </h3>
+        <div className="flex items-center gap-1.5">
+          {!pass.isActive && <RatingDots value={pass.rating} size="sm" itemType={itemType} />}
+          {deltaLabel && (
+            <span
+              className={`font-mono text-[10px] ${
+                deltaUp ? "text-status-completed-ink" : "text-status-dropped-ink"
+              }`}
+            >
+              {deltaLabel}
+            </span>
+          )}
+        </div>
       </div>
-
-      <div className="flex flex-wrap items-center gap-1.5 font-mono text-[10px] text-muted-foreground">
-        {/* "2.ª lectura · 12 mar 2026": el mismo ordinal por tipo de medio que
-            usa la cabecera del pase (§2.13), no un genérico "2º pase" — es la
-            misma cosa contada en el mismo idioma. */}
-        <span>
-          {t(`nth.${itemType}`, { n })} · {dateLabel}
-        </span>
+      <div className="mt-1 flex flex-wrap items-center gap-1.5 font-mono text-[10px] empty:hidden">
         {editionLabel && (
           <span
             className={`rounded-chip px-1.5 py-0.5 tracking-wide uppercase ${accent.bgSoft} ${accent.text}`}
@@ -274,10 +262,8 @@ function PassCard({
         )}
       </div>
 
-      {/* `.tx` del frame: prosa, no metadato — va en --foreground-soft (el
-          #584f43 del handoff), no en el gris de las etiquetas. */}
       {pass.review && (
-        <p className="mt-1 max-w-[70ch] text-[12.5px] leading-[1.55] text-foreground-soft">
+        <p className="my-3 max-w-[65ch] [overflow-wrap:anywhere] font-serif text-base leading-relaxed text-foreground">
           <ReviewContent text={pass.review} />
         </p>
       )}
@@ -295,49 +281,51 @@ function PassCard({
       {/* Visionado conjunto (#1220), a la vista y no tras el «···»: sobre un
           pase terminado, un botón para decir con quién; si ya está compartido,
           los avatares de quien está (sin los que dijeron «No fui yo»). */}
-      {pass.status === "completed" && (
-        <JointChip
-          itemType={itemType}
-          joint={joint}
-          onOpen={() => setJointOpen(true)}
-        />
-      )}
-
-      {/* Editar se queda en línea (es neutro y es lo que se hace a diario);
-          borrar se va detrás del «···» (F3-012). Antes los dos eran el mismo
-          text-link gris, uno al lado del otro, y el de la derecha borraba el
-          pase con sus sesiones SIN preguntar. La confirmación va aquí y no en
-          `deletePass` porque la Server Action también la llaman flujos que ya
-          preguntaron antes. */}
-      <div className="flex items-center gap-3 pt-1">
-        {canEdit && (
-          <button
-            type="button"
-            onClick={() => setEditing((v) => !v)}
-            className="text-muted-foreground underline hover:text-foreground"
-          >
-            {editing ? t("cancelEdit") : t("edit")}
-          </button>
-        )}
-        <div className="ml-auto">
-          <ActionMenu
-            label={t("actionsLabel")}
-            triggerClassName="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-surface hover:text-foreground"
-            items={[
-              {
-                key: "delete",
-                label: t("delete"),
-                danger: true,
-                disabled: isDeleting,
-                onSelect: () => {
-                  if (!window.confirm(t("deleteConfirm"))) return;
-                  startDeleteTransition(() =>
-                    deletePass(pass.id, itemType, itemId),
-                  );
-                },
-              },
-            ]}
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+        {pass.status === "completed" && (
+          <JointChip
+            itemType={itemType}
+            joint={joint}
+            onOpen={() => setJointOpen(true)}
           />
+        )}
+
+        {/* Editar se queda en línea (es neutro y es lo que se hace a diario);
+            borrar se va detrás del «···» (F3-012). Antes los dos eran el mismo
+            text-link gris, uno al lado del otro, y el de la derecha borraba el
+            pase con sus sesiones SIN preguntar. La confirmación va aquí y no en
+            `deletePass` porque la Server Action también la llaman flujos que ya
+            preguntaron antes. */}
+        <div className="ml-auto flex items-center gap-3">
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => setEditing((v) => !v)}
+              className="text-muted-foreground underline hover:text-foreground"
+            >
+              {editing ? t("cancelEdit") : t("edit")}
+            </button>
+          )}
+          <div className="ml-auto">
+            <ActionMenu
+              label={t("actionsLabel")}
+              triggerClassName="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-surface hover:text-foreground"
+              items={[
+                {
+                  key: "delete",
+                  label: t("delete"),
+                  danger: true,
+                  disabled: isDeleting,
+                  onSelect: () => {
+                    if (!window.confirm(t("deleteConfirm"))) return;
+                    startDeleteTransition(() =>
+                      deletePass(pass.id, itemType, itemId),
+                    );
+                  },
+                },
+              ]}
+            />
+          </div>
         </div>
       </div>
 
@@ -450,7 +438,7 @@ function JointChip({
       <button
         type="button"
         onClick={onOpen}
-        className="mt-2 flex w-fit items-center gap-1.5 rounded-full border border-dashed border-border px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:border-accent hover:text-foreground"
+        className="flex w-fit items-center gap-1.5 rounded-full border border-dashed border-border px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:border-accent hover:text-foreground"
       >
         <span aria-hidden>＋</span>
         {t(`jointAction.${itemType}`)}
@@ -462,7 +450,7 @@ function JointChip({
     <button
       type="button"
       onClick={onOpen}
-      className="mt-2 flex w-fit max-w-full items-center gap-2 rounded-full border border-border bg-surface px-1.5 py-1 pr-2.5 text-[11px] text-foreground-soft transition-colors hover:border-accent"
+      className="flex w-fit max-w-full items-center gap-2 rounded-full border border-border bg-surface px-1.5 py-1 pr-2.5 text-[11px] text-foreground-soft transition-colors hover:border-accent"
     >
       <span className="flex shrink-0 -space-x-1.5">
         {others.slice(0, 3).map((m) => (

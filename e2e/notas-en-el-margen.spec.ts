@@ -41,7 +41,7 @@ async function leaveBookNote(page: Page, bookId: string, pageNo: string, chapter
   const log = page.getByRole("tab", { name: "Mi registro" });
   await log.click();
   await expect(log).toHaveAttribute("aria-selected", "true");
-  await page.getByRole("button", { name: "Dejar una nota en el margen" }).click();
+  await page.getByRole("button", { name: "Nota al margen" }).click();
   const sheet = page.getByRole("dialog", { name: "Una nota en el margen" });
   await sheet.getByLabel("Página").fill(pageNo);
   await sheet.getByLabel("Capítulo").fill(chapter);
@@ -72,7 +72,7 @@ test.describe("notas en el margen", () => {
       // Sesión hasta la 200: aún no.
       await setReaderProgress(reader.id, book.id, { page: 200 });
       await r.goto(`/libro/${book.id}?tab=log`);
-      await expect(r.getByRole("heading", { name: "Notas en el margen" })).toBeVisible();
+      await expect(r.getByRole("button", { name: "Nota al margen" })).toBeVisible();
       // Margen de asentamiento: una ausencia solo vale si la hidratación ya terminó.
       await r.waitForLoadState("networkidle");
       await r.waitForTimeout(1000);
@@ -163,7 +163,7 @@ test.describe("notas en el margen", () => {
       await startSeriesPass(reader.id, series.id);
       await watchEpisode(reader.id, series.id, 1, 4);
       await r.goto(`/serie/${series.id}?tab=log`);
-      await expect(r.getByRole("heading", { name: "Notas en el margen" })).toBeVisible();
+      await expect(r.getByRole("button", { name: "Nota al margen" })).toBeVisible();
       await expect(r.getByText(body)).toHaveCount(0);
       await expect(r.getByRole("dialog", { name: ANY_REVEAL })).toHaveCount(0);
 

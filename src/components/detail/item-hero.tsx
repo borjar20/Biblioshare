@@ -16,7 +16,7 @@ const TYPE_ICON = {
 
 // La cabecera del cartel (spec 2026-11-09): tipo, título, autor, nota y la
 // tarjeta «tu pase», en UNA sola instancia. La imagen y la barra de móvil viven
-// en ItemShell. Hasta `xl` se monta sobre el degradado del cartel; desde `xl` va
+// en ItemShell. Hasta `lg` sigue al cartel en el flujo; desde `lg` va
 // en la columna derecha.
 export function ItemHero({
   itemType,
@@ -26,7 +26,6 @@ export function ItemHero({
   genres,
   avgRating,
   ratingsLabel,
-  passCard,
   desktopMenu,
 }: {
   itemType: ItemType;
@@ -37,7 +36,6 @@ export function ItemHero({
   /** Nota media 1–10 de la comunidad, o null si nadie ha puntuado. */
   avgRating: number | null;
   ratingsLabel: string;
-  passCard: ReactNode;
   /** El ⋯ de la ficha desde `lg` (en móvil va en la barra del cartel). */
   desktopMenu?: ReactNode;
 }) {
@@ -96,7 +94,6 @@ export function ItemHero({
         </div>
       )}
 
-      <div className="mt-4 max-w-[420px]">{passCard}</div>
     </div>
   );
 }

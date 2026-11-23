@@ -118,7 +118,7 @@ test("recorrido principal del usuario autenticado", async ({ page }) => {
   // Abrir la ficha del primer resultado
   await firstResult.click();
   await page.waitForURL(/\/libro\//, { timeout: 30_000 });
-  await expect(page.getByRole("tab", { name: /comunidad/i }).or(page.getByText(/comunidad/i)).first()).toBeVisible();
+  await expect(page.locator("#detail-community").getByRole("heading", { name: "Comunidad" })).toBeVisible();
 
   // Perfil propio
   await page.goto(`/u/${USERNAME}`);

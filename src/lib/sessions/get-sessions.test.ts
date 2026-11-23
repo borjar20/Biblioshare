@@ -7,10 +7,13 @@ import { getSessions } from "./get-sessions";
 // y cuyo `source_id` cae en las sesiones devueltas. Ver session-list.tsx
 // (confirma antes de borrar cuando `hasPost` es `true`) y la nota de
 // cleanup_source_posts en data-model.md §5.1.
-function makeClient(data: {
-  sessions?: Record<string, unknown>[];
-  posts?: { source_id: string | null }[];
-}) {
+function makeClient(
+  data: {
+    sessions?: Record<string, unknown>[];
+    posts?: { source_id: string | null }[];
+  },
+  onPostsIn?: (values: unknown[]) => void,
+) {
   function progressSessionsTable() {
     const rows = data.sessions ?? [];
     const builder = {
@@ -44,6 +47,7 @@ function makeClient(data: {
         return builder;
       },
       in(column: string, values: unknown[]) {
+        onPostsIn?.(values);
         if (column === "source_id") {
           rows = rows.filter((r) => r.source_id != null && values.includes(r.source_id));
         }
@@ -106,5 +110,21 @@ describe("getSessions", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = await getSessions(client as any, "pase-1", "book");
     expect(result).toEqual([]);
+  });
+
+  it("pide las publicaciones en bloques de 100 ids", async () => {
+    const sessions = Array.from({ length: 250 }, (_, i) => ({
+      id: `s${i}`,
+      session_date: "2026-09-20",
+      created_at: "2026-09-20T10:00:00Z",
+      duration_minutes: null,
+      position: { page: i },
+    }));
+    const calls: number[] = [];
+    const client = makeClient({ sessions, posts: [{ source_id: "s5" }, { source_id: "s249" }] }, (v) => calls.push(v.length));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await getSessions(client as any, "pase-1", "book", { limit: 500 });
+    expect(calls).toEqual([100, 100, 50]);
+    expect(result.filter((s) => s.hasPost).map((s) => s.id)).toEqual(["s5", "s249"]);
   });
 });

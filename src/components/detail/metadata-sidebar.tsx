@@ -1,3 +1,5 @@
+import { useTranslations } from "next-intl";
+import { slugForLabel } from "@/lib/catalog/genre-vocab";
 import Link from "next/link";
 import { GenreTag } from "@/components/ui/genre-tag";
 
@@ -23,6 +25,10 @@ export function MetadataSidebar({
   genres?: string[];
   genresLabel: string;
 }) {
+  const t = useTranslations("detail");
+  const unique = [...new Set(genres?.filter(Boolean))];
+  const known = unique.filter(g => slugForLabel(g));
+  const ordered = [...known, ...unique.filter(g => !slugForLabel(g))];
   if (rows.length === 0 && (!genres || genres.length === 0)) return null;
 
   return (
@@ -63,10 +69,18 @@ export function MetadataSidebar({
             {genresLabel}
           </span>
           <div className="flex flex-wrap gap-1.5">
-            {genres.map((g) => (
+            {ordered.slice(0, 4).map((g) => (
               <GenreTag key={g} label={g} />
             ))}
           </div>
+          {ordered.length > 4 && (
+            <details>
+              <summary className="cursor-pointer py-1 text-sm text-muted-foreground">{t("remainingGenres", { count: ordered.length - 4 })}</summary>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {ordered.slice(4).map(g => <GenreTag key={g} label={g} />)}
+              </div>
+            </details>
+          )}
         </div>
       )}
     </aside>

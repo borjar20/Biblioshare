@@ -3,6 +3,7 @@ import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { SkeletonLine } from "@/components/ui/skeleton";
 import {
   POSTER_AREA,
+  POSTER_ART_LAYER,
   POSTER_BAR,
   POSTER_GRADIENT,
   POSTER_HEADER,
@@ -18,7 +19,7 @@ export function ItemShellSkeleton({ itemType }: { itemType: ItemType }) {
   return (
     <div className={`w-full flex-1 ${POSTER_LAYOUT}`}>
       <div className={POSTER_AREA}>
-        <div aria-hidden className={`absolute inset-0 ${accent.bgSoft}`} />
+        <div aria-hidden className={`${POSTER_ART_LAYER} ${accent.bgSoft}`} />
         <div aria-hidden className={POSTER_GRADIENT} />
         <div className={POSTER_BAR}>
           <SkeletonLine className="w-16" />
@@ -31,7 +32,6 @@ export function ItemShellSkeleton({ itemType }: { itemType: ItemType }) {
           <SkeletonLine className="w-28" />
           <SkeletonLine className="mt-3 h-[62px] w-3/4 xl:h-[85px]" />
           <SkeletonLine className="mt-2 w-1/2" />
-          <div className="mt-4 h-[120px] max-w-[420px] animate-pulse rounded-[14px] border border-border bg-surface-muted" />
         </div>
         <ItemTabsSkeleton />
       </div>

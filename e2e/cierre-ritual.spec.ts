@@ -251,7 +251,7 @@ test("película: marcar Vista enseña la entrada y «Ahora no» cierra la hoja",
 
     await login(page);
     await page.goto(`/pelicula/${pass.item_id}?tab=log`);
-    await page.getByRole("group", { name: "Tu estado" }).getByRole("button", { name: "Vista" }).click();
+    await page.getByRole("combobox", { name: "Tu estado" }).selectOption({ label: "Vista" });
 
     await expect(page.getByRole("heading", { name: "¿Qué te ha parecido?" })).toBeVisible({
       timeout: 20_000,

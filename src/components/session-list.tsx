@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useSyncExternalStore, useTransition } from "react";
-import { useTranslations, useFormatter } from "next-intl";
+import { useTransition } from "react";
+import { useTranslations } from "next-intl";
 import type { ItemType } from "@/lib/catalog/types";
 import { formatPosition, type Position } from "@/lib/library/position";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import type { ProgressSession } from "@/lib/sessions/types";
 import { deleteSession } from "@/lib/sessions/actions";
-import { sessionRelativeBasis } from "@/lib/sessions/session-relative-basis";
+import { sessionDateLabel } from "@/lib/sessions/session-date";
 import { ActionMenu } from "@/components/ui/action-menu";
 
 // El tramo leído en una sesión ("p. 180 → 240" del frame 3).
@@ -23,15 +23,6 @@ import { ActionMenu } from "@/components/ui/action-menu";
 // que la última cargada puede ser la primera del pase... o puede que no y solo
 // esté cortada, y desde aquí no hay forma de distinguirlo. En ese caso se
 // enseña solo la página alcanzada — que es lo que ya se hacía y nunca miente.
-// Reloj del cliente para las fechas relativas de la lista. getSnapshot tiene
-// que devolver el MISMO valor entre llamadas seguidas o React entra en bucle:
-// por eso se redondea al minuto, que es la granularidad de «hace X» (un
-// Date.now() crudo cambiaría en cada llamada). Sin suscripción: la lista no
-// necesita tickear sola, se recalcula en cada render.
-const subscribeNever = () => () => {};
-const clientMinute = () => Math.floor(Date.now() / 60_000) * 60_000;
-const serverNow = () => null;
-
 function rangeLabel(
   itemType: ItemType,
   position: Position,
@@ -52,7 +43,7 @@ export function SessionList({
   itemType,
   itemId,
   sessions,
-  editionLabel = null,
+  currentYear,
 }: {
   /** Id del pase ACTIVO de la obra (§Tarea 7, hub): destino del enlace
    * "Añadir sesión". */
@@ -60,41 +51,21 @@ export function SessionList({
   itemType: ItemType;
   itemId: string;
   sessions: ProgressSession[];
-  /** Edición del pase abierto, rotulada encima de la lista (mockup pantalla
-   * 3, "Edición: Plaza & Janés · tapa dura"). Solo libro tiene ediciones. */
-  editionLabel?: string | null;
+  /** Año en curso, del servidor: decide si la fecha lleva año. */
+  currentYear: number;
 }) {
   const t = useTranslations("item.sessions");
-  const format = useFormatter();
   const accent = MEDIA_ACCENT[itemType];
   const [isPending, startTransition] = useTransition();
-
-  // "Ahora" del CLIENTE, fijado tras montar (#475). La fecha relativa depende
-  // del reloj, así que NO puede vivir en el shell estático de Cache Components
-  // (#448): en SSR/primer render se pinta la fecha ABSOLUTA —determinista,
-  // idéntica en servidor y cliente, sin desajuste de hidratación— y al montar
-  // se cambia a relativa con el reloj del cliente. Antes esto se pineaba con un
-  // `now` global en i18n/request.ts que bloqueaba el prerender de TODA ruta.
-  //
-  // Se lee con useSyncExternalStore (el reloj es un almacén externo a React),
-  // no con un setState dentro de un efecto, que el lint del repo prohíbe: el
-  // snapshot de servidor `null` es el que se usa en SSR y en la hidratación, y
-  // el cliente lo sustituye justo después. Ver src/lib/sessions/use-timer-state.ts.
-  const nowMs = useSyncExternalStore(subscribeNever, clientMinute, serverNow);
-  const now = nowMs === null ? null : new Date(nowMs);
 
   return (
     <div className="flex flex-col">
       <div className="mb-[11px] flex items-baseline justify-between gap-2 lg:mb-[15px]">
         {/* El `.h5` del frame: mono, versalitas y apagado — no un título en
-            negrita. En PC la edición va en la MISMA línea ("Sesiones · Plaza
-            & Janés (tapa dura)"), como hace el frame 10; en móvil no cabe y
-            baja a su propia línea, como hace el frame 3. */}
+            negrita. La edición ya no va aquí: es el chip de la cabecera de
+            «Mi registro» (PassLogHead). */}
         <h3 data-section-title className="label-section">
           {t("title")}
-          {editionLabel && (
-            <span className="hidden lg:inline"> · {editionLabel}</span>
-          )}
         </h3>
         <Link
           href={`/sesion/${passId}`}
@@ -103,12 +74,6 @@ export function SessionList({
           {t("add")}
         </Link>
       </div>
-
-      {editionLabel && (
-        <p className="mb-2 font-mono text-[10px] text-muted-foreground lg:hidden">
-          {t("edition", { label: editionLabel })}
-        </p>
-      )}
 
       {sessions.length === 0 ? (
         <p className="text-xs text-muted-foreground">{t("empty")}</p>
@@ -128,10 +93,6 @@ export function SessionList({
                 ? t("duration", { count: session.durationMinutes })
                 : null,
             ].filter(Boolean);
-            const relativeBasis = sessionRelativeBasis(
-              session.sessionDate,
-              session.createdAt,
-            );
 
             return (
               <li
@@ -144,22 +105,11 @@ export function SessionList({
                     className={`h-2 w-2 shrink-0 rounded-full lg:h-[9px] lg:w-[9px] ${accent.bg}`}
                   />
                   <span className="text-foreground">{meta.join(" · ")}</span>
-                  {/* Fecha en mono y a la derecha (el `margin-left:auto` del
-                      frame). Relativa ("ayer", "hace 3 días") como la maqueta:
-                      en una lista de sesiones seguidas sitúa mejor que un ISO
-                      que hay que restar mentalmente. El `dateTime` conserva la
-                      fecha exacta para quien la necesite. */}
                   <time
-                    dateTime={relativeBasis}
+                    dateTime={session.sessionDate}
                     className="ml-auto shrink-0 font-mono text-[10.5px] text-muted-foreground lg:text-[11px]"
                   >
-                    {now
-                      ? format.relativeTime(new Date(relativeBasis), now)
-                      : format.dateTime(new Date(relativeBasis), {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })}
+                    {sessionDateLabel(session.sessionDate, currentYear)}
                   </time>
                   {/* Borrar la sesión ya no es un text-link sembrado en cada
                       fila (F3-012): con diez sesiones había diez borrados

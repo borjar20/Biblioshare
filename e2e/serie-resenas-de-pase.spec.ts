@@ -94,9 +94,14 @@ test.describe("Reseñas de pase en la ficha de serie (#713)", () => {
       await login(page);
       await page.goto(`/serie/${serieId}?tab=community`);
 
-      await expect(page.getByText(texto)).toBeVisible({ timeout: 15_000 });
-      // Y el panel deja de mentir con el vacío.
-      await expect(page.getByText("Todavía no hay reseñas")).toHaveCount(0);
+      const community = page.locator("#detail-community");
+      await community.getByRole("link", {name: /Leer.*reseña/}).click();
+      const discussion = page.locator("#detail-reviews");
+      const review = discussion.getByText(texto, { exact: true });
+      while (!(await review.count()) && await discussion.getByRole("button", { name: /reseñas? más/i }).count()) {
+        await discussion.getByRole("button", { name: /reseñas? más/i }).click();
+      }
+      await expect(review).toBeVisible();
     } finally {
       await fetch(`${SUPABASE_URL}/rest/v1/passes?id=eq.${pase.id}`, {
         method: "DELETE",

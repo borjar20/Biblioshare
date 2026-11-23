@@ -15,6 +15,8 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/lib/social/post-actions", () => ({ deletePost: vi.fn() }));
 
+import { RouteMessages } from "@/components/route-messages";
+import { SpoilerGate } from "./spoiler-gate";
 import { ReviewCard } from "./review-card";
 import { JointCard } from "./joint-card";
 
@@ -41,6 +43,18 @@ const review = (over: Parameters<typeof makeFeedEvent>[0] = {}) =>
     reviewExcerpt: "Top 3 peores apocalipsis:\n1. Solo poder comer maíz.",
     ...over,
   });
+
+it("traduce el control de spoiler con los mensajes base de una ficha", () => {
+  const payload = RouteMessages({ children: null }).props.messages;
+  render(
+    <NextIntlClientProvider locale="es" messages={payload} timeZone="Europe/Madrid">
+      <SpoilerGate>El desenlace</SpoilerGate>
+    </NextIntlClientProvider>,
+  );
+  expect(screen.queryByText("El desenlace")).toBeNull();
+  act(() => screen.getByRole("button", { name: "Mostrar spoiler" }).click());
+  expect(screen.getByText("El desenlace")).toBeTruthy();
+});
 
 describe("ReviewCard", () => {
   it("una sola etiqueta: el verbo, sin chip «Reseña» ni estado «Finalizado»", () => {
@@ -195,7 +209,7 @@ describe("ReviewCard", () => {
       />,
     );
     expect(screen.queryByText(/Top 3 peores apocalipsis/)).toBeNull();
-    const reveal = screen.getByRole("button", { name: messages.feed.progress.showSpoiler });
+    const reveal = screen.getByRole("button", { name: messages.common.showSpoiler });
     act(() => reveal.click());
     expect(screen.getByText(/Top 3 peores apocalipsis/)).toBeTruthy();
   });

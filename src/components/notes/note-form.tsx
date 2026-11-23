@@ -16,10 +16,16 @@ export function NoteForm({
   itemType,
   itemId,
   anchor,
+  bare = false,
+  compact = false,
 }: {
   itemType: ItemType;
   itemId: string;
   anchor: NoteAnchor;
+  /** Sin la caja (borde, fondo y sombra): dentro de «Mi registro», que ya no
+   *  anida tarjetas (spec 2026-11-11-ficha-linea-de-lectura). */
+  bare?: boolean;
+  compact?: boolean;
 }) {
   const t = useTranslations("notes");
   const boundAdd = addNote.bind(null, itemType, itemId);
@@ -42,9 +48,14 @@ export function NoteForm({
   return (
     <form
       action={formAction}
-      className="flex flex-col gap-3 rounded-card border border-border bg-surface p-4 shadow-card"
+      className={
+        bare
+          ? "flex min-w-0 flex-col gap-3 has-[textarea]:w-full"
+          : "flex flex-col gap-3 rounded-card border border-border bg-surface p-4 shadow-card"
+      }
     >
       <NoteComposer
+        compact={compact}
         key={resetCount}
         anchor={anchor}
         anchorHint={anchor.kind === "page" ? t("anchorFromPass") : undefined}

@@ -1,4 +1,5 @@
 import { test, expect, type Page, type Locator } from "@playwright/test";
+import { marginSeries, startSeriesPass, clearMarginFixtures } from "./support/margin-fixtures";
 import { submitLogin } from "./support/visible-form";
 
 const EMAIL = process.env.TEST_USER_EMAIL!;
@@ -124,26 +125,17 @@ async function openSearchResult(
   return match[1];
 }
 
-function statusGroup(page: Page) {
-  return page.getByRole("group", { name: "Tu estado" });
+// La página actual en la tira de «Mi registro» (spec 2026-11-11-ficha-linea-de-lectura).
+function currentPage(page: Page) {
+  return page.getByTestId("reading-current-page");
 }
 
-// El estado ACTUAL del pase, tal como lo pinta la tarjeta del hero. Desde la
-// spec 2026-11-10-ficha-acciones la tarjeta ya no tiene una píldora de solo
-// lectura: `data-testid="status-badge"` envuelve el control de estado entero
-// (StatusSegments, con sus cuatro pastillas), así que filtrar por texto casaría
-// con «Leído» aunque el pase estuviera pendiente. El estado actual es la
-// pastilla PULSADA (aria-pressed), con nombre exacto.
-//
-// Ojo con el verbo: "en curso" y "completado" cambian por tipo de medio
-// (Leyendo/Viendo, Leído/Vista). "Pendiente" y "Abandonado" no tienen verbo
-// propio.
-// `:visible` por robustez: el estado se pinta en UN solo sitio, la tarjeta del
-// hero, a cualquier ancho.
+function statusGroup(page: Page) {
+  return page.getByRole("combobox", { name: "Tu estado" });
+}
+
 function statusBadge(page: Page, label: string) {
-  return page
-    .locator('[data-testid="status-badge"]:visible')
-    .getByRole("button", { name: label, exact: true, pressed: true });
+  return statusGroup(page).filter({ has: page.locator("option:checked").filter({ hasText: label }) });
 }
 
 // Una tarjeta del diario de pases por su ordinal. El ordinal va por tipo de
@@ -175,12 +167,10 @@ async function followItem(page: Page, itemType: "book" | "movie" | "series") {
   const badge = page.locator('[data-testid="status-badge"]:visible').first();
   await expect(badge).toBeVisible({ timeout: 15_000 });
   await expect(badge).toHaveAttribute("aria-busy", "false", { timeout: 20_000 });
-  // La intención no cambia de pestaña, pero estos tests llegan con `?tab=log`
-  // en la URL (deep link previo, que sin pase cae a Información): cuando la
-  // pestaña aparece, ItemDetailTabs atiende esa ?tab= pendiente y puede entrar
-  // sola. Se pulsa la pestaña de todos modos para no depender de esa carrera.
-  // Que una intención sin ?tab= se queda en Información lo cubre
-  // ficha-acciones.spec.ts.
+  if (itemType === "movie") {
+    await expect(page.locator("#detail-log")).toBeVisible();
+    return;
+  }
   const log = page.getByRole("tab", { name: "Mi registro" });
   await expect(log).toBeVisible({ timeout: 15_000 });
   await log.click();
@@ -260,15 +250,12 @@ async function deletePasses(
   );
 }
 
-// La pestaña Episodios ya no apila todas las temporadas: enseña una, elegida en
-// el raíl (PC, donde corre la suite) o en el índice (móvil). Para llegar al
-// último episodio de la serie hay que entrar antes en la última temporada.
-// Devuelve la fila del último episodio de esa temporada.
+// El ancho disponible decide si la temporada se elige en el raíl o en el índice.
 async function openLastSeason(page: Page) {
-  const rail = page.getByRole("button", { name: /^Temporada \d+$/ });
-  const count = await rail.count();
-  if (count > 0) await rail.nth(count - 1).click();
-  return page
+  const episodes = page.locator("#item-tabpanel-log");
+  const seasons = episodes.getByRole("button", { name: /^(?:Ver )?Temporada \d+$/i });
+  if (await seasons.count()) await seasons.last().click();
+  return episodes
     .locator("li")
     .filter({ has: page.getByRole("button", { name: "Visto" }) })
     .last();
@@ -343,22 +330,11 @@ test.describe
       "The Old Man and the Sea",
     );
 
-    // Deep link a ?tab=log de un ítem AÚN no seguido: la pestaña "Mi registro"
-    // no existe todavía, así que la ficha cae en "Información".
+    // Sin pase, el enlace antiguo al registro muestra la ficha pública.
     await page.goto(`/libro/${bookId}?tab=log`);
-    await page.waitForLoadState("networkidle").catch(() => {});
-    // Las pestañas son `role="tab"` desde #891 (antes, <button> pelados). Primero
-    // se exige que las pestañas estén pintadas: sin eso, el `toHaveCount(0)` de
-    // abajo pasaba con cualquier selector que no casara con nada (#1190).
-    await expect(
-      page.getByRole("tab", { name: "Información" }),
-    ).toBeVisible({ timeout: 15_000 });
-    await expect(
-      page.getByRole("tab", { name: "Mi registro" }),
-    ).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Quiero leerlo", exact: true })).toBeVisible();
+    await expect(page.getByRole("tablist")).toHaveCount(0);
 
-    // «Quiero leerlo» está en la tarjeta del hero. Al pulsarlo, la obra pasa a
-    // Pendiente y aparece la pestaña "Mi registro" (followItem entra en ella).
     await followItem(page, "book");
     await expect(statusBadge(page, "Pendiente")).toBeVisible({
       timeout: 15_000,
@@ -384,7 +360,7 @@ test.describe
     await page.goto(`/libro/${bookId}?tab=log`);
     await page.waitForLoadState("networkidle").catch(() => {});
 
-    await statusGroup(page).getByRole("button", { name: "Leyendo" }).click();
+    await statusGroup(page).selectOption({ label: "Leyendo" });
     const addSessionLink = page
       .getByRole("link", { name: /registrar sesión/i })
       .first();
@@ -449,7 +425,7 @@ test.describe
       timeout: 15_000,
     });
 
-    await statusGroup(page).getByRole("button", { name: "Leyendo" }).click();
+    await statusGroup(page).selectOption({ label: "Leyendo" });
 
     // completed → in_progress no es "retomar" (eso solo aplica a dropped):
     // la máquina archiva el pase cerrado y crea uno nuevo directo, sin
@@ -458,12 +434,12 @@ test.describe
       page.getByRole("heading", { name: "¿Retomar donde lo dejaste?" }),
     ).toHaveCount(0);
 
-    // Diario con los dos pases; el nuevo panel de Progreso existe (el pase
+    // Diario con los dos pases; la tira de lectura existe (el pase
     // recién creado tiene posición vacía) pero SIN página registrada todavía.
     await expect(diaryEntry(page, "book", 1)).toBeVisible({ timeout: 15_000 });
     await expect(diaryEntry(page, "book", 2)).toBeVisible();
-    await expect(page.getByText("Progreso", { exact: true })).toBeVisible();
-    await expect(page.getByText(/^Voy por la página/)).toHaveCount(0);
+    await expect(page.getByTestId("reading-strip")).toBeVisible();
+    await expect(currentPage(page)).toHaveText("pág. 0");
   });
 
   test("Regla 6 — Borrar el pase activo reactiva el anterior en vez de esfumar la obra", async ({
@@ -539,7 +515,7 @@ test.describe("abandonar y retomar (ambas ramas)", () => {
         timeout: 15_000,
       });
 
-      await statusGroup(page).getByRole("button", { name: "Leyendo" }).click();
+      await statusGroup(page).selectOption({ label: "Leyendo" });
       const addSessionLink = page
         .getByRole("link", { name: /registrar sesión/i })
         .first();
@@ -573,14 +549,12 @@ test.describe("abandonar y retomar (ambas ramas)", () => {
 
       await page.goto(`/libro/${bookId}?tab=log`);
       await page.waitForLoadState("networkidle").catch(() => {});
-      await expect(page.getByText("Voy por la página 20")).toBeVisible({
+      await expect(currentPage(page).filter({ hasText: /^pág\. 20$/ })).toBeVisible({
         timeout: 15_000,
       });
 
       // Abandonar a medias → Dejado.
-      await statusGroup(page)
-        .getByRole("button", { name: "Abandonado" })
-        .click();
+      await statusGroup(page).selectOption({ label: "Abandonado" });
       await dismissCloseSheetIfOpen(page);
       await reloadUntilVisible(page, `/libro/${bookId}?tab=log`, (p) =>
         statusBadge(p, "Abandonado"),
@@ -590,7 +564,7 @@ test.describe("abandonar y retomar (ambas ramas)", () => {
       });
 
       // Retomar: la máquina pregunta (dropped → in_progress sin `resume`).
-      await statusGroup(page).getByRole("button", { name: "Leyendo" }).click();
+      await statusGroup(page).selectOption({ label: "Leyendo" });
       await expect(
         page.getByRole("heading", { name: "¿Retomar donde lo dejaste?" }),
       ).toBeVisible({ timeout: 15_000 });
@@ -608,16 +582,14 @@ test.describe("abandonar y retomar (ambas ramas)", () => {
       // producción que una navegación completa (que siempre trae la verdad
       // servida de nuevo).
       await reloadUntilVisible(page, `/libro/${bookId}?tab=log`, (p) =>
-        p.getByText("Voy por la página 20"),
+        currentPage(p).filter({ hasText: /^pág\. 20$/ }),
       );
-      await expect(page.getByText("Voy por la página 20")).toBeVisible({
+      await expect(currentPage(page).filter({ hasText: /^pág\. 20$/ })).toBeVisible({
         timeout: 15_000,
       });
 
       // Abandonar de nuevo, y esta vez "de cero".
-      await statusGroup(page)
-        .getByRole("button", { name: "Abandonado" })
-        .click();
+      await statusGroup(page).selectOption({ label: "Abandonado" });
       await dismissCloseSheetIfOpen(page);
       await reloadUntilVisible(page, `/libro/${bookId}?tab=log`, (p) =>
         statusBadge(p, "Abandonado"),
@@ -626,7 +598,7 @@ test.describe("abandonar y retomar (ambas ramas)", () => {
         timeout: 15_000,
       });
 
-      await statusGroup(page).getByRole("button", { name: "Leyendo" }).click();
+      await statusGroup(page).selectOption({ label: "Leyendo" });
       await expect(
         page.getByRole("heading", { name: "¿Retomar donde lo dejaste?" }),
       ).toBeVisible({ timeout: 15_000 });
@@ -641,7 +613,7 @@ test.describe("abandonar y retomar (ambas ramas)", () => {
       await reloadUntilVisible(page, `/libro/${bookId}?tab=log`, (p) =>
         diaryEntry(p, "book", 2),
       );
-      await expect(page.getByText(/^Voy por la página/)).toHaveCount(0);
+      await expect(currentPage(page)).toHaveText("pág. 0");
       await expect(diaryEntry(page, "book", 1)).toBeVisible();
       await expect(diaryEntry(page, "book", 2)).toBeVisible();
       await expect(diaryEntry(page, "book", 3)).toHaveCount(0);
@@ -677,7 +649,7 @@ test.describe("película de un gesto", () => {
       });
 
       // Un solo gesto: "Vista" sin haber pasado nunca por "Viendo".
-      await statusGroup(page).getByRole("button", { name: "Vista" }).click();
+      await statusGroup(page).selectOption({ label: "Vista" });
 
       await expect(
         page.getByRole("heading", { name: "¿Qué te ha parecido?" }),
@@ -724,7 +696,14 @@ test.describe("película de un gesto", () => {
       });
 
       await login(page);
-      movieId = await openSearchResult(page, "movie", "whiplash", "Whiplash");
+      const seeded = await fetch(`${SUPABASE_URL}/rest/v1/movies?select=id`, {
+        method: "POST",
+        headers: { ...adminHeaders(), Prefer: "return=representation" },
+        body: JSON.stringify({ title: "QA · segundo visionado", duration_minutes: 90 }),
+      });
+      expect(seeded.ok).toBe(true);
+      const [movie] = await seeded.json() as { id: string }[];
+      movieId = movie.id;
       await page.goto(`/pelicula/${movieId}?tab=log`);
       await page.waitForLoadState("networkidle").catch(() => {});
       await followItem(page, "movie");
@@ -732,7 +711,7 @@ test.describe("película de un gesto", () => {
         timeout: 15_000,
       });
 
-      await statusGroup(page).getByRole("button", { name: "Vista" }).click();
+      await statusGroup(page).selectOption({ label: "Vista" });
       const closeHeading = page.getByRole("heading", {
         name: "¿Qué te ha parecido?",
       });
@@ -740,7 +719,28 @@ test.describe("película de un gesto", () => {
       await closeSheetSave(page).click();
       await expect(closeHeading).toHaveCount(0);
 
-      await page.getByRole("button", { name: "Nuevo pase" }).click();
+      const desktop = page.viewportSize()!;
+      await page.setViewportSize({ width: 360, height: 800 });
+      const journal = page.locator("#detail-log");
+      await expect(journal.getByRole("heading", { name: "Tu visionado" })).toBeVisible();
+      for (const width of [360, 1440]) {
+        await page.setViewportSize({ width, height: 800 });
+        const sizes = [];
+        for (const name of ["Nota o cita", "Colección", "Nota al margen"]) {
+          const button = journal.getByRole("button", { name, exact: true });
+          await expect(button).toBeVisible();
+          const box = await button.boundingBox();
+          sizes.push([box!.width, box!.height]);
+        }
+        expect(sizes[0][1]).toBeGreaterThanOrEqual(44);
+        expect(sizes[1]).toEqual(sizes[0]);
+        expect(sizes[2]).toEqual(sizes[0]);
+        expect(await journal.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+      }
+      await expect(journal.getByRole("heading", { name: "Tu cuaderno" })).toHaveCount(0);
+      await page.setViewportSize(desktop);
+
+      await journal.getByRole("button", { name: "Registrar otro visionado" }).click();
       await expect(closeHeading).toBeVisible({ timeout: 15_000 });
       await closeSheetSave(page).click();
       await expect(closeHeading).toHaveCount(0);
@@ -751,6 +751,7 @@ test.describe("película de un gesto", () => {
           { headers: adminHeaders() },
         )
       ).json()) as { status: string; is_active: boolean }[];
+      await expect(page.getByRole("tab", { name: "Mi registro" })).toBeVisible();
       expect(passes).toHaveLength(2);
       expect(passes.every((p) => p.status === "completed")).toBe(true);
       expect(passes.filter((p) => p.is_active)).toHaveLength(1);
@@ -791,6 +792,42 @@ test.describe("película de un gesto", () => {
 // que un revisionado nuevo separa su propio cursor de la capa "visto alguna
 // vez" (§Tarea 8).
 // ─────────────────────────────────────────────────────────────────────────
+test("el registro personal permite puntuar solo los episodios vistos pendientes", async ({ page }) => {
+  test.setTimeout(90_000);
+  const series = await marginSeries();
+  try {
+    await startSeriesPass(await devtestId(), series.id);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await login(page);
+    await page.goto(`/serie/${series.id}`);
+    await page.waitForLoadState("networkidle");
+    const publicGrid = page.locator("#detail-episodes");
+    await expect(publicGrid.getByRole("heading", { name: "Valoraciones por episodio" })).toBeVisible();
+    await expect(publicGrid.getByRole("button", { name: "8/10" })).toHaveCount(0);
+    await page.getByRole("button", { name: /^Visto: T1E1/ }).click();
+    await expect(page.getByRole("group", { name: /T1E1/ }).getByRole("button", { name: "8/10" })).toBeVisible();
+    await page.getByRole("button", {name: "Ver mi registro"}).click();
+    const log = page.locator("#item-tabpanel-log");
+    await log.getByLabel("Sin puntuar").check();
+    const row = log.getByRole("listitem").filter({ has: page.getByRole("button", { name: "Visto", exact: true }) });
+    await expect(row).toHaveCount(1);
+    await row.getByRole("button", {name: /Episodio 1/}).click();
+    await row.getByRole("textbox").fill("Una buena apertura");
+    await row.getByRole("textbox").blur();
+    await row.getByRole("button", {name: "8/10", exact: true}).click();
+    await expect(log.getByText("No tienes episodios vistos pendientes de puntuar.")).toBeVisible();
+    await expect(log.getByRole("region", { name: "Mis episodios" })).toHaveAttribute("aria-busy", "false");
+    await page.reload();
+    await log.getByLabel("Sin puntuar").check();
+    await expect(log.getByText("No tienes episodios vistos pendientes de puntuar.")).toBeVisible();
+    await log.getByLabel("Sin puntuar").uncheck();
+    await log.getByRole("button", {name: /QA.*Episodio 1/}).click();
+    await expect(log.getByRole("textbox")).toHaveValue("Una buena apertura");
+  } finally {
+    await clearMarginFixtures([], [series.id]);
+  }
+});
+
 test.describe("serie con revisionado", () => {
   test.skip(!EMAIL || !PASSWORD, "TEST_USER_* no configurado");
 
@@ -820,7 +857,7 @@ test.describe("serie con revisionado", () => {
         timeout: 15_000,
       });
 
-      await statusGroup(page).getByRole("button", { name: "Viendo" }).click();
+      await statusGroup(page).selectOption({ label: "Viendo" });
       // La píldora del hero usa el MISMO verbo por tipo de medio que el pill
       // del control ("Viendo"), no el genérico "En curso": así lo escribe la
       // maqueta de la ficha (.hero-status, "En tu biblioteca · Viendo").
@@ -828,14 +865,25 @@ test.describe("serie con revisionado", () => {
         timeout: 15_000,
       });
 
+      const desktop = page.viewportSize()!;
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.goto(`/serie/${seriesId}`);
+      const first = page.getByRole("button", { name: /^Visto: T1E1\b/ });
+      await expect(first).toBeInViewport({ ratio: 1 });
+      await expect(page.locator("#detail-episodes details")).toHaveCount(0);
+      await first.click();
+      await expect(page.getByRole("button", { name: /^Visto: T1E2\b/ })).toBeVisible();
+      await page.getByRole("button", { name: "Deshacer", exact: true }).click();
+      await expect(first).toBeVisible();
+      await page.setViewportSize(desktop);
+
       // Pestaña Episodios, vista de lista (checkbox interactivo por episodio;
       // la rejilla es solo de lectura). Marcar solo el ÚLTIMO episodio basta
       // para el auto-cierre: rollSeriesProgress compara contra el más
       // avanzado marcado EN ESTE PASE, no exige haber marcado los anteriores.
       await page.goto(`/serie/${seriesId}?tab=episodes`);
       await page.waitForLoadState("networkidle").catch(() => {});
-      await page.getByRole("button", { name: "Lista", exact: true }).click();
-
+      await page.getByTestId("detail-open-log").click();
       const lastEpisode = await openLastSeason(page);
       await lastEpisode.getByRole("button", { name: "Visto" }).click();
 
@@ -853,7 +901,7 @@ test.describe("serie con revisionado", () => {
       // Revisionado: "Viendo" de nuevo abre un SEGUNDO pase.
       await page.goto(`/serie/${seriesId}?tab=log`);
       await page.waitForLoadState("networkidle").catch(() => {});
-      await statusGroup(page).getByRole("button", { name: "Viendo" }).click();
+      await statusGroup(page).selectOption({ label: "Viendo" });
       // Recarga con reintento antes de comprobar (misma cautela que en el
       // spec del libro): el estado optimista local se resincroniza con la
       // prop `entry` del servidor en cuanto cambia de referencia, y una
@@ -873,7 +921,7 @@ test.describe("serie con revisionado", () => {
       // atenuada "visto alguna vez" (pass_reviews.seenBefore).
       await page.goto(`/serie/${seriesId}?tab=episodes`);
       await page.waitForLoadState("networkidle").catch(() => {});
-      await page.getByRole("button", { name: "Lista", exact: true }).click();
+      await page.getByTestId("detail-open-log").click();
       const lastEpisodeAgain = await openLastSeason(page);
       await expect(
         lastEpisodeAgain.getByText("Visto en otro pase"),
@@ -927,7 +975,7 @@ test.describe("nuevo pase", () => {
         page.getByRole("button", { name: "Nuevo pase" }),
       ).toHaveCount(0);
 
-      await statusGroup(page).getByRole("button", { name: "Leyendo" }).click();
+      await statusGroup(page).selectOption({ label: "Leyendo" });
       const addSessionLink = page
         .getByRole("link", { name: /registrar sesión/i })
         .first();
@@ -949,7 +997,7 @@ test.describe("nuevo pase", () => {
 
       await page.goto(`/libro/${bookId}?tab=log`);
       await page.waitForLoadState("networkidle").catch(() => {});
-      await expect(page.getByText("Voy por la página 20")).toBeVisible({
+      await expect(currentPage(page).filter({ hasText: /^pág\. 20$/ })).toBeVisible({
         timeout: 15_000,
       });
 
@@ -977,7 +1025,7 @@ test.describe("nuevo pase", () => {
       await expect(diaryEntry(page, "book", 1)).toBeVisible();
       await expect(diaryEntry(page, "book", 2)).toBeVisible();
       await expect(diaryEntry(page, "book", 3)).toHaveCount(0);
-      await expect(page.getByText(/^Voy por la página/)).toHaveCount(0);
+      await expect(currentPage(page)).toHaveText("pág. 0");
       await expect(statusBadge(page, "Leyendo")).toBeVisible({
         timeout: 15_000,
       });

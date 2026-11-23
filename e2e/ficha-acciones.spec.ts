@@ -103,7 +103,6 @@ async function deleteNewPosts(userId: string, anchorId: string, before: Set<stri
 
 type WorkType = "book" | "movie";
 const TABLE = { book: "books", movie: "movies" } as const;
-const SEGMENT = { book: "libro", movie: "pelicula" } as const;
 
 // Una obra del catálogo sobre la que devtest no tiene NINGÚN pase (ni archivado):
 // al terminar se le pueden borrar todos sin tocar nada suyo. Con portada, para
@@ -144,7 +143,7 @@ async function forgetWork(type: WorkType, itemId: string, userId: string, postsB
 
 async function openFicha(page: Page, path: string) {
   await page.goto(path);
-  await expect(page.getByRole("tablist")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   // Un clic antes de hidratar se pierde sin error: se espera a que la red calle.
   await page.waitForLoadState("networkidle").catch(() => {});
 }
@@ -157,8 +156,8 @@ async function settled(page: Page) {
   await expect(badge).toHaveAttribute("aria-busy", "false", { timeout: 20_000 });
 }
 
-function tab(page: Page, id: "info" | "community" | "log") {
-  return page.locator(`#item-tab-${id}`);
+function fichaTab(page: Page) {
+  return page.locator("#item-tab-info");
 }
 
 const CLOSE_HEADING = "¿Qué te ha parecido?";
@@ -175,22 +174,82 @@ test.describe("con sesión", () => {
     try {
       await login(page);
       await openFicha(page, `/libro/${bookId}`);
-      await expect(tab(page, "info")).toHaveAttribute("aria-selected", "true");
+      await expect(page.getByRole("tablist")).toHaveCount(0);
       await expect(page.getByRole("button", { name: "Seguir", exact: true })).toHaveCount(0);
 
       await page.getByRole("button", { name: "Quiero leerlo", exact: true }).click();
       await settled(page);
 
       await expect.poll(async () => (await activePass("book", bookId, userId))?.status ?? null).toBe("planned");
-      // Ninguna intención cambia de pestaña: aparece «Mi registro», pero sigue Información.
-      await expect(tab(page, "log")).toBeVisible();
-      await expect(tab(page, "info")).toHaveAttribute("aria-selected", "true");
+      // Ninguna intención cambia de pestaña: aparece «Mi registro», pero sigue en Ficha.
+      await expect(page.getByRole("tab", { name: "Mi registro" })).toBeVisible();
+      await expect(fichaTab(page)).toHaveAttribute("aria-selected", "true");
       expect(page.url()).not.toContain("tab=log");
       // Pendiente: el estado marcado en la tarjeta y sin puntos de nota.
       await expect(
-        page.getByRole("group", { name: "Tu estado" }).getByRole("button", { name: "Pendiente", pressed: true }),
+        page.getByRole("combobox", { name: "Tu estado" }).filter({ has: page.locator("option:checked").filter({ hasText: "Pendiente" }) }),
       ).toBeVisible();
       await expect(page.getByTestId("pass-card-rating")).toHaveCount(0);
+
+      await expect(page.getByRole("tablist").getByRole("tab")).toHaveText(["Ficha", "Mi registro"]);
+      await page.setViewportSize({ width: 390, height: 844 });
+      await expect(page.getByRole("tablist")).toHaveCount(0);
+      await page.getByTestId("detail-open-log").click();
+      await expect(page.getByTestId("diary-entry")).toBeVisible();
+      await expect(page).toHaveURL(/tab=log/);
+      await page.getByTestId("detail-back").click();
+      await expect(page.locator("#detail-community")).toBeVisible();
+      await expect(page.getByTestId("detail-open-log")).toBeVisible();
+    } finally {
+      await forgetWork("book", bookId, userId, postsBefore);
+    }
+  });
+
+  test("el historial móvil muestra tres sesiones recientes y despliega las anteriores por mes", async ({ page }) => {
+    const userId = await devtestId();
+    const bookId = await freeWork("book", userId);
+    const postsBefore = await postIds(userId, bookId);
+    const dates = ["2026-01-29", "2026-01-30", "2026-02-01", "2026-02-03", "2026-02-05"];
+
+    try {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await login(page);
+      await openFicha(page, `/libro/${bookId}`);
+      await page.getByRole("button", { name: "Lo estoy leyendo", exact: true }).click();
+      await settled(page);
+      const pass = await activePass("book", bookId, userId);
+      if (!pass) throw new Error("Falta el pase creado para el historial");
+      await expect(page.getByRole("button", { name: "Registrar sesión", exact: true })).toBeVisible();
+      await expect(page.getByRole("combobox", { name: "Tu estado" })).toHaveValue("in_progress");
+
+      const inserted = await fetch(`${SUPABASE_URL}/rest/v1/progress_sessions`, {
+        method: "POST",
+        headers: headers(),
+        body: JSON.stringify(dates.map((date, index) => ({
+          user_id: userId, pass_id: pass.id, session_date: date,
+          position: { page: (index + 1) * 10 }, duration_minutes: 20,
+        }))),
+      });
+      expect(inserted.ok, `insertar sesiones de prueba: ${inserted.status}`).toBe(true);
+
+      await page.reload();
+      await page.getByTestId("detail-open-log").click();
+      const log = page.locator("#item-tabpanel-log");
+      const recent = log.getByText("Últimas sesiones", { exact: true }).locator("..").getByRole("listitem");
+      await expect(recent).toHaveCount(3);
+      const recentDates = await recent.locator("time").evaluateAll(times => times.map(time => time.getAttribute("datetime")));
+      expect(recentDates).toEqual(dates.slice(-3).reverse());
+
+      const history = log.getByRole("button", { name: "Ver las 5 sesiones, por mes" });
+      await expect(history).toHaveAttribute("aria-expanded", "false");
+      await expect(log.getByTestId("session-month")).toHaveCount(0);
+      await history.click();
+      const months = log.getByTestId("session-month");
+      await expect(months).toHaveCount(2);
+      await expect(months.first()).toHaveJSProperty("open", true);
+      await expect(months.last()).toHaveJSProperty("open", false);
+      await months.last().locator("summary").click();
+      await expect(months.last().locator('time[datetime="2026-01-29"]')).toBeVisible();
     } finally {
       await forgetWork("book", bookId, userId, postsBefore);
     }
@@ -210,11 +269,11 @@ test.describe("con sesión", () => {
 
       await expect.poll(async () => (await activePass("book", bookId, userId))?.status ?? null).toBe("in_progress");
       await expect(
-        page.getByRole("group", { name: "Tu estado" }).getByRole("button", { name: "Leyendo", pressed: true }),
+        page.getByRole("combobox", { name: "Tu estado" }).filter({ has: page.locator("option:checked").filter({ hasText: "Leyendo" }) }),
       ).toBeVisible();
       // En curso, la acción principal es registrar una sesión.
       await expect(page.getByRole("button", { name: "Registrar sesión", exact: true })).toBeVisible();
-      await expect(tab(page, "info")).toHaveAttribute("aria-selected", "true");
+      await expect(fichaTab(page)).toHaveAttribute("aria-selected", "true");
     } finally {
       await forgetWork("book", bookId, userId, postsBefore);
     }
@@ -234,7 +293,6 @@ test.describe("con sesión", () => {
       await page.getByRole("button", { name: "Ya la vi", exact: true }).click();
 
       await expect(page.getByRole("heading", { name: CLOSE_HEADING })).toBeVisible({ timeout: 20_000 });
-      await expect(tab(page, "info")).toHaveAttribute("aria-selected", "true");
       await page.getByRole("button", { name: "Ahora no" }).click();
       await expect(page.getByRole("dialog")).toHaveCount(0);
 
@@ -249,7 +307,7 @@ test.describe("con sesión", () => {
     }
   });
 
-  test("cambiar a terminado desde la tarjeta abre el cierre en Información", async ({ page }) => {
+  test("cambiar a terminado desde la tarjeta abre el cierre en la ficha", async ({ page }) => {
     test.setTimeout(90_000);
     const userId = await devtestId();
     const bookId = await freeWork("book", userId);
@@ -262,14 +320,14 @@ test.describe("con sesión", () => {
       await settled(page);
       await expect.poll(async () => (await activePass("book", bookId, userId))?.status ?? null).toBe("in_progress");
 
-      await page.getByRole("group", { name: "Tu estado" }).getByRole("button", { name: "Leído" }).click();
+      await page.getByRole("combobox", { name: "Tu estado" }).selectOption({ label: "Leído" });
       await expect(page.getByRole("heading", { name: CLOSE_HEADING })).toBeVisible({ timeout: 20_000 });
-      await expect(tab(page, "info")).toHaveAttribute("aria-selected", "true");
+      await expect(fichaTab(page)).toHaveAttribute("aria-selected", "true");
       await page.getByRole("button", { name: "Ahora no" }).click();
       await expect(page.getByRole("dialog")).toHaveCount(0);
 
       await expect.poll(async () => (await activePass("book", bookId, userId))?.status ?? null).toBe("completed");
-      await expect(tab(page, "info")).toHaveAttribute("aria-selected", "true");
+      await expect(fichaTab(page)).toHaveAttribute("aria-selected", "true");
       expect(page.url()).not.toContain("tab=");
     } finally {
       await forgetWork("book", bookId, userId, postsBefore);
@@ -295,13 +353,13 @@ test.describe("con sesión", () => {
       await expect(rating).toHaveAttribute("data-value", "8");
       await settled(page);
       await expect.poll(async () => (await activePass("book", bookId, userId))?.rating ?? null).toBe(8);
-      await expect(tab(page, "info")).toHaveAttribute("aria-selected", "true");
+      await expect(fichaTab(page)).toHaveAttribute("aria-selected", "true");
     } finally {
       await forgetWork("book", bookId, userId, postsBefore);
     }
   });
 
-  test("«Marcar vista» con la pestaña Comunidad activa abre el cierre ahí", async ({ page }) => {
+  test("película con un pase muestra el registro en la ficha y permite marcarla vista", async ({ page }) => {
     test.setTimeout(90_000);
     const userId = await devtestId();
     const movieId = await freeWork("movie", userId);
@@ -314,24 +372,24 @@ test.describe("con sesión", () => {
       await settled(page);
       await expect.poll(async () => (await activePass("movie", movieId, userId))?.status ?? null).toBe("planned");
 
-      await tab(page, "community").click();
-      await expect(tab(page, "community")).toHaveAttribute("aria-selected", "true");
-      await expect(page.locator("#item-tabpanel-community")).toBeVisible();
+      await openFicha(page, `/pelicula/${movieId}?tab=log`);
+      await expect(page.locator("#detail-log")).toBeInViewport();
+      await expect(page.locator("#detail-log").getByTestId("diary-entry")).toBeVisible();
+      await expect(page.getByRole("tablist")).toHaveCount(0);
 
       await page.getByRole("button", { name: "Marcar vista", exact: true }).click();
       await expect(page.getByRole("heading", { name: CLOSE_HEADING })).toBeVisible({ timeout: 20_000 });
-      await expect(tab(page, "community")).toHaveAttribute("aria-selected", "true");
       await page.getByRole("button", { name: "Ahora no" }).click();
       await expect(page.getByRole("dialog")).toHaveCount(0);
 
       await expect.poll(async () => (await activePass("movie", movieId, userId))?.status ?? null).toBe("completed");
-      await expect(tab(page, "community")).toHaveAttribute("aria-selected", "true");
+      await expect(page.locator("#detail-log")).toBeVisible();
     } finally {
       await forgetWork("movie", movieId, userId, postsBefore);
     }
   });
 
-  test("terminar un libro desde la sesión abre el cierre con Información activa", async ({ page }) => {
+  test("terminar un libro desde la sesión abre el cierre sobre la ficha", async ({ page }) => {
     test.setTimeout(90_000);
     const userId = await devtestId();
     const [book] = await rest<{ id: string; total_pages: number | null }[]>(
@@ -366,18 +424,18 @@ test.describe("con sesión", () => {
 
       await login(page);
       await openFicha(page, `/libro/${book.id}`);
-      await expect(tab(page, "info")).toHaveAttribute("aria-selected", "true");
+      await expect(fichaTab(page)).toHaveAttribute("aria-selected", "true");
 
       // La acción principal de la tarjeta es un botón: abre la hoja de sesión.
       await page.getByRole("button", { name: "Registrar sesión", exact: true }).click();
-      await page.waitForURL(/\/sesion\//, { timeout: 15_000 });
+      await expect(page).toHaveURL(/\/sesion\//);
       const sheet = page.getByRole("dialog");
       await sheet.locator('input[name="page"]').fill(String(total));
       await sheet.getByRole("button", { name: "Guardar sesión" }).click();
 
-      // El cierre sube encima de la hoja de sesión con la ficha detrás, en Información.
+      // El cierre sube encima de la hoja de sesión con la ficha detrás.
       await expect(page.getByRole("heading", { name: CLOSE_HEADING })).toBeVisible({ timeout: 20_000 });
-      await expect(tab(page, "info")).toHaveAttribute("aria-selected", "true");
+      await expect(fichaTab(page)).toHaveAttribute("aria-selected", "true");
       await page.getByRole("button", { name: "Ahora no" }).click();
       await expect(page.getByRole("dialog")).toHaveCount(0, { timeout: 20_000 });
 
@@ -393,7 +451,7 @@ test.describe("con sesión", () => {
     }
   });
 
-  test("?cerrar=<pase> abre el cierre aunque la pestaña sea Comunidad", async ({ page }) => {
+  test("?cerrar=<pase> abre el cierre desde el enlace antiguo a Comunidad", async ({ page }) => {
     test.setTimeout(90_000);
     const userId = await devtestId();
     const [book] = await rest<{ id: string }[]>(`books?${FINAL_EMPIRE_FILTER}&select=id`);
@@ -408,7 +466,6 @@ test.describe("con sesión", () => {
       await login(page);
       await page.goto(`/libro/${book.id}?tab=community&cerrar=${pass.id}`);
       await expect(page.getByRole("heading", { name: CLOSE_HEADING })).toBeVisible({ timeout: 20_000 });
-      await expect(tab(page, "community")).toHaveAttribute("aria-selected", "true");
       await page.getByRole("button", { name: "Ahora no" }).click();
       await expect(page.getByRole("dialog")).toHaveCount(0);
     } finally {
@@ -416,7 +473,7 @@ test.describe("con sesión", () => {
     }
   });
 
-  test("Mi registro no tiene selector de estado ni «Quitar de mi biblioteca»", async ({ page }) => {
+  test("Mi registro reúne los controles del pase y el historial", async ({ page }) => {
     const userId = await devtestId();
     const [book] = await rest<{ id: string }[]>(`books?${FINAL_EMPIRE_FILTER}&select=id`);
     if (!book) throw new Error("no se encontró el libro fixture en catálogo");
@@ -429,10 +486,10 @@ test.describe("con sesión", () => {
     await expect(panel).toBeVisible();
     // El historial sí está: así la ausencia de abajo no pasa con un panel vacío.
     await expect(panel.getByTestId("diary-entry").first()).toBeVisible();
-    await expect(panel.getByRole("group", { name: "Tu estado" })).toHaveCount(0);
+    await expect(panel.getByRole("combobox", { name: "Tu estado" })).toHaveCount(1);
     await expect(panel.getByText("Quitar de mi biblioteca")).toHaveCount(0);
     // El estado se cambia en la tarjeta, una sola vez en la página.
-    await expect(page.getByRole("group", { name: "Tu estado" })).toHaveCount(1);
+    await expect(page.getByRole("combobox", { name: "Tu estado" })).toHaveCount(1);
   });
 
   // Mi registro perdió su enlace rojo: en escritorio la barra del cartel no se

@@ -2,7 +2,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { InfoLayout } from "./info-layout";
-import { DETAIL_ASIDE_STICKY } from "./detail-container";
 
 afterEach(cleanup);
 
@@ -21,20 +20,9 @@ describe("InfoLayout", () => {
     expect(main.compareDocumentPosition(aside) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("la columna de datos es la pegajosa y las dos se aplanan en móvil", () => {
+  it("las secciones de datos y contenido comparten columna en todos los anchos", () => {
     render(<InfoLayout main={<p>a</p>} aside={<p>b</p>} />);
-    const aside = screen.getByTestId("info-aside");
-    for (const cls of DETAIL_ASIDE_STICKY.split(" ")) expect(aside.className).toContain(cls);
-    expect(aside.className).toContain("contents");
-    expect(screen.getByTestId("info-main").className).toContain("contents");
-  });
-
-  it("las dos columnas empiezan en xl, no en lg", () => {
-    render(<InfoLayout main={<p>a</p>} aside={<p>b</p>} />);
-    const root = screen.getByTestId("info-main").parentElement!;
-    expect(root.className).toContain("xl:grid-cols-[minmax(0,1fr)_280px]");
-    expect(root.className).not.toContain("lg:grid");
-    expect(screen.getByTestId("info-main").className).not.toContain("lg:");
-    expect(screen.getByTestId("info-aside").className).not.toContain("lg:");
+    expect(screen.getByTestId("info-main").className).toBe("contents");
+    expect(screen.getByTestId("info-aside").className).toBe("contents");
   });
 });

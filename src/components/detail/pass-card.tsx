@@ -8,11 +8,12 @@ import { Button } from "@/components/ui/button";
 import { RatingDots } from "@/components/ui/rating-dots";
 import { useItemStatus } from "./item-status-context";
 import { usePassActions } from "./pass-actions-provider";
-import { StatusSegments } from "./status-segments";
+import { useSeriesEpisodes } from "./series-episode-context";
+import { PassStatusSelect } from "./pass-status-select";
+import styles from "./pass-card.module.css";
 
 // La misma forma para el botón principal con y sin pase (y para las
 // intenciones secundarias): la tarjeta cambia de contenido, no de lenguaje.
-// Es el radio del control de estado (StatusSegments, rounded-[10px]).
 const PRIMARY_SHAPE = "rounded-[10px]";
 
 export type PassCardProps = {
@@ -23,22 +24,26 @@ export type PassCardProps = {
   rating: number | null;
   /** Solo series: «Al día» (isUpToDate, src/lib/series/follow-state.ts), que
    *  calcula la ficha con los datos del pase. Es un estado DERIVADO, no una
-   *  pastilla más: se marca junto al progreso y StatusSegments sigue en «Viendo». */
+   *  pastilla más: se marca junto al progreso y PassStatusSelect sigue en «Viendo». */
   upToDate?: boolean;
 };
 
-// «Tu pase» en la cabecera de la ficha, y el MANDO de la obra (spec
+// Controles del pase personal de la obra (spec
 // 2026-11-10-ficha-acciones): sin pase ofrece las intenciones («Quiero leerlo»,
 // «Lo estoy leyendo», «Ya lo leí»); con pase, el estado se cambia aquí mismo, la
 // acción principal depende del estado y la nota se pone sin ir a Mi registro.
-// Todo lo que escribe pasa por usePassActions: la tarjeta no sabe de server
-// actions, de login ni de hojas.
+// El proveedor del pase resuelve estado y nota. Para series, la capa de
+// episodios comparte la acción primaria y el progreso con el explorador.
 //
 // El botón principal es SIEMPRE el naranja del rol (`bg-accent`, F3-006), no el
 // color del tipo de medio: el color de tipo es del CONTENIDO, el del CTA es de
 // la acción.
-export function PassCard({ itemType, progress, rating, upToDate = false }: PassCardProps) {
+export function PassCard({ itemType, progress: initialProgress, rating, upToDate: initialUpToDate = false }: PassCardProps) {
+  const episodes = useSeriesEpisodes();
+  const progress = episodes?.progress ?? initialProgress;
+  const upToDate = episodes?.upToDate ?? initialUpToDate;
   const t = useTranslations("item");
+  const tPasses = useTranslations("passes");
   const tRail = useTranslations("detail.rail");
   const tEpisode = useTranslations("episode");
   const { status, isSaving } = useItemStatus();
@@ -84,9 +89,6 @@ export function PassCard({ itemType, progress, rating, upToDate = false }: PassC
     primaryRef.current?.focus();
   }, [status, busy]);
 
-  const shell =
-    "flex flex-col gap-3 rounded-[14px] border border-border bg-surface/90 p-3.5 shadow-[0_18px_40px_-22px_rgba(60,35,15,0.55)] backdrop-blur-md";
-
   const errorLine = error && (
     <p role="alert" className="px-1 text-[13px] text-status-dropped">
       {t(error)}
@@ -101,17 +103,17 @@ export function PassCard({ itemType, progress, rating, upToDate = false }: PassC
   if (!status) {
     const [first, ...rest] = intentsFor(itemType);
     return (
-      <div className={shell}>
+      <div className="flex flex-wrap items-center gap-2">
         <Button
           type="button"
           disabled={busy}
           onClick={() => chooseIntent(first)}
-          className={`w-full py-3 font-semibold ${PRIMARY_SHAPE}`}
+          className={`min-h-11 self-start px-4 py-2 font-semibold ${PRIMARY_SHAPE} ${styles.primary}`}
         >
           {t(`intent.${first}.${itemType}`)}
         </Button>
         {rest.length > 0 && (
-          <div className={`grid gap-2 ${rest.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+          <div className="contents">
             {rest.map((intent) => (
               <Button
                 key={intent}
@@ -119,7 +121,7 @@ export function PassCard({ itemType, progress, rating, upToDate = false }: PassC
                 variant="secondary"
                 disabled={busy}
                 onClick={() => chooseIntent(intent)}
-                className={`w-full px-3 text-[13px] font-semibold ${PRIMARY_SHAPE}`}
+                className={`min-h-11 px-3 text-[13px] font-semibold ${PRIMARY_SHAPE} ${styles.secondary}`}
               >
                 {t(`intent.${intent}.${itemType}`)}
               </Button>
@@ -132,19 +134,22 @@ export function PassCard({ itemType, progress, rating, upToDate = false }: PassC
   }
 
   const action = primaryAction(itemType, status);
+  const episodeControls = action === "episode" ? episodes : null;
 
   return (
-    <div className={shell}>
-      {/* data-testid: los e2e esperan a que aria-busy vuelva a false (#106). */}
-      <div data-testid="status-badge" aria-busy={busy}>
-        <StatusSegments
-          status={status}
-          itemType={itemType}
-          onChange={changeStatus}
-          disabled={busy}
-        />
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-serif text-xl font-semibold">{tPasses(`journalTitle.${itemType}`, { count: 1 })}</h2>
+        <div data-testid="status-badge" aria-busy={busy}>
+          <PassStatusSelect status={status} itemType={itemType} onChange={changeStatus} disabled={busy} />
+        </div>
       </div>
-
+      {episodeControls && (
+        <>
+          {episodeControls.primary}
+        </>
+      )}
+      {episodes?.feedback}
       {progress && (
         <div className="px-0.5">
           <div
@@ -156,7 +161,7 @@ export function PassCard({ itemType, progress, rating, upToDate = false }: PassC
             className="h-2 overflow-hidden rounded-full border border-border bg-surface-muted"
           >
             <div
-              className="h-full rounded-full bg-status-in-progress"
+              className={`h-full rounded-full bg-status-in-progress ${styles.fill}`}
               style={{ width: `${progress.percent}%` }}
             />
           </div>
@@ -176,40 +181,45 @@ export function PassCard({ itemType, progress, rating, upToDate = false }: PassC
         </div>
       )}
 
-      {/* Un <button>, no un enlace: a dónde se va (sesión, episodios) lo
-          decide el proveedor, que antes cierra lo que hubiera abierto. */}
-      <Button
-        ref={primaryRef}
-        type="button"
-        disabled={busy}
-        onClick={runPrimary}
-        className={`w-full py-3 font-semibold ${PRIMARY_SHAPE}`}
-      >
-        {t(`action.${action}.${itemType}`)}
-      </Button>
-
-      {status !== "planned" && (
-        <div
-          data-testid="pass-card-rating"
-          data-value={shownRating ?? ""}
-          className="flex items-center justify-between gap-2.5 px-1"
-        >
-          <span className="font-mono text-[10px] tracking-wide text-muted-foreground uppercase">
-            {tRail("yourRating")}
-          </span>
-          <RatingDots
-            value={shownRating}
-            itemType={itemType}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        {!episodeControls && (
+          <Button
+            ref={primaryRef}
+            type="button"
             disabled={busy}
-            onChange={(next) => {
-              // Solo si de verdad arrancó la escritura: sin pase activo, sin
-              // sesión o con otra escritura en vuelo, la nota parecería
-              // guardada sin que nada llegue a BD.
-              if (rate(next)) setShownRating(next);
-            }}
-          />
-        </div>
-      )}
+            onClick={runPrimary}
+            className={`min-h-11 self-start px-4 py-2 font-semibold ${PRIMARY_SHAPE} ${styles.primary}`}
+          >
+            {t(`action.${action}.${itemType}`)}
+          </Button>
+        )}
+
+        {status !== "planned" && (
+          <div
+            data-testid="pass-card-rating"
+            data-value={shownRating ?? ""}
+            className="flex min-h-11 items-center gap-2 px-1"
+          >
+            <span className="font-mono text-[10px] tracking-wide text-muted-foreground uppercase">
+              {tRail("yourRating")}
+            </span>
+            <RatingDots
+              value={shownRating}
+              itemType={itemType}
+              disabled={busy}
+              lively
+              onChange={(next) => {
+                // Solo si de verdad arrancó la escritura: sin pase activo, sin
+                // sesión o con otra escritura en vuelo, la nota parecería
+                // guardada sin que nada llegue a BD.
+                const ok = rate(next);
+                if (ok) setShownRating(next);
+                return ok;
+              }}
+            />
+          </div>
+        )}
+      </div>
 
       {errorLine}
     </div>

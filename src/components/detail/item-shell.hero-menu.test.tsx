@@ -40,7 +40,7 @@ function renderShell(status: MediaStatus | null, canEditCatalog = false) {
           genres={["Fantasía"]} coverUrl={null} workHue={30} avgRating={null}
           ratingsLabel="" backLabel="Volver"
           menuSlot={<HeroMenu itemType="book" itemId="b1" canEditCatalog={canEditCatalog} />}
-          passCard={null} tabs={null}
+          tabs={null}
         />
       </ItemStatusProvider>
     </NextIntlClientProvider>,

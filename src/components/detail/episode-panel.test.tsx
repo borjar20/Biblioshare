@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextIntlClientProvider } from "next-intl";
 import messages from "../../../messages/es.json";
 import type { EpisodeRow } from "@/lib/series/get-episode-data";
 import { ItemStatusProvider } from "./item-status-context";
+import { useSeriesEpisodes } from "./series-episode-context";
+import { EpisodeGrid } from "./episode-grid";
 import { EpisodePanel } from "./episode-panel";
 
 // Las server actions no deben tocar Supabase: se sustituyen por espías para
@@ -49,6 +51,11 @@ function ep(season: number, episode: number, own: Partial<EpisodeRow["own"]> = {
 
 // Los textos salen de `messages/es.json` DE VERDAD: una clave que falte rompe
 // el test en vez de pintar la clave cruda.
+function EpisodeControls() {
+  const episodes = useSeriesEpisodes()!;
+  return <>{episodes.primary}{episodes.feedback}{episodes.journal}</>;
+}
+
 function renderPanel(episodes: EpisodeRow[]) {
   return render(
     <NextIntlClientProvider locale="es" messages={messages}>
@@ -60,11 +67,32 @@ function renderPanel(episodes: EpisodeRow[]) {
           pass={{ id: "p1", rating: null }}
           seasons={[{ season: 1, episodes }]}
           isLoggedIn
-        />
+        >
+          <EpisodeControls />
+        </EpisodePanel>
       </ItemStatusProvider>
     </NextIntlClientProvider>,
   );
 }
+
+it("agrupa todas las temporadas y calcula su media solo con las notas de la fuente elegida", () => {
+  const first = ep(1, 1, { watched: true, rating: 6 });
+  first.avgRating = 9;
+  first.ratingCount = 2;
+  const seasons = [
+    { season: 1, episodes: [first, ...Array.from({ length: 24 }, (_, i) => ep(1, i + 2))] },
+    ...Array.from({ length: 6 }, (_, i) => ({ season: i + 2, episodes: [ep(i + 2, 1)] })),
+  ];
+  render(<NextIntlClientProvider locale="es" messages={messages}><EpisodeGrid seasons={seasons} /></NextIntlClientProvider>);
+  const season = within(screen.getByRole("region", { name: "Temporada 1" }));
+  expect(season.getByText("media 9.0")).toBeTruthy();
+  const buttons = season.getAllByRole("button");
+  expect(buttons).toHaveLength(25);
+  expect(buttons[24].textContent).toContain("E25");
+  expect(buttons[24].textContent).toContain("—");
+  expect(season.queryByText("media 6.0")).toBeNull();
+  expect(screen.getByRole("region", { name: "Temporada 7" })).toBeTruthy();
+});
 
 describe("EpisodePanel · fase 3", () => {
   it("desmarcar un episodio con nota pide confirmación, y si se cancela no llama al servidor (#1194)", () => {
@@ -104,6 +132,24 @@ describe("EpisodePanel · fase 3", () => {
     );
   });
 
+  it("marca y deshace el siguiente sin abrir las temporadas", async () => {
+    renderPanel([ep(1, 1), ep(1, 2)]);
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: /Visto: T1E1/ })));
+    expect(screen.getByRole("button", { name: /Visto: T1E2/ })).toBeTruthy();
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: messages.episode.undoWatch })));
+    expect(actions.setEpisodeWatched).toHaveBeenLastCalledWith("s1", 1, 1, false, LOCAL_DAY);
+    expect(screen.getByRole("button", { name: /Visto: T1E1/ })).toBeTruthy();
+  });
+
+  it("restaura el cursor y avisa cuando la escritura del episodio falla", async () => {
+    actions.setEpisodeWatched.mockRejectedValueOnce(new Error("write failed"));
+    renderPanel([ep(1, 1), ep(1, 2)]);
+    await act(async () => fireEvent.click(screen.getByRole("button", { name: /Visto: T1E1/ })));
+    expect(screen.getByRole("alert").textContent).toBe(messages.episode.watchError);
+    expect(screen.getByRole("button", { name: /Visto: T1E1/ })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: messages.episode.undoWatch })).toBeNull();
+  });
+
   it("la cabecera marca el siguiente y ofrece puntuarlo en línea", () => {
     renderPanel([ep(1, 1, { watched: true }), ep(1, 2)]);
 
@@ -115,38 +161,22 @@ describe("EpisodePanel · fase 3", () => {
 });
 
 function stubDesktop(matches: boolean) {
-  vi.stubGlobal(
-    "matchMedia",
-    vi.fn((query: string) => ({
-      matches,
-      media: query,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    })),
-  );
+  stubResizableDesktop(matches);
 }
 
-// Variante que guarda los listeners de "change" para poder simular un cruce
-// de breakpoint en caliente (resize real): cambia `matches` y dispara los
-// listeners registrados, como haría el navegador.
 function stubResizableDesktop(initialMatches: boolean) {
-  let matches = initialMatches;
-  const listeners = new Set<() => void>();
-  vi.stubGlobal(
-    "matchMedia",
-    vi.fn((query: string) => ({
-      get matches() {
-        return matches;
-      },
-      media: query,
-      addEventListener: (_: string, listener: () => void) => listeners.add(listener),
-      removeEventListener: (_: string, listener: () => void) => listeners.delete(listener),
-    })),
-  );
+  let width = initialMatches ? 800 : 390;
+  const callbacks = new Set<() => void>();
+  vi.stubGlobal("ResizeObserver", class {
+    constructor(private callback: ResizeObserverCallback) {}
+    notify = () => this.callback([{ contentRect: { width } } as ResizeObserverEntry], this as unknown as ResizeObserver);
+    observe() { callbacks.add(this.notify); this.notify(); }
+    disconnect() { callbacks.delete(this.notify); }
+  });
   return {
-    resize(next: boolean) {
-      matches = next;
-      listeners.forEach((l) => l());
+    resize(wide: boolean) {
+      width = wide ? 800 : 390;
+      callbacks.forEach((callback) => callback());
     },
   };
 }
@@ -189,27 +219,12 @@ describe("EpisodePanel · PC·1 en tres columnas", () => {
     expect(document.activeElement).toBe(heading);
   });
 
-  it("elegir un episodio en PC sigue moviendo el foco al título tras cambiar a rejilla y volver a lista", () => {
-    // Revisión final PR 4: EpisodeDetailColumn vive en la rama `list` del
-    // `view === "grid" ? … : …`, así que lista → grid → lista la remonta.
-    // Si el focusKey no se consume tras aplicar el foco, ese remontaje lo
-    // vuelve a disparar sin que el usuario haya elegido nada.
-    stubDesktop(true);
-    renderPanel([ep(1, 1), ep(1, 2)]);
-    fireEvent.click(screen.getByRole("button", { name: /Episodio 1x2/ }));
-    const heading = screen.getByTestId("episode-detail-column").querySelector("h3");
-    expect(document.activeElement).toBe(heading);
-
-    // Se retira el foco a propósito, como haría el usuario al seguir
-    // navegando por el teclado o el ratón.
-    (document.activeElement as HTMLElement | null)?.blur();
-    expect(document.activeElement).not.toBe(heading);
-
-    fireEvent.click(screen.getByRole("button", { name: "Rejilla" }));
-    fireEvent.click(screen.getByRole("button", { name: "Lista" }));
-
-    const headingAfter = screen.getByTestId("episode-detail-column").querySelector("h3");
-    expect(document.activeElement).not.toBe(headingAfter);
+  it("Sin puntuar reúne solo los episodios vistos del pase sin nota", () => {
+    renderPanel([ep(1, 1, { watched: true }), ep(1, 2, { watched: true, rating: 8 }), ep(1, 3)]);
+    fireEvent.click(screen.getByRole("checkbox", { name: "Sin puntuar" }));
+    expect(screen.getByRole("button", { name: /Episodio 1x1/ })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Episodio 1x2/ })).toBeNull();
+    expect(screen.queryByText("Episodio 1x3", { exact: true })).toBeNull();
   });
 
   it("cruzar de PC a móvil con un borrador escrito conserva el mismo cuadro, ahora inline", () => {
@@ -323,4 +338,31 @@ describe("EpisodePanel · PC·1 en tres columnas", () => {
     expect(actions.rateEpisode).toHaveBeenCalledTimes(1);
     expect(actions.rateEpisode).toHaveBeenCalledWith("s1", 1, 2, null, "reseña desde móvil", false, LOCAL_DAY);
   });
+});
+
+it("permite buscar en toda una temporada larga y solo muestra la ficha elegida", () => {
+  const episodes = Array.from({ length: 121 }, (_, i) => ep(1, i + 1));
+  episodes[120].title = "El regreso";
+  render(<NextIntlClientProvider locale="es" messages={messages}><EpisodeGrid seasons={[{ season: 1, episodes }]} /></NextIntlClientProvider>);
+  const buttons = () => within(screen.getByLabelText("Elige un episodio")).getAllByRole("button");
+  expect(buttons()).toHaveLength(50);
+  fireEvent.click(screen.getByRole("button", { name: "E101–E121" }));
+  expect(buttons()).toHaveLength(21);
+  fireEvent.click(buttons()[20]);
+  expect(within(screen.getByRole("article")).getByText("El regreso")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Volver a los episodios" }));
+  expect(buttons()).toHaveLength(21);
+  fireEvent.click(screen.getByRole("button", { name: "Información por episodio" }));
+  expect(screen.queryByLabelText("Elige un episodio")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Temporada 1" }));
+  const search = screen.getByRole("searchbox");
+  for (const query of ["E121", "regreso"]) {
+    fireEvent.change(search, { target: { value: query } });
+    expect(buttons()).toHaveLength(1);
+    fireEvent.click(buttons()[0]);
+    expect(within(screen.getByRole("article")).getByText("El regreso")).toBeTruthy();
+  }
+  fireEvent.change(search, { target: { value: "999" } });
+  expect(screen.queryByRole("article")).toBeNull();
+  expect(screen.getByRole("status").textContent).toContain("No se han encontrado episodios");
 });

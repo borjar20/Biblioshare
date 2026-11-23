@@ -3,13 +3,13 @@ import type { ItemType } from "@/lib/catalog/types";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { pickPosterArt } from "@/lib/catalog/poster-art";
 import { BackButton } from "./back-button";
-import { POSTER_AREA, POSTER_BAR, POSTER_GRADIENT, POSTER_LAYOUT } from "./detail-container";
+import { POSTER_AREA, POSTER_ART_LAYER, POSTER_BAR, POSTER_GRADIENT, POSTER_LAYOUT } from "./detail-container";
 import { ItemHero } from "./item-hero";
 import { PosterArtView } from "./poster-art-view";
 import { WorkScope } from "./work-scope";
 
 // La ficha como cartel propio de cada obra (spec 2026-11-09): un árbol para móvil
-// y PC. Hasta `lg` el cartel abre la página y la cabecera monta sobre su degradado;
+// y PC. Hasta `lg` el cartel abre la página y la cabecera empieza donde termina su degradado;
 // desde `lg` el cartel es una columna fija a la izquierda.
 //
 // Las pestañas siguen llegando como slot y se pintan UNA vez, así que el
@@ -26,7 +26,6 @@ export function ItemShell({
   ratingsLabel,
   backLabel,
   menuSlot,
-  passCard,
   tabs,
 }: {
   itemType: ItemType;
@@ -45,8 +44,6 @@ export function ItemShell({
    *  cada instancia tiene su propio <dialog> cerrado y no lleva ids, así que no
    *  chocan—. Es el ÚNICO sitio para quitar la obra de la biblioteca. */
   menuSlot?: ReactNode;
-  /** <PassCard/>, una sola instancia. */
-  passCard: ReactNode;
   tabs: ReactNode;
 }) {
   return (
@@ -64,7 +61,9 @@ export function ItemShell({
             </span>
             {menuSlot ?? <span aria-hidden className="h-[34px] w-[34px] shrink-0" />}
           </div>
-          <PosterArtView art={pickPosterArt({ coverUrl })} title={title} />
+          <div className={POSTER_ART_LAYER}>
+            <PosterArtView art={pickPosterArt({ coverUrl })} title={title} />
+          </div>
           <div aria-hidden className={POSTER_GRADIENT} />
         </div>
         <div className="relative min-w-0">
@@ -76,7 +75,6 @@ export function ItemShell({
             genres={genres}
             avgRating={avgRating}
             ratingsLabel={ratingsLabel}
-            passCard={passCard}
             desktopMenu={menuSlot}
           />
           {tabs}

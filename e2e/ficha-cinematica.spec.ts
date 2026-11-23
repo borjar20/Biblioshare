@@ -1,3 +1,4 @@
+import sharp from "sharp";
 import { expect, test } from "@playwright/test";
 
 // Ficha cinemática (spec 2026-09-23). Lo que protege:
@@ -22,7 +23,7 @@ test.describe("PC 1600", () => {
     // columna derecha — su borde izquierdo queda tras el cartel y el derecho llega
     // al borde del contenedor.
     await page.goto(BOOK);
-    const panel = page.getByRole("tabpanel");
+    const panel = page.locator("#item-tabpanel-info");
     await expect(panel).toBeVisible();
     const box = await panel.boundingBox();
     const poster = await page.locator("[data-poster]").boundingBox();
@@ -43,67 +44,29 @@ test.describe("PC 1600", () => {
     expect(card!.x).toBeLessThan(title!.x + title!.width);
   });
 
-  test("Info a dos columnas: la ficha técnica a la derecha, una sola vez, pegada bajo las pestañas", async ({ page }) => {
-    // Viewport más bajo que el describe (1000px): a 1600x1000 la página del
-    // libro no siempre tiene 1500px de contenido debajo del fold para que el
-    // wheel la mueva; a 700px de alto sí sobra scrollable de sobra.
-    await page.setViewportSize({ width: 1600, height: 700 });
+  test("la ficha pública del libro muestra la comunidad junto a la información", async ({ page }) => {
     await page.goto(BOOK);
     const synopsis = page.getByRole("heading", { name: "Sinopsis" });
-    await expect(synopsis).toBeVisible();
-    const aside = page.getByTestId("info-aside");
-    // Una sola ficha técnica en el DOM (antes el libro la pintaba dos veces).
-    await expect(page.locator("aside").filter({ hasText: "Primera publicación" })).toHaveCount(1);
-    const s = await synopsis.boundingBox();
-    const a = await aside.boundingBox();
-    expect(a!.x).toBeGreaterThan(s!.x + 400);
-
-    // Confirma que la página realmente se movió antes de medir nada debajo.
-    await page.mouse.wheel(0, 1500);
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(500);
-
-    // Tras bajar, el lateral queda pegado justo bajo la barra de pestañas:
-    // top de la barra + su alto + 24px de aire (DETAIL_ASIDE_STICKY), con
-    // 3px de tolerancia por redondeo de subpíxel.
-    const tabs = await page.getByRole("tablist").boundingBox();
-    await expect
-      .poll(async () => {
-        const a2 = await aside.boundingBox();
-        return a2!.y;
-      })
-      .toBeGreaterThanOrEqual(tabs!.y + tabs!.height + 24 - 3);
-    await expect
-      .poll(async () => {
-        const a2 = await aside.boundingBox();
-        return a2!.y;
-      })
-      .toBeLessThanOrEqual(tabs!.y + tabs!.height + 24 + 3);
+    const community = page.locator("#detail-community");
+    await expect(community.getByRole("heading", { name: "Comunidad" })).toBeVisible();
+    await expect(page.getByRole("tablist")).toHaveCount(0);
+    const info = (await synopsis.boundingBox())!;
+    const social = (await community.boundingBox())!;
+    expect(social.x).toBeGreaterThanOrEqual(info.x + info.width);
   });
 
-  test("Episodios en tres columnas: el detalle del episodio en la columna de la derecha", async ({ page }) => {
+  test("Episodios comunitarios en escritorio: detalle al lado de la tabla", async ({ page }) => {
+    await page.setViewportSize({ width: 1600, height: 900 });
     await page.goto(`${SERIES}?tab=episodes`);
-    // En PC la columna es una region ARIA con nombre propio (revisión final
-    // PR 4): más robusto que el testid a secas y prueba que el a11y label
-    // está en su sitio.
-    const column = page.getByRole("region", { name: "Detalle del episodio" });
-    await expect(column).toBeVisible();
-    await expect(column).toContainText("Elige un episodio");
+    const episodes = page.locator("#detail-episodes");
+    const cell = episodes.getByRole("table").getByRole("button").first();
+    await cell.click();
+    const detail = episodes.getByRole("region", { name: "Detalle del episodio" });
+    await expect(detail.getByRole("heading")).toBeVisible();
+    await expect(cell).toHaveAttribute("aria-pressed", "true");
+    await expect(detail).toBeFocused();
+    expect((await detail.boundingBox())!.x).toBeGreaterThan((await cell.boundingBox())!.x);
 
-    // Primer episodio de la lista: en PC las filas llevan aria-pressed +
-    // aria-controls (no aria-expanded, que ahora es exclusivo del inline de
-    // móvil) — se escoge por ese atributo para no atrapar ningún otro botón
-    // aria-expanded de la página (p. ej. un menú global).
-    const firstEpisode = page.locator('button[aria-controls="episode-detail-column"]').first();
-    await firstEpisode.click();
-    await expect(column.locator("h3")).toBeVisible();
-    await expect(firstEpisode).toHaveAttribute("aria-pressed", "true");
-    // Tras elegir un episodio, el foco salta al título de la columna (a11y
-    // de teclado: revisión final PR 4).
-    await expect(column.locator("h3")).toBeFocused();
-
-    const list = await firstEpisode.boundingBox();
-    const detail = await column.boundingBox();
-    expect(detail!.x).toBeGreaterThan(list!.x + list!.width - 1);
   });
 });
 
@@ -125,31 +88,28 @@ test.describe("tableta 1100, con la columna de cartel", () => {
     await noOverflow(page);
   });
 
-  test("Episodios: sin columnas laterales, el detalle se abre bajo su fila", async ({ page }) => {
+  test("Episodios comunitarios en tableta: abre la ficha breve", async ({ page }) => {
     await page.goto(`${SERIES}?tab=episodes`);
-    await expect(page.getByTestId("episode-detail-column")).toBeHidden();
-    await page.getByRole("button", { name: "Ver Temporada 1" }).click();
-    const firstEpisode = page.locator("li button[aria-expanded]").first();
-    await firstEpisode.click();
-    await expect(firstEpisode).toHaveAttribute("aria-expanded", "true");
-    const row = firstEpisode.locator("xpath=ancestor::li[1]");
-    await expect(row.getByTestId("episode-inline-detail")).toBeVisible();
+    await page.locator("#detail-episodes").getByRole("button", { name: /^T1E1 ·/ }).click();
+    await expect(page.getByRole("dialog", { name: "Detalle del episodio" })).toBeVisible();
     await noOverflow(page);
+
   });
 });
 
 test.describe("móvil 375", () => {
   test.use({ viewport: { width: 375, height: 812 } });
 
-  test("la tarjeta va bajo el hero, antes de las pestañas, sin scroll horizontal", async ({ page }) => {
+  test("la tarjeta va bajo el hero, antes de la información, sin scroll horizontal", async ({ page }) => {
     await page.goto(BOOK);
     const follow = page.getByRole("button", { name: "Quiero leerlo", exact: true });
     await expect(follow).toBeVisible();
     const card = await follow.boundingBox();
-    const tabs = await page.getByRole("tablist").boundingBox();
+    await expect(page.getByRole("tablist")).toHaveCount(0);
+    const synopsis = await page.getByRole("heading", { name: "Sinopsis" }).boundingBox();
     const cover = await page.getByRole("heading", { level: 1 }).boundingBox();
     expect(card!.y).toBeGreaterThan(cover!.y);
-    expect(card!.y).toBeLessThan(tabs!.y);
+    expect(card!.y + card!.height).toBeLessThanOrEqual(synopsis!.y);
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
@@ -165,27 +125,56 @@ test.describe("móvil 375", () => {
     expect(editions!.y).toBeGreaterThan(ficha!.y);
   });
 
-  test("Episodios en móvil: el detalle se abre bajo su fila, sin columna", async ({ page }) => {
+  test("el cartel se funde con el fondo antes del título en móvil", async ({ page }) => {
+    await page.goto(SERIES);
+    const title = page.getByRole("heading", { level: 1 });
+    await expect(title).toBeVisible();
+    // Una portada blanca delata incluso un pequeño resto de imagen sobre el tema oscuro.
+    await page.addStyleTag({ content: '[data-poster]::after { content: ""; position: absolute; inset: 0; background: white; }' });
+    for (const [height, colorScheme] of [[640, "light"], [915, "dark"]] as const) {
+      await page.setViewportSize({ width: 375, height });
+      await page.emulateMedia({ colorScheme });
+      const art = (await page.locator("[data-poster]").boundingBox())!;
+      const header = (await title.locator("..").boundingBox())!;
+      const edge = Math.round(art.y + art.height);
+      expect(edge).toBeGreaterThan(header.y);
+      const { data, info } = await sharp(await page.screenshot()).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+      const pixel = (y: number) => {
+        const offset = (Math.round(y) * info.width + Math.round(header.x + 4)) * info.channels;
+        return Array.from(data.subarray(offset, offset + 3));
+      };
+      const background = pixel(header.y + 2);
+      expect(pixel(art.y + art.height * 0.25)).toEqual([255, 255, 255]);
+      for (const y of [header.y - 3, edge - 1, edge, edge + 1]) {
+        expect(pixel(y)).toEqual(background);
+      }
+    }
+  });
+
+  test("Episodios comunitarios en móvil: consulta la información y vuelve a la misma celda", async ({ page }) => {
     await page.goto(`${SERIES}?tab=episodes`);
-    await expect(page.getByTestId("episode-detail-column")).toBeHidden();
+    const episodes = page.locator("#detail-episodes");
+    await expect(episodes.locator("details")).toHaveCount(0);
+    const info = episodes.getByRole("button", { name: "Información por episodio" });
+    await info.click();
+    await expect(episodes.getByRole("article")).toHaveCount(0);
+    await episodes.getByRole("button", { name: "Temporada 7", exact: true }).click();
+    await episodes.getByRole("button", { name: /^E1 ·/ }).click();
+    await expect(episodes.getByRole("article")).toContainText("T7 · E1");
+    await episodes.getByRole("button", { name: "Temporada 2", exact: true }).click();
+    await expect(episodes.getByRole("article")).toHaveCount(0);
+    await info.click();
+    const cell = episodes.getByRole("button", { name: /^T7E1 ·/ });
+    await cell.scrollIntoViewIfNeeded();
+    await expect(cell).toBeInViewport();
+    const position = await page.evaluate(() => window.scrollY);
+    await cell.click();
+    const modal = page.getByRole("dialog", {name: "Detalle del episodio"});
+    await expect(modal.getByRole("heading")).toBeVisible();
+    await expect(modal.getByRole("textbox")).toHaveCount(0);
+    await modal.getByRole("button", {name: "Cerrar"}).click();
+    await expect(cell).toBeFocused();
+    expect(Math.abs(await page.evaluate(() => window.scrollY) - position)).toBeLessThan(3);
 
-    // Entra a la temporada 1 desde el índice de temporadas (nivel E3 → E2).
-    await page.getByRole("button", { name: "Ver Temporada 1" }).click();
-
-    // Primer episodio de la temporada: en móvil las filas conservan
-    // aria-expanded (el desplegable de siempre, ahora exclusivo de este
-    // breakpoint — revisión final PR 4). Acotado a la lista (li button) para
-    // no colar un aria-expanded de otra parte de la página (p.ej. un menú).
-    const firstEpisode = page.locator("li button[aria-expanded]").first();
-    await firstEpisode.click();
-    await expect(firstEpisode).toHaveAttribute("aria-expanded", "true");
-
-    // El detalle aparece DENTRO de la fila (su <li>), no en la columna que
-    // sigue oculta a este ancho. Se comprueba con el testid estable del
-    // envoltorio del desplegable, no con una clase de utilidad de Tailwind
-    // (frágil: cambia con cualquier retoque de estilo).
-    const row = firstEpisode.locator("xpath=ancestor::li[1]");
-    await expect(row.getByTestId("episode-inline-detail")).toBeVisible();
-    await expect(page.getByTestId("episode-detail-column")).toBeHidden();
   });
 });

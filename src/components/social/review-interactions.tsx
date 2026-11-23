@@ -60,6 +60,7 @@ export function ReviewInteractions({
   clubId,
   knownUsernames = [],
   voiceEnabled = false,
+  threadPageSize,
 }: {
   interactionTargetId: string;
   reactionCount: number;
@@ -93,12 +94,15 @@ export function ReviewInteractions({
   // useVoiceNoteSubmit sigue montado (inofensivo, nunca se le llama a
   // publish) para no bifurcar el componente en dos.
   voiceEnabled?: boolean;
+  threadPageSize?: number;
 }) {
   const t = useTranslations("social");
   const { state, isPending, failed, run } = useOptimisticAction({
     state: { interactionTargetId, reactionCount, viewerReacted, commentCount, comments, reactions },
     reducer: interactionReducer,
   });
+  const [replyLimits, setReplyLimits] = useState<Record<string, number>>({});
+  const [threadLimit, setThreadLimit] = useState(threadPageSize);
   const [expanded, setExpanded] = useState(false);
   const [sort, setSort] = useState<CommentSort>("recent");
   const [openReplies, setOpenReplies] = useState<Set<string>>(new Set());
@@ -443,11 +447,13 @@ export function ReviewInteractions({
             </div>
           )}
 
-          {threads.map((thread) => {
+          {threads.slice(0, threadLimit).map((thread) => {
+            const replyLimit = replyLimits[thread.root.id] ?? threadPageSize;
+            const hiddenReplies = replyLimit === undefined ? 0 : Math.max(0, thread.replies.length - replyLimit);
             const repliesOpen = openReplies.has(thread.root.id);
             const threadPending = voice.pending.filter((p) => p.parentId === thread.root.id);
             return (
-              <div key={thread.root.id} className="flex flex-col gap-2">
+              <div key={thread.root.id} className={threadPageSize ? "flex min-w-0 flex-col gap-2 border-t border-border py-3 [overflow-wrap:anywhere]" : "flex flex-col gap-2"}>
                 {renderComment(thread.root, thread.root.id, false)}
 
                 {thread.replies.length > 0 && (
@@ -465,7 +471,13 @@ export function ReviewInteractions({
 
                 {repliesOpen && thread.replies.length > 0 && (
                   <div className="ml-2 flex flex-col gap-3 border-l-2 border-border pl-3 sm:ml-4">
-                    {thread.replies.map((r) => renderComment(r, thread.root.id, true))}
+                    {hiddenReplies > 0 && threadPageSize && replyLimit !== undefined && (
+                      <button type="button" className="self-start py-1 text-xs font-medium text-accent hover:underline"
+                        onClick={() => setReplyLimits((limits) => ({ ...limits, [thread.root.id]: replyLimit + threadPageSize }))}>
+                        {t("earlierReplies", { count: Math.min(hiddenReplies, threadPageSize) })}
+                      </button>
+                    )}
+                    {thread.replies.slice(hiddenReplies).map((r) => renderComment(r, thread.root.id, true))}
                   </div>
                 )}
 
@@ -516,6 +528,12 @@ export function ReviewInteractions({
             );
           })}
 
+          {threadLimit !== undefined && threadPageSize && threads.length > threadLimit && (
+            <button type="button" onClick={() => setThreadLimit(threadLimit + threadPageSize)}
+              className="self-start rounded-lg border border-border px-3 py-2 text-sm font-medium">
+              {t("moreRootComments", { count: Math.min(threadPageSize, threads.length - threadLimit) })}
+            </button>
+          )}
           <div className="relative">
             {voiceEnabled && voiceMode === "root" ? (
               <VoiceRecorder

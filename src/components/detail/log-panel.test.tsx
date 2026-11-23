@@ -26,6 +26,7 @@ vi.mock("@/lib/passes/actions", () => ({ ratePass: vi.fn(), setPassEdition: vi.f
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
 vi.mock("next/link", () => ({ default: ({ href, children }: { href: string; children: ReactNode }) => <a href={href}>{children}</a> }));
 vi.mock("@/components/session-list", () => ({ SessionList: () => null }));
+vi.mock("@/components/margin/margin-note-sheet", () => ({ MarginNoteSheet: () => null }));
 vi.mock("@/components/notes/note-form", () => ({ NoteForm: () => null }));
 vi.mock("@/components/detail/pass-diary", () => ({ PassDiary: () => null }));
 vi.mock("@/components/detail/edition-picker", () => ({ EditionPicker: () => null }));
@@ -57,7 +58,7 @@ function renderLog({ status = "in_progress" as MediaStatus } = {}) {
         <LogPanel
           itemType="book" itemId="b1"
           entry={{ entryId: "p1", status, position: {} }}
-          passes={[pass(status)]} sessions={[]} editions={[]}
+          passes={[pass(status)]} sessions={[]} editions={[]} currentYear={2026}
         />
       </ItemStatusProvider>
     </NextIntlClientProvider>,
@@ -72,14 +73,14 @@ describe("LogPanel, solo historial", () => {
   });
 
   it("«Nuevo pase» delega en el proveedor", () => {
-    renderLog({ status: "completed" });
+    renderLog({ status: "in_progress" });
     fireEvent.click(screen.getByRole("button", { name: /Nuevo pase/i }));
     expect(actions.newPass).toHaveBeenCalledTimes(1);
   });
 
   it("«Nuevo pase» se deshabilita mientras el proveedor escribe", () => {
     actions.isPending = true;
-    renderLog({ status: "completed" });
+    renderLog({ status: "in_progress" });
     expect(screen.getByRole("button", { name: /Nuevo pase/i })).toHaveProperty("disabled", true);
   });
 
@@ -92,10 +93,16 @@ describe("LogPanel, solo historial", () => {
     render(
       <NextIntlClientProvider locale="es" messages={messages}>
         <ItemStatusProvider initialStatus="planned">
-          <LogPanel itemType="book" itemId="b1" entry={null} passes={[]} sessions={[]} editions={[]} />
+          <LogPanel itemType="book" itemId="b1" entry={null} passes={[]} sessions={[]} editions={[]} currentYear={2026} />
         </ItemStatusProvider>
       </NextIntlClientProvider>,
     );
     expect(screen.getByText("Añadiendo…")).not.toBeNull();
+  });
+
+  it("ya no pinta el panel «Progreso» ni la página", () => {
+    renderLog();
+    expect(screen.queryByText("Progreso")).toBeNull();
+    expect(screen.queryByText(/Voy por la página/)).toBeNull();
   });
 });

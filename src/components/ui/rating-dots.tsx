@@ -1,8 +1,9 @@
 "use client";
 
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { formatDots, ratingFromFraction } from "@/lib/rating/dots";
 import type { ItemType } from "@/lib/catalog/types";
+import styles from "./rating-dots.module.css";
 
 // EL control de valoración de Paper: cinco dots sobre la nota 1–10, en modo
 // lectura o interactivo. Único en la app — no hay estrellas en ninguna parte.
@@ -53,16 +54,23 @@ export function RatingDots({
   disabled = false,
   className = "",
   itemType,
+  lively = false,
 }: {
   /** Nota 1–10, o null si no hay. */
   value: number | null;
   /** Si se pasa, el control es interactivo (precisión de media nota). */
-  onChange?: (rating: number) => void;
+  onChange?: (rating: number) => void | boolean;
   size?: keyof typeof SIZES | number;
   disabled?: boolean;
   className?: string;
   /** Tiñe la nota con el color del tipo de obra. Sin él, oro. */
   itemType?: ItemType;
+  /**
+   * Gestos de la tarjeta del pase: los puntos crecen bajo el cursor y saltan en
+   * cadena al fijar la nota. Solo tiene efecto con `onChange`. Apagado por
+   * defecto: el resto de la app no cambia.
+   */
+  lively?: boolean;
 }) {
   const [preview, setPreview] = useState<number | null>(null);
   // Solo mientras el dedo está apoyado: distingue el arrastre táctil del
@@ -75,6 +83,18 @@ export function RatingDots({
   const fill = itemType ? `var(--type-${itemType})` : GOLD;
   // Cuánto sobresale por arriba y por abajo cada mitad pulsable.
   const padY = Math.max(0, (TOUCH_MIN - px) / 2);
+
+  // Última nota fijada AQUÍ (no la que llega por `value`): `n` cuenta las
+  // veces, para alternar el nombre de la animación y relanzarla.
+  const [pop, setPop] = useState<{ n: number; upTo: number }>({ n: 0, upTo: 0 });
+  // No depende de `disabled`: mientras guarda, la clase y `data-pop` deben
+  // seguir iguales o el salto se corta y se repite al terminar.
+  const gestures = lively && Boolean(onChange);
+  function commit(next: number) {
+    // `false` = el consumidor rechazó la nota: no hay salto.
+    const accepted = onChange!(next);
+    if (lively && accepted !== false) setPop((p) => ({ n: p.n + 1, upTo: next }));
+  }
 
   // Nota bajo el dedo. El reparto en diez tramos vive en `lib/rating/dots` para
   // poder probarlo sin navegador; aquí solo queda la medida de la fila. El
@@ -115,7 +135,7 @@ export function RatingDots({
           const next = valueFromX(e.clientX);
           setDragging(false);
           setPreview(null);
-          if (next !== null) onChange!(next);
+          if (next !== null) commit(next);
         },
         onPointerCancel: () => {
           setDragging(false);
@@ -130,7 +150,9 @@ export function RatingDots({
       className={`inline-flex items-center gap-1${
         interactive ? " touch-pan-y select-none" : ""
       }`}
-      onMouseLeave={interactive ? () => setPreview(null) : undefined}
+      // Con `onChange`, no con `interactive`: si el cursor sale mientras la
+      // tarjeta guarda (`disabled`), el levantado se limpia igualmente.
+      onMouseLeave={onChange ? () => setPreview(null) : undefined}
       {...touchHandlers}
     >
       {Array.from({ length: 5 }).map((_, i) => {
@@ -138,13 +160,20 @@ export function RatingDots({
         return (
           <span
             key={i}
-            className="relative inline-block rounded-full"
-            style={{
-              width: px,
-              height: px,
-              background: dotBackground(shown, i, fill),
-              cursor: interactive ? "pointer" : "default",
-            }}
+            className={`relative inline-block rounded-full${gestures ? ` ${styles.dot}` : ""}`}
+            data-lift={gestures && preview !== null && preview >= 2 * i + 1 ? "" : undefined}
+            data-pop={
+              gestures && pop.n > 0 && pop.upTo >= 2 * i + 1 ? (pop.n % 2 === 1 ? "a" : "b") : undefined
+            }
+            style={
+              {
+                width: px,
+                height: px,
+                background: dotBackground(shown, i, fill),
+                cursor: interactive ? "pointer" : "default",
+                ...(gestures ? { "--i": i } : {}),
+              } as CSSProperties
+            }
             aria-hidden={!interactive}
           >
             {interactive && (
@@ -162,7 +191,7 @@ export function RatingDots({
                   onMouseEnter={() => setPreview(valueAt(true))}
                   onFocus={() => setPreview(valueAt(true))}
                   onBlur={() => setPreview(null)}
-                  onClick={() => onChange!(valueAt(true))}
+                  onClick={() => commit(valueAt(true))}
                 />
                 <button
                   type="button"
@@ -172,7 +201,7 @@ export function RatingDots({
                   onMouseEnter={() => setPreview(valueAt(false))}
                   onFocus={() => setPreview(valueAt(false))}
                   onBlur={() => setPreview(null)}
-                  onClick={() => onChange!(valueAt(false))}
+                  onClick={() => commit(valueAt(false))}
                 />
               </>
             )}

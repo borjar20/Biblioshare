@@ -1,6 +1,8 @@
+import type { CSSProperties } from "react";
 import { MEDIA_ACCENT } from "@/lib/catalog/media-accent";
 import { starLabel } from "@/lib/stats/rating";
 import type { ItemType } from "@/lib/catalog/types";
+import styles from "./rating-histogram.module.css";
 
 // Histograma de notas de la comunidad por MEDIA estrella (0,5→5, estilo
 // Letterboxd): diez barras verticales teñidas con el color del TIPO de obra, el
@@ -13,10 +15,13 @@ export function RatingHistogram({
   distribution,
   /** Altura de las barras (utilidad Tailwind): `h-16` en la ficha, `h-10` compacto. */
   barsHeight = "h-16",
+  /** Las barras crecen escalonadas al pintarse. Solo lo enciende la ficha. */
+  animate = false,
 }: {
   itemType: ItemType;
   distribution: number[];
   barsHeight?: string;
+  animate?: boolean;
 }) {
   const accent = MEDIA_ACCENT[itemType];
   // La barra más alta manda: se mide contra el pico real, no contra el total,
@@ -26,6 +31,7 @@ export function RatingHistogram({
     (best, count, i) => (count > distribution[best] ? i : best),
     0,
   );
+  const grow = (i: number) => (animate ? ({ "--i": i } as CSSProperties) : undefined);
 
   return (
     <div>
@@ -38,18 +44,22 @@ export function RatingHistogram({
             <span
               key={i}
               title={`${starLabel((i + 1) / 2)}★ · 0`}
-              className="h-0.5 min-w-0 flex-1 rounded-full bg-surface-3"
+              data-grow={animate ? "" : undefined}
+              className={`${styles.bar} h-0.5 min-w-0 flex-1 rounded-full bg-surface-3`}
+              style={grow(i)}
             />
           ) : (
             <span
               key={i}
               title={`${starLabel((i + 1) / 2)}★ · ${count}`}
-              className="min-w-0 flex-1 rounded-t-[2px]"
+              data-grow={animate ? "" : undefined}
+              className={`${styles.bar} min-w-0 flex-1 rounded-t-[2px]`}
               style={{
                 // Mínimo de 4px: un voto suelto se ve, no se queda en muñón.
                 height: `max(4px, ${(count / max) * 100}%)`,
                 background: `var(${accent.varName})`,
                 opacity: i === peak ? 1 : 0.4,
+                ...grow(i),
               }}
             />
           ),
