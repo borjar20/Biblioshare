@@ -8420,3 +8420,5 @@ La ficha reúne el estado, la nota y la acción principal en el pase personal. E
 La rejilla móvil de episodios agrupa cada temporada en un bloque y recorre sus episodios de izquierda a derecha. La media usa las notas disponibles de la fuente elegida. En escritorio se mantiene la tabla comparativa.
 
 La ficha de serie muestra las valoraciones comunitarias por episodio directamente. Desde cuatro temporadas ofrece un índice; el detalle público conserva la rejilla y la posición. «Mi registro» reúne los episodios del pase, su puntuación y reseña, con un filtro de vistos sin puntuar que recorre todas las temporadas. Marcar el siguiente episodio mantiene la puntuación inmediata.
+
+En «Valoraciones por episodio», el control «Información por episodio» alterna la rejilla con una guía de capítulos agrupados por temporada. Cada fila muestra el título, la valoración comunitaria y la sinopsis disponible. La guía está disponible también en series de una temporada.

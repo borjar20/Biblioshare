@@ -124,13 +124,18 @@ test.describe("móvil 375", () => {
     expect(editions!.y).toBeGreaterThan(ficha!.y);
   });
 
-  test("Episodios comunitarios en móvil: salta a la temporada y vuelve a la misma celda", async ({ page }) => {
+  test("Episodios comunitarios en móvil: consulta la información y vuelve a la misma celda", async ({ page }) => {
     await page.goto(`${SERIES}?tab=episodes`);
     const episodes = page.locator("#detail-episodes");
     await expect(episodes.locator("details")).toHaveCount(0);
-    await episodes.getByRole("button", { name: "Ir a temporada" }).click();
-    await page.getByRole("dialog").getByRole("link", {name: "Temporada 7", exact: true}).click();
+    const info = episodes.getByRole("button", { name: "Información por episodio" });
+    await info.click();
+    const season = episodes.getByRole("region", { name: "Temporada 7", exact: true });
+    await expect(season.getByRole("listitem")).toHaveCount(7);
+    await expect(season.getByRole("heading", { level: 4 }).first()).toBeVisible();
+    await info.click();
     const cell = episodes.getByRole("button", { name: /^T7E1 ·/ });
+    await cell.scrollIntoViewIfNeeded();
     await expect(cell).toBeInViewport();
     const position = await page.evaluate(() => window.scrollY);
     await cell.click();
