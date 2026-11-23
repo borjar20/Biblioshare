@@ -90,7 +90,7 @@ export function PassCard({ itemType, progress: initialProgress, rating, upToDate
   }, [status, busy]);
 
   const shell =
-    "flex flex-col gap-3 rounded-[14px] border border-border bg-surface/90 p-3.5 shadow-[0_18px_40px_-22px_rgba(60,35,15,0.55)] backdrop-blur-md";
+    "flex flex-col gap-2 rounded-xl border border-border bg-surface/90 p-2.5";
 
   const errorLine = error && (
     <p role="alert" className="px-1 text-[13px] text-status-dropped">
@@ -111,7 +111,7 @@ export function PassCard({ itemType, progress: initialProgress, rating, upToDate
           type="button"
           disabled={busy}
           onClick={() => chooseIntent(first)}
-          className={`w-full py-3 font-semibold ${PRIMARY_SHAPE} ${styles.primary}`}
+          className={`min-h-11 self-start px-4 py-2 font-semibold ${PRIMARY_SHAPE} ${styles.primary}`}
         >
           {t(`intent.${first}.${itemType}`)}
         </Button>
@@ -188,43 +188,45 @@ export function PassCard({ itemType, progress: initialProgress, rating, upToDate
         </div>
       )}
 
-      {!episodeControls && (
-        <Button
-          ref={primaryRef}
-          type="button"
-          disabled={busy}
-          onClick={runPrimary}
-          className={`w-full py-3 font-semibold ${PRIMARY_SHAPE} ${styles.primary}`}
-        >
-          {t(`action.${action}.${itemType}`)}
-        </Button>
-      )}
-
-      {status !== "planned" && (
-        <div
-          data-testid="pass-card-rating"
-          data-value={shownRating ?? ""}
-          className="flex items-center justify-between gap-2.5 px-1"
-        >
-          <span className="font-mono text-[10px] tracking-wide text-muted-foreground uppercase">
-            {tRail("yourRating")}
-          </span>
-          <RatingDots
-            value={shownRating}
-            itemType={itemType}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        {!episodeControls && (
+          <Button
+            ref={primaryRef}
+            type="button"
             disabled={busy}
-            lively
-            onChange={(next) => {
-              // Solo si de verdad arrancó la escritura: sin pase activo, sin
-              // sesión o con otra escritura en vuelo, la nota parecería
-              // guardada sin que nada llegue a BD.
-              const ok = rate(next);
-              if (ok) setShownRating(next);
-              return ok;
-            }}
-          />
-        </div>
-      )}
+            onClick={runPrimary}
+            className={`min-h-11 self-start px-4 py-2 font-semibold ${PRIMARY_SHAPE} ${styles.primary}`}
+          >
+            {t(`action.${action}.${itemType}`)}
+          </Button>
+        )}
+
+        {status !== "planned" && (
+          <div
+            data-testid="pass-card-rating"
+            data-value={shownRating ?? ""}
+            className="flex min-h-11 items-center gap-2 px-1"
+          >
+            <span className="font-mono text-[10px] tracking-wide text-muted-foreground uppercase">
+              {tRail("yourRating")}
+            </span>
+            <RatingDots
+              value={shownRating}
+              itemType={itemType}
+              disabled={busy}
+              lively
+              onChange={(next) => {
+                // Solo si de verdad arrancó la escritura: sin pase activo, sin
+                // sesión o con otra escritura en vuelo, la nota parecería
+                // guardada sin que nada llegue a BD.
+                const ok = rate(next);
+                if (ok) setShownRating(next);
+                return ok;
+              }}
+            />
+          </div>
+        )}
+      </div>
 
       {errorLine}
     </div>

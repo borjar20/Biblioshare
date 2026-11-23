@@ -84,7 +84,7 @@ export function StatusSegments({
       aria-label={tSegments("groupLabel")}
       data-count={order.length}
       data-active-index={activeIndex}
-      className="relative flex gap-1 rounded-[10px] bg-surface-muted p-1"
+      className="@container relative flex gap-1 rounded-[10px] p-1"
       style={{ "--n": order.length, "--at": activeIndex } as CSSProperties}
     >
       {/* El fondo de la activa es UN elemento que se desliza, no una clase por
@@ -94,7 +94,7 @@ export function StatusSegments({
         aria-hidden="true"
         data-testid="status-thumb"
         data-disabled={disabled ? "" : undefined}
-        className={`${styles.thumb} rounded-[7px] bg-surface shadow-card ${disabled ? "opacity-60" : ""}`}
+        className={`${styles.thumb} rounded-[7px] bg-surface-muted ${disabled ? "opacity-60" : ""}`}
       />
       {order.map((option) => {
         const isActive = option === status;
@@ -116,14 +116,14 @@ export function StatusSegments({
               setBeat(option);
               onChange(option);
             }}
-            className={`${styles.option} flex min-w-0 flex-1 flex-col items-center gap-1 rounded-[7px] px-0.5 py-2 text-center text-[11px] leading-tight font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+            className={`${styles.option} flex min-h-11 min-w-0 flex-1 items-center justify-center gap-1 rounded-[7px] px-0.5 py-1 text-center [overflow-wrap:anywhere] text-[11px] leading-tight font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
               isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
             }`}
           >
             <span
               aria-hidden="true"
               data-beat={isActive && beat === option ? "" : undefined}
-              className={`${styles.dot} h-2 w-2 rounded-full ${STATUS_DOT_CLASSES[option]} ${STATUS_TEXT_CLASSES[option]}`}
+              className={`${isActive ? (order.length === 4 ? "hidden @min-[300px]:block" : "") : "hidden"} ${styles.dot} h-1.5 w-1.5 shrink-0 rounded-full ${STATUS_DOT_CLASSES[option]} ${STATUS_TEXT_CLASSES[option]}`}
             />
             {label}
           </button>
