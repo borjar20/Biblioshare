@@ -148,7 +148,7 @@ Viven en una función pura, `buildReadingStrip`, en `src/lib/passes/reading-stri
   sesión también se escribe «pág. 0 → N».
 - **Tramo vacío o hacia atrás** (una sesión que no avanza o corrige la página a menos): no ocupa
   ancho en la tira, sale en las listas con su página y sin recuento, y no recibe notas.
-- **Una nota pertenece a la primera sesión cuyo tramo la contiene:** `desde < página ≤ hasta`.
+- **Una nota pertenece a la sesión más reciente cuyo tramo la contiene:** `desde < página ≤ hasta` (con un historial que solo avanza es la única; si se volvió atrás y se releyó, la de hoy).
   Una nota en la página exacta donde acabó una sesión es de esa sesión.
 - **Notas por delante de la página actual:** grupo «Más adelante», ordenado por página.
 - **Notas sin página:** grupo «Sin página».
@@ -279,3 +279,6 @@ cambian estos puntos. Donde contradigan a lo de arriba, mandan estos:
   los objetos de nota; `loose` es `{ ahead, afterLast, other }`. Las tarjetas las pinta el servidor
   y llegan a la tira por clave.
 - **Compositor sin caja:** `NoteForm` gana la prop `bare`.
+- **La nota va a la sesión más reciente que contiene su página** (no a la primera): con un historial
+  que vuelve atrás, la nota recién escrita caía en un tramo antiguo y no se veía (lo destaparon los
+  e2e de `notas-captura` el 2026-11-23).

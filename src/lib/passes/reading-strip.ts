@@ -142,7 +142,10 @@ export function buildReadingStrip(input: {
       continue;
     }
     const page = note.page;
-    const home = segments.find((s) => s.advanced && s.from < page && page <= s.to);
+    // La sesión MÁS RECIENTE cuyo tramo contiene la página: si se volvió atrás
+    // y se releyó, la nota de hoy es de la sesión de hoy, no de la primera que
+    // pasó por ahí (con un historial que solo avanza, es la misma).
+    const home = segments.findLast((s) => s.advanced && s.from < page && page <= s.to);
     if (home) home.notes.push(note);
     else if (page > reached) (input.closed ? loose.afterLast : loose.ahead).push(note);
     else loose.other.push(note);

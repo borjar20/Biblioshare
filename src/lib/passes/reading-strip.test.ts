@@ -66,6 +66,16 @@ describe("buildReadingStrip — notas", () => {
     ] });
     expect(strip.segments[1].notes.map((x) => x.key)).toEqual(["antes", "nueva", "vieja"]);
   });
+  it("si dos tramos contienen la página (se volvió atrás y se releyó), la nota es del más reciente", () => {
+    // 0→120, 120→668, vuelta a 120, y 120→240: la página 240 la cubren el
+    // segundo y el cuarto tramo; quien escribe una nota en la 240 hoy la
+    // escribió en la sesión de hoy.
+    const strip = buildReadingStrip({ ...base, totalPages: 669, sessions: [
+      s("a", "2026-07-21", 120), s("b", "2026-09-02", 668), s("c", "2026-11-19", 120), s("d", "2026-11-20", 240),
+    ], notes: [n("x", 240), n("y", 500)] });
+    expect(strip.segments.find((x) => x.sessionId === "d")!.notes.map((x) => x.key)).toEqual(["x"]);
+    expect(strip.segments.find((x) => x.sessionId === "b")!.notes.map((x) => x.key)).toEqual(["y"]);
+  });
   it("una sesión que no avanza no recibe notas", () => {
     const strip = buildReadingStrip({ ...base, sessions: [s("a", "2026-08-01", 40), s("b", "2026-08-02", 40)], notes: [n("x", 40)] });
     expect(strip.segments[0].notes.map((x) => x.key)).toEqual(["x"]);
