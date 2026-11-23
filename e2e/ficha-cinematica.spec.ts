@@ -106,10 +106,10 @@ test.describe("móvil 375", () => {
     await expect(follow).toBeVisible();
     const card = await follow.boundingBox();
     await expect(page.getByRole("tablist")).toHaveCount(0);
-    const panel = await page.locator("#item-tabpanel-info").boundingBox();
+    const synopsis = await page.getByRole("heading", { name: "Sinopsis" }).boundingBox();
     const cover = await page.getByRole("heading", { level: 1 }).boundingBox();
     expect(card!.y).toBeGreaterThan(cover!.y);
-    expect(card!.y).toBeLessThan(panel!.y);
+    expect(card!.y + card!.height).toBeLessThanOrEqual(synopsis!.y);
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
